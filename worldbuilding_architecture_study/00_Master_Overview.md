@@ -125,6 +125,7 @@ Sehr wohl fuer V1:
 | `10_MVP_Spec_Decisions.md` | beantwortete V1-Spec-Fragen aus dem Interview |
 | `11_Module_Dependency_Map.md` | Modulabhaengigkeiten, Core-Technologien, Build-Reihenfolge |
 | `12_Core_Engine_Strategy.md` | Strategie fuer generische Core-Engines und Mini-Service-Komposition |
+| `13_Visual_Design_System.md` | Design-Paper aus dem Bastion-Manager-Stil plus wiederverwendbare UI-/CSS-Basis |
 
 ## Sources
 
