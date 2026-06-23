@@ -1,32 +1,18 @@
 # WorldBuilderX
 
-## Development Policy
+WorldBuilderX is a desktop-first worldbuilding workspace for creating,
+organizing, and running fictional settings. The project is built around a local
+app foundation, structured world data, searchable knowledge views, session
+support, maps, cards, exports, and future extension points.
 
-Use npm as the repository package manager.
+## Project Direction
 
-The project is prepared as a root Node/npm workspace with `package.json` and
-`package-lock.json`. The project targets Node.js `24.17.0` LTS and npm
-`11.13.0`; `.node-version` and `package.json` are the source of truth.
+- Local-first desktop application.
+- React/TypeScript renderer with an npm-based toolchain.
+- JSON-backed project data as the long-term source of truth.
+- Clear module boundaries for data, search, session views, maps, exports, and
+  extensions.
 
-Install Node.js `24.17.0` LTS with a normal developer toolchain such as the
-official Node.js installer, winget, fnm, nvm-windows, Volta, or asdf. Then verify
-the active shell:
+## Development
 
-```sh
-npm run check:toolchain
-```
-
-Do not install Node.js or npm into repository folders. npm should come from the
-developer toolchain, and project dependencies should come from `npm ci`.
-
-Clean installs must use:
-
-```sh
-npm ci
-```
-
-The security gate is:
-
-```sh
-npm audit --audit-level=high
-```
+Developer workflow and toolchain policy live in [CONTRIBUTING.md](CONTRIBUTING.md).
