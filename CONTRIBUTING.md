@@ -16,6 +16,24 @@ the active shell:
 npm run check:toolchain
 ```
 
+On this Windows workspace, the correct system Node/npm installation may be
+available even when `npm` is not on `PATH`. If a PowerShell session cannot find
+bare `npm`, first verify the fixed system install:
+
+```powershell
+& 'C:\Program Files\nodejs\node.exe' --version
+& 'C:\Program Files\nodejs\npm.cmd' --version
+```
+
+Those commands must report Node.js `24.17.0` and npm `11.13.0`. For npm
+scripts, prepend the system Node directory to the current PowerShell `PATH`
+before running normal npm commands:
+
+```powershell
+$env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
+npm run check:toolchain
+```
+
 Do not install Node.js or npm into repository folders. npm should come from the
 developer toolchain, and project dependencies should come from `npm ci`.
 

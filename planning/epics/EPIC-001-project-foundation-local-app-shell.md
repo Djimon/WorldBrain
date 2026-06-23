@@ -32,6 +32,13 @@ Establish the local application foundation: React/TypeScript web app, basic app 
 
 - None currently tracked for M0.
 
+## Future Hardening Notes
+
+- M0 keeps the Tauri CSP unset because the app shell does not load external
+  content. Revisit a strict local-only CSP before imports, plugins,
+  Markdown/HTML rendering, or other user-provided content can reach the
+  renderer.
+
 ## Story Tracking
 
 | Story | Status | Notes |

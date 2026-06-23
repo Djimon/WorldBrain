@@ -50,6 +50,35 @@ Stop with `BLOCKED` or `NEEDS_DECISION` when:
 
 Do not hide gaps in code.
 
+### Local Toolchain Resolution
+
+On this Windows workspace, `npm` may be absent from `PATH` even though the
+required project toolchain is installed. Before declaring Node/npm unavailable
+or trying multiple unrelated fallbacks, check the fixed system install first:
+
+- Node: `C:\Program Files\nodejs\node.exe`
+- npm: `C:\Program Files\nodejs\npm.cmd`
+
+For one-off version checks, call the fixed executables directly:
+
+```powershell
+& 'C:\Program Files\nodejs\node.exe' --version
+& 'C:\Program Files\nodejs\npm.cmd' --version
+```
+
+For npm scripts, first prepend the system Node directory to the current
+PowerShell `PATH`, then run normal npm commands. This is required because npm
+scripts launch child `node` and `npm` commands through `PATH`.
+
+```powershell
+$env:PATH = 'C:\Program Files\nodejs;' + $env:PATH
+npm run check
+```
+
+Expected versions are Node.js `24.17.0` and npm `11.13.0`. If those fixed paths
+are missing or report different versions, stop with `BLOCKED` instead of
+continuing with bundled runtimes or alternate package managers.
+
 ### Forbidden
 
 - Unevidenced assumptions.
@@ -84,6 +113,7 @@ No implementation.
 ### 2. TDD Agent
 
 For one Story, write minimal atomic unit tests/assertions for every required behavior.
+No test required if story is only Docu!!
 
 Rules:
 
