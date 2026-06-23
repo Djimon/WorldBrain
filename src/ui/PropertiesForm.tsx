@@ -8,6 +8,59 @@ type PropertySchema = {
 
 type PropertiesSchema = Record<string, PropertySchema>;
 
+import { useState } from 'react';
+
+type TagFieldProps = {
+  fieldKey: string;
+  label: string;
+  required: boolean;
+  items: string[];
+  onChange: (patch: Record<string, unknown>) => void;
+};
+
+function TagField({ fieldKey, label, required, items, onChange }: TagFieldProps) {
+  const [inputValue, setInputValue] = useState('');
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== 'Enter') return;
+    const trimmed = inputValue.trim();
+    if (!trimmed) return;
+    onChange({ [fieldKey]: [...items, trimmed] });
+    setInputValue('');
+  }
+
+  function handleRemove(index: number) {
+    onChange({ [fieldKey]: items.filter((_, i) => i !== index) });
+  }
+
+  return (
+    <div data-required={required ? 'true' : undefined}>
+      <label data-required={required ? 'true' : undefined}>{label}</label>
+      <div>
+        {items.map((item, i) => (
+          <span key={i}>
+            {item}
+            <button
+              type="button"
+              aria-label={`Remove ${item}`}
+              onClick={() => handleRemove(i)}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+      <input
+        type="text"
+        aria-label={`Add ${label}`}
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+      />
+    </div>
+  );
+}
+
 type PropertiesFormProps = {
   schema: PropertiesSchema;
   values: Record<string, unknown>;
@@ -70,14 +123,14 @@ export function PropertiesForm({ schema, values, onChange }: PropertiesFormProps
         if (fieldSchema.type === 'array') {
           const items = Array.isArray(value) ? (value as string[]) : [];
           return (
-            <div key={key} data-required={required || undefined}>
-              <label data-required={required ? 'true' : undefined}>{label}</label>
-              <div>
-                {items.map((item, i) => (
-                  <span key={i}>{item}</span>
-                ))}
-              </div>
-            </div>
+            <TagField
+              key={key}
+              fieldKey={key}
+              label={label}
+              required={required}
+              items={items}
+              onChange={onChange}
+            />
           );
         }
 
