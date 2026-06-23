@@ -38,8 +38,8 @@ Establish the local application foundation: React/TypeScript web app, basic app 
 |---|---|---|
 | #4 M0-S04: Minimal desktop wrapper shell | Verified | Tauri v2 shell, npm desktop scripts, local renderer dev URL, and production renderer dist loading are implemented. |
 | #5 M0-S05: Design tokens and minimal UI primitives | Verified | Semantic tokens and local primitives are implemented in `src/styles` and `src/ui`. |
-| #6 M0-S06: Desktop app shell layout | Ready | Unblocked by #5; depends on renderer scaffold from #3 and UI foundation from #5. |
-| #7 M0-S07: M0 verification workflow documentation | Ready | Unblocked by #4; desktop verification command is now available through `npm run desktop:build`. |
+| #6 M0-S06: Desktop app shell layout | Verified | Header, primary navigation, workspace placeholders, internal scrolling, and status surface are implemented. |
+| #7 M0-S07: M0 verification workflow documentation | Verified | M0 setup, agent workflow, package scripts, aggregate check, build-as-typecheck, lint gap, and security gate are documented. |
 
 ## Sources
 

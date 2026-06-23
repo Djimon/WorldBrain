@@ -5,6 +5,7 @@
   "license": "UNLICENSED",
   "packageManager": "npm@11.13.0",
   "scripts": {
+    "check": "npm run check:toolchain && npm run check:prerequisites && npm run test && npm run build && npm run desktop:build",
     "check:prerequisites": "node scripts/check-prerequisites.mjs",
     "check:toolchain": "node scripts/check-toolchain.mjs",
     "dev": "vite",

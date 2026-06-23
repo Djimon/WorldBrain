@@ -64,3 +64,45 @@ Missing prerequisite handling is explicit: the check command fails on the first
 missing required command and prints which prerequisite to install or repair. For
 Rust failures, install rustup and ensure `rustc` and `cargo` are available. For
 Tauri failures, install the Tauri CLI for the selected Tauri v2 path.
+
+## Verification Workflow
+
+Use this sequence before marking an M0 Story implementation verified:
+
+```sh
+npm run check:toolchain
+npm run check:prerequisites
+npm ci
+npm run test
+npm run build
+npm run desktop:build
+npm audit --audit-level=high
+```
+
+The aggregate local check is:
+
+```sh
+npm run check
+```
+
+`npm run build` is the current TypeScript typecheck gate because it runs
+`tsc --noEmit` before the Vite build. Lint is not yet configured for M0.
+
+Verification scripts:
+
+- `npm run check`
+- `npm run check:toolchain`
+- `npm run check:prerequisites`
+- `npm run test`
+- `npm run build`
+- `npm run desktop:dev`
+- `npm run desktop:build`
+
+Story work follows the project agent workflow:
+
+- Requirement Agent: clarifies the Epic and splits it into small Stories.
+- TDD Agent: writes the Story tests before production implementation.
+- Implementation Agent: implements production code and must not edit Story
+  tests.
+- Review Agent: checks requirements, architecture, style, coverage, hidden
+  assumptions, and scope.
