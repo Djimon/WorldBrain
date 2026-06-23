@@ -1,12 +1,12 @@
+import type { Block } from './block-registry';
+
 type TipTapTextNode = { type: 'text'; text: string };
 type TipTapNode = {
   type: string;
   attrs?: Record<string, unknown>;
   content?: TipTapNode[];
 };
-type TipTapDoc = { type: 'doc'; content: TipTapNode[] };
-
-type Block = Record<string, unknown>;
+export type TipTapDoc = { type: 'doc'; content: TipTapNode[] };
 
 function extractText(content: TipTapNode[] | undefined): string {
   if (!content) return '';
@@ -31,21 +31,21 @@ export function blocksToTipTap(blocks: Block[]): TipTapDoc {
         case 'paragraph':
           return {
             type: 'paragraph',
-            content: block.text ? [{ type: 'text', text: block.text as string }] : [],
+            content: block.text ? [{ type: 'text', text: block.text }] : [],
           };
 
         case 'heading':
           return {
             type: 'heading',
             attrs: { level: block.level },
-            content: block.text ? [{ type: 'text', text: block.text as string }] : [],
+            content: block.text ? [{ type: 'text', text: block.text }] : [],
           };
 
         case 'list': {
           const nodeType = block.ordered ? 'orderedList' : 'bulletList';
           return {
             type: nodeType,
-            content: (block.items as string[]).map((item) => ({
+            content: block.items.map((item) => ({
               type: 'listItem',
               content: [{ type: 'paragraph', content: [{ type: 'text', text: item }] }],
             })),
@@ -61,7 +61,7 @@ export function blocksToTipTap(blocks: Block[]): TipTapDoc {
         case 'secret_block':
           return {
             type: 'secret_block',
-            content: [{ type: 'paragraph', content: [{ type: 'text', text: block.content as string }] }],
+            content: [{ type: 'paragraph', content: [{ type: 'text', text: block.content }] }],
           };
 
         case 'rule_reference':
@@ -69,22 +69,19 @@ export function blocksToTipTap(blocks: Block[]): TipTapDoc {
             type: 'rule_reference',
             attrs: { ruleId: block.ruleId, title: block.title },
           };
-
-        default:
-          return { type: 'paragraph', content: [] };
       }
     }),
   };
 }
 
 export function tipTapToBlocks(doc: TipTapDoc): Block[] {
-  return (doc.content ?? []).flatMap((node) => {
+  return (doc.content ?? []).flatMap((node): Block[] => {
     switch (node.type) {
       case 'paragraph':
         return [{ type: 'paragraph', text: extractText(node.content) }];
 
       case 'heading':
-        return [{ type: 'heading', level: node.attrs?.level ?? 1, text: extractText(node.content) }];
+        return [{ type: 'heading', level: (node.attrs?.level ?? 1) as 1 | 2 | 3, text: extractText(node.content) }];
 
       case 'bulletList':
         return [{ type: 'list', ordered: false, items: extractListItems(node.content) }];
@@ -93,13 +90,13 @@ export function tipTapToBlocks(doc: TipTapDoc): Block[] {
         return [{ type: 'list', ordered: true, items: extractListItems(node.content) }];
 
       case 'entity_embed':
-        return [{ type: 'entity_embed', entityId: node.attrs?.entityId ?? '', entityType: node.attrs?.entityType ?? '' }];
+        return [{ type: 'entity_embed', entityId: String(node.attrs?.entityId ?? ''), entityType: String(node.attrs?.entityType ?? '') }];
 
       case 'secret_block':
         return [{ type: 'secret_block', content: extractText(node.content) }];
 
       case 'rule_reference':
-        return [{ type: 'rule_reference', ruleId: node.attrs?.ruleId ?? '', title: node.attrs?.title ?? '' }];
+        return [{ type: 'rule_reference', ruleId: String(node.attrs?.ruleId ?? ''), title: String(node.attrs?.title ?? '') }];
 
       default:
         return [];

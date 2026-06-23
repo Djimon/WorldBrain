@@ -24,6 +24,16 @@ export type Block =
 
 export type PortableBlocksV1Doc = { format: 'portable_blocks_v1'; blocks: Block[] };
 
+export function isPortableBlocksV1Doc(value: unknown): value is PortableBlocksV1Doc {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    (value as Record<string, unknown>).format === 'portable_blocks_v1' &&
+    Array.isArray((value as Record<string, unknown>).blocks)
+  );
+}
+
 type BlockDefinition = { type: BlockType };
 
 function isObject(value: unknown): value is Record<string, unknown> {
