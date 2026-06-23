@@ -6,6 +6,7 @@ type JsonSchema = {
   type?: 'array' | 'boolean' | 'object' | 'string';
   required?: string[];
   properties?: Record<string, JsonSchema>;
+  additionalProperties?: false;
   items?: JsonSchema;
   enum?: unknown[];
   const?: unknown;
@@ -86,6 +87,16 @@ function validateBySchema(schema: JsonSchema, value: unknown, path = '$'): strin
     for (const fieldName of schema.required ?? []) {
       if (value[fieldName] === undefined) {
         errors.push(`${path}.${fieldName} is required`);
+      }
+    }
+
+    if (schema.additionalProperties === false && schema.properties !== undefined) {
+      const knownKeys = new Set(Object.keys(schema.properties));
+
+      for (const key of Object.keys(value)) {
+        if (!knownKeys.has(key)) {
+          errors.push(`${path}.${key} is not allowed`);
+        }
       }
     }
 
