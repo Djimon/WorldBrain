@@ -13,6 +13,10 @@ Use only these final statuses:
 
 Never use `DONE`. Never claim success when relevant checks were not run.
 
+When a session reaches `PATCH_VERIFIED`, the agent may create a scoped git commit
+without asking for separate confirmation. Do not commit when the final status is
+`PATCH_READY_UNVERIFIED`, `NEEDS_DECISION`, or `BLOCKED`.
+
 Before implementation, state:
 
 1. Requirements understood.
