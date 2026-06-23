@@ -21,6 +21,14 @@ Before every push, update the matching Story issue and Epic tracking state for
 the completed scope. If the relevant issue or epic cannot be found or updated,
 stop with `BLOCKED` instead of pushing.
 
+When closing or completing any Story issue, audit dependency fallout before
+ending the session: list open issues in the same Epic/milestone, inspect issues
+that were blocked by or depend on the completed Story, and update their tracking
+state. If all documented blockers are now resolved, remove stale `status:
+blocked` labels and apply the appropriate next state, usually `status: ready`.
+If dependency state is unclear, comment with the remaining blocker and stop with
+`NEEDS_DECISION` before push.
+
 Before implementation, state:
 
 1. Requirements understood.
