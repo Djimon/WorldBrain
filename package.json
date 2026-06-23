@@ -2,7 +2,10 @@
   "name": "worldbuilderx",
   "version": "0.0.0",
   "private": true,
+  "license": "UNLICENSED",
+  "packageManager": "npm@11.13.0",
   "scripts": {
+    "check:toolchain": "node scripts/check-toolchain.mjs",
     "test": "node --test tests/*.test.mjs"
   }
 }
