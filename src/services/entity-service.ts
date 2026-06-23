@@ -1,6 +1,6 @@
 import { readEffectiveEntity } from '../../core_data/effective-entity';
 
-type DatabaseLike = {
+export type DatabaseLike = {
   prepare: (sql: string) => { all: (...args: unknown[]) => Array<Record<string, unknown>> };
 };
 

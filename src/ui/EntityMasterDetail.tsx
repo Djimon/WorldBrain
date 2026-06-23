@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
 import { EntityDetailView } from './EntityDetailView';
 
@@ -13,13 +14,13 @@ type EntityMasterDetailProps = {
   initialType: string | null;
   selectedEntityId?: string;
   onEntitySelect?: (entityId: string) => void;
-  database?: unknown;
+  database?: DatabaseLike;
 };
 
 export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySelect, database }: EntityMasterDetailProps) {
   const [selectedId, setSelectedId] = useState<string | null>(selectedEntityId ?? null);
 
-  const entities = listEntitiesByType({ database: database as never, type: initialType });
+  const entities = listEntitiesByType({ database: database as DatabaseLike, type: initialType });
 
   function handleSelect(id: string) {
     setSelectedId(id);

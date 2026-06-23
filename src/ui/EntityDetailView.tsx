@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { DatabaseLike } from '../services/entity-service';
 import { getEffectiveEntity } from '../services/entity-service';
 
 type TabDefinition = {
@@ -19,13 +20,13 @@ export function clearEntityTabs() {
 
 type EntityDetailViewProps = {
   entityId: string;
-  database?: unknown;
+  database?: DatabaseLike;
 };
 
 export function EntityDetailView({ entityId, database }: EntityDetailViewProps) {
   const [activeTab, setActiveTab] = useState('overview');
 
-  const result = getEffectiveEntity({ database: database as never, entityId });
+  const result = getEffectiveEntity({ database: database as DatabaseLike, entityId });
 
   if (!result.found) {
     return <div role="alert">Entity not found: {entityId}</div>;
