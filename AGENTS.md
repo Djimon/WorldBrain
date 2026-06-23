@@ -17,6 +17,10 @@ When a session reaches `PATCH_VERIFIED`, the agent may create a scoped git commi
 without asking for separate confirmation. Do not commit when the final status is
 `PATCH_READY_UNVERIFIED`, `NEEDS_DECISION`, or `BLOCKED`.
 
+Before every push, update the matching Story issue and Epic tracking state for
+the completed scope. If the relevant issue or epic cannot be found or updated,
+stop with `BLOCKED` instead of pushing.
+
 Before implementation, state:
 
 1. Requirements understood.
