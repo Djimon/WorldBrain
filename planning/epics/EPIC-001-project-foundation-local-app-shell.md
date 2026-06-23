@@ -24,13 +24,20 @@ Establish the local application foundation: React/TypeScript web app, basic app 
 - Renderer baseline remains Vite + React + TypeScript.
 - Package manager remains npm.
 - pywebview is not used for the M0 implementation path.
+- M0 uses semantic CSS tokens and thin local UI primitives instead of a full component library.
 - Electron remains a viable alternative outside M0, but is not selected because its bundled Chromium/Node footprint is heavier than the current desktop-first local app needs.
 - A later webapp/cloud port remains possible because renderer code must stay separated from native shell concerns.
 
 ## Open Decisions
 
 - Initial app scaffold/tooling choice.
-- Minimum UI component library vs. custom primitives.
+
+## Story Tracking
+
+| Story | Status | Notes |
+|---|---|---|
+| #5 M0-S05: Design tokens and minimal UI primitives | Verified | Semantic tokens and local primitives are implemented in `src/styles` and `src/ui`. |
+| #6 M0-S06: Desktop app shell layout | Ready | Unblocked by #5; depends on renderer scaffold from #3 and UI foundation from #5. |
 
 ## Sources
 
