@@ -25,6 +25,10 @@ type EntityDetailViewProps = {
 
 export function EntityDetailView({ entityId, database }: EntityDetailViewProps) {
   const [activeTab, setActiveTab] = useState('overview');
+  // Snapshot at mount time — each instance gets its own independent copy.
+  // Post-mount calls to registerEntityTab/clearEntityTabs do not retroactively
+  // affect already-mounted instances, satisfying the isolation contract.
+  const [extraTabs] = useState<TabDefinition[]>(() => [...registeredTabs]);
 
   const result = getEffectiveEntity({ database: database as DatabaseLike, entityId });
 
@@ -44,7 +48,7 @@ export function EntityDetailView({ entityId, database }: EntityDetailViewProps) 
         </div>
       ),
     },
-    ...registeredTabs,
+    ...extraTabs,
   ];
 
   const activeTabDef = tabs.find((t) => t.id === activeTab) ?? tabs[0];
