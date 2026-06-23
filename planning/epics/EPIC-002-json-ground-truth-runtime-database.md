@@ -95,6 +95,33 @@ mutable title text alone.
 Base serializers omit runtime DB-only fields and do not write campaign/session
 progression into base JSON. Campaign overlay/export remains a later boundary.
 
+## Base JSON Import Pipeline
+
+The M1 import pipeline reads `project.json`, `entity-types/*.json`, and
+`entities/{type}/*.json` from the base project folder. It validates all base JSON
+documents before writing and returns structured result data with imported counts
+and validation errors.
+
+Valid entity type definitions are written to `base_entity_types`. Valid base
+entities are written to `base_entities`. Re-import rebuilds `base_*` rows for the
+project scope and never deletes or modifies `campaign_*` rows.
+
+Import reads source JSON files only; it does not rewrite, reformat, or mutate the
+base project folder.
+
+## Runtime Database Placement
+
+Runtime SQLite/cache files live under `.worldbuilderx/runtime`. Base JSON content
+is stored under `./`, including `project.json`, `entity-types/*.json`,
+`entities/{type}/*.json`, and `schemas/base/*.schema.json`.
+
+Generated runtime SQLite and cache artifacts are ignored by Git. Base JSON
+project files and schema files remain trackable project content.
+
+`base_*` tables are rebuildable from JSON. `campaign_*` data needs an explicit
+backup/export strategy in a later Story before it can be treated as portable
+project content.
+
 ## Out Of Scope
 
 - Git UI.
@@ -115,9 +142,9 @@ progression into base JSON. Campaign overlay/export remains a later boundary.
 | #11 M1-S02: Base JSON project layout and schemas | Verified | Base project folder layout and minimal project, entity type, and entity JSON Schemas are defined. |
 | #12 M1-S03: SQLite runtime schema | Verified | Idempotent SQLite schema creates base and campaign tables in one database. |
 | #13 M1-S04: Structured validation policy | Verified | Base JSON load validation returns structured blocking and non-blocking results without mutation. |
-| #14 M1-S05: Base JSON import pipeline | Blocked | Depends on #12 and #13. |
-| #15 M1-S06: Effective entity read model | Blocked | Depends on #12 and #14. |
-| #16 M1-S07: Runtime database placement and gitignore boundary | Ready | Unblocked by #12. |
+| #14 M1-S05: Base JSON import pipeline | Verified | Import reads, validates, and writes base JSON documents into base SQLite tables while preserving campaign rows. |
+| #15 M1-S06: Effective entity read model | Ready | Unblocked by #12 and #14. |
+| #16 M1-S07: Runtime database placement and gitignore boundary | Verified | Runtime SQLite/cache artifacts are documented and ignored while base JSON and schema files remain trackable. |
 | #17 M1-S08: Deterministic JSON serialization | Verified | Base entity and project serializers use stable formatting, key ordering, and filename generation. |
 
 ## Sources
