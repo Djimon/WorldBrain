@@ -51,7 +51,7 @@ flowchart TD
 | UI generation | Hybrid: Schema erzeugt Default, UI-JSON ueberschreibt Spezialfaelle | klaut Notion-Feeling ohne UI-Chaos |
 | Relations | Edge table mit relation_type und inverse_type | Bidirectional ohne doppelten Pflegeaufwand |
 | Conditions | JsonLogic oder CEL | sichere, speicherbare Mini-Formeln |
-| Frontend | Web-App, lokal gehostet | spaeter pywebview/Tauri/Electron moeglich |
+| Frontend | Tauri v2 Desktop Wrapper mit React/TypeScript Renderer | desktop-first M0, spaeterer Webapp-/Cloud-Port bleibt durch Renderer/Shell-Trennung moeglich |
 
 ## Why Notion Feels Good
 

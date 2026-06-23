@@ -178,11 +178,11 @@ Minimal eigene UI-JSON Begriffe:
 | Shell | Vorteile | Nachteile | Empfehlung |
 |---|---|---|---|
 | Browser + local server | einfach, flexibel | wirkt weniger wie Desktop-App | sehr gut fuer V1 |
-| pywebview | Python-nah, leicht, Web-UI | Packaging pruefen | gut fuer Python-Prototyp |
-| Tauri | kleine Desktop-App, Web-UI, Rust Backend | Rust-Komplexitaet | gut fuer spaeter |
-| Electron | riesiges Oekosystem | schwerer, groesser | nur wenn Node/Desktop-Features wichtig |
+| Tauri v2 | kleine Desktop-App, React/TypeScript Web-UI, Rust Backend | Rust-/Prerequisite-Komplexitaet | M0-Baseline |
+| pywebview | Python-nah, leicht, Web-UI | weniger passend zur React/TypeScript/npm Foundation | nicht M0 |
+| Electron | riesiges Oekosystem | schwerer, groesser | nicht M0 |
 
-Da Technologie offen bleiben soll: erst Web-App + Local Server spezifizieren. Desktop-Wrapping spaeter.
+M0-Entscheidung: Tauri v2 ist der Desktop Wrapper. Der Renderer bleibt React/TypeScript und muss von nativen Shell-Belangen getrennt bleiben, damit ein spaeterer Webapp-/Cloud-Port moeglich bleibt.
 
 ## JSON Ground Truth + DB Cache
 

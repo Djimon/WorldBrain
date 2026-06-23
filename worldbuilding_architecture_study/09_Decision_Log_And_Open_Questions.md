@@ -6,7 +6,7 @@
 |---|---|
 | Study type | Feature-/Architekturstudie, kein MVP-Scope |
 | Priority | PnP > Game Design, aber beide anschlussfaehig |
-| Tech | offen, aber lokale Web-App als Referenz |
+| Tech | Tauri v2 Desktop Wrapper mit React/TypeScript Renderer |
 | Storage | JSON Ground Truth + SQLite Runtime |
 | Search | SQLite FTS5 fuer V1 |
 | DB Upgrade | PostgreSQL optional spaeter |
@@ -176,7 +176,7 @@ Offen:
 
 ### Phase 4: Desktop Packaging
 
-- pywebview or Tauri wrapper
+- Tauri v2 wrapper
 - project folder management
 - backups
 - plugin folder loading
@@ -221,7 +221,7 @@ Kurzfassung:
 | JSON Export | Viele JSON-Dateien im Projektordner, ZIP Import/Export ab V1 |
 | Undo/History | Editor-Undo wenn Standard, Session-Undo fuer GM-Missklicks, keine volle Entity-History |
 | Git | Git-kompatible Projektordner sind explizites V1-Ziel |
-| UI Tech | React + TypeScript als lokale Web-App, Desktop Wrapper spaeter |
+| UI Tech | React + TypeScript Renderer im Tauri v2 Desktop Wrapper |
 | DnD Daten | User-Homebrew + klar lizenzierte SRD-Basisdaten; Source-/Lizenz-Metadaten pro Rule Entity |
 
 ## Recommended Next Step

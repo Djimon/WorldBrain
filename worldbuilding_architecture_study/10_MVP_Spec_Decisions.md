@@ -197,12 +197,15 @@ Referenztechnologie fuer V1:
 
 - React
 - TypeScript
-- lokal gehostete Web-App
+- Tauri v2 Desktop Wrapper fuer M0
+- lokal gehostete Web-App als Renderer-/Portabilitaetsgrenze
 
-Spaeteres Desktop Packaging:
+Desktop Packaging:
 
-- bevorzugt Tauri
-- pywebview bleibt als schneller Prototyp-Kandidat offen
+- Tauri v2 ist als M0-Baseline gewaehlt.
+- Der React/TypeScript Renderer bleibt von nativen Shell-Belangen getrennt, damit ein spaeterer Webapp-/Cloud-Port moeglich bleibt.
+- pywebview ist fuer M0 nicht Teil des Implementierungspfads.
+- Electron bleibt technisch moeglich, ist fuer M0 aber wegen groesserem Runtime-Footprint nicht gewaehlt.
 
 Empfohlene UI-Bausteine:
 
@@ -279,10 +282,10 @@ Project operations:
 
 UI:
   React + TypeScript local web app
-  desktop wrapper later
+  Tauri v2 desktop wrapper for M0
+  renderer/native shell separation for later webapp or cloud port
 
 Rules:
   source/license metadata required
   user/Homebrew/SRD-only import boundary
 ```
-
