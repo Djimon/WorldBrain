@@ -79,14 +79,23 @@ function listOverrideRows(database: RuntimeDatabase, entityId: string) {
     .all(entityId);
 }
 
-function collectOverridePaths(patch: Record<string, unknown>) {
-  return Object.keys(patch).flatMap((fieldName) => {
-    if (fieldName === 'properties' && patch.properties !== null && typeof patch.properties === 'object') {
-      return Object.keys(patch.properties as Record<string, unknown>).map((key) => `properties.${key}`);
-    }
+function diffEntityFields(base: BaseEntity, effective: BaseEntity): string[] {
+  const fields: string[] = [];
 
-    return [fieldName];
-  });
+  if (effective.title !== base.title) fields.push('title');
+  if (effective.summary !== base.summary) fields.push('summary');
+  if (effective.visibility !== base.visibility) fields.push('visibility');
+  if (JSON.stringify(effective.aliases) !== JSON.stringify(base.aliases)) fields.push('aliases');
+
+  const allPropertyKeys = new Set([...Object.keys(base.properties), ...Object.keys(effective.properties)]);
+
+  for (const key of allPropertyKeys) {
+    if (JSON.stringify(effective.properties[key]) !== JSON.stringify(base.properties[key])) {
+      fields.push(`properties.${key}`);
+    }
+  }
+
+  return fields.sort((left, right) => left.localeCompare(right));
 }
 
 function applyPatch(entity: BaseEntity, patch: Record<string, unknown>) {
@@ -141,15 +150,9 @@ export function readEffectiveEntity({ database, entityId }: ReadEffectiveEntityI
 
   const baseEntity = rowToBaseEntity(baseRow);
   let entity = baseEntity;
-  const overriddenFields = new Set<string>();
 
   for (const row of overrideRows) {
     const patch = parseJsonField<Record<string, unknown>>(row.patch_json, {});
-
-    for (const fieldPath of collectOverridePaths(patch)) {
-      overriddenFields.add(fieldPath);
-    }
-
     entity = applyPatch(entity, patch);
   }
 
@@ -158,7 +161,7 @@ export function readEffectiveEntity({ database, entityId }: ReadEffectiveEntityI
     entityId,
     entity,
     baseEntity,
-    overriddenFields: [...overriddenFields].sort((left, right) => left.localeCompare(right)),
+    overriddenFields: diffEntityFields(baseEntity, entity),
     orphanedOverrideCount: 0,
   };
 }
