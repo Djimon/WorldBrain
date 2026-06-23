@@ -142,8 +142,11 @@ project content.
 
 ## Open Decisions
 
-- How strict validation is during load: block project vs. partial load with errors.
 - SQL dialect neutrality requirements.
+
+## Closed Decisions
+
+- **Validation strictness during load (closed M1):** Strict schema + partial import. `project.json`-Fehler blockieren den gesamten Import. Fehlerhafte Entity-Type- oder Entity-Dateien werden übersprungen und als strukturierte Fehler zurückgegeben. Implementiert in M1-S04 (`validateBaseJsonLoad`) und M1-S05 (`importBaseJsonProject`).
 
 ## Story Tracking
 

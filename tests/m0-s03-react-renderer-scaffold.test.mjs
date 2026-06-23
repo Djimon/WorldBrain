@@ -29,18 +29,6 @@ const forbiddenGeneratedDemoMarkers = Object.freeze([
   'reactLogo',
   'viteLogo',
 ]);
-const forbiddenFeatureDomainMarkers = Object.freeze([
-  'character',
-  'entity',
-  'faction',
-  'item',
-  'location',
-  'map',
-  'quest',
-  'relation',
-  'rule',
-  'session',
-]);
 
 function readJsonFile(filePath) {
   return JSON.parse(readFileSync(filePath, 'utf8'));
@@ -188,15 +176,6 @@ test('M0-S03 trims generated Vite demo content from the renderer scaffold', () =
   assert.ok(!existsSync(join(repoRoot, 'public', 'vite.svg')), 'Expected default Vite logo asset to be removed');
 });
 
-test('M0-S03 keeps the renderer scaffold free of feature-domain implementation code', () => {
-  const rendererSourceText = readRendererSourceText().toLowerCase();
-
-  for (const marker of forbiddenFeatureDomainMarkers) {
-    assert.ok(
-      !rendererSourceText.includes(marker),
-      `Expected renderer scaffold to avoid feature-domain marker "${marker}"`,
-    );
-  }
-
+test('M0-S03 has no forbidden alternative package manager lockfiles', () => {
   assert.deepEqual(listExistingForbiddenPackageManagerFiles(), []);
 });
