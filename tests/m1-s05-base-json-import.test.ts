@@ -16,7 +16,9 @@ const temporaryRoots: string[] = [];
 const runtimeSchemaSql = readFileSync(new URL('../src/data/runtime/schema.sql', import.meta.url), 'utf8');
 
 async function importBaseJsonProject(input: ImportBaseJsonProjectInput) {
-  const module = await import('../src/data/base-json-import');
+  // Import directly from core_data/ — Node-environment tests must not go through src/data/,
+  // which is the Vite renderer boundary (issue #21).
+  const module = await import('../core_data/base-json-import');
 
   return module.importBaseJsonProject(input);
 }
