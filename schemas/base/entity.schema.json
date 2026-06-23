@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilderx.local/schemas/base/entity.schema.json",
+  "title": "WorldBuilderX Base Entity",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "type",
+    "title"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Character",
+        "Location",
+        "Faction",
+        "Item",
+        "Event",
+        "Quest",
+        "Scene",
+        "Rule",
+        "Resource",
+        "Culture"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "properties": {
+      "type": "object"
+    },
+    "body": {
+      "type": "object",
+      "required": [
+        "format",
+        "blocks"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "const": "portable_blocks_v1"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "visibility": {
+      "type": "string",
+      "enum": [
+        "public",
+        "private",
+        "hidden"
+      ]
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    }
+  }
+}

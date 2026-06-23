@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilderx.local/schemas/base/entity-type.schema.json",
+  "title": "WorldBuilderX Base Entity Type",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "title",
+    "schema_version",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "enum": [
+        "Character",
+        "Location",
+        "Faction",
+        "Item",
+        "Event",
+        "Quest",
+        "Scene",
+        "Rule",
+        "Resource",
+        "Culture"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "properties": {
+      "type": "object"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    }
+  }
+}
