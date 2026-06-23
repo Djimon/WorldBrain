@@ -75,7 +75,6 @@ function readImplementationSurface() {
     packageJsonPath,
     tauriConfigPath,
     tauriCargoPath,
-    join(tauriRoot, 'Cargo.lock'),
     ...listFiles(join(tauriRoot, 'src')),
     ...listFiles(rendererRoot).filter((filePath) => ['.css', '.ts', '.tsx'].includes(extname(filePath))),
   ].filter((filePath) => existsSync(filePath) && statSync(filePath).isFile());
