@@ -109,6 +109,17 @@ project scope and never deletes or modifies `campaign_*` rows.
 Import reads source JSON files only; it does not rewrite, reformat, or mutate the
 base project folder.
 
+## Effective Entity Read Model
+
+The M1 effective entity read model reads imported base entity rows from SQLite
+and applies supported `campaign_entity_overrides` patches in memory. Supported
+M1 override fields are minimal: `title`, `summary`, `aliases`, `visibility`, and
+shallow `properties` keys.
+
+The read result includes the base entity, the effective entity, sorted
+overridden field paths, and explicit missing-base handling. Effective reads do
+not update `base_*` rows and do not read or mutate base JSON files.
+
 ## Runtime Database Placement
 
 Runtime SQLite/cache files live under `.worldbuilderx/runtime`. Base JSON content
@@ -143,7 +154,7 @@ project content.
 | #12 M1-S03: SQLite runtime schema | Verified | Idempotent SQLite schema creates base and campaign tables in one database. |
 | #13 M1-S04: Structured validation policy | Verified | Base JSON load validation returns structured blocking and non-blocking results without mutation. |
 | #14 M1-S05: Base JSON import pipeline | Verified | Import reads, validates, and writes base JSON documents into base SQLite tables while preserving campaign rows. |
-| #15 M1-S06: Effective entity read model | Ready | Unblocked by #12 and #14. |
+| #15 M1-S06: Effective entity read model | Verified | Effective reads combine base rows and campaign overrides without mutating base rows or JSON files. |
 | #16 M1-S07: Runtime database placement and gitignore boundary | Verified | Runtime SQLite/cache artifacts are documented and ignored while base JSON and schema files remain trackable. |
 | #17 M1-S08: Deterministic JSON serialization | Verified | Base entity and project serializers use stable formatting, key ordering, and filename generation. |
 
