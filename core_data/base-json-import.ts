@@ -21,11 +21,29 @@ type BaseJsonDocument = {
   data: unknown;
 };
 
-function readJsonDocument(projectRoot: string, relativePath: string): BaseJsonDocument {
-  return {
-    path: relativePath,
-    data: JSON.parse(readFileSync(join(projectRoot, relativePath), 'utf8')),
-  };
+type ParseErrorDocument = {
+  path: string;
+  parseError: string;
+};
+
+type MaybeDocument = BaseJsonDocument | ParseErrorDocument;
+
+function isParseError(doc: MaybeDocument): doc is ParseErrorDocument {
+  return 'parseError' in doc;
+}
+
+function readJsonDocument(projectRoot: string, relativePath: string): MaybeDocument {
+  try {
+    return {
+      path: relativePath,
+      data: JSON.parse(readFileSync(join(projectRoot, relativePath), 'utf8')),
+    };
+  } catch (error) {
+    return {
+      path: relativePath,
+      parseError: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 function listJsonFiles(directory: string, projectRoot: string): string[] {
@@ -50,7 +68,7 @@ function listJsonFiles(directory: string, projectRoot: string): string[] {
   }
 }
 
-function readJsonDocuments(projectRoot: string, rootPath: string) {
+function readJsonDocuments(projectRoot: string, rootPath: string): MaybeDocument[] {
   return listJsonFiles(join(projectRoot, rootPath), projectRoot).map((relativePath) =>
     readJsonDocument(projectRoot, relativePath),
   );
@@ -107,13 +125,62 @@ function insertEntity(database: RuntimeDatabase, entity: Record<string, unknown>
     );
 }
 
+type ParseStructuredError = {
+  path: string;
+  documentKind: 'base_entity' | 'entity_type' | 'project';
+  severity: 'error';
+  message: string;
+};
+
+function parseErrorToStructured(
+  doc: ParseErrorDocument,
+  documentKind: ParseStructuredError['documentKind'],
+): ParseStructuredError {
+  return {
+    path: doc.path,
+    documentKind,
+    severity: 'error',
+    message: `JSON parse error: ${doc.parseError}`,
+  };
+}
+
 export function importBaseJsonProject({ database, projectRoot }: ImportBaseJsonProjectInput) {
   assertProjectRoot(projectRoot);
 
+  const projectDoc = readJsonDocument(projectRoot, 'project.json');
+
+  if (isParseError(projectDoc)) {
+    return {
+      blocked: true,
+      imported: { entityTypes: 0, entities: 0 },
+      errors: [parseErrorToStructured(projectDoc, 'project')],
+    };
+  }
+
+  const parseErrors: ParseStructuredError[] = [];
+  const validEntityTypeDocs: BaseJsonDocument[] = [];
+  const validEntityDocs: BaseJsonDocument[] = [];
+
+  for (const doc of readJsonDocuments(projectRoot, 'entity-types')) {
+    if (isParseError(doc)) {
+      parseErrors.push(parseErrorToStructured(doc, 'entity_type'));
+    } else {
+      validEntityTypeDocs.push(doc);
+    }
+  }
+
+  for (const doc of readJsonDocuments(projectRoot, 'entities')) {
+    if (isParseError(doc)) {
+      parseErrors.push(parseErrorToStructured(doc, 'base_entity'));
+    } else {
+      validEntityDocs.push(doc);
+    }
+  }
+
   const validation = validateBaseJsonLoad({
-    project: readJsonDocument(projectRoot, 'project.json'),
-    entityTypes: readJsonDocuments(projectRoot, 'entity-types'),
-    entities: readJsonDocuments(projectRoot, 'entities'),
+    project: projectDoc,
+    entityTypes: validEntityTypeDocs,
+    entities: validEntityDocs,
   });
 
   if (validation.blocked) {
@@ -123,7 +190,7 @@ export function importBaseJsonProject({ database, projectRoot }: ImportBaseJsonP
         entityTypes: 0,
         entities: 0,
       },
-      errors: validation.errors,
+      errors: [...parseErrors, ...validation.errors],
     };
   }
 
@@ -153,6 +220,6 @@ export function importBaseJsonProject({ database, projectRoot }: ImportBaseJsonP
       entityTypes: validation.acceptedEntityTypes.length,
       entities: validation.acceptedEntities.length,
     },
-    errors: validation.errors,
+    errors: [...parseErrors, ...validation.errors],
   };
 }
