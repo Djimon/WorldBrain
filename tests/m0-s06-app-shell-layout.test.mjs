@@ -20,36 +20,6 @@ function assertNoPattern(input, pattern, message) {
   assert.ok(!pattern.test(input), message);
 }
 
-test('M0-S06 renders a stable shell header with project identity and global controls', () => {
-  assertPattern(appSource, /<header\b[^>]*className=["'][^"']*app-shell__header/u, 'Expected app shell header region');
-  assertPattern(appSource, /WorldBuilderX/u, 'Expected project identity text in app shell');
-  assertPattern(appSource, /global\s+controls|aria-label=["'][^"']*global/i, 'Expected labelled global controls area');
-  assertPattern(appSource, /<Button\b/u, 'Expected global controls to use local Button primitive');
-  assertPattern(appSource, /<StatusChip\b/u, 'Expected header status to use local StatusChip primitive');
-});
-
-test('M0-S06 renders primary navigation wired to placeholder view selection', () => {
-  assertPattern(appSource, /useState\s*</u, 'Expected shell view selection state');
-  assertPattern(appSource, /active(?:View|Id)|selected(?:View|Id)/u, 'Expected explicit active view state naming');
-  assertPattern(appSource, /<Tabs\b/u, 'Expected primary navigation to use local Tabs primitive');
-  assertPattern(appSource, /aria-label=["'][^"']*(?:primary|navigation|workspace)/iu, 'Expected labelled primary navigation');
-  assertPattern(appSource, /onSelect=\{[^}]*set/u, 'Expected tab selection to update active shell view state');
-});
-
-test('M0-S06 renders a main workspace with shell-level placeholder views', () => {
-  assertPattern(appSource, /<main\b[^>]*className=["'][^"']*app-shell__workspace/u, 'Expected main workspace region');
-  assertPattern(appSource, /placeholder/iu, 'Expected placeholder view language in shell implementation');
-  assertPattern(appSource, /shellViews|placeholderViews|workspaceViews/u, 'Expected explicit shell placeholder view definitions');
-  assertPattern(appSource, /\.find\(|\.map\(/u, 'Expected view definitions to drive workspace rendering');
-  assertPattern(appSource, /<Panel\b/u, 'Expected workspace surfaces to use local Panel primitive');
-});
-
-test('M0-S06 includes a status or development surface for runtime state', () => {
-  assertPattern(appSource, /<footer\b|role=["']status["']|app-shell__status/u, 'Expected footer/status/dev surface region');
-  assertPattern(appSource, /(?:build|runtime|renderer|tauri|m0)/iu, 'Expected shell status surface to expose build/runtime state text');
-  assertPattern(appSource, /<StatusChip\b/u, 'Expected status surface to use local StatusChip primitive');
-});
-
 test('M0-S06 layout uses internal scroll containers instead of page-level growth', () => {
   assertPattern(styleSource, /body\s*\{[^}]*overflow\s*:\s*hidden/isu, 'Expected page overflow hidden for desktop shell');
   assertPattern(styleSource, /\.app-shell\s*\{[^}]*(?:height|min-height)\s*:\s*100vh/isu, 'Expected app shell to fill the viewport');

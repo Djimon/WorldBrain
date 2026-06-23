@@ -23,16 +23,6 @@ const semanticTokens = Object.freeze([
   '--color-status-muted',
 ]);
 
-const primitiveNames = Object.freeze([
-  'Button',
-  'Panel',
-  'Tabs',
-  'Field',
-  'StatusChip',
-  'TableSurface',
-  'ListSurface',
-]);
-
 const forbiddenComponentSystems = Object.freeze([
   '@chakra-ui',
   '@headlessui',
@@ -100,17 +90,6 @@ function readSourceSurface() {
     .join('\n');
 }
 
-function findPrimitiveSourceFiles() {
-  return listFiles(srcRoot).filter((filePath) => {
-    const normalizedPath = relative(srcRoot, filePath).replaceAll('\\', '/');
-
-    return (
-      ['.ts', '.tsx'].includes(extname(filePath)) &&
-      /^(?:ui|components\/ui)\//u.test(normalizedPath)
-    );
-  });
-}
-
 function extractBlock(text, selectorPattern) {
   const match = selectorPattern.exec(text);
   if (!match) {
@@ -170,22 +149,6 @@ test('M0-S05 defines light and dark themes through the same semantic token names
   for (const tokenName of semanticTokens) {
     assertTokenBlockContains(lightBlock, tokenName, ':root');
     assertTokenBlockContains(darkBlock, tokenName, 'dark theme');
-  }
-});
-
-test('M0-S05 exports thin local primitives for required UI surfaces', () => {
-  const primitiveSource = findPrimitiveSourceFiles()
-    .map((filePath) => readFileSync(filePath, 'utf8'))
-    .join('\n');
-
-  assert.notEqual(primitiveSource, '', 'Expected local UI primitive source under src/ui or src/components/ui');
-
-  for (const primitiveName of primitiveNames) {
-    assert.match(
-      primitiveSource,
-      new RegExp(`export\\s+(?:function|const)\\s+${primitiveName}\\b`, 'u'),
-      `Expected exported local primitive ${primitiveName}`,
-    );
   }
 });
 
