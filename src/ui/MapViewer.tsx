@@ -1,15 +1,16 @@
 import { MapContainer, ImageOverlay } from 'react-leaflet';
 import { getMap, listMaps, getAssetUrl } from '../services/map-service';
+import type { DatabaseLike } from '../services/entity-service';
 
 interface Props {
   mapId: string;
-  database: unknown;
+  database: DatabaseLike;
   format?: string;
   showCoordinates?: boolean;
 }
 
 export function MapViewer({ mapId, database, format: _format, showCoordinates: _showCoordinates }: Props) {
-  const map = getMap(database as never, mapId);
+  const map = getMap(database, mapId);
   if (!map) return <div>Map not found</div>;
 
   const url = getAssetUrl(map.asset_id);
@@ -22,8 +23,8 @@ export function MapViewer({ mapId, database, format: _format, showCoordinates: _
   );
 }
 
-export function MapList({ database, onSelectMap }: { database: unknown; onSelectMap: (mapId: string) => void }) {
-  const maps = listMaps(database as never);
+export function MapList({ database, onSelectMap }: { database: DatabaseLike; onSelectMap: (mapId: string) => void }) {
+  const maps = listMaps(database);
   return (
     <ul>
       {maps.map((m) => (

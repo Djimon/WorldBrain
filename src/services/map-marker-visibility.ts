@@ -56,7 +56,7 @@ export function resolveMarkerVisibility(marker: MarkerLike, ctx: VisibilityConte
   if (v === 'hidden_until_condition') {
     if (ctx.role === 'gm') return 'visible';
     if (!marker.condition) return 'hidden';
-    const data = { vars: { ...ctx.sessionVars } };
+    const data = { ...ctx.globalVars, vars: { ...ctx.sessionVars } };
     const result = evaluateJsonLogic(marker.condition, data);
     return result === true ? 'visible' : 'hidden';
   }

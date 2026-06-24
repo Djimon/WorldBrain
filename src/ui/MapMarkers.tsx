@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getMarkersForMap, createMarker, deleteMarker } from '../services/map-marker-service';
+import type { DatabaseLike } from '../services/entity-service';
 
 interface MarkerRow {
   id: string;
@@ -15,24 +16,24 @@ interface MarkerRow {
 
 interface Props {
   mapId: string;
-  database: unknown;
+  database: DatabaseLike;
   onNavigateToEntity?: (entityId: string) => void;
 }
 
 export function MarkerPanel({ mapId, database, onNavigateToEntity }: Props) {
   const [kindFilter, setKindFilter] = useState('');
   const [markers, setMarkers] = useState<MarkerRow[]>(() =>
-    getMarkersForMap(database as never, mapId) as MarkerRow[]
+    getMarkersForMap(database, mapId) as MarkerRow[]
   );
 
   function refresh() {
-    setMarkers(getMarkersForMap(database as never, mapId) as MarkerRow[]);
+    setMarkers(getMarkersForMap(database, mapId) as MarkerRow[]);
   }
 
   const filtered = kindFilter ? markers.filter(m => m.kind === kindFilter) : markers;
 
   function handleAdd() {
-    createMarker(database as never, {
+    createMarker(database, {
       map_id: mapId,
       entity_id: null,
       kind: 'pin',
@@ -47,7 +48,7 @@ export function MarkerPanel({ mapId, database, onNavigateToEntity }: Props) {
 
   function handleDelete(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    deleteMarker(database as never, id);
+    deleteMarker(database, id);
     setMarkers(prev => prev.filter(m => m.id !== id));
   }
 

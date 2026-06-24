@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { formatAbsoluteDay } from '../services/calendar-service';
 import { listVars, setGlobalVar } from '../services/session-variable-service';
+import type { DatabaseLike } from '../services/entity-service';
 
 interface Calendar {
   id: string;
@@ -22,13 +23,13 @@ interface Props {
   sessionId: string;
   calendar: Calendar;
   worldTimeStart: number;
-  database: unknown;
+  database: DatabaseLike;
   onWorldTimeChange?: (day: number) => void;
 }
 
 export function SessionClock({ sessionId: _sessionId, calendar: _calendar, worldTimeStart, database, onWorldTimeChange }: Props) {
   const [worldTime, setWorldTime] = useState(worldTimeStart);
-  const [vars, setVars] = useState<VarRow[]>(() => listVars(database as never, _sessionId) as VarRow[]);
+  const [vars, setVars] = useState<VarRow[]>(() => listVars(database, _sessionId) as VarRow[]);
 
   const counters = vars.filter(v => v.type === 'number');
 
@@ -40,13 +41,13 @@ export function SessionClock({ sessionId: _sessionId, calendar: _calendar, world
 
   function handleIncrement(v: VarRow) {
     const next = Number(v.value) + 1;
-    setGlobalVar(database as never, { id: v.id, type: v.type, label: v.label, value: next });
+    setGlobalVar(database, { id: v.id, type: v.type, label: v.label, value: next });
     setVars(prev => prev.map(x => x.id === v.id ? { ...x, value: next } : x));
   }
 
   function handleDecrement(v: VarRow) {
     const next = Number(v.value) - 1;
-    setGlobalVar(database as never, { id: v.id, type: v.type, label: v.label, value: next });
+    setGlobalVar(database, { id: v.id, type: v.type, label: v.label, value: next });
     setVars(prev => prev.map(x => x.id === v.id ? { ...x, value: next } : x));
   }
 

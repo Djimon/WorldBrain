@@ -67,6 +67,10 @@ export function isRuleReferenceBlock(value: unknown): value is RuleReferenceBloc
   return isObject(value) && value.type === 'rule_reference';
 }
 
+export function isMapEmbedBlock(value: unknown): value is MapEmbedBlock {
+  return isObject(value) && value.type === 'map_embed';
+}
+
 const registry: Map<string, BlockDefinition> = new Map([
   [BlockType.paragraph, { type: BlockType.paragraph }],
   [BlockType.heading, { type: BlockType.heading }],

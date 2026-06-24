@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { saveCalendar, importCalendarFromJson } from '../services/calendar-service';
 import { CALENDAR_PRESETS } from '../../core_data/calendar-schema';
+import type { DatabaseLike } from '../services/entity-service';
 
 interface Props {
   onComplete: (calendarId?: string) => void;
-  database?: unknown;
+  database: DatabaseLike | undefined;
 }
 
 const STEPS = ['Year Length', 'Months', 'Weekdays'];
@@ -13,6 +14,12 @@ export function CalendarWizard({ onComplete, database }: Props) {
   const [step, setStep] = useState(0);
   const [preset, setPreset] = useState('');
   const [yearLength, setYearLength] = useState(365);
+  const [monthCount, setMonthCount] = useState(12);
+  const [weekdayCount, setWeekdayCount] = useState(7);
+  const [showImport, setShowImport] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [exportText, setExportText] = useState('');
 
   function handlePresetChange(value: string) {
     setPreset(value);
@@ -29,17 +36,27 @@ export function CalendarWizard({ onComplete, database }: Props) {
   }
 
   function handleFinish() {
-    const result = saveCalendar(database as never, { yearLength });
+    const result = saveCalendar(database!, { yearLength, monthCount, weekdayCount });
     onComplete(result.id);
   }
 
   function handleImport() {
-    const json = prompt('Paste calendar JSON:');
-    if (json) importCalendarFromJson(json);
+    setShowImport(true);
+    setShowExport(false);
+  }
+
+  function handleImportConfirm() {
+    if (importText.trim()) {
+      importCalendarFromJson(importText.trim());
+      setShowImport(false);
+      setImportText('');
+    }
   }
 
   function handleExport() {
-    alert(JSON.stringify({ yearLength, preset }));
+    setExportText(JSON.stringify({ yearLength, monthCount, weekdayCount, preset }));
+    setShowExport(true);
+    setShowImport(false);
   }
 
   const isLast = step === STEPS.length - 1;
@@ -77,13 +94,53 @@ export function CalendarWizard({ onComplete, database }: Props) {
 
       {step === 1 && (
         <div>
-          <p>Configure your calendar's cycle structure.</p>
+          <label htmlFor="month-count">Count</label>
+          <input
+            id="month-count"
+            type="number"
+            min={1}
+            max={24}
+            value={monthCount}
+            onChange={e => setMonthCount(Number(e.target.value))}
+          />
         </div>
       )}
 
       {step === 2 && (
         <div>
-          <p>Weekday configuration</p>
+          <label htmlFor="weekday-count">Days per Week</label>
+          <input
+            id="weekday-count"
+            type="number"
+            min={1}
+            max={14}
+            value={weekdayCount}
+            onChange={e => setWeekdayCount(Number(e.target.value))}
+          />
+        </div>
+      )}
+
+      {showImport && (
+        <div>
+          <textarea
+            aria-label="Import JSON"
+            value={importText}
+            onChange={e => setImportText(e.target.value)}
+            placeholder="Paste calendar JSON here…"
+            rows={4}
+          />
+          <button onClick={handleImportConfirm}>Confirm Import</button>
+        </div>
+      )}
+
+      {showExport && (
+        <div>
+          <textarea
+            aria-label="Export JSON"
+            value={exportText}
+            readOnly
+            rows={4}
+          />
         </div>
       )}
 

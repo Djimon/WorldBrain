@@ -56,19 +56,25 @@ export function getEvent(db: DatabaseLike, id: string): EventRow | null {
 }
 
 export function listEvents(db: DatabaseLike, options: { type?: string; participantId?: string; locationId?: string }): EventRow[] {
-  const rows = db.prepare('SELECT * FROM events ORDER BY start_day ASC').all() as Array<Record<string, unknown>>;
-  let events = rows.map(parseEventRow);
+  const conditions: string[] = [];
+  const params: unknown[] = [];
 
   if (options.type) {
-    events = events.filter(e => e.type === options.type);
+    conditions.push('type = ?');
+    params.push(options.type);
   }
   if (options.participantId) {
-    events = events.filter(e => e.participants.includes(options.participantId!));
+    conditions.push('participants_json LIKE ?');
+    params.push(`%"${options.participantId}"%`);
   }
   if (options.locationId) {
-    events = events.filter(e => e.locations.includes(options.locationId!));
+    conditions.push('locations_json LIKE ?');
+    params.push(`%"${options.locationId}"%`);
   }
-  return events;
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const rows = db.prepare(`SELECT * FROM events ${where} ORDER BY start_day ASC`).all(...params) as Array<Record<string, unknown>>;
+  return rows.map(parseEventRow);
 }
 
 export function updateEvent(db: DatabaseLike, id: string, patch: Partial<CreateEventParams>): void {

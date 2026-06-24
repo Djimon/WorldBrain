@@ -1,5 +1,9 @@
 import { resolveMarkerVisibility, type VisibilityContext } from './map-marker-visibility';
 
+function escHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 export interface MapData {
   id: string;
   title: string;
@@ -39,16 +43,16 @@ export function generatePlayerMapHtml({ map, markers, context }: GenerateParams)
   })));
 
   const markerListHtml = visibleMarkers.map(m =>
-    `<li data-marker-id="${m.id}">${m.label_text}</li>`
+    `<li data-marker-id="${escHtml(m.id)}">${escHtml(m.label_text)}</li>`
   ).join('\n');
 
   return `<!DOCTYPE html>
 <html>
-<head><title>${map.title}</title>
+<head><title>${escHtml(map.title)}</title>
 <style>body{margin:0;font-family:sans-serif}#map{position:relative;display:inline-block}</style>
 </head>
 <body>
-<h1>${map.title}</h1>
+<h1>${escHtml(map.title)}</h1>
 <div id="map" data-width="${map.image_width_px}" data-height="${map.image_height_px}">
   <ul id="markers">${markerListHtml}</ul>
 </div>

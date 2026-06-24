@@ -1,9 +1,10 @@
 import { MapContainer, ImageOverlay } from 'react-leaflet';
 import { getMap, getAssetUrl } from '../services/map-service';
+import type { DatabaseLike } from '../services/entity-service';
 
 interface Props {
   mapId: string;
-  database?: unknown;
+  database?: DatabaseLike;
 }
 
 export function MapEmbedBlock({ mapId, database }: Props) {
@@ -11,7 +12,7 @@ export function MapEmbedBlock({ mapId, database }: Props) {
     return <div>No map selected</div>;
   }
 
-  const map = getMap(database as never, mapId);
+  const map = getMap(database!, mapId);
   if (!map) {
     return <div>Map not found</div>;
   }

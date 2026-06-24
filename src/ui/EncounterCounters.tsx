@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createEvent } from '../services/event-service';
+import type { DatabaseLike } from '../services/entity-service';
 
 interface CustomCounter {
   id: string;
@@ -9,7 +10,7 @@ interface CustomCounter {
 
 interface Props {
   sessionId: string;
-  database: unknown;
+  database: DatabaseLike;
   onEncounterEnd?: () => void;
 }
 
@@ -18,8 +19,8 @@ const SECONDS_PER_ROUND = 6;
 export function EncounterCounters({ sessionId: _sessionId, database, onEncounterEnd }: Props) {
   const [round, setRound] = useState(1);
   const [counters, setCounters] = useState<CustomCounter[]>([]);
-  const [newLabel, setNewLabel] = useState('');
-  const [showAdd, setShowAdd] = useState(false);
+  const [pendingLabel, setPendingLabel] = useState('');
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   const elapsedSeconds = (round - 1) * SECONDS_PER_ROUND;
 
@@ -28,13 +29,31 @@ export function EncounterCounters({ sessionId: _sessionId, database, onEncounter
   }
 
   function handleAddCounter() {
-    setShowAdd(true);
-    setCounters(prev => [...prev, { id: crypto.randomUUID(), label: newLabel || 'Counter', value: 0 }]);
-    setNewLabel('');
+    const id = crypto.randomUUID();
+    setCounters(prev => [...prev, { id, label: 'Counter', value: 0 }]);
+    setPendingId(id);
+    setPendingLabel('');
+  }
+
+  function handleLabelKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' && pendingId) {
+      const label = pendingLabel.trim() || 'Counter';
+      setCounters(prev => prev.map(c => c.id === pendingId ? { ...c, label } : c));
+      setPendingLabel('');
+      setPendingId(null);
+    }
+  }
+
+  function handleIncrement(id: string) {
+    setCounters(prev => prev.map(c => c.id === id ? { ...c, value: c.value + 1 } : c));
+  }
+
+  function handleDecrement(id: string) {
+    setCounters(prev => prev.map(c => c.id === id ? { ...c, value: c.value - 1 } : c));
   }
 
   function handleEndEncounter() {
-    createEvent(database as never, {
+    createEvent(database, {
       title: `Encounter — ${round} rounds (${elapsedSeconds + SECONDS_PER_ROUND}s)`,
       type: 'session_event',
       start_day: 0,
@@ -45,7 +64,8 @@ export function EncounterCounters({ sessionId: _sessionId, database, onEncounter
     });
     setRound(1);
     setCounters([]);
-    setShowAdd(false);
+    setPendingId(null);
+    setPendingLabel('');
     onEncounterEnd?.();
   }
 
@@ -58,11 +78,12 @@ export function EncounterCounters({ sessionId: _sessionId, database, onEncounter
       </div>
 
       <div>
-        {showAdd && (
+        {pendingId !== null && (
           <input
             type="text"
-            value={newLabel}
-            onChange={e => setNewLabel(e.target.value)}
+            value={pendingLabel}
+            onChange={e => setPendingLabel(e.target.value)}
+            onKeyDown={handleLabelKeyDown}
             placeholder="Counter name"
           />
         )}
@@ -72,6 +93,8 @@ export function EncounterCounters({ sessionId: _sessionId, database, onEncounter
       {counters.map(c => (
         <div key={c.id}>
           <span>{c.label}: {c.value}</span>
+          <button aria-label="decrement" onClick={() => handleDecrement(c.id)}>−</button>
+          <button aria-label="increment" onClick={() => handleIncrement(c.id)}>+</button>
         </div>
       ))}
 

@@ -1,19 +1,23 @@
-export const MapEmbedExtension = {
-  name: 'map_embed' as const,
-  config: {
-    name: 'map_embed' as const,
-    group: 'block',
-    atom: true,
-    addAttributes() {
-      return { mapId: { default: null } };
-    },
-    renderHTML({ attrs }: { attrs: Record<string, unknown> }) {
-      return ['div', { 'data-map-id': attrs.mapId ?? '', 'data-type': 'map_embed' }, 0];
-    },
-    addNodeView() {
-      return null;
-    },
+import { Node } from '@tiptap/core';
+
+export const MapEmbedExtension = Node.create({
+  name: 'map_embed',
+  group: 'block',
+  atom: true,
+
+  addAttributes() {
+    return {
+      mapId: { default: null },
+    };
   },
-};
+
+  renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, unknown> }) {
+    return ['div', { 'data-map-id': HTMLAttributes.mapId ?? '', 'data-type': 'map_embed' }, 0];
+  },
+
+  addNodeView() {
+    return null;
+  },
+});
 
 export default MapEmbedExtension;
