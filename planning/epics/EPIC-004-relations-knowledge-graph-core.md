@@ -55,7 +55,7 @@ Specific relations (teacher, employer, etc.) are expressed via `connected_to` wi
 | M2-S09: Relation type registry | Verified | commit b728328 — 9 types, directed/symmetric, labels. |
 | M2-S10: Relation service layer | Verified | commit c746a4e — addRelation, getRelations, deactivate, reactivate + campaign log. |
 | M2-S11: Entity picker component | Verified | commit db53c97 — search, alias filter, type filter, keyboard nav. |
-| M2-S12: Relations tab on entity detail | NEEDS_DECISION | commit 95655bd — production code complete; test file has syntax error (await in non-async it at line 92). |
+| M2-S12: Relations tab on entity detail | Verified | commit 7fab5ae — active/inactive sections, deactivate/reactivate, inverse label direction, gm_only badge, add flow. |
 | M2-S13: Local graph view | Verified | commit a64c1b5 — EntityGraph + buildGraphData, Cytoscape.js, depth/filter/inactive controls. |
 
 ## Sources
