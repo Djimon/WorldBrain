@@ -9,9 +9,11 @@ interface Props {
   database?: unknown;
 }
 
+const DB_SENTINEL = {};
+
 function getLabel(relation: RelationRow, entityId: string): string {
   const isSource = relation.source_id === entityId;
-  const def = getRelationTypeDefinition(isSource ? relation.relation_type : relation.inverse_type);
+  const def = getRelationTypeDefinition(relation.relation_type);
   if (!def) return isSource ? relation.relation_type : relation.inverse_type;
   return isSource ? def.label : def.inverse_label;
 }
@@ -20,34 +22,35 @@ function getOtherEntityId(relation: RelationRow, entityId: string): string {
   return relation.source_id === entityId ? relation.target_id : relation.source_id;
 }
 
-function EntityTitle({ entityId, database }: { entityId: string; database: unknown }) {
+function getEntityTitle(entityId: string, database: unknown): string {
   const result = getEffectiveEntity({ database: database as never, entityId });
-  return <span>{result.entity?.title ?? entityId}</span>;
+  return result.entity?.title ?? entityId;
 }
 
-export function RelationsTab({ entityId, database = null }: Props) {
+export function RelationsTab({ entityId, database = DB_SENTINEL }: Props) {
+  const db = database ?? DB_SENTINEL;
   const [showAddForm, setShowAddForm] = useState(false);
   const [newRelationType, setNewRelationType] = useState('');
   const [, forceUpdate] = useState(0);
 
-  const allRelations = getRelations(database as never, entityId, { includeInactive: true });
+  const allRelations = getRelations(db as never, entityId, { includeInactive: true });
   const active = allRelations.filter((r) => r.active === 1);
   const inactive = allRelations.filter((r) => r.active === 0);
   const allTypes = getAllRelationTypes();
 
   function handleDeactivate(relationId: string) {
-    deactivateRelation(database as never, relationId);
+    deactivateRelation(db as never, relationId);
     forceUpdate((n) => n + 1);
   }
 
   function handleReactivate(relationId: string) {
-    reactivateRelation(database as never, relationId);
+    reactivateRelation(db as never, relationId);
     forceUpdate((n) => n + 1);
   }
 
   function handleAddSelect(targetId: string) {
     if (!newRelationType) return;
-    addRelation(database as never, {
+    addRelation(db as never, {
       source_id: entityId,
       target_id: targetId,
       relation_type: newRelationType,
@@ -66,13 +69,12 @@ export function RelationsTab({ entityId, database = null }: Props) {
           const label = getLabel(rel, entityId);
           const otherId = getOtherEntityId(rel, entityId);
           const visibility = JSON.parse(rel.visibility_json ?? '"public"');
+          const title = getEntityTitle(otherId, db);
           return (
             <div key={rel.id}>
-              <span>{label}</span>
-              {' → '}
-              <EntityTitle entityId={otherId} database={database} />
-              {visibility === 'gm_only' && <span> [GM only]</span>}
-              {rel.notes && <span> ({rel.notes})</span>}
+              {label} → {title}
+              {visibility === 'gm_only' && ' [GM only]'}
+              {rel.notes && ` (${rel.notes})`}
               <button onClick={() => handleDeactivate(rel.id)} aria-label="Deactivate">
                 Deactivate
               </button>
@@ -87,12 +89,11 @@ export function RelationsTab({ entityId, database = null }: Props) {
           {inactive.map((rel) => {
             const label = getLabel(rel, entityId);
             const otherId = getOtherEntityId(rel, entityId);
+            const title = getEntityTitle(otherId, db);
             return (
               <div key={rel.id} style={{ opacity: 0.5 }}>
-                <span>{label}</span>
-                {' → '}
-                <EntityTitle entityId={otherId} database={database} />
-                {rel.notes && <span> ({rel.notes})</span>}
+                {label} → {title}
+                {rel.notes && ` (${rel.notes})`}
                 <button onClick={() => handleReactivate(rel.id)} aria-label="Reactivate">
                   Reactivate
                 </button>
