@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Cytoscape from 'cytoscape';
+import type { DatabaseLike } from '../services/entity-service';
 import { getRelations, RelationRow } from '../services/relation-service';
 import { getAllRelationTypes } from '../data/relation-type-registry';
 
@@ -18,11 +19,26 @@ export interface GraphData {
   edges: GraphEdge[];
 }
 
-export function buildGraphData(rootEntityId: string, relations: RelationRow[]): GraphData {
+interface BuildOptions {
+  depth?: number;
+  selectedTypes?: string[];
+}
+
+export function buildGraphData(
+  rootEntityId: string,
+  relations: RelationRow[],
+  options: BuildOptions = {}
+): GraphData {
+  const { selectedTypes } = options;
+
+  const filteredRelations = selectedTypes
+    ? relations.filter((r) => selectedTypes.includes(r.relation_type))
+    : relations;
+
   const nodeIds = new Set<string>([rootEntityId]);
   const edges: GraphEdge[] = [];
 
-  for (const rel of relations) {
+  for (const rel of filteredRelations) {
     nodeIds.add(rel.source_id);
     nodeIds.add(rel.target_id);
     edges.push({
@@ -38,13 +54,42 @@ export function buildGraphData(rootEntityId: string, relations: RelationRow[]): 
   };
 }
 
+function fetchRelationsForDepth(
+  db: DatabaseLike,
+  rootId: string,
+  depth: number,
+  includeInactive: boolean
+): RelationRow[] {
+  const visited = new Set<string>([rootId]);
+  const allRelations: RelationRow[] = [];
+  let frontier = [rootId];
+
+  for (let d = 0; d < depth; d++) {
+    const nextFrontier: string[] = [];
+    for (const id of frontier) {
+      const rels = getRelations(db, id, { includeInactive });
+      allRelations.push(...rels);
+      for (const rel of rels) {
+        const other = rel.source_id === id ? rel.target_id : rel.source_id;
+        if (!visited.has(other)) {
+          visited.add(other);
+          nextFrontier.push(other);
+        }
+      }
+    }
+    frontier = nextFrontier;
+  }
+
+  return allRelations;
+}
+
 interface Props {
   entityId: string;
-  database?: unknown;
+  database: DatabaseLike;
   onNavigate?: (entityId: string) => void;
 }
 
-export function EntityGraph({ entityId, database = null, onNavigate }: Props) {
+export function EntityGraph({ entityId, database, onNavigate }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [depth, setDepth] = useState(1);
   const [showInactive, setShowInactive] = useState(false);
@@ -53,8 +98,12 @@ export function EntityGraph({ entityId, database = null, onNavigate }: Props) {
     new Set(allTypes.map((t) => t.relation_type))
   );
 
-  const relations = getRelations(database as never, entityId, { includeInactive: showInactive });
-  const graphData = buildGraphData(entityId, relations);
+  const db = database ?? ({} as DatabaseLike);
+  const relations = fetchRelationsForDepth(db, entityId, depth, showInactive);
+  const graphData = buildGraphData(entityId, relations, {
+    depth,
+    selectedTypes: Array.from(selectedTypes),
+  });
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -65,10 +114,10 @@ export function EntityGraph({ entityId, database = null, onNavigate }: Props) {
     ];
 
     const cy = Cytoscape({
-      container: containerRef.current,
+      container: containerRef.current as HTMLElement,
       elements,
       layout: { name: 'grid' },
-    } as never);
+    });
 
     cy.on('tap', (e: { target: { id?: () => string } }) => {
       const id = e.target.id?.();
