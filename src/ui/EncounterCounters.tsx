@@ -91,8 +91,8 @@ export function EncounterCounters({ sessionId: _sessionId, database, onEncounter
       </div>
 
       {counters.map(c => (
-        <div key={c.id}>
-          <span>{c.label}: {c.value}</span>
+        <div key={c.id} data-counter={c.id}>
+          <span>{c.label}: <span data-counter-value>{c.value}</span></span>
           <button aria-label="decrement" onClick={() => handleDecrement(c.id)}>−</button>
           <button aria-label="increment" onClick={() => handleIncrement(c.id)}>+</button>
         </div>
