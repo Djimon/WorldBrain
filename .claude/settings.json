@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh *)",
+      "Bash(gh issue *)",
+      "Bash(gh pr *)",
+      "Bash(gh api *)",
+      "Bash(gh label *)",
+      "Bash(gh repo *)",
+      "Bash(gh milestone *)",
+      "Bash(git *)",
+      "Bash(npx *)",
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(ls *)",
+      "Bash(ls)",
+      "Bash(cat *)",
+      "Bash(find *)",
+      "Bash(echo *)",
+      "Bash(node *)",
+      "Bash(tsc *)",
+      "Bash(curl *)",
+      "Bash(cd * && *)",
+      "Bash(cd *; *)",
+      "PowerShell(gh *)",
+      "PowerShell(git *)",
+      "PowerShell(npm *)",
+      "PowerShell(npx *)",
+      "PowerShell(node *)",
+      "PowerShell(ls *)",
+      "PowerShell(ls)",
+      "PowerShell(cat *)",
+      "PowerShell(find *)",
+      "PowerShell(echo *)",
+      "PowerShell(tsc *)",
+      "PowerShell(curl *)",
+      "PowerShell(cd * && *)",
+      "PowerShell(cd *; *)"
+    ]
+  }
+}
