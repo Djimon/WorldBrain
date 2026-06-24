@@ -1,7 +1,19 @@
 import { readEffectiveEntity } from '../../core_data/effective-entity';
 
 export type DatabaseLike = {
-  prepare: (sql: string) => { all: (...args: unknown[]) => Array<Record<string, unknown>> };
+  prepare: (sql: string) => {
+    all: (...args: unknown[]) => Array<Record<string, unknown>>;
+    run: (...args: unknown[]) => void;
+    get: (...args: unknown[]) => unknown;
+  };
+};
+
+export type WritableDatabaseLike = {
+  prepare: (sql: string) => {
+    all(...args: unknown[]): Array<Record<string, unknown>>;
+    run(...args: unknown[]): void;
+    get(...args: unknown[]): unknown;
+  };
 };
 
 type EntityListItem = {
