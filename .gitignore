@@ -6,3 +6,4 @@ src-tauri/gen/schemas/
 npm-debug.log*
 .codex-plugins/
 .agents/
+.claude/
