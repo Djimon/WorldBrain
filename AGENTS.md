@@ -122,6 +122,9 @@ Test files: `m<N>-s<N>-<slug>.test.ts`. Always milestone prefix (M0–M7). Never
 
 ## Windows Toolchain
 
+See `DEVELOPMENT.md` for full setup instructions and verification scripts.
+
+
 `npm` may be absent from PATH. Fixed paths:
 - `C:\Program Files\nodejs\node.exe`
 - `C:\Program Files\nodejs\npm.cmd`

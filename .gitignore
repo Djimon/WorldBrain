@@ -7,3 +7,5 @@ npm-debug.log*
 .codex-plugins/
 .agents/
 .claude/
+AGENTS.md
+CLAUDE.md
