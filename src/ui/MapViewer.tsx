@@ -1,4 +1,4 @@
-import { MapContainer, ImageOverlay } from 'react-leaflet';
+import { useState, useRef, useEffect } from 'react';
 import { getMap, listMaps, getAssetUrl } from '../services/map-service';
 import type { DatabaseLike } from '../services/entity-service';
 
@@ -9,17 +9,41 @@ interface Props {
   showCoordinates?: boolean;
 }
 
-export function MapViewer({ mapId, database, format: _format, showCoordinates: _showCoordinates }: Props) {
+export function MapViewer({ mapId, database, format: _format, showCoordinates }: Props) {
   const map = getMap(database, mapId);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [coords, setCoords] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current || !map) return;
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
+    const img = new Image();
+    img.src = getAssetUrl(map.asset_id);
+    img.onload = () => ctx.drawImage(img, 0, 0, map.image_width_px, map.image_height_px);
+  }, [map]);
+
   if (!map) return <div>Map not found</div>;
 
-  const url = getAssetUrl(map.asset_id);
-  const bounds: [[number, number], [number, number]] = [[0, 0], [map.image_height_px, map.image_width_px]];
+  function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (!showCoordinates) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCoords({ x: Math.round(e.clientX - rect.left), y: Math.round(e.clientY - rect.top) });
+  }
 
   return (
-    <MapContainer crs={{ Simple: {} } as never} bounds={bounds} style={{ height: '600px', width: '100%' }}>
-      <ImageOverlay url={url} bounds={bounds} />
-    </MapContainer>
+    <div style={{ position: 'relative' }}>
+      <canvas
+        ref={canvasRef}
+        width={map.image_width_px}
+        height={map.image_height_px}
+        onMouseMove={handleMouseMove}
+        style={{ maxWidth: '100%' }}
+      />
+      {showCoordinates && coords && (
+        <div data-coordinates role="tooltip">{coords.x}px, {coords.y}px</div>
+      )}
+    </div>
   );
 }
 
