@@ -58,6 +58,20 @@ Specific relations (teacher, employer, etc.) are expressed via `connected_to` wi
 | M2-S12: Relations tab on entity detail | Verified | commit 7fab5ae — active/inactive sections, deactivate/reactivate, inverse label direction, gm_only badge, add flow. |
 | M2-S13: Local graph view | Verified | commit a64c1b5 — EntityGraph + buildGraphData, Cytoscape.js, depth/filter/inactive controls. |
 
+## Bug Fixes & Refactors (post-M2)
+
+| Issue | Status | Notes |
+|---|---|---|
+| #58: EntityPicker database prop | Verified | commit 21efcc1 |
+| #59: RelationsTab/EntityGraph DatabaseLike typing | Verified | commits 9902ebe, 874a15f |
+| #60: EntityGraph depth/filter wired to data | Verified | commit 874a15f |
+| #61: collision-safe IDs (crypto.randomUUID + rel_ prefix) | Verified | commit b54dbd6 |
+| #62: RelationsTab registered via tab-wiring.tsx | Verified | commit 0e4ea0f |
+| #63: part_of label corrected to 'part of' / 'has part' | Verified | commit 3b247f9 |
+| #64: DB_SENTINEL + forceUpdate removed; useState for relations | Verified | commit 9902ebe |
+| #65: WritableDatabaseLike exported from entity-service | Verified | commit cffa326 |
+| #66: GM-only visibility toggle in add-relation form | Verified | commit 9902ebe |
+
 ## Sources
 
 - `worldbuilding_architecture_study/01_Core_Data_Model.md`
