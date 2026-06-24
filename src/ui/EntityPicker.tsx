@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
 
 interface EntityListItem {
@@ -12,21 +13,22 @@ interface EntityListItem {
 interface Props {
   onSelect: (entityId: string) => void;
   typeFilter?: string | null;
+  database: DatabaseLike;
 }
 
-export function EntityPicker({ onSelect, typeFilter = null }: Props) {
+export function EntityPicker({ onSelect, typeFilter = null, database }: Props) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const all: EntityListItem[] = listEntitiesByType({ database: null as never, type: typeFilter ?? null });
+  const all: EntityListItem[] = listEntitiesByType({ database, type: typeFilter ?? null }) as EntityListItem[];
 
   const lower = query.toLowerCase();
   const filtered = query
     ? all.filter(
         (e) =>
           e.title.toLowerCase().includes(lower) ||
-          e.aliases.some((a) => a.toLowerCase().includes(lower))
+          (e.aliases ?? []).some((a) => a.toLowerCase().includes(lower))
       )
     : all;
 
