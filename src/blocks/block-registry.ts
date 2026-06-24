@@ -5,6 +5,7 @@ export enum BlockType {
   entity_embed = 'entity_embed',
   secret_block = 'secret_block',
   rule_reference = 'rule_reference',
+  map_embed = 'map_embed',
 }
 
 export type ParagraphBlock = { type: 'paragraph'; text: string };
@@ -13,6 +14,7 @@ export type ListBlock = { type: 'list'; ordered: boolean; items: string[] };
 export type EntityEmbedBlock = { type: 'entity_embed'; entityId: string; entityType: string };
 export type SecretBlock = { type: 'secret_block'; content: string };
 export type RuleReferenceBlock = { type: 'rule_reference'; ruleId: string; title: string };
+export type MapEmbedBlock = { type: 'map_embed'; mapId: string };
 
 export type Block =
   | ParagraphBlock
@@ -20,7 +22,8 @@ export type Block =
   | ListBlock
   | EntityEmbedBlock
   | SecretBlock
-  | RuleReferenceBlock;
+  | RuleReferenceBlock
+  | MapEmbedBlock;
 
 export type PortableBlocksV1Doc = { format: 'portable_blocks_v1'; blocks: Block[] };
 
@@ -34,7 +37,7 @@ export function isPortableBlocksV1Doc(value: unknown): value is PortableBlocksV1
   );
 }
 
-type BlockDefinition = { type: BlockType };
+type BlockDefinition = { type: BlockType; renderer?: unknown };
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -71,8 +74,13 @@ const registry: Map<string, BlockDefinition> = new Map([
   [BlockType.entity_embed, { type: BlockType.entity_embed }],
   [BlockType.secret_block, { type: BlockType.secret_block }],
   [BlockType.rule_reference, { type: BlockType.rule_reference }],
+  [BlockType.map_embed, { type: BlockType.map_embed, renderer: 'MapEmbedBlock' }],
 ]);
 
 export function getBlockDefinition(type: BlockType): BlockDefinition | undefined {
   return registry.get(type);
+}
+
+export function getBlockRegistry(): Array<{ type: string }> {
+  return [...registry.values()];
 }

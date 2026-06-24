@@ -1,4 +1,4 @@
-import type { Block } from './block-registry';
+import type { Block, PortableBlocksV1Doc } from './block-registry';
 
 type TipTapTextNode = { type: 'text'; text: string };
 type TipTapNode = {
@@ -23,7 +23,8 @@ function extractListItems(content: TipTapNode[] | undefined): string[] {
   return content.map((listItem) => extractText(listItem.content));
 }
 
-export function blocksToTipTap(blocks: Block[]): TipTapDoc {
+export function blocksToTipTap(input: Block[] | PortableBlocksV1Doc): TipTapDoc {
+  const blocks = Array.isArray(input) ? input : input.blocks;
   return {
     type: 'doc',
     content: blocks.map((block) => {
@@ -69,6 +70,12 @@ export function blocksToTipTap(blocks: Block[]): TipTapDoc {
             type: 'rule_reference',
             attrs: { ruleId: block.ruleId, title: block.title },
           };
+
+        case 'map_embed':
+          return {
+            type: 'map_embed',
+            attrs: { mapId: block.mapId },
+          };
       }
     }),
   };
@@ -97,6 +104,9 @@ export function tipTapToBlocks(doc: TipTapDoc): Block[] {
 
       case 'rule_reference':
         return [{ type: 'rule_reference', ruleId: String(node.attrs?.ruleId ?? ''), title: String(node.attrs?.title ?? '') }];
+
+      case 'map_embed':
+        return [{ type: 'map_embed', mapId: String(node.attrs?.mapId ?? '') }];
 
       default:
         return [];
