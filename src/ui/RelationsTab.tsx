@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { DatabaseLike } from '../services/entity-service';
 import { getRelations, addRelation, deactivateRelation, reactivateRelation, RelationRow } from '../services/relation-service';
 import { getRelationTypeDefinition, getAllRelationTypes } from '../data/relation-type-registry';
 import { getEffectiveEntity } from '../services/entity-service';
@@ -6,10 +7,10 @@ import { EntityPicker } from './EntityPicker';
 
 interface Props {
   entityId: string;
-  database?: unknown;
+  database: DatabaseLike;
 }
 
-const DB_SENTINEL = {};
+const EMPTY_DB = {} as DatabaseLike;
 
 function getLabel(relation: RelationRow, entityId: string): string {
   const isSource = relation.source_id === entityId;
@@ -22,43 +23,51 @@ function getOtherEntityId(relation: RelationRow, entityId: string): string {
   return relation.source_id === entityId ? relation.target_id : relation.source_id;
 }
 
-function getEntityTitle(entityId: string, database: unknown): string {
-  const result = getEffectiveEntity({ database: database as never, entityId });
+function getEntityTitle(entityId: string, database: DatabaseLike): string {
+  const result = getEffectiveEntity({ database, entityId });
   return result.entity?.title ?? entityId;
 }
 
-export function RelationsTab({ entityId, database = DB_SENTINEL }: Props) {
-  const db = database ?? DB_SENTINEL;
+export function RelationsTab({ entityId, database }: Props) {
+  const db = database ?? EMPTY_DB;
+
+  const [relations, setRelations] = useState<RelationRow[]>(() =>
+    getRelations(db, entityId, { includeInactive: true })
+  );
   const [showAddForm, setShowAddForm] = useState(false);
   const [newRelationType, setNewRelationType] = useState('');
-  const [, forceUpdate] = useState(0);
+  const [gmOnly, setGmOnly] = useState(false);
 
-  const allRelations = getRelations(db as never, entityId, { includeInactive: true });
-  const active = allRelations.filter((r) => r.active === 1);
-  const inactive = allRelations.filter((r) => r.active === 0);
+  const active = relations.filter((r) => r.active === 1);
+  const inactive = relations.filter((r) => r.active === 0);
   const allTypes = getAllRelationTypes();
 
+  function refresh() {
+    setRelations(getRelations(db, entityId, { includeInactive: true }));
+  }
+
   function handleDeactivate(relationId: string) {
-    deactivateRelation(db as never, relationId);
-    forceUpdate((n) => n + 1);
+    deactivateRelation(db, relationId);
+    refresh();
   }
 
   function handleReactivate(relationId: string) {
-    reactivateRelation(db as never, relationId);
-    forceUpdate((n) => n + 1);
+    reactivateRelation(db, relationId);
+    refresh();
   }
 
   function handleAddSelect(targetId: string) {
     if (!newRelationType) return;
-    addRelation(db as never, {
+    addRelation(db, {
       source_id: entityId,
       target_id: targetId,
       relation_type: newRelationType,
-      visibility: 'public',
+      visibility: gmOnly ? 'gm_only' : 'public',
     });
     setShowAddForm(false);
     setNewRelationType('');
-    forceUpdate((n) => n + 1);
+    setGmOnly(false);
+    refresh();
   }
 
   return (
@@ -119,7 +128,16 @@ export function RelationsTab({ entityId, database = DB_SENTINEL }: Props) {
                 </option>
               ))}
             </select>
-            <EntityPicker onSelect={handleAddSelect} />
+            <label>
+              <input
+                type="checkbox"
+                checked={gmOnly}
+                onChange={(e) => setGmOnly(e.target.checked)}
+                aria-label="GM only"
+              />
+              GM only
+            </label>
+            <EntityPicker onSelect={handleAddSelect} database={db} />
           </div>
         )}
       </div>
