@@ -20,7 +20,7 @@ export const RelationType = {
 
 const DEFINITIONS: RelationTypeDefinition[] = [
   { relation_type: 'located_in',    inverse_type: 'contains',         symmetry: 'directed',  label: 'located in',    inverse_label: 'contains' },
-  { relation_type: 'part_of',       inverse_type: 'has_part',         symmetry: 'directed',  label: 'member of',     inverse_label: 'has member' },
+  { relation_type: 'part_of',       inverse_type: 'has_part',         symmetry: 'directed',  label: 'part of',       inverse_label: 'has part' },
   { relation_type: 'ranks_above',   inverse_type: 'ranks_below',      symmetry: 'directed',  label: 'ranks above',   inverse_label: 'ranks below' },
   { relation_type: 'ally_of',       inverse_type: 'ally_of',          symmetry: 'symmetric', label: 'ally of',       inverse_label: 'ally of' },
   { relation_type: 'enemy_of',      inverse_type: 'enemy_of',         symmetry: 'symmetric', label: 'enemy of',      inverse_label: 'enemy of' },
