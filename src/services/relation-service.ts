@@ -20,29 +20,21 @@ interface AddRelationParams {
   inverse_type?: string;
 }
 
-type WriteDb = {
-  prepare: (sql: string) => {
-    run: (...args: unknown[]) => void;
-    get: (...args: unknown[]) => unknown;
-    all: (...args: unknown[]) => unknown[];
-  };
-};
-
-function randomId(): string {
-  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+function generateId(): string {
+  return 'rel_' + crypto.randomUUID();
 }
 
-function logEvent(db: WriteDb, relationId: string, event: string): void {
+function logEvent(db: DatabaseLike, relationId: string, event: string): void {
   db.prepare(
-    'INSERT INTO campaign_relation_log (id, relation_id, event, timestamp) VALUES (?, ?, ?, datetime(\'now\'))'
-  ).run(randomId(), relationId, event);
+    "INSERT INTO campaign_relation_log (id, relation_id, event, timestamp) VALUES (?, ?, ?, datetime('now'))"
+  ).run(generateId(), relationId, event);
 }
 
 export function addRelation(
-  db: WriteDb,
+  db: DatabaseLike,
   params: AddRelationParams
 ): { id: string } {
-  const id = randomId();
+  const id = generateId();
   const inverseType = params.inverse_type ?? params.relation_type;
 
   db.prepare(
@@ -68,17 +60,17 @@ export function getRelations(
   options: { includeInactive: boolean }
 ): RelationRow[] {
   const activeClause = options.includeInactive ? '' : 'AND active = 1';
-  return (db as WriteDb).prepare(
+  return db.prepare(
     `SELECT * FROM relations WHERE (source_id = ? OR target_id = ?) ${activeClause}`
   ).all(entityId, entityId) as RelationRow[];
 }
 
-export function deactivateRelation(db: WriteDb, relationId: string): void {
+export function deactivateRelation(db: DatabaseLike, relationId: string): void {
   db.prepare('UPDATE relations SET active = 0 WHERE id = ?').run(relationId);
   logEvent(db, relationId, 'removed');
 }
 
-export function reactivateRelation(db: WriteDb, relationId: string): void {
+export function reactivateRelation(db: DatabaseLike, relationId: string): void {
   db.prepare('UPDATE relations SET active = 1 WHERE id = ?').run(relationId);
   logEvent(db, relationId, 'added');
 }
