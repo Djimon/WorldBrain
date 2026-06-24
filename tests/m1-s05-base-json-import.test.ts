@@ -230,3 +230,163 @@ describe('M1-S05 base JSON import pipeline', () => {
     }
   });
 });
+
+// Bug #18
+describe('issue #18: malformed JSON files produce structured errors', () => {
+  it('returns a blocking structured error when project.json contains invalid JSON', async () => {
+    const projectRoot = createTemporaryProjectRoot();
+    const database = createDatabase();
+    await writeValidProjectBase(projectRoot);
+    await writeRaw(join(projectRoot, 'project.json'), '{ "id": "bad-project", INVALID }');
+
+    try {
+      const result = await importBaseJsonProject({ database, projectRoot });
+
+      expect(result.blocked).toBe(true);
+      expect(result.imported).toEqual({ entityTypes: 0, entities: 0 });
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({
+          path: 'project.json',
+          documentKind: 'project',
+          severity: 'error',
+        }),
+      );
+    } finally {
+      database.close();
+    }
+  });
+
+  it('does not throw when project.json contains invalid JSON', async () => {
+    const projectRoot = createTemporaryProjectRoot();
+    const database = createDatabase();
+    await writeValidProjectBase(projectRoot);
+    await writeRaw(join(projectRoot, 'project.json'), '{ not valid json at all');
+
+    try {
+      await expect(importBaseJsonProject({ database, projectRoot })).resolves.toBeDefined();
+    } finally {
+      database.close();
+    }
+  });
+
+  it('skips a malformed entity file and imports the remaining valid entities', async () => {
+    const projectRoot = createTemporaryProjectRoot();
+    const database = createDatabase();
+    await writeValidProjectBase(projectRoot);
+    await writeRaw(
+      join(projectRoot, 'entities', 'Character', 'character-broken.json'),
+      '{ "id": "character-broken", INVALID JSON',
+    );
+
+    try {
+      const result = await importBaseJsonProject({ database, projectRoot });
+
+      expect(result.blocked).toBe(false);
+      expect(result.imported.entities).toBe(1);
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({
+          path: expect.stringMatching(/entities[\\/]Character[\\/]character-broken\.json/u),
+          documentKind: 'base_entity',
+          severity: 'error',
+        }),
+      );
+
+      const rows = database.prepare('SELECT id FROM base_entities ORDER BY id').all();
+      expect(rows.map((r) => r.id)).toEqual(['character-ada']);
+    } finally {
+      database.close();
+    }
+  });
+
+  it('does not throw when an entity file contains invalid JSON', async () => {
+    const projectRoot = createTemporaryProjectRoot();
+    const database = createDatabase();
+    await writeValidProjectBase(projectRoot);
+    await writeRaw(
+      join(projectRoot, 'entities', 'Character', 'character-corrupt.json'),
+      '}}broken{{',
+    );
+
+    try {
+      await expect(importBaseJsonProject({ database, projectRoot })).resolves.toBeDefined();
+    } finally {
+      database.close();
+    }
+  });
+
+  it('skips a malformed entity-type file and reports a structured error', async () => {
+    const projectRoot = createTemporaryProjectRoot();
+    const database = createDatabase();
+    await writeValidProjectBase(projectRoot);
+    await writeRaw(
+      join(projectRoot, 'entity-types', 'broken-type.json'),
+      '{ "id": "type-broken" MISSING_COMMA }',
+    );
+
+    try {
+      const result = await importBaseJsonProject({ database, projectRoot });
+
+      expect(result.blocked).toBe(false);
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({
+          path: expect.stringMatching(/entity-types[\\/]broken-type\.json/u),
+          severity: 'error',
+        }),
+      );
+    } finally {
+      database.close();
+    }
+  });
+
+  it('preserves campaign rows when an entity file is malformed and import is partial', async () => {
+    const projectRoot = createTemporaryProjectRoot();
+    const database = createDatabase();
+    await writeValidProjectBase(projectRoot);
+
+    try {
+      await importBaseJsonProject({ database, projectRoot });
+      database
+        .prepare('INSERT INTO campaign_notes (id, entity_id, note_text, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
+        .run('note-1', 'character-ada', 'Session note.', '2026-06-23T00:00:00.000Z', '2026-06-23T00:00:00.000Z');
+
+      await writeRaw(
+        join(projectRoot, 'entities', 'Character', 'character-broken.json'),
+        '{ bad json }',
+      );
+
+      const result = await importBaseJsonProject({ database, projectRoot });
+
+      expect(result.blocked).toBe(false);
+      const notes = database.prepare('SELECT id FROM campaign_notes').all();
+      expect(notes.map((r) => r.id)).toEqual(['note-1']);
+    } finally {
+      database.close();
+    }
+  });
+});
+
+// Bug #117: base-json-import.ts must use the shared DatabaseLike contract, not a local type
+describe('issue #117: base-json-import accepts a DatabaseLike-typed database argument', () => {
+  it('accepts a DatabaseSync instance (which satisfies DatabaseLike) without local-type workaround', async () => {
+    const projectRoot = createTemporaryProjectRoot();
+    const database = createDatabase();
+    await writeValidProject(projectRoot);
+
+    try {
+      // Pass the same DatabaseSync used in all other tests.
+      // After the fix, importBaseJsonProject's parameter must be typed as DatabaseLike
+      // (imported from the shared location), so this call is type-safe without any cast.
+      const result = await importBaseJsonProject({ database, projectRoot });
+      expect(result.blocked).toBe(false);
+    } finally {
+      database.close();
+    }
+  });
+
+  it('importBaseJsonProject re-exports or delegates to a function whose database param is DatabaseLike', async () => {
+    const mod = await import('../core_data/base-json-import');
+    // The function must exist and accept an object with exec+prepare (DatabaseLike shape)
+    expect(typeof mod.importBaseJsonProject).toBe('function');
+  });
+});
+

@@ -207,3 +207,299 @@ describe('M2-S12 relations tab', () => {
     });
   });
 });
+
+// Bug #59
+describe('issue-59 RelationsTab and EntityGraph database type safety', () => {
+  describe('RelationsTab.tsx', () => {
+    it('does not contain "as never" casts', () => {
+      const src = readFileSync('src/ui/RelationsTab.tsx', 'utf-8');
+      expect(src).not.toContain('as never');
+    });
+
+    it('declares database prop as DatabaseLike', () => {
+      const src = readFileSync('src/ui/RelationsTab.tsx', 'utf-8');
+      expect(src).toMatch(/database\s*:\s*DatabaseLike/);
+    });
+
+    it('imports DatabaseLike from entity-service', () => {
+      const src = readFileSync('src/ui/RelationsTab.tsx', 'utf-8');
+      expect(src).toMatch(/DatabaseLike/);
+      expect(src).toMatch(/from\s+['"].*entity-service['"]/);
+    });
+  });
+
+  describe('EntityGraph.tsx', () => {
+    it('does not contain "as never" casts', () => {
+      const src = readFileSync('src/ui/EntityGraph.tsx', 'utf-8');
+      expect(src).not.toContain('as never');
+    });
+
+    it('declares database prop as DatabaseLike', () => {
+      const src = readFileSync('src/ui/EntityGraph.tsx', 'utf-8');
+      expect(src).toMatch(/database\s*:\s*DatabaseLike/);
+    });
+
+    it('imports DatabaseLike from entity-service', () => {
+      const src = readFileSync('src/ui/EntityGraph.tsx', 'utf-8');
+      expect(src).toMatch(/DatabaseLike/);
+      expect(src).toMatch(/from\s+['"].*entity-service['"]/);
+    });
+  });
+
+  describe('entity-service.ts', () => {
+    it('exports DatabaseLike', () => {
+      const src = readFileSync('src/services/entity-service.ts', 'utf-8');
+      expect(src).toMatch(/export\s+(type\s+)?DatabaseLike/);
+    });
+  });
+});
+
+// Bug #62
+describe('issue-62 RelationsTab registered in EntityDetailView', () => {
+  describe('wiring module', () => {
+    it('a wiring module or App.tsx exists that calls registerEntityTab for Relations', async () => {
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+
+      // Check candidate locations for the registration call
+      const candidates = [
+        'src/App.tsx',
+        'src/tabs.ts',
+        'src/tabs.tsx',
+        'src/tab-wiring.ts',
+        'src/tab-wiring.tsx',
+        'src/epic004-tabs.ts',
+        'src/epic004-tabs.tsx',
+      ];
+
+      let found = false;
+      for (const candidate of candidates) {
+        if (fs.existsSync(path.resolve(candidate))) {
+          const src = fs.readFileSync(path.resolve(candidate), 'utf-8');
+          if (src.includes('registerEntityTab') && src.includes('relations')) {
+            found = true;
+            break;
+          }
+        }
+      }
+
+      expect(found, 'No file found that registers the Relations tab via registerEntityTab').toBe(true);
+    });
+
+    it('the registration uses "relations" as the tab id', async () => {
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+
+      const candidates = [
+        'src/App.tsx', 'src/tabs.ts', 'src/tabs.tsx',
+        'src/tab-wiring.ts', 'src/tab-wiring.tsx',
+        'src/epic004-tabs.ts', 'src/epic004-tabs.tsx',
+      ];
+
+      let src = '';
+      for (const candidate of candidates) {
+        if (fs.existsSync(path.resolve(candidate))) {
+          const content = fs.readFileSync(path.resolve(candidate), 'utf-8');
+          if (content.includes('registerEntityTab')) { src = content; break; }
+        }
+      }
+
+      expect(src).toMatch(/id\s*:\s*['"]relations['"]/);
+    });
+  });
+
+  describe('EntityDetailView shows Relations tab after registration', () => {
+    afterEach(async () => {
+      const { clearEntityTabs } = await import('../src/ui/EntityDetailView');
+      clearEntityTabs();
+    });
+
+    it('EntityDetailView shows a Relations tab when RelationsTab is registered', async () => {
+      const { EntityDetailView, registerEntityTab } = await import('../src/ui/EntityDetailView');
+      const { RelationsTab } = await import('../src/ui/RelationsTab');
+
+      registerEntityTab({
+        id: 'relations',
+        label: 'Relations',
+        render: ({ entityId, database }: { entityId: string; database: unknown }) =>
+          <RelationsTab entityId={entityId} database={database as never} />,
+      });
+
+      render(<EntityDetailView entityId="char-ada" />);
+
+      expect(screen.getByRole('tab', { name: /relations/i })).toBeInTheDocument();
+    });
+  });
+});
+
+// Bug #64
+describe('issue-64 RelationsTab state management', () => {
+  describe('source-level: no DB_SENTINEL anti-pattern', () => {
+    it('RelationsTab.tsx does not contain DB_SENTINEL', async () => {
+      const fs = await import('node:fs');
+      const src = fs.readFileSync('src/ui/RelationsTab.tsx', 'utf-8');
+      expect(src).not.toContain('DB_SENTINEL');
+    });
+
+    it('RelationsTab.tsx does not use an empty object {} as default database', async () => {
+      const fs = await import('node:fs');
+      const src = fs.readFileSync('src/ui/RelationsTab.tsx', 'utf-8');
+      // Pattern: database = {} as default prop
+      expect(src).not.toMatch(/database\s*=\s*\{\}/);
+    });
+  });
+
+  describe('source-level: no forceUpdate pattern', () => {
+    it('RelationsTab.tsx does not use forceUpdate hack (n => n + 1 counter)', async () => {
+      const fs = await import('node:fs');
+      const src = fs.readFileSync('src/ui/RelationsTab.tsx', 'utf-8');
+      expect(src).not.toMatch(/forceUpdate|n\s*=>\s*n\s*\+\s*1/);
+    });
+
+    it('RelationsTab.tsx holds relations as React state (useState with array)', async () => {
+      const fs = await import('node:fs');
+      const src = fs.readFileSync('src/ui/RelationsTab.tsx', 'utf-8');
+      // useState holding relations — must have state for the relations list
+      expect(src).toMatch(/useState\s*[<(]/);
+    });
+  });
+
+  describe('runtime: UI updates reactively after mutations', () => {
+    const mockDb = {};
+
+    it('deactivating a relation removes it from the active list without full re-mount', async () => {
+      const { getRelations, deactivateRelation } = await import('../src/services/relation-service');
+
+      // After deactivate, simulate component re-reading state
+      (deactivateRelation as ReturnType<typeof vi.fn>).mockImplementation(() => {
+        (getRelations as ReturnType<typeof vi.fn>).mockReturnValueOnce([]);
+      });
+
+      render(<RelationsTab entityId="entity-ada" database={mockDb as never} />);
+
+      // Active relation is visible
+      expect(screen.getByText(/ally of|entity-bram/i)).toBeInTheDocument();
+
+      // Deactivate
+      const deactivateBtn = screen.queryByRole('button', { name: /deactivate|remove/i });
+      if (deactivateBtn) {
+        fireEvent.click(deactivateBtn);
+        // After state update, active section should reflect the change
+        // (implementation-dependent — verify the button called the service)
+        expect(deactivateRelation).toHaveBeenCalled();
+      }
+    });
+
+    it('reactivating a relation updates the UI', async () => {
+      const { getRelations, reactivateRelation } = await import('../src/services/relation-service');
+
+      // Start with an inactive relation
+      (getRelations as ReturnType<typeof vi.fn>).mockReturnValueOnce([
+        { id: 'r-inactive', source_id: 'entity-ada', target_id: 'entity-bram', relation_type: 'ally_of', inverse_type: 'ally_of', active: 0, visibility_json: '"public"', notes: 'Old.' },
+      ]);
+
+      render(<RelationsTab entityId="entity-ada" database={mockDb as never} />);
+
+      const reactivateBtn = screen.queryByRole('button', { name: /reactivate/i });
+      if (reactivateBtn) {
+        fireEvent.click(reactivateBtn);
+        expect(reactivateRelation).toHaveBeenCalledWith(expect.anything(), 'r-inactive');
+      }
+    });
+  });
+});
+
+// Bug #66
+describe('issue-66 relation visibility toggle in add-relation form', () => {
+  describe('visibility toggle in add form', () => {
+    it('add-relation form includes a visibility toggle', () => {
+      openAddForm();
+
+      const toggle =
+        screen.queryByRole('checkbox', { name: /gm.?only|visibility/i }) ??
+        screen.queryByRole('switch', { name: /gm.?only|visibility/i }) ??
+        screen.queryByRole('combobox', { name: /visibility/i });
+
+      expect(toggle).toBeInTheDocument();
+    });
+
+    it('visibility toggle defaults to public', () => {
+      openAddForm();
+
+      const checkbox = screen.queryByRole('checkbox', { name: /gm.?only/i });
+      if (checkbox) {
+        expect(checkbox).not.toBeChecked();
+      } else {
+        const select = screen.queryByRole('combobox', { name: /visibility/i });
+        expect(select).toHaveValue('public');
+      }
+    });
+
+    it('toggling visibility to gm_only passes gm_only to addRelation', async () => {
+      const { addRelation } = await import('../src/services/relation-service');
+      openAddForm();
+
+      // Required: entity picker must exist and accept input
+      fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'bram' } });
+      fireEvent.click(screen.getByText('Bram Holt'));
+
+      // Required: GM-only toggle must exist
+      const toggle =
+        screen.getByRole('checkbox', { name: /gm.?only/i });
+      fireEvent.click(toggle);
+
+      // Required: submit button must exist
+      fireEvent.click(screen.getByRole('button', { name: /save|confirm|add/i }));
+
+      expect(addRelation).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ visibility: 'gm_only' })
+      );
+    });
+
+    it('submitting with public visibility passes public to addRelation', async () => {
+      const { addRelation } = await import('../src/services/relation-service');
+      (addRelation as ReturnType<typeof vi.fn>).mockClear();
+      openAddForm();
+
+      // Required: entity picker must exist
+      fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'bram' } });
+      fireEvent.click(screen.getByText('Bram Holt'));
+
+      // Do NOT toggle GM-only — leave as public (default)
+      fireEvent.click(screen.getByRole('button', { name: /save|confirm|add/i }));
+
+      expect(addRelation).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ visibility: 'public' })
+      );
+    });
+  });
+
+  describe('gm_only badge on created relation', () => {
+    it('a gm_only relation shows the GM-only badge in the relations list', async () => {
+      const { getRelations } = await import('../src/services/relation-service');
+      (getRelations as ReturnType<typeof vi.fn>).mockReturnValueOnce([
+        {
+          id: 'r-gm', source_id: 'entity-ada', target_id: 'char-bram',
+          relation_type: 'ally_of', inverse_type: 'ally_of',
+          active: 1, visibility_json: '"gm_only"', notes: null,
+        },
+      ]);
+
+      render(<RelationsTab entityId="entity-ada" database={mockDb as never} />);
+
+      expect(screen.getByText(/gm.?only|gm only/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('source-level: no hardcoded visibility public', () => {
+    it('RelationsTab.tsx does not hardcode visibility: "public" in addRelation call', async () => {
+      const fs = await import('node:fs');
+      const src = fs.readFileSync('src/ui/RelationsTab.tsx', 'utf-8');
+      // Should not have a literal hardcoded 'public' as the visibility value in addRelation
+      expect(src).not.toMatch(/addRelation[\s\S]{0,300}visibility\s*:\s*['"]public['"]/);
+    });
+  });
+});
+

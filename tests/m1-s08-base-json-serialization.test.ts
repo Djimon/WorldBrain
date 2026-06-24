@@ -122,6 +122,39 @@ describe('M1-S08 deterministic base JSON serialization', () => {
     expect(serialized).toMatch(/"title": "Ada Thorn"/u);
   });
 
+  // Bug #123: keys not listed in entityFieldOrder must not be silently dropped
+  it('preserves keys that are not in entityFieldOrder', async () => {
+    const { serializeBaseEntity } = await loadSerializationModule();
+    const entityWithExtraKey: BaseEntity = {
+      ...entityWithCanonicalInsertionOrder(),
+      custom_campaign_flag: 'red_herring',
+    };
+
+    const serialized = serializeBaseEntity(entityWithExtraKey);
+    const parsed = JSON.parse(serialized) as Record<string, unknown>;
+
+    expect(parsed).toHaveProperty('custom_campaign_flag', 'red_herring');
+  });
+
+  it('preserves all canonical schema keys even when entity is constructed in reverse order', async () => {
+    const { serializeBaseEntity } = await loadSerializationModule();
+    const entity: BaseEntity = equivalentEntityWithDifferentInsertionOrder();
+
+    const serialized = serializeBaseEntity(entity);
+    const parsed = JSON.parse(serialized) as Record<string, unknown>;
+
+    expect(parsed).toHaveProperty('id', 'character-ada');
+    expect(parsed).toHaveProperty('type', 'Character');
+    expect(parsed).toHaveProperty('title', 'Ada Thorn');
+    expect(parsed).toHaveProperty('summary');
+    expect(parsed).toHaveProperty('aliases');
+    expect(parsed).toHaveProperty('properties');
+    expect(parsed).toHaveProperty('body');
+    expect(parsed).toHaveProperty('visibility');
+    expect(parsed).toHaveProperty('created_at');
+    expect(parsed).toHaveProperty('updated_at');
+  });
+
   it('serializes project metadata deterministically with configured indentation and trailing newline', async () => {
     const { serializeProjectMetadata } = await loadSerializationModule();
     const first = serializeProjectMetadata({

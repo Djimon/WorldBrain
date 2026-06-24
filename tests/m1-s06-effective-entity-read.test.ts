@@ -223,3 +223,121 @@ describe('M1-S06 effective entity read model', () => {
     }
   });
 });
+
+// Bug #20
+describe('issue #20: overriddenFields accuracy', () => {
+  it('does not include "body" in overriddenFields when patch contains body but body is not an applied field', async () => {
+    const database = createDatabase();
+    insertBaseEntity(database);
+    insertOverride(database, { body: { format: 'portable_blocks_v1', blocks: [{ type: 'paragraph' }] } });
+
+    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+
+    expect(result.found).toBe(true);
+    if (!result.found) return;
+
+    expect(result.overriddenFields).not.toContain('body');
+  });
+
+  it('only lists fields that actually changed the effective entity value', async () => {
+    const database = createDatabase();
+    insertBaseEntity(database);
+    insertOverride(database, {
+      title: 'Ada Thorn (Renamed)',
+      body: { format: 'portable_blocks_v1', blocks: [] },
+      unknownField: 'ignored',
+    });
+
+    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+
+    expect(result.found).toBe(true);
+    if (!result.found) return;
+
+    expect(result.overriddenFields).toContain('title');
+    expect(result.overriddenFields).not.toContain('body');
+    expect(result.overriddenFields).not.toContain('unknownField');
+  });
+
+  it('does not list a field as overridden when the patch value equals the base value', async () => {
+    const database = createDatabase();
+    insertBaseEntity(database);
+    // Patch sets title to the same value as base — not a real override
+    insertOverride(database, { title: 'Ada Thorn' });
+
+    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+
+    expect(result.found).toBe(true);
+    if (!result.found) return;
+
+    expect(result.overriddenFields).not.toContain('title');
+  });
+
+  it('includes "title" in overriddenFields when patch changes the title', async () => {
+    const database = createDatabase();
+    insertBaseEntity(database);
+    insertOverride(database, { title: 'Lady Thorn' });
+
+    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+
+    expect(result.found).toBe(true);
+    if (!result.found) return;
+
+    expect(result.overriddenFields).toContain('title');
+    expect(result.entity.title).toBe('Lady Thorn');
+  });
+
+  it('includes "summary" in overriddenFields when patch changes the summary', async () => {
+    const database = createDatabase();
+    insertBaseEntity(database);
+    insertOverride(database, { summary: 'Now a fugitive.' });
+
+    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+
+    expect(result.found).toBe(true);
+    if (!result.found) return;
+
+    expect(result.overriddenFields).toContain('summary');
+    expect(result.overriddenFields).not.toContain('body');
+  });
+
+  it('includes "visibility" in overriddenFields when patch changes visibility', async () => {
+    const database = createDatabase();
+    insertBaseEntity(database);
+    insertOverride(database, { visibility: 'hidden' });
+
+    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+
+    expect(result.found).toBe(true);
+    if (!result.found) return;
+
+    expect(result.overriddenFields).toContain('visibility');
+  });
+
+  it('includes "properties.role" in overriddenFields when a property key changes', async () => {
+    const database = createDatabase();
+    insertBaseEntity(database);
+    insertOverride(database, { properties: { role: 'fugitive' } });
+
+    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+
+    expect(result.found).toBe(true);
+    if (!result.found) return;
+
+    expect(result.overriddenFields).toContain('properties.role');
+    expect(result.overriddenFields).not.toContain('body');
+  });
+
+  it('returns an empty overriddenFields array when patch contains only unapplied fields', async () => {
+    const database = createDatabase();
+    insertBaseEntity(database);
+    insertOverride(database, { body: { format: 'portable_blocks_v1', blocks: [] }, unknownField: 'x' });
+
+    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+
+    expect(result.found).toBe(true);
+    if (!result.found) return;
+
+    expect(result.overriddenFields).toEqual([]);
+  });
+});
+

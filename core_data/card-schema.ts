@@ -114,7 +114,7 @@ export const BUILT_IN_CARD_TEMPLATES: CardTemplate[] = [
     label: 'Secret',
     entity_types: ['secret'],
     size_mm: CARD_SIZES.Poker,
-    layout: { slots: [{ field: 'name', max_lines: 1, overflow: OVERFLOW_POLICIES.TRUNCATE }, { field: 'description', max_lines: 4, overflow: OVERFLOW_POLICIES.REFERENCE_ONLY }] },
+    layout: { slots: [{ field: 'name', max_lines: 1, overflow: OVERFLOW_POLICIES.TRUNCATE }, { field: 'description', max_lines: 4, overflow: OVERFLOW_POLICIES.SHRINK }] },
     style: {},
   },
   {
