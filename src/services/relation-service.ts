@@ -74,3 +74,13 @@ export function reactivateRelation(db: DatabaseLike, relationId: string): void {
   db.prepare('UPDATE relations SET active = 1 WHERE id = ?').run(relationId);
   logEvent(db, relationId, 'added');
 }
+
+export function getAllRelations(
+  db: DatabaseLike,
+  { includeInactive }: { includeInactive?: boolean } = {},
+): RelationRow[] {
+  const sql = includeInactive
+    ? 'SELECT id, source_id, target_id, relation_type, inverse_type, active, visibility_json, notes FROM relations'
+    : 'SELECT id, source_id, target_id, relation_type, inverse_type, active, visibility_json, notes FROM relations WHERE active = 1';
+  return db.prepare(sql).all() as RelationRow[];
+}

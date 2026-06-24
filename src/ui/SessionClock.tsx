@@ -28,7 +28,7 @@ interface Props {
 
 export function SessionClock({ sessionId: _sessionId, calendar: _calendar, worldTimeStart, database, onWorldTimeChange }: Props) {
   const [worldTime, setWorldTime] = useState(worldTimeStart);
-  const [vars, setVars] = useState<VarRow[]>(() => listVars(database as never) as VarRow[]);
+  const [vars, setVars] = useState<VarRow[]>(() => listVars(database as never, _sessionId) as VarRow[]);
 
   const counters = vars.filter(v => v.type === 'number');
 
@@ -40,13 +40,13 @@ export function SessionClock({ sessionId: _sessionId, calendar: _calendar, world
 
   function handleIncrement(v: VarRow) {
     const next = Number(v.value) + 1;
-    setGlobalVar(database as never, v.id, next);
+    setGlobalVar(database as never, { id: v.id, type: v.type, label: v.label, value: next });
     setVars(prev => prev.map(x => x.id === v.id ? { ...x, value: next } : x));
   }
 
   function handleDecrement(v: VarRow) {
     const next = Number(v.value) - 1;
-    setGlobalVar(database as never, v.id, next);
+    setGlobalVar(database as never, { id: v.id, type: v.type, label: v.label, value: next });
     setVars(prev => prev.map(x => x.id === v.id ? { ...x, value: next } : x));
   }
 

@@ -43,3 +43,12 @@ export function listEntitiesByType({ database, type }: { database: DatabaseLike;
     summary: String(row.summary),
   }));
 }
+
+export function updateEntityProperties(
+  { database, entityId, properties }: { database: DatabaseLike; entityId: string; properties: Record<string, unknown> },
+): void {
+  database.prepare(`UPDATE base_entities SET properties_json = ? WHERE id = ?`).run(
+    JSON.stringify(properties),
+    entityId,
+  );
+}
