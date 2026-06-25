@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@react-pdf/renderer": "4.5.1",
+    "@tauri-apps/api": "2.11.1",
     "@tiptap/pm": "3.27.1",
     "@tiptap/react": "3.27.1",
     "@tiptap/starter-kit": "3.27.1",
