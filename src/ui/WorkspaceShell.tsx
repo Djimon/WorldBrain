@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useDatabase } from '../services/DatabaseContext';
 import { listEntityTypes } from '../services/plugin-entity-service';
-import { listMaps } from '../services/map-service';
+import { listMaps, createMap } from '../services/map-service';
 import { listViews } from '../services/saved-views-service';
 import { importRules } from '../services/rule-import-service';
 import { detectMysteryBreakers, analyzeRoleCoverage, detectQuestBlockers } from '../services/rule-evaluations';
@@ -79,7 +79,7 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
   const [entityType, setEntityType] = useState<string | null>('Character');
   const [selectedScreenId, setSelectedScreenId] = useState<string | null>(null);
   // #182: maps loaded once via lazy init, not on every render
-  const [maps] = useState(() => listMaps(database));
+  const [maps, setMaps] = useState(() => listMaps(database));
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   const [showCardCreation, setShowCardCreation] = useState(false);
@@ -116,6 +116,14 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
       months: JSON.parse(String(row.months_json ?? '[]')) as { name: string; days: number }[],
       week: JSON.parse(String(row.week_json ?? '[]')) as string[],
     };
+  }
+
+  function handleMapImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    createMap(database, { title: file.name.replace(/\.[^.]+$/, '') });
+    setMaps(listMaps(database));
+    e.target.value = '';
   }
 
   function runEvaluation(kind: 'mystery' | 'role' | 'quest') {
@@ -209,7 +217,12 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
           <div className="workspace-area">
             <div className="workspace-area__sidebar">
               <h3>Karten</h3>
-                <ul>
+                {/* #188: map import button */}
+              <label>
+                Karte importieren
+                <input type="file" accept="image/*" onChange={handleMapImport} />
+              </label>
+              <ul>
                 {maps.map((m) => (
                   <li key={m.id}>
                     <button aria-pressed={selectedMapId === m.id} onClick={() => setSelectedMapId(m.id)}>
