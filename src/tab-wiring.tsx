@@ -6,6 +6,6 @@ import type { DatabaseLike } from './services/entity-service';
 registerEntityTab({
   id: 'relations',
   label: 'Relations',
-  render: ({ entityId, database }: { entityId: string; database: DatabaseLike }) =>
-    <RelationsTab entityId={entityId} database={database} />,
+  render: ({ entityId, database }: { entityId: string; database?: DatabaseLike }) =>
+    database ? <RelationsTab entityId={entityId} database={database} /> : null,
 });

@@ -56,7 +56,9 @@ export async function exportCardToPng(
     const canvas = createCanvas(w, h);
     const ctx = canvas.getContext('2d');
     renderCard(ctx as unknown as CanvasRenderingContext2D, opts.card, scale);
-    return canvas.toDataURL('image/png');
+    const dataUrl = canvas.toDataURL('image/png');
+    const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+    return Buffer.from(base64, 'base64');
   }
 
   return Buffer.alloc(0);

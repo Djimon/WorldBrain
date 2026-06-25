@@ -23,7 +23,7 @@ export function MapEmbedBlock({ mapId, database }: Props) {
   return (
     <div>
       <h4>{map.title}</h4>
-      <MapContainer crs={{ Simple: {} } as never} bounds={bounds} style={{ height: '300px', width: '100%' }}>
+      <MapContainer crs={{ Simple: {} } as unknown as Parameters<typeof MapContainer>[0]['crs']} bounds={bounds} style={{ height: '300px', width: '100%' }}>
         <ImageOverlay url={url} bounds={bounds} />
       </MapContainer>
     </div>
