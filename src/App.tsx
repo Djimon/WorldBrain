@@ -5,6 +5,7 @@ import type { DatabaseLike } from './services/entity-service';
 import { readAppConfig, registerProject } from './services/app-config-service';
 import type { ProjectEntry } from './services/app-config-service';
 import { openProjectDb } from './services/db-init';
+import { scanPlugins } from './services/plugin-loader';
 import { DatabaseProvider } from './services/DatabaseContext';
 import { WelcomeScreen } from './ui/WelcomeScreen';
 import { NewProjectDialog } from './ui/NewProjectDialog';
@@ -25,6 +26,8 @@ type AppMode =
 function initWorkspace(projectEntry: ProjectEntry): AppMode & { kind: 'workspace' } {
   const dbPath = join(projectEntry.path, 'world.db');
   const db = openProjectDb(dbPath);
+  // #186: scan plugins after DB init so PluginManager and entity type list are populated
+  scanPlugins(join(projectEntry.path, 'plugins'));
   return { kind: 'workspace', projectId: projectEntry.id, projectDir: projectEntry.path, db };
 }
 
