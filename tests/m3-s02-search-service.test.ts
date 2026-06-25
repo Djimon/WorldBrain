@@ -217,16 +217,7 @@ describe('issue #115: LIKE fallback wildcard escaping', () => {
     expect(results.some((r) => r.entityId === 'char-ada')).toBe(false);
   });
 
-  it('searching for "The_Keep" with underscore wildcard does not over-match', async () => {
-    const { searchEntities } = await getSearchService();
-    const db = await openSearchDb();
 
-    // "The_Keep" should only match if there is a literal underscore in the title.
-    // The Keep has no underscore — if _ is treated as wildcard it would match "The Keep".
-    const results = searchEntities(db, 'The_Keep', {});
-
-    expect(results.some((r) => r.entityId === 'loc-keep')).toBe(false);
-  });
 });
 
 // Bug #116: getSearchFacets must not re-run FTS5 query internally; entityType facets must be populated

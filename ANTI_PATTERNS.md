@@ -1,68 +1,69 @@
 # Anti-Patterns
 
-Patterns that have caused Critical or Severe bugs across multiple EPICs.
-Each one was fixed, then reintroduced in a later Epic by a fresh agent.
+Patterns that caused Critical/Severe bugs across multiple EPICs — fixed, then reintroduced by a fresh agent.
 
-Requirement Agent: copy the relevant constraint into every affected Story's acceptance criteria.
+Requirement Agent: copy AC fragment into every affected Story.
 TDD Agent: write a test that fails if the pattern is present.
-Implementation Agent: treat any instance as a blocker, not a style note.
+Implementation Agent: any instance is a blocker, not a style note.
 
 ---
 
 ## AP-001 — `database as never` (recurring since EPIC-003)
 
-**Pattern:** UI component declares `database: unknown` and casts at every call site with `as never`.
+**Rule:** `database` prop must be typed as `DatabaseLike` (from `src/services/entity-service.ts`). No `unknown`, no `as never`, no local re-declaration.
 
-**Why it breaks:** Bypasses type safety entirely. Service functions receive `never`, which TypeScript accepts silently. Type errors at the service boundary are invisible.
+**Why:** TypeScript accepts `never` silently — type errors at the service boundary are invisible.
 
-**Rule:** The `database` prop must be typed as `DatabaseLike` (exported from `src/services/entity-service.ts`). No `unknown`, no `as never`, no local re-declaration of the DB interface.
-
-**AC fragment to copy:** "database prop typed as `DatabaseLike` (from `entity-service.ts`); no `unknown` or `as never` casts at call sites."
+**AC fragment:** "database prop typed as `DatabaseLike` (from `entity-service.ts`); no `unknown` or `as never` casts at call sites."
 
 ---
 
 ## AP-002 — TipTap extension as plain object (recurring since M2-S04)
 
-**Pattern:** A new block type's extension is exported as a plain config object `{ name, config }` instead of a `Node.create()` call.
+**Rule:** All TipTap extensions must use `Node.create()`, `Mark.create()`, or `Extension.create()`. Plain objects are never extensions.
 
-**Why it breaks:** TipTap never registers the node type with the ProseMirror schema. The editor cannot parse, render, or serialize nodes of that type. The block silently disappears or corrupts documents.
+**Why:** TipTap never registers the node type — blocks silently disappear or corrupt documents.
 
-**Rule:** All TipTap extensions must use `Node.create({ ... })`, `Mark.create({ ... })`, or `Extension.create({ ... })`. A plain object is never an extension.
-
-**AC fragment to copy:** "TipTap extension must be created with `Node.create()`; plain config objects are not valid extensions."
+**AC fragment:** "TipTap extension must be created with `Node.create()`; plain config objects are not valid extensions."
 
 ---
 
 ## AP-003 — `prompt()` / `alert()` for user interaction (recurring since M5-S02)
 
-**Pattern:** Import/export or confirmation dialogs use `window.prompt()` or `window.alert()`.
+**Rule:** No `prompt()`, `alert()`, or `confirm()` in production code. Use React-rendered UI or the Tauri dialog API.
 
-**Why it breaks:** These are blocking browser-only APIs. In Tauri v2 they either do nothing or trigger an OS-level dialog. They are untestable and inaccessible.
+**Why:** Blocking browser-only APIs — in Tauri v2 they either do nothing or show an OS dialog. Untestable.
 
-**Rule:** Use React-rendered UI (textarea in a panel, inline form). For file save/open use the Tauri dialog API. No `prompt()`, `alert()`, or `confirm()` anywhere in production code.
-
-**AC fragment to copy:** "No `prompt()`, `alert()`, or `confirm()` calls; all user input via rendered React UI or Tauri dialog API."
-
----
-
-## AP-005 — `require()` in ESM Vitest tests (recurring since M5-S02/E8-S02/E8-S05)
-
-**Pattern:** Test files use `require('../src/ui/SomeComponent')` or `require('fs')` inside a Vitest ESM context.
-
-**Why it breaks:** Vitest runs in ESM mode. `require()` is not defined in ESM — the call throws `ReferenceError: require is not defined` at runtime, making every assertion in that test permanently fail. The error is not a test failure in the meaningful sense; it is a broken test harness.
-
-**Rule:** Never use `require()` in test files. Always use ESM `import`. For dynamic imports use `await import(...)`. For Node built-ins (fs, path) use `import { readFileSync } from 'node:fs'`.
-
-**AC fragment to copy:** "Test file must use ESM `import` exclusively; no `require()` calls."
+**AC fragment:** "No `prompt()`, `alert()`, or `confirm()` calls; all user input via rendered React UI or Tauri dialog API."
 
 ---
 
 ## AP-004 — Raw HTML interpolation of user data (first found E8-S09)
 
-**Pattern:** User-supplied strings (titles, labels, IDs from SQLite) are interpolated directly into HTML template literals for export.
+**Rule:** All user-supplied strings must be HTML-escaped before interpolation in exported HTML. Add a CSP meta tag.
 
-**Why it breaks:** XSS. Exported HTML files opened in a browser execute injected scripts with `file://` privileges. Shared campaign files become attack vectors.
+**Why:** XSS. Exported files opened in a browser execute injected scripts with `file://` privileges.
 
-**Rule:** Every value sourced from user input or the database that appears in an HTML output must be passed through an HTML escape function before interpolation. Add a `Content-Security-Policy` meta tag to all exported HTML.
+**AC fragment:** "All user-supplied strings HTML-escaped before interpolation in exported HTML; CSP meta tag present in output."
 
-**AC fragment to copy:** "All user-supplied strings HTML-escaped before interpolation in exported HTML; CSP meta tag present in output."
+---
+
+## AP-005 — `require()` in ESM Vitest tests (recurring since M5-S02)
+
+**Rule:** Never use `require()` in test files. Use ESM `import` / `await import()`. Node built-ins: `import { readFileSync } from 'node:fs'`.
+
+**Why:** Vitest runs ESM — `require` throws `ReferenceError` at runtime, silently breaking every assertion in the file.
+
+**AC fragment:** "Test file must use ESM `import` exclusively; no `require()` calls."
+
+---
+
+## AP-006 — Silent `try/catch` around DB operations (first found M5-S14)
+
+**Rule:** No `try/catch` around `prepare`/`run`/`all`/`get`. Apply the schema before use — that is the guard. Errors propagate.
+
+**Why:** Swallowed DB errors are indistinguishable from "no data". Bugs survive silently into production.
+
+**Exceptions:** `JSON.parse` of external/DB data (return safe fallback) · filesystem I/O at load boundaries (return structured error) · FTS5→LIKE fallback by design (comment required).
+
+**AC fragment:** "No `try/catch` around DB operations; errors propagate to the caller."

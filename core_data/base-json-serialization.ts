@@ -57,12 +57,24 @@ function sortJsonValue(value: unknown): unknown {
   return value;
 }
 
-function pickOrderedFields<T extends JsonObject>(source: T, fieldOrder: readonly string[]) {
+const ENTITY_STRIP_FIELDS = new Set([
+  'database_rowid', 'imported_at', 'search_rank', 'effective_title',
+  'campaign_notes', 'campaign_overrides', 'session_progression',
+]);
+
+function pickOrderedFields<T extends JsonObject>(source: T, fieldOrder: readonly string[], stripFields?: Set<string>) {
   const ordered: JsonObject = {};
 
   for (const fieldName of fieldOrder) {
     if (source[fieldName] !== undefined) {
       ordered[fieldName] = sortJsonValue(source[fieldName]);
+    }
+  }
+
+  const knownFields = new Set(fieldOrder);
+  for (const key of Object.keys(source)) {
+    if (!knownFields.has(key) && source[key] !== undefined && !stripFields?.has(key)) {
+      ordered[key] = sortJsonValue(source[key]);
     }
   }
 
@@ -74,7 +86,7 @@ function serializeBaseJson(value: JsonObject) {
 }
 
 export function serializeBaseEntity(entity: BaseEntity) {
-  return serializeBaseJson(pickOrderedFields(entity, entityFieldOrder));
+  return serializeBaseJson(pickOrderedFields(entity, entityFieldOrder, ENTITY_STRIP_FIELDS));
 }
 
 export function serializeProjectMetadata(project: ProjectMetadata) {

@@ -174,8 +174,16 @@ export function ConditionBuilder({ variables, onChange, initialCondition }: Prop
       {groupNode && (
         <div>
           <span>{groupNode.logic.toUpperCase()}</span>
-          {groupNode.conditions.map((_, i) => (
-            <div key={i}>[condition {i + 1}]</div>
+          {groupNode.conditions.map((child, i) => (
+            <ConditionBuilder
+              key={i}
+              variables={variables}
+              initialCondition={toJsonLogic(child)}
+              onChange={(updated) => {
+                const next = { ...groupNode, conditions: groupNode.conditions.map((c, j) => j === i ? updated : c) };
+                onChange(next);
+              }}
+            />
           ))}
         </div>
       )}

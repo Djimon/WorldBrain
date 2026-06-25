@@ -14,7 +14,7 @@ export interface VisibilityItem {
   condition?: unknown;
 }
 
-export type VisibilityResult = 'visible' | 'hidden' | 'gm_only';
+export type VisibilityResult = 'visible' | 'hidden' | 'gm_only' | 'gm_conditional';
 
 export function resolveVisibility(item: VisibilityItem, ctx: VisibilityContext): VisibilityResult {
   const v = item.visibility;
@@ -31,7 +31,11 @@ export function resolveVisibility(item: VisibilityItem, ctx: VisibilityContext):
   }
 
   if (v === 'hidden_until_condition') {
-    if (ctx.audience === 'gm') return 'gm_only';
+    if (ctx.audience === 'gm') {
+      if (!item.condition) return 'gm_conditional';
+      const evalCtx = { vars: ctx.vars ?? {}, globals: ctx.globals ?? {}, flags: ctx.flags ?? {} };
+      return evaluate(item.condition, evalCtx) ? 'visible' : 'gm_conditional';
+    }
     if (!item.condition) return 'hidden';
     const evalCtx = {
       vars: ctx.vars ?? {},

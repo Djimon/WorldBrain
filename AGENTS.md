@@ -73,6 +73,8 @@ Minimal atomic tests for every required behavior. Tests must fail before impleme
 
 Bug tests for a Story belong in the **existing Story test file**, not a new `issue-<N>-` file. Standalone `issue-<N>-` files only for cross-cutting bugs with no single Story owner.
 
+**Bug tests:** Every test case must have a direct match in the Finding or AC text — no extrapolation from the underlying principle.
+
 **UI Stories:** At least one `.dom.test.tsx` asserting every interactive element and event handler in AC exists in rendered output. Placeholder text where AC requires a form = test failure.
 
 ### 3. Implementation Agent
