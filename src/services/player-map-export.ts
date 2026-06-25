@@ -35,7 +35,11 @@ export function generatePlayerMapHtml({ map, markers, context }: GenerateParams)
     resolveMarkerVisibility({ visibility: m.visibility, entity_id: m.entity_id, condition: m.condition }, context) !== 'hidden'
   );
 
-  const markersJson = JSON.stringify(visibleMarkers.map(m => ({
+  function escJson(obj: unknown): string {
+    return JSON.stringify(obj).replace(/<\/script>/gi, '<\\/script>');
+  }
+
+  const markersJson = escJson(visibleMarkers.map(m => ({
     id: m.id,
     kind: m.kind,
     label: m.label_text,
@@ -57,7 +61,7 @@ export function generatePlayerMapHtml({ map, markers, context }: GenerateParams)
   <ul id="markers">${markerListHtml}</ul>
 </div>
 <script>
-var mapData = ${JSON.stringify({ id: map.id, title: map.title, width: map.image_width_px, height: map.image_height_px })};
+var mapData = ${escJson({ id: map.id, title: map.title, width: map.image_width_px, height: map.image_height_px })};
 var markers = ${markersJson};
 </script>
 </body>

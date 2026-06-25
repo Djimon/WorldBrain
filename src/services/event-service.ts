@@ -80,6 +80,11 @@ export function listEvents(db: DatabaseLike, options: { type?: string; participa
 export function updateEvent(db: DatabaseLike, id: string, patch: Partial<CreateEventParams>): void {
   if (patch.title !== undefined) db.prepare('UPDATE events SET title = ? WHERE id = ?').run(patch.title, id);
   if (patch.type !== undefined) db.prepare('UPDATE events SET type = ? WHERE id = ?').run(patch.type, id);
+  if (patch.start_day !== undefined) db.prepare('UPDATE events SET start_day = ? WHERE id = ?').run(patch.start_day, id);
+  if (patch.end_day !== undefined) db.prepare('UPDATE events SET end_day = ? WHERE id = ?').run(patch.end_day, id);
+  if (patch.visibility !== undefined) db.prepare('UPDATE events SET visibility = ? WHERE id = ?').run(patch.visibility, id);
+  if (patch.participants !== undefined) db.prepare('UPDATE events SET participants_json = ? WHERE id = ?').run(JSON.stringify(patch.participants), id);
+  if (patch.locations !== undefined) db.prepare('UPDATE events SET locations_json = ? WHERE id = ?').run(JSON.stringify(patch.locations), id);
 }
 
 function parseEventRow(row: Record<string, unknown>): EventRow {

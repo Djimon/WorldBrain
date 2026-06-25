@@ -73,7 +73,7 @@ export function EncounterCounters({ sessionId: _sessionId, database, onEncounter
     <div>
       <div>
         <span>Round {round}</span>
-        {round > 1 && <span> — Elapsed: {elapsedSeconds}s ({elapsedSeconds}s total)</span>}
+        {round > 1 && <span> — Elapsed: {elapsedSeconds}s ({round * SECONDS_PER_ROUND}s total)</span>}
         <button aria-label="Next Round" onClick={handleNextRound}>▶</button>
       </div>
 
@@ -84,6 +84,7 @@ export function EncounterCounters({ sessionId: _sessionId, database, onEncounter
             value={pendingLabel}
             onChange={e => setPendingLabel(e.target.value)}
             onKeyDown={handleLabelKeyDown}
+            aria-label="Counter name"
             placeholder="Counter name"
           />
         )}

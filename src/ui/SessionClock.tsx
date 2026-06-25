@@ -41,13 +41,13 @@ export function SessionClock({ sessionId: _sessionId, calendar: _calendar, world
 
   function handleIncrement(v: VarRow) {
     const next = Number(v.value) + 1;
-    setGlobalVar(database, { id: v.id, type: v.type, label: v.label, value: next });
+    setGlobalVar(database, v.id, next);
     setVars(prev => prev.map(x => x.id === v.id ? { ...x, value: next } : x));
   }
 
   function handleDecrement(v: VarRow) {
     const next = Number(v.value) - 1;
-    setGlobalVar(database, { id: v.id, type: v.type, label: v.label, value: next });
+    setGlobalVar(database, v.id, next);
     setVars(prev => prev.map(x => x.id === v.id ? { ...x, value: next } : x));
   }
 

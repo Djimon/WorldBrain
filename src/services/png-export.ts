@@ -77,11 +77,21 @@ export async function exportPrintSheetToPng(
     canvas.width = pageW;
     canvas.height = pageH;
     const ctx = canvas.getContext('2d')!;
+    const cols = 3;
+    const cellW = Math.round(70 * MM_TO_PX_AT_72DPI * scale);
+    const cellH = Math.round(100 * MM_TO_PX_AT_72DPI * scale);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, pageW, pageH);
-    for (const card of opts.cards) {
+    opts.cards.forEach((card, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const cellX = col * cellW;
+      const cellY = row * cellH;
+      ctx.save();
+      ctx.translate(cellX, cellY);
       renderCard(ctx, card, scale);
-    }
+      ctx.restore();
+    });
     return new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((blob) => {
         if (blob) resolve(blob);

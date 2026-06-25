@@ -23,9 +23,9 @@ export function createHandout(
 
 export function listHandouts(db: DatabaseLike, filter?: { type?: string; audience?: string }): HandoutRow[] {
   if (filter?.type) {
-    return db.prepare('SELECT * FROM handouts WHERE type = ?').all(filter.type) as HandoutRow[];
+    return db.prepare('SELECT * FROM handouts WHERE type = ?').all(filter.type) as unknown as HandoutRow[];
   }
-  return db.prepare('SELECT * FROM handouts').all() as HandoutRow[];
+  return db.prepare('SELECT * FROM handouts').all() as unknown as HandoutRow[];
 }
 
 interface HandoutBlock {
@@ -51,10 +51,13 @@ export function generateHandoutHtml(opts: GenerateHandoutHtmlOpts): string {
   const bodyHtml = blocks
     .filter((b) => {
       if (b.visibility === 'gm_only' && isPlayer) return false;
+      if (b.visibility === 'hidden_until_condition' && isPlayer) return false;
+      if (b.visibility === 'player_known' && isPlayer) return false;
       return true;
     })
     .map((b) => `<p>${escHtml(b.text ?? '')}</p>`)
     .join('\n');
 
-  return `<!DOCTYPE html><html><head><title>${escHtml(handout.title)}</title></head><body>${bodyHtml}</body></html>`;
+  const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">`;
+  return `<!DOCTYPE html><html><head>${csp}<title>${escHtml(handout.title)}</title></head><body>${bodyHtml}</body></html>`;
 }
