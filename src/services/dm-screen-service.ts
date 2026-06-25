@@ -26,12 +26,31 @@ export function applyDmScreenSchema(db: DatabaseLike): void {
   `).run();
 }
 
-export function listScreens(_db?: DatabaseLike): DmScreenRecord[] {
-  return [];
+export function listScreens(db?: DatabaseLike): DmScreenRecord[] {
+  if (!db) return [];
+  const rows = db.prepare(`SELECT id, title, layout, panels FROM gm_screens`).all() as Array<{
+    id: string; title: string; layout: string; panels: string;
+  }>;
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    layout: JSON.parse(r.layout) as { columns: number },
+    panels: JSON.parse(r.panels) as DmPanel[],
+  }));
 }
 
-export function getScreen(_db: DatabaseLike | undefined, _id: string): DmScreenRecord | null {
-  return null;
+export function getScreen(db: DatabaseLike | undefined, id: string): DmScreenRecord | null {
+  if (!db) return null;
+  const row = db.prepare(`SELECT id, title, layout, panels FROM gm_screens WHERE id = ?`).get(id) as {
+    id: string; title: string; layout: string; panels: string;
+  } | undefined;
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    layout: JSON.parse(row.layout) as { columns: number },
+    panels: JSON.parse(row.panels) as DmPanel[],
+  };
 }
 
 export function saveScreen(db: DatabaseLike, screen: Omit<DmScreenRecord, 'id'>): { id: string } {

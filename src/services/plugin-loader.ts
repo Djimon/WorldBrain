@@ -42,6 +42,7 @@ export function scanPlugins(pluginDir: string): Record<string, PluginRegistryEnt
       .map((d) => d.name)
       .sort();
   } catch {
+    // AP-006: plugin dir absent or unreadable — return empty registry
     return _registry;
   }
 
@@ -52,6 +53,7 @@ export function scanPlugins(pluginDir: string): Record<string, PluginRegistryEnt
       const manifest = JSON.parse(raw) as PluginManifest;
       _registry[folder] = { manifest, status: 'loaded' };
     } catch {
+      // AP-006: plugin.json missing or malformed — mark as failed, continue loading others
       _registry[folder] = {
         manifest: { id: folder, label: folder, version: '0.0.0' },
         status: 'failed',

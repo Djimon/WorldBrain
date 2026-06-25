@@ -76,8 +76,8 @@ export function createRuleOverride(
   const base = db.prepare(`SELECT * FROM rule_entities WHERE id = ?`).get(opts.baseEntityId) as Record<string, unknown> | undefined;
   const id = `rule-override-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   db.prepare(
-    `INSERT INTO rule_entities (id, type, ruleset, title, properties_json, reference_summary, is_homebrew, base_entity_id)
-     VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
+    `INSERT INTO rule_entities (id, type, ruleset, title, properties_json, reference_summary, is_homebrew, base_entity_id, source_id)
+     VALUES (?, ?, ?, ?, ?, ?, 1, ?, 'homebrew')`,
   ).run(
     id,
     opts.overrides.type ?? (base?.type as string) ?? 'unknown',
@@ -96,6 +96,9 @@ export function listRuleEntities(
 ): Record<string, unknown>[] {
   if (filter?.type) {
     return db.prepare(`SELECT * FROM rule_entities WHERE type = ?`).all(filter.type) as Record<string, unknown>[];
+  }
+  if (filter?.tag) {
+    return db.prepare(`SELECT * FROM rule_entities WHERE properties_json LIKE ?`).all(`%"${filter.tag}"%`) as Record<string, unknown>[];
   }
   return db.prepare(`SELECT * FROM rule_entities`).all() as Record<string, unknown>[];
 }

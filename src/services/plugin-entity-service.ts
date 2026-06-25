@@ -1,4 +1,5 @@
 import { getRelationTypeDefinition as getCoreRelationType, getAllRelationTypes } from '../data/relation-type-registry';
+import { getPlugin } from './plugin-loader';
 
 export interface PluginEntityType {
   id: string;
@@ -29,9 +30,17 @@ const CORE_ENTITY_TYPES: PluginEntityType[] = [
 const _entityTypes: Map<string, PluginEntityType> = new Map(CORE_ENTITY_TYPES.map((t) => [t.id, t]));
 const _relationTypes: Map<string, PluginRelationType> = new Map();
 
-export function registerPluginEntityType(type: PluginEntityType): void {
+export function registerPluginEntityType(type: PluginEntityType, pluginId?: string): void {
   if (_entityTypes.has(type.id)) {
+    const msg = `Conflict: entity type "${type.id}" already registered`;
     console.warn(`Plugin entity type conflict: "${type.id}" already registered. Second definition wins.`);
+    if (pluginId) {
+      const entry = getPlugin(pluginId);
+      if (entry) {
+        entry.status = 'conflict';
+        entry.errors = [...(entry.errors ?? []), msg];
+      }
+    }
   }
   _entityTypes.set(type.id, type);
 }

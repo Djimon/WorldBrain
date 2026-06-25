@@ -1,4 +1,4 @@
-import type { DatabaseSync } from 'node:sqlite';
+import type { DatabaseLike } from '../src/services/entity-service';
 
 const RULE_TYPES_REQUIRING_SUMMARY = new Set(['spell', 'ability', 'condition', 'class_feature']);
 
@@ -6,8 +6,8 @@ export function isRuleReferenceSummaryRequired(type: string): boolean {
   return RULE_TYPES_REQUIRING_SUMMARY.has(type);
 }
 
-export function applyRuleSchema(db: DatabaseSync): void {
-  db.exec(`
+export function applyRuleSchema(db: DatabaseLike): void {
+  db.prepare(`
     CREATE TABLE IF NOT EXISTS rule_sources (
       id          TEXT PRIMARY KEY NOT NULL,
       label       TEXT NOT NULL,
@@ -15,9 +15,9 @@ export function applyRuleSchema(db: DatabaseSync): void {
       url         TEXT NOT NULL DEFAULT '',
       is_read_only INTEGER NOT NULL DEFAULT 1
     )
-  `);
+  `).run();
 
-  db.exec(`
+  db.prepare(`
     CREATE TABLE IF NOT EXISTS rule_entities (
       id                TEXT NOT NULL,
       type              TEXT NOT NULL,
@@ -32,5 +32,5 @@ export function applyRuleSchema(db: DatabaseSync): void {
       PRIMARY KEY (id, source_id),
       FOREIGN KEY (source_id) REFERENCES rule_sources(id)
     )
-  `);
+  `).run();
 }
