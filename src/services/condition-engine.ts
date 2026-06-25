@@ -13,7 +13,7 @@ function getVar(path: string, ctx: EvalContext): unknown {
   if (ns === 'vars') source = ctx.vars;
   else if (ns === 'globals') source = ctx.globals;
   else if (ns === 'flags') source = ctx.flags;
-  else return undefined;
+  else return ctx.vars?.[path];
 
   if (!source) return undefined;
   return key ? source[key] : source;
