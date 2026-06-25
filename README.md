@@ -43,12 +43,15 @@ flowchart LR
 |---|---|---|
 | M0 | Project foundation & app shell | ✅ Done |
 | M1 | JSON ground truth & runtime database | ✅ Done |
-| M2 | Entity editing MVP + Relations | 🔄 In progress |
-| M3 | Search & knowledge views | ⏳ Planned |
-| M4 | Session mode | ⏳ Planned |
-| M5 | Maps & export | ⏳ Planned |
-| M6 | Plugins & rulesets | ⏳ Planned |
-| M7 | Packaging & operations | ⏳ Planned |
+| M2 | Entity editing MVP + Relations | ✅ Done |
+| M3 | Search & knowledge views | ✅ Done |
+| M4 | Session mode | ✅ Done |
+| M5 | Maps & export | ✅ Done |
+| M6 | Plugins & rulesets | ✅ Done |
+| M7 | Packaging & operations | ✅ Done |
+| MI | UI Integration Sprint | 🔄 In progress |
+| M8 | Session play mode | ⏳ Planned |
+| M9 | System plugin & character sheet | ⏳ Planned |
 
 ## Development
 
