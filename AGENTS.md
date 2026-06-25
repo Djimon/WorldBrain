@@ -8,6 +8,12 @@ Statuses: `BLOCKED` | `NEEDS_DECISION` | `PATCH_READY_UNVERIFIED` | `PATCH_VERIF
 
 Never use `DONE`. Never claim success without running checks.
 
+`PATCH_VERIFIED` requires **both** to pass — run them, show the output:
+1. `node_modules/.bin/tsc --noEmit` → 0 errors
+2. `npm run lint` → 0 errors
+
+If either fails: fix first. No `PATCH_VERIFIED` without green output from both.
+
 `PATCH_VERIFIED` → commit without asking. Any other status → no commit.
 
 Before push: update matching Story issue. Not found → `BLOCKED`.
@@ -49,6 +55,8 @@ Conflicting requirements · missing decision · unclear architecture · wrong/co
 - Magic strings when constants/enums fit
 - Reporting verification that did not happen
 - Complex PowerShell scriptblocks — use `gh api`, `git`, `npm` directly
+- Implementing against a different API than what the AC specifies — if the AC says "Tauri dialog", the implementation uses the Tauri dialog. Runtime constraints (async, WebView sandbox) that conflict with the test setup → `NEEDS_DECISION`, not a silent workaround.
+- Shim or compat layers whose real-API path returns empty data — a stub that compiles is still a stub. If bridging sync tests to an async API is impossible without data loss, surface it as `NEEDS_DECISION` before committing.
 
 ---
 
