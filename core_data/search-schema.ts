@@ -73,7 +73,9 @@ export function rebuildSearchIndex(db: SearchDb): void {
     let aliases = '';
     try {
       aliases = (JSON.parse(e.aliases_json) as string[]).join(' ');
-    } catch { /* */ }
+    } catch (err) {
+      throw new Error(`rebuildSearchIndex: malformed aliases_json for entity ${e.id}: ${err instanceof Error ? err.message : String(err)}`);
+    }
 
     let body = '';
     try {
@@ -81,7 +83,9 @@ export function rebuildSearchIndex(db: SearchDb): void {
       body = (doc.blocks ?? [])
         .map((b) => b.text ?? '')
         .join(' ');
-    } catch { /* */ }
+    } catch (err) {
+      throw new Error(`rebuildSearchIndex: malformed body_json for entity ${e.id}: ${err instanceof Error ? err.message : String(err)}`);
+    }
 
     indexEntity(db, {
       entity_id: e.id,

@@ -98,11 +98,7 @@ export function listVars(db: DatabaseLike, sessionId?: string): VarRow[] {
   if (sessionId) {
     rows = db.prepare(`SELECT * FROM session_variables WHERE session_id = ?`).all(sessionId) as typeof rows;
   } else {
-    try {
-      rows = db.prepare(`SELECT * FROM session_variables`).all() as typeof rows;
-    } catch {
-      return [];
-    }
+    rows = db.prepare(`SELECT * FROM session_variables`).all() as typeof rows;
   }
   return rows.map((r) => ({
     id: r.id,
@@ -118,13 +114,11 @@ export function listVars(db: DatabaseLike, sessionId?: string): VarRow[] {
 export function setGlobalVar(db: DatabaseLike, params: VarParams | string, value?: unknown): void {
   if (typeof params === 'string') {
     const id = params;
-    try {
-      db.prepare(`
-        INSERT INTO global_variables (id, type, label, value)
-        VALUES (?, 'unknown', ?, ?)
-        ON CONFLICT(id) DO UPDATE SET value = excluded.value
-      `).run(id, id, JSON.stringify(value));
-    } catch { /* */ }
+    db.prepare(`
+      INSERT INTO global_variables (id, type, label, value)
+      VALUES (?, 'unknown', ?, ?)
+      ON CONFLICT(id) DO UPDATE SET value = excluded.value
+    `).run(id, id, JSON.stringify(value));
     return;
   }
   db.prepare(`

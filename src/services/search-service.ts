@@ -53,23 +53,21 @@ export function searchEntities(
   } catch { /* FTS5 query error — fall through to LIKE */ }
 
   // LIKE fallback for substring/suffix matches not caught by FTS5
-  try {
-    const escaped = trimmed.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-    const like = `%${escaped}%`;
-    const rows = db
-      .prepare(
-        `SELECT entity_id, entity_type, title, summary
-         FROM entity_search
-         WHERE title LIKE ? ESCAPE '\\' OR aliases LIKE ? ESCAPE '\\' OR summary LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\'`,
-      )
-      .all(like, like, like, like) as Array<{ entity_id: string; entity_type: string; title: string; summary: string }>;
-    for (const r of rows) {
-      if (!seen.has(r.entity_id)) {
-        seen.add(r.entity_id);
-        results.push({ entityId: r.entity_id, entityType: r.entity_type || undefined, title: r.title, summary: r.summary ?? '', score: -1 });
-      }
+  const escaped = trimmed.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+  const like = `%${escaped}%`;
+  const likeRows = db
+    .prepare(
+      `SELECT entity_id, entity_type, title, summary
+       FROM entity_search
+       WHERE title LIKE ? ESCAPE '\\' OR aliases LIKE ? ESCAPE '\\' OR summary LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\'`,
+    )
+    .all(like, like, like, like) as Array<{ entity_id: string; entity_type: string; title: string; summary: string }>;
+  for (const r of likeRows) {
+    if (!seen.has(r.entity_id)) {
+      seen.add(r.entity_id);
+      results.push({ entityId: r.entity_id, entityType: r.entity_type || undefined, title: r.title, summary: r.summary ?? '', score: -1 });
     }
-  } catch { /* */ }
+  }
 
   return results;
 }
