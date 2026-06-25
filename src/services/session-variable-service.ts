@@ -74,11 +74,23 @@ export function getVar(db: DatabaseLike, sessionId: string, varId: string): VarR
 
 export function resetVar(db: DatabaseLike, sessionId: string, varId: string): void {
   const row = db
-    .prepare(`SELECT default_value FROM session_variables WHERE session_id = ? AND id = ?`)
-    .get(sessionId, varId) as { default_value: string } | undefined;
+    .prepare(`SELECT value, default_value FROM session_variables WHERE session_id = ? AND id = ?`)
+    .get(sessionId, varId) as { value: string; default_value: string } | undefined;
   if (!row) return;
   db.prepare(`UPDATE session_variables SET value = ? WHERE session_id = ? AND id = ?`)
     .run(row.default_value, sessionId, varId);
+
+  const logId = 'log_' + crypto.randomUUID();
+  db.prepare(
+    `INSERT INTO session_log (id, session_id, action_type, payload_json, prev_value, created_at)
+     VALUES (?, ?, 'var_reset', ?, ?, ?)`,
+  ).run(
+    logId,
+    sessionId,
+    JSON.stringify({ varId, restoredToDefault: true }),
+    row.value,
+    new Date().toISOString(),
+  );
 }
 
 export function listVars(db: DatabaseLike, sessionId?: string): VarRow[] {

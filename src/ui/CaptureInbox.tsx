@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createCapture, listCaptures, updateCaptureStatus } from '../services/capture-service';
+import type { DatabaseLike } from '../services/entity-service';
 
 const CAPTURE_TYPES = [
   'new_npc',
@@ -21,7 +22,7 @@ interface CaptureRow {
 
 interface Props {
   sessionId: string;
-  database: never;
+  database: DatabaseLike;
 }
 
 export function CaptureInbox({ sessionId, database }: Props) {

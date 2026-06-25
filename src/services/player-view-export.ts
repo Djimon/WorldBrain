@@ -22,6 +22,14 @@ export interface ExportContext {
   knownEntities?: Set<string>;
 }
 
+function escHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function isVisible(visibility: string, audience: 'gm' | 'player'): boolean {
   if (visibility === 'public') return true;
   if (visibility === 'gm_only') return audience === 'gm';
@@ -42,13 +50,13 @@ export function generatePlayerViewHtml(params: {
   const entityHtml = filtered.map((e) => {
     const blocks = e.body?.blocks ?? [];
     const visibleBlocks = blocks.filter((b) => isVisible(b.visibility ?? 'public', audience));
-    const bodyHtml = visibleBlocks.map((b) => `<p>${b.text ?? ''}</p>`).join('');
-    return `<section><h2>${e.title}</h2>${bodyHtml}</section>`;
+    const bodyHtml = visibleBlocks.map((b) => `<p>${escHtml(b.text ?? '')}</p>`).join('');
+    return `<section><h2>${escHtml(e.title)}</h2>${bodyHtml}</section>`;
   }).join('');
 
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>Player View</title><style>body{font-family:sans-serif;max-width:800px;margin:auto;padding:1rem}</style></head>
+<head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>Player View</title><style>body{font-family:sans-serif;max-width:800px;margin:auto;padding:1rem}</style></head>
 <body>${entityHtml}</body>
 </html>`;
 }

@@ -5,6 +5,7 @@ type SearchDb = InstanceType<typeof DatabaseSync>;
 
 export interface SearchEntry {
   entity_id: string;
+  entity_type?: string;
   title: string;
   aliases: string;
   summary: string;
@@ -26,7 +27,8 @@ export function applySearchSchema(db: SearchDb): void {
         body,
         tags,
         properties_text,
-        entity_id UNINDEXED
+        entity_id UNINDEXED,
+        entity_type UNINDEXED
       )
     `);
   }
@@ -35,10 +37,11 @@ export function applySearchSchema(db: SearchDb): void {
 export function indexEntity(db: SearchDb, entry: SearchEntry): void {
   db.prepare(`DELETE FROM entity_search WHERE entity_id = ?`).run(entry.entity_id);
   db.prepare(
-    `INSERT INTO entity_search(entity_id, title, aliases, summary, body, tags, properties_text)
-     VALUES (?,?,?,?,?,?,?)`,
+    `INSERT INTO entity_search(entity_id, entity_type, title, aliases, summary, body, tags, properties_text)
+     VALUES (?,?,?,?,?,?,?,?)`,
   ).run(
     entry.entity_id,
+    entry.entity_type ?? '',
     entry.title,
     entry.aliases,
     entry.summary,

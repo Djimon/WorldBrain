@@ -37,7 +37,7 @@ export function listCaptures(db: DatabaseLike, sessionId: string): CaptureRow[] 
     type: r.type,
     raw_text: r.raw_text,
     status: r.status,
-    links: JSON.parse(r.links_json) as string[],
+    links: (() => { try { return JSON.parse(r.links_json ?? '[]') as string[]; } catch { return []; } })(),
   }));
 }
 

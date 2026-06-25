@@ -54,6 +54,7 @@ export function applySessionSchema(db: Db): void {
       session_id TEXT NOT NULL,
       action_type TEXT NOT NULL,
       payload_json TEXT NOT NULL DEFAULT '{}',
+      prev_value TEXT,
       created_at TEXT NOT NULL
     )
   `);

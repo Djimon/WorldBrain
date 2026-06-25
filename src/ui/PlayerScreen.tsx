@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getEffectiveEntity } from '../services/entity-service';
+import type { DatabaseLike } from '../services/entity-service';
 import { resolveVisibility } from '../services/visibility-service';
 import type { VisibilityContext } from '../services/visibility-service';
 
@@ -12,13 +13,13 @@ interface Block {
 interface Props {
   context: VisibilityContext;
   entityId?: string;
-  database?: unknown;
+  database?: DatabaseLike;
   onReveal?: (entityId: string) => void;
 }
 
 export function PlayerScreen({ context, entityId, database, onReveal: _onReveal }: Props) {
   const effectiveResult = entityId
-    ? getEffectiveEntity({ database: database as never, entityId })
+    ? getEffectiveEntity({ database: database!, entityId })
     : null;
 
   const entity = effectiveResult?.found ? effectiveResult.entity : null;

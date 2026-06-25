@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { searchEntities, getSearchFacets } from '../services/search-service';
 import type { SearchResult } from '../services/search-service';
+import type { DatabaseLike } from '../services/entity-service';
 
 interface Props {
   onNavigate: (entityId: string) => void;
-  database?: unknown;
+  database?: DatabaseLike;
 }
 
 export function GlobalSearch({ onNavigate, database }: Props) {
@@ -20,7 +21,7 @@ export function GlobalSearch({ onNavigate, database }: Props) {
       setResults([]);
       return;
     }
-    const res = searchEntities(database as never, value, {});
+    const res = searchEntities(database!, value, {});
     setResults(res);
   }
 
@@ -38,7 +39,7 @@ export function GlobalSearch({ onNavigate, database }: Props) {
     }
   }
 
-  const facets = results.length > 0 ? getSearchFacets(database as never, query, {}) : null;
+  const facets = results.length > 0 ? getSearchFacets(database!, query, {}) : null;
   const filtered = activeTypeFilter
     ? results.filter((r) => r.entityType === activeTypeFilter)
     : results;

@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Cytoscape from 'cytoscape';
 import { listEntitiesByType } from '../services/entity-service';
+import type { DatabaseLike } from '../services/entity-service';
 import { getAllRelations } from '../services/relation-service';
 import { getAllRelationTypes } from '../data/relation-type-registry';
 
 interface Props {
   onNavigate: (entityId: string) => void;
-  database?: unknown;
+  database?: DatabaseLike;
   initialConfig?: { entityTypes?: string[]; relationTypes?: string[] };
   onConfigChange?: (config: { entityTypes: string[]; relationTypes: string[] }) => void;
 }
@@ -14,9 +15,15 @@ interface Props {
 export function GlobalEntityGraph({ onNavigate, database, initialConfig, onConfigChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const allEntities = listEntitiesByType({ database: database as never, type: null });
-  const allRelations = getAllRelations(database as never, { includeInactive: false });
-  const relationTypeDefs = getAllRelationTypes();
+  const allEntities = useMemo(
+    () => database ? listEntitiesByType({ database, type: null }) : [],
+    [database],
+  );
+  const allRelations = useMemo(
+    () => database ? getAllRelations(database, { includeInactive: false }) : [],
+    [database],
+  );
+  const relationTypeDefs = useMemo(() => getAllRelationTypes(), []);
 
   const entityTypes = [...new Set(allEntities.map((e) => e.type))];
   const [selectedEntityTypes, setSelectedEntityTypes] = useState<Set<string>>(

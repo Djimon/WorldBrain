@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { listEntitiesByType, updateEntityProperties } from '../services/entity-service';
+import type { DatabaseLike } from '../services/entity-service';
 
 type PropertySchema = {
   type: 'string' | 'number' | 'boolean';
@@ -9,13 +10,13 @@ type PropertySchema = {
 
 interface Props {
   entityType: string;
-  propertiesSchema: Record<string, PropertySchema>;
-  database?: unknown;
+  propertiesSchema?: Record<string, PropertySchema>;
+  database?: DatabaseLike;
 }
 
-export function EntityTable({ entityType, propertiesSchema, database }: Props) {
+export function EntityTable({ entityType, propertiesSchema = {}, database }: Props) {
   const entities = useMemo(
-    () => listEntitiesByType({ database: database as never, type: entityType }) as Array<{
+    () => listEntitiesByType({ database: database!, type: entityType }) as Array<{
       id: string;
       type: string;
       title: string;
@@ -60,7 +61,7 @@ export function EntityTable({ entityType, propertiesSchema, database }: Props) {
   function handleEditCommit(entity: { id: string; properties?: Record<string, unknown> }) {
     if (!editCell) return;
     const newProps = { ...(entity.properties ?? {}), [editCell.key]: editValue };
-    updateEntityProperties({ database: database as never, entityId: entity.id, properties: newProps });
+    updateEntityProperties({ database: database!, entityId: entity.id, properties: newProps });
     setEditCell(null);
   }
 
