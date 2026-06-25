@@ -20,6 +20,7 @@ vi.mock('../src/services/entity-service', () => ({
 }));
 vi.mock('../src/services/relation-service', () => ({
   listRelations: vi.fn(() => []),
+  getAllRelations: vi.fn(() => []),
 }));
 vi.mock('../src/services/capture-service', () => ({
   listCaptures: vi.fn(() => []),
