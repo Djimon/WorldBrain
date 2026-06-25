@@ -1,74 +1,133 @@
 import { useState } from 'react';
-import { Button, Panel, StatusChip, Tabs } from './ui/primitives';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import type { DatabaseLike } from './services/entity-service';
+import { readAppConfig, registerProject } from './services/app-config-service';
+import type { ProjectEntry } from './services/app-config-service';
+import { openProjectDb } from './services/db-init';
+import { DatabaseProvider } from './services/DatabaseContext';
+import { WelcomeScreen } from './ui/WelcomeScreen';
+import { NewProjectDialog } from './ui/NewProjectDialog';
+import { ZipImportDialog } from './ui/ZipImportDialog';
+import { WorkspaceShell } from './ui/WorkspaceShell';
 import './style.css';
+import './tab-wiring';
 
-const shellViews = [
-  {
-    id: 'overview',
-    label: 'Overview',
-    title: 'Workspace overview',
-    description: 'Placeholder view for the first operational surface.',
-    detail: 'Reserved for dense project workbench controls.',
-  },
-  {
-    id: 'library',
-    label: 'Library',
-    title: 'Library surface',
-    description: 'Placeholder view for structured reference work.',
-    detail: 'Reserved for list, table, and inspector surfaces.',
-  },
-  {
-    id: 'review',
-    label: 'Review',
-    title: 'Review surface',
-    description: 'Placeholder view for validation and export checks.',
-    detail: 'Reserved for compact status panels.',
-  },
-] as const;
+const APP_CONFIG_PATH = 'app-config.json';
+const PROJECTS_BASE_DIR = 'projects';
+
+type AppMode =
+  | { kind: 'welcome' }
+  | { kind: 'new-project' }
+  | { kind: 'import-zip' }
+  | { kind: 'workspace'; projectId: string; projectDir: string; db: DatabaseLike };
+
+function initWorkspace(projectEntry: ProjectEntry): AppMode & { kind: 'workspace' } {
+  const dbPath = join(projectEntry.path, 'world.db');
+  const db = openProjectDb(dbPath);
+  return { kind: 'workspace', projectId: projectEntry.id, projectDir: projectEntry.path, db };
+}
+
+function findProjectPath(projectId: string, baseDir: string): string | null {
+  if (!existsSync(baseDir)) return null;
+  for (const dirent of readdirSync(baseDir, { withFileTypes: true })) {
+    if (!dirent.isDirectory()) continue;
+    const metaPath = join(baseDir, dirent.name, 'project.json');
+    if (!existsSync(metaPath)) continue;
+    try {
+      const meta = JSON.parse(readFileSync(metaPath, 'utf-8')) as { id?: string; title?: string };
+      if (meta.id === projectId) return join(baseDir, dirent.name);
+    } catch { /* skip */ }
+  }
+  return null;
+}
+
+function resolveInitialMode(): AppMode {
+  try {
+    const config = readAppConfig(APP_CONFIG_PATH);
+    if (config.last_opened_project_id) {
+      const entry = config.projects.find((p) => p.id === config.last_opened_project_id);
+      if (entry) return initWorkspace(entry);
+    }
+  } catch {
+    // AP-006 exception: config read at startup boundary — fall through to welcome
+  }
+  return { kind: 'welcome' };
+}
 
 export function App() {
-  const [activeView, setActiveView] = useState<(typeof shellViews)[number]['id']>('overview');
-  const selectedView = shellViews.find((view) => view.id === activeView) ?? shellViews[0];
+  const [mode, setMode] = useState<AppMode>(() => resolveInitialMode());
+
+  function openProject(projectId: string) {
+    const config = readAppConfig(APP_CONFIG_PATH);
+    const entry = config.projects.find((p) => p.id === projectId);
+    if (!entry) return;
+    setMode(initWorkspace(entry));
+  }
+
+  function closeProject() {
+    setMode({ kind: 'welcome' });
+  }
+
+  function handleProjectCreated(projectId: string) {
+    const projectPath = findProjectPath(projectId, PROJECTS_BASE_DIR);
+    if (!projectPath) return;
+    const meta = JSON.parse(readFileSync(join(projectPath, 'project.json'), 'utf-8')) as { title: string };
+    registerProject(APP_CONFIG_PATH, { id: projectId, title: meta.title, path: projectPath });
+    const db = openProjectDb(join(projectPath, 'world.db'));
+    setMode({ kind: 'workspace', projectId, projectDir: projectPath, db });
+  }
+
+  function handleZipImported(projectId: string) {
+    const projectPath = findProjectPath(projectId, PROJECTS_BASE_DIR);
+    if (!projectPath) return;
+    const meta = JSON.parse(readFileSync(join(projectPath, 'project.json'), 'utf-8')) as { title: string };
+    registerProject(APP_CONFIG_PATH, { id: projectId, title: meta.title, path: projectPath });
+    const db = openProjectDb(join(projectPath, 'world.db'));
+    setMode({ kind: 'workspace', projectId, projectDir: projectPath, db });
+  }
+
+  if (mode.kind === 'welcome') {
+    return (
+      <WelcomeScreen
+        configPath={APP_CONFIG_PATH}
+        onCreateProject={() => setMode({ kind: 'new-project' })}
+        onImportZip={() => setMode({ kind: 'import-zip' })}
+        onOpenProject={openProject}
+      />
+    );
+  }
+
+  if (mode.kind === 'new-project') {
+    return (
+      <NewProjectDialog
+        onCreated={handleProjectCreated}
+        onCancel={() => setMode({ kind: 'welcome' })}
+      />
+    );
+  }
+
+  if (mode.kind === 'import-zip') {
+    return (
+      <ZipImportDialog
+        onImported={handleZipImported}
+        onCancel={() => setMode({ kind: 'welcome' })}
+      />
+    );
+  }
+
+  // mode.kind === 'workspace'
+  const { projectId, projectDir, db } = mode;
+  const snapshotsDir = join(projectDir, 'snapshots');
 
   return (
-    <div className="app-shell">
-      <header className="app-shell__header">
-        <div className="app-shell__brand">
-          <p className="app-shell__eyebrow">WorldBuilderX</p>
-          <h1>Project workspace</h1>
-        </div>
-        <div aria-label="global controls" className="app-shell__controls">
-          <StatusChip tone="success">M0 ready</StatusChip>
-          <Button tone="accent">New project</Button>
-        </div>
-      </header>
-
-      <aside aria-label="primary navigation" className="app-shell__nav">
-        <Tabs
-          activeId={activeView}
-          label="primary workspace navigation"
-          onSelect={(id) => setActiveView((shellViews.find((view) => view.id === id) ?? shellViews[0]).id)}
-          options={shellViews}
-        />
-      </aside>
-
-      <main className="app-shell__workspace">
-        <div className="app-shell__content">
-          <Panel>
-            <article className="app-shell__view" aria-labelledby="active-view-title">
-              <p className="app-shell__label">Placeholder</p>
-              <h2 id="active-view-title">{selectedView.title}</h2>
-              <p>{selectedView.description}</p>
-              <p className="app-shell__note">{selectedView.detail}</p>
-            </article>
-          </Panel>
-        </div>
-      </main>
-
-      <footer className="app-shell__status" role="status">
-        <StatusChip>renderer</StatusChip>
-        <span>React, Tauri, and M0 build surfaces are wired.</span>
-      </footer>
-    </div>
+    <DatabaseProvider value={db}>
+      <WorkspaceShell
+        projectId={projectId}
+        projectDir={projectDir}
+        snapshotsDir={snapshotsDir}
+        onProjectClose={closeProject}
+      />
+    </DatabaseProvider>
   );
 }
