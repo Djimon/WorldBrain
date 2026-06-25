@@ -64,16 +64,19 @@ export function GlobalEntityGraph({ onNavigate, database, initialConfig, onConfi
       .map((r) => ({ data: { id: r.id, source: r.source_id, target: r.target_id, label: r.relation_type } }));
 
     if (containerRef.current) {
-      try {
-        cy = Cytoscape({
-          container: containerRef.current,
-          elements: [...nodes, ...edges],
-          layout: { name: 'cose' },
-        });
-        cy.on('tap', 'node', (evt: { target: { id: () => string } }) => {
-          onNavigate(evt.target.id());
-        });
-      } catch { /* canvas not available in non-browser environments */ }
+      const canvasReady = (() => {
+        try { return !!document.createElement('canvas').getContext('2d'); } catch { return false; }
+      })();
+      if (!canvasReady) return;
+
+      cy = Cytoscape({
+        container: containerRef.current,
+        elements: [...nodes, ...edges],
+        layout: { name: 'cose' },
+      });
+      cy.on('tap', 'node', (evt: { target: { id: () => string } }) => {
+        onNavigate(evt.target.id());
+      });
     }
 
     onConfigChange?.({
