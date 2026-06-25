@@ -25,5 +25,10 @@
   },
   "bundle": {
     "active": false
+  },
+  "updater": {
+    "active": true,
+    "endpoints": ["https://releases.worldbuilderx.example.com/{{target}}/{{arch}}/{{current_version}}"],
+    "dialog": false
   }
 }
