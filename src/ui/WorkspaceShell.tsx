@@ -24,6 +24,7 @@ import { ConditionBuilder } from './ConditionBuilder';
 import type { VarDef } from './ConditionBuilder';
 import { PlayerScreen } from './PlayerScreen';
 import { SessionGridTracker } from './SessionGridTracker';
+import { SessionClock } from './SessionClock';
 import { SnapshotManager } from './SnapshotManager';
 import { UpdateNotification } from './UpdateNotification';
 import { MapViewer } from './MapViewer';
@@ -359,6 +360,17 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
             <ConditionBuilder variables={sessionVars} onChange={() => {}} />
             {/* #185: PlayerScreen in GM mode */}
             <PlayerScreen context={{ audience: 'gm' }} database={database} />
+            {/* #185: SessionClock — only rendered once a calendar is configured */}
+            {activeCalendar ? (
+              <SessionClock
+                sessionId={projectId}
+                calendar={activeCalendar}
+                worldTimeStart={0}
+                database={database}
+              />
+            ) : (
+              <p>Kein Kalender konfiguriert — SessionClock erst nach Kalender-Setup verfügbar.</p>
+            )}
           </div>
         );
       }
