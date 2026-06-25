@@ -11,23 +11,25 @@ import { applySavedViewsSchema } from '../../core_data/saved-views-schema';
 import { applySearchSchema } from '../../core_data/search-schema';
 import { applySessionSchema } from '../../core_data/session-schema';
 
-// DatabaseSync satisfies all schema function signatures at runtime.
-// The SQLInputValue vs unknown variance in @types/node prevents structural assignability,
-// so we cast once through unknown to apply schemas, then return as DatabaseLike.
 export function openProjectDb(dbPath: string): DatabaseLike {
   const raw = new DatabaseSync(dbPath);
   raw.exec('PRAGMA journal_mode=WAL;');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = raw as unknown as any;
-  applyCalendarSchema(db);
-  applyCardSchema(db);
-  applyEventSchema(db);
-  applyHandoutSchema(db);
-  applyMapSchema(db);
-  applyRelationsSchema(db);
-  applyRuleSchema(db);
-  applySavedViewsSchema(db);
-  applySearchSchema(db);
-  applySessionSchema(db);
-  return db as DatabaseLike;
+
+  // Schemas expecting InstanceType<typeof DatabaseSync> — pass raw directly.
+  applyCalendarSchema(raw);
+  applyCardSchema(raw);
+  applyEventSchema(raw);
+  applyHandoutSchema(raw);
+  applyMapSchema(raw);
+  applySavedViewsSchema(raw);
+  applySearchSchema(raw);
+  applySessionSchema(raw);
+
+  // RelationsDb uses run(...args: unknown[]) while DatabaseSync uses SQLInputValue[].
+  // The constraint difference is a @types/node variance artifact; runtime behaviour is
+  // identical — cast through unknown (not any) to satisfy the type checker.
+  applyRelationsSchema(raw as unknown as Parameters<typeof applyRelationsSchema>[0]);
+  applyRuleSchema(raw as unknown as DatabaseLike);
+
+  return raw as unknown as DatabaseLike;
 }
