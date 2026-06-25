@@ -5,6 +5,8 @@ import type { SnapshotEntry } from '../services/snapshot-service';
 interface SnapshotManagerProps {
   projectId: string;
   onRestored: () => void;
+  projectDir?: string;
+  snapshotsDir?: string;
 }
 
 type DialogState =
@@ -12,27 +14,27 @@ type DialogState =
   | { type: 'delete'; snapshot: SnapshotEntry }
   | null;
 
-export function SnapshotManager({ projectId, onRestored }: SnapshotManagerProps) {
-  const snapshots = listSnapshots({ projectId });
+export function SnapshotManager({ projectId, onRestored, projectDir, snapshotsDir }: SnapshotManagerProps) {
+  const snapshots = listSnapshots({ projectId, snapshotsDir });
   const [newName, setNewName] = useState('');
   const [dialog, setDialog] = useState<DialogState>(null);
 
   function handleCreate() {
     if (!newName.trim()) return;
-    createSnapshot({ projectId, name: newName.trim() });
+    createSnapshot({ projectId, name: newName.trim(), projectDir, snapshotsDir });
     setNewName('');
   }
 
   function handleConfirmRestore() {
     if (dialog?.type !== 'restore') return;
-    restoreSnapshot({ snapshotId: dialog.snapshot.id });
+    restoreSnapshot({ id: dialog.snapshot.id, projectDir, snapshotsDir });
     setDialog(null);
     onRestored();
   }
 
   function handleConfirmDelete() {
     if (dialog?.type !== 'delete') return;
-    deleteSnapshot(dialog.snapshot.id);
+    deleteSnapshot({ id: dialog.snapshot.id, snapshotsDir });
     setDialog(null);
   }
 

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { readAppConfig } from '../services/app-config-service';
 import type { ProjectEntry } from '../services/app-config-service';
 
@@ -9,7 +10,7 @@ interface WelcomeScreenProps {
 }
 
 export function WelcomeScreen({ configPath = 'app-config.json', onCreateProject, onImportZip, onOpenProject }: WelcomeScreenProps) {
-  const config = readAppConfig(configPath);
+  const [config] = useState(() => readAppConfig(configPath));
   const { last_opened_project_id, projects } = config;
 
   const isStale = last_opened_project_id != null && !projects.some((p) => p.id === last_opened_project_id);
