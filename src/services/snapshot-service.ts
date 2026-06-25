@@ -15,12 +15,13 @@ interface SnapshotMeta {
 }
 
 
-function copyDirSync(src: string, dest: string): void {
+function copyDirSync(src: string, dest: string, exclude?: string): void {
   mkdirSync(dest, { recursive: true });
   for (const dirent of readdirSync(src, { withFileTypes: true })) {
     const srcFull = join(src, dirent.name);
+    if (exclude && srcFull === exclude) continue;
     const destFull = join(dest, dirent.name);
-    if (dirent.isDirectory()) copyDirSync(srcFull, destFull);
+    if (dirent.isDirectory()) copyDirSync(srcFull, destFull, exclude);
     else copyFileSync(srcFull, destFull);
   }
 }
@@ -39,7 +40,7 @@ export function createSnapshot(opts: {
   if (snapshotsDir && projectDir) {
     const snapDir = join(snapshotsDir, id);
     mkdirSync(snapDir, { recursive: true });
-    copyDirSync(projectDir, snapDir);
+    copyDirSync(projectDir, snapDir, snapshotsDir);
     const meta: SnapshotMeta = { id, name: opts.name, createdAt: new Date().toISOString() };
     writeFileSync(join(snapDir, 'snapshot.json'), JSON.stringify(meta, null, 2), 'utf-8');
   }
