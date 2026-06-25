@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { listEvents } from '../services/event-service';
+import type { DatabaseLike } from '../services/entity-service';
 
 interface MonthDef { name: string; days: number }
 interface Calendar {
@@ -19,7 +20,7 @@ interface EventItem {
 
 interface Props {
   calendar: Calendar;
-  database: unknown;
+  database: DatabaseLike;
   onCreateEvent?: (day: number) => void;
 }
 
@@ -35,7 +36,7 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
   const startDay = monthStartDay(calendar, monthIndex % months.length);
   const endDay = startDay + currentMonth.days - 1;
 
-  const events = (listEvents(database as never, {}) as EventItem[]).filter(e => {
+  const events = (listEvents(database, {}) as EventItem[]).filter(e => {
     const evEnd = e.end_day ?? e.start_day;
     return e.start_day <= endDay && evEnd >= startDay;
   });

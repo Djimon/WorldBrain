@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { listEvents } from '../services/event-service';
+import type { DatabaseLike } from '../services/entity-service';
 import { formatAbsoluteDay } from '../services/calendar-service';
 
 interface EventItem {
@@ -12,7 +13,7 @@ interface EventItem {
 }
 
 interface Props {
-  database: unknown;
+  database: DatabaseLike;
   onEventSelect?: (eventId: string) => void;
 }
 
@@ -20,7 +21,7 @@ export function ChronicleView({ database, onEventSelect }: Props) {
   const [sortAsc, setSortAsc] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
 
-  const rawEvents = listEvents(database as never, {}) as EventItem[];
+  const rawEvents = listEvents(database, {}) as EventItem[];
   let events = typeFilter ? rawEvents.filter(e => e.type === typeFilter) : rawEvents;
   events = sortAsc ? events : [...events].reverse();
 

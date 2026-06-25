@@ -1,4 +1,5 @@
 import { listEvents } from '../services/event-service';
+import type { DatabaseLike } from '../services/entity-service';
 
 interface EventItem {
   id: string;
@@ -11,12 +12,12 @@ interface EventItem {
 interface Props {
   entityId: string;
   entityType: string;
-  database: unknown;
+  database: DatabaseLike;
 }
 
 export function EntityTimeline({ entityId, entityType, database }: Props) {
   const isLocation = entityType === 'Location';
-  const events = (listEvents(database as never, isLocation
+  const events = (listEvents(database, isLocation
     ? { locationId: entityId }
     : { participantId: entityId }
   ) as EventItem[]);
