@@ -21,6 +21,7 @@ import { DmScreen, DmScreenSelector } from './DmScreen';
 import { CaptureInbox } from './CaptureInbox';
 import { EncounterCounters } from './EncounterCounters';
 import { ConditionBuilder } from './ConditionBuilder';
+import type { VarDef } from './ConditionBuilder';
 import { PlayerScreen } from './PlayerScreen';
 import { SessionGridTracker } from './SessionGridTracker';
 import { SnapshotManager } from './SnapshotManager';
@@ -329,15 +330,20 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
         );
 
       case 'session': {
-        // listVars loaded but ConditionBuilder expects its internal VarDef type (not exported);
-        // pass empty array — component is functional, vars would be wired once VarDef is exported
-        void listVars(database, projectId);
+        const VALID_TYPES = new Set(['boolean', 'number', 'string', 'enum']);
+        const sessionVars: VarDef[] = listVars(database, projectId)
+          .filter((v) => VALID_TYPES.has(v.type))
+          .map((v) => ({
+            id: v.id,
+            label: v.label,
+            type: v.type as VarDef['type'],
+          }));
         return (
           <div className="workspace-area">
             <CaptureInbox sessionId={projectId} database={database} />
             <EncounterCounters sessionId={projectId} database={database} />
-            {/* #185: ConditionBuilder */}
-            <ConditionBuilder variables={[]} onChange={() => {}} />
+            {/* #185: ConditionBuilder with session variables from DB */}
+            <ConditionBuilder variables={sessionVars} onChange={() => {}} />
             {/* #185: PlayerScreen in GM mode */}
             <PlayerScreen context={{ audience: 'gm' }} database={database} />
           </div>

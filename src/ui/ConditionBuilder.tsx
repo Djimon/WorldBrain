@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-interface VarDef {
+export interface VarDef {
   id: string;
   label: string;
   type: 'boolean' | 'number' | 'string' | 'enum';
