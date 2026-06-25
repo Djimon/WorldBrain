@@ -1,0 +1,21 @@
+{
+  "id": "dnd5e_srd",
+  "label": "D&D 5e SRD",
+  "version": "1.0.0",
+  "license": "CC-BY-4.0",
+  "compatibility": {
+    "app_schema": ">=1.0.0"
+  },
+  "entity_types": ["spell", "monster", "condition", "class_feature"],
+  "relation_types": [],
+  "card_templates": [],
+  "views": [],
+  "rules": [],
+  "assets": [],
+  "mechanics": {
+    "attributes": ["str", "dex", "con", "int", "wis", "cha"],
+    "challenge_metric": "cr",
+    "distance_units": ["ft", "mile"]
+  },
+  "balance_rules": {}
+}
