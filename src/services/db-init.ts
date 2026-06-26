@@ -1,5 +1,5 @@
+import { DatabaseSync } from 'node:sqlite';
 import type { DatabaseLike } from './entity-service';
-import { TauriSqlAdapter } from './tauri-sql-adapter';
 import { applyCalendarSchema } from '../../core_data/calendar-schema';
 import { applyCardSchema } from '../../core_data/card-schema';
 import { applyEventSchema } from '../../core_data/event-schema';
@@ -11,26 +11,25 @@ import { applySavedViewsSchema } from '../../core_data/saved-views-schema';
 import { applySearchSchema } from '../../core_data/search-schema';
 import { applySessionSchema } from '../../core_data/session-schema';
 
-// Schema helpers were typed against DatabaseSync; TauriSqlAdapter satisfies the runtime
-// contract (prepare/run/all/get). Cast through unknown to bridge the type gap.
-type AnyDb = Parameters<typeof applyCalendarSchema>[0];
+export function openProjectDb(dbPath: string): DatabaseLike {
+  const raw = new DatabaseSync(dbPath);
+  raw.exec('PRAGMA journal_mode=WAL;');
 
-export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
-  const adapter = await TauriSqlAdapter.load(dbPath);
-  const db = adapter as unknown as AnyDb;
+  // Schemas expecting InstanceType<typeof DatabaseSync> — pass raw directly.
+  applyCalendarSchema(raw);
+  applyCardSchema(raw);
+  applyEventSchema(raw);
+  applyHandoutSchema(raw);
+  applyMapSchema(raw);
+  applySavedViewsSchema(raw);
+  applySearchSchema(raw);
+  applySessionSchema(raw);
 
-  await adapter.execute('PRAGMA journal_mode=WAL;');
+  // RelationsDb uses run(...args: unknown[]) while DatabaseSync uses SQLInputValue[].
+  // The constraint difference is a @types/node variance artifact; runtime behaviour is
+  // identical — cast through unknown (not any) to satisfy the type checker.
+  applyRelationsSchema(raw as unknown as Parameters<typeof applyRelationsSchema>[0]);
+  applyRuleSchema(raw as unknown as DatabaseLike);
 
-  applyCalendarSchema(db);
-  applyCardSchema(db as unknown as Parameters<typeof applyCardSchema>[0]);
-  applyEventSchema(db as unknown as Parameters<typeof applyEventSchema>[0]);
-  applyHandoutSchema(db as unknown as Parameters<typeof applyHandoutSchema>[0]);
-  applyMapSchema(db as unknown as Parameters<typeof applyMapSchema>[0]);
-  applySavedViewsSchema(db as unknown as Parameters<typeof applySavedViewsSchema>[0]);
-  applySearchSchema(db as unknown as Parameters<typeof applySearchSchema>[0]);
-  applySessionSchema(db as unknown as Parameters<typeof applySessionSchema>[0]);
-  applyRelationsSchema(db as unknown as Parameters<typeof applyRelationsSchema>[0]);
-  applyRuleSchema(adapter);
-
-  return adapter;
+  return raw as unknown as DatabaseLike;
 }

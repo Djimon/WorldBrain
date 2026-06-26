@@ -1,6 +1,5 @@
-// @tauri-apps/plugin-fs
-import { readdirSync, readFileSync } from './_fs';
-import { join } from './_path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 export interface PluginManifest {
   id: string;

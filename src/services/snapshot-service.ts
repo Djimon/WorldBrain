@@ -1,6 +1,5 @@
-// @tauri-apps/plugin-fs
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from './_fs';
-import { join } from './_path';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 export interface SnapshotEntry {
   id: string;

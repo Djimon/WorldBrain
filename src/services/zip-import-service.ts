@@ -1,6 +1,5 @@
-// @tauri-apps/plugin-fs
-import * as fs from './_fs';
-import { dirname, join } from './_path';
+import * as fs from 'node:fs';
+import { dirname, join } from 'node:path';
 import { readZip } from './_zip-utils';
 
 export interface ZipValidationResult {

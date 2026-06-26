@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DatabaseLike } from './services/entity-service';
@@ -19,14 +19,14 @@ const PROJECTS_BASE_DIR = 'projects';
 
 type AppMode =
   | { kind: 'welcome' }
-  | { kind: 'loading' }
   | { kind: 'new-project' }
   | { kind: 'import-zip' }
   | { kind: 'workspace'; projectId: string; projectDir: string; db: DatabaseLike };
 
-async function initWorkspace(projectEntry: ProjectEntry): Promise<AppMode & { kind: 'workspace' }> {
+function initWorkspace(projectEntry: ProjectEntry): AppMode & { kind: 'workspace' } {
   const dbPath = join(projectEntry.path, 'world.db');
-  const db = await openProjectDb(dbPath);
+  const db = openProjectDb(dbPath);
+  // #186: scan plugins after DB init so PluginManager and entity type list are populated
   scanPlugins(join(projectEntry.path, 'plugins'));
   return { kind: 'workspace', projectId: projectEntry.id, projectDir: projectEntry.path, db };
 }
@@ -45,35 +45,27 @@ function findProjectPath(projectId: string, baseDir: string): string | null {
   return null;
 }
 
-export function App() {
-  const [mode, setMode] = useState<AppMode>({ kind: 'loading' });
+function resolveInitialMode(): AppMode {
+  try {
+    const config = readAppConfig(APP_CONFIG_PATH);
+    if (config.last_opened_project_id) {
+      const entry = config.projects.find((p) => p.id === config.last_opened_project_id);
+      if (entry) return initWorkspace(entry);
+    }
+  } catch {
+    // AP-006 exception: config read at startup boundary — fall through to welcome
+  }
+  return { kind: 'welcome' };
+}
 
-  useEffect(() => {
-    let cancelled = false;
-    try {
-      const config = readAppConfig(APP_CONFIG_PATH);
-      if (config.last_opened_project_id) {
-        const entry = config.projects.find((p) => p.id === config.last_opened_project_id);
-        if (entry) {
-          initWorkspace(entry).then((workspace) => {
-            if (!cancelled) setMode(workspace);
-          }).catch(() => {
-            if (!cancelled) setMode({ kind: 'welcome' });
-          });
-          return () => { cancelled = true; };
-        }
-      }
-    } catch { /* AP-006 exception: config read at startup boundary */ }
-    setMode({ kind: 'welcome' });
-    return () => { cancelled = true; };
-  }, []);
+export function App() {
+  const [mode, setMode] = useState<AppMode>(() => resolveInitialMode());
 
   function openProject(projectId: string) {
     const config = readAppConfig(APP_CONFIG_PATH);
     const entry = config.projects.find((p) => p.id === projectId);
     if (!entry) return;
-    setMode({ kind: 'loading' });
-    initWorkspace(entry).then(setMode).catch(() => setMode({ kind: 'welcome' }));
+    setMode(initWorkspace(entry));
   }
 
   function closeProject() {
@@ -85,10 +77,8 @@ export function App() {
     if (!projectPath) return;
     const meta = JSON.parse(readFileSync(join(projectPath, 'project.json'), 'utf-8')) as { title: string };
     registerProject(APP_CONFIG_PATH, { id: projectId, title: meta.title, path: projectPath });
-    setMode({ kind: 'loading' });
-    openProjectDb(join(projectPath, 'world.db')).then((db) => {
-      setMode({ kind: 'workspace', projectId, projectDir: projectPath, db });
-    }).catch(() => setMode({ kind: 'welcome' }));
+    const db = openProjectDb(join(projectPath, 'world.db'));
+    setMode({ kind: 'workspace', projectId, projectDir: projectPath, db });
   }
 
   function handleZipImported(projectId: string) {
@@ -96,14 +86,8 @@ export function App() {
     if (!projectPath) return;
     const meta = JSON.parse(readFileSync(join(projectPath, 'project.json'), 'utf-8')) as { title: string };
     registerProject(APP_CONFIG_PATH, { id: projectId, title: meta.title, path: projectPath });
-    setMode({ kind: 'loading' });
-    openProjectDb(join(projectPath, 'world.db')).then((db) => {
-      setMode({ kind: 'workspace', projectId, projectDir: projectPath, db });
-    }).catch(() => setMode({ kind: 'welcome' }));
-  }
-
-  if (mode.kind === 'loading') {
-    return <div style={{ padding: '2rem' }}>Laden…</div>;
+    const db = openProjectDb(join(projectPath, 'world.db'));
+    setMode({ kind: 'workspace', projectId, projectDir: projectPath, db });
   }
 
   if (mode.kind === 'welcome') {
