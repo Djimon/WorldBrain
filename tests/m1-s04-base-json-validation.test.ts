@@ -19,17 +19,18 @@ async function validateBaseJsonLoad(input: BaseJsonValidationInput) {
   return module.validateBaseJsonLoad(input);
 }
 
-function validProjectData() {
+function validProjectData(extra: Record<string, unknown> = {}) {
   return {
     id: 'project-emberfall',
     title: 'Emberfall',
     schema_version: '1.0.0',
     created_at: '2026-06-23T00:00:00.000Z',
     updated_at: '2026-06-23T00:00:00.000Z',
+    ...extra,
   };
 }
 
-function validCharacterTypeData() {
+function validEntityTypeData(extra: Record<string, unknown> = {}) {
   return {
     id: 'entity-type-character',
     name: 'Character',
@@ -38,10 +39,11 @@ function validCharacterTypeData() {
     properties: {},
     created_at: '2026-06-23T00:00:00.000Z',
     updated_at: '2026-06-23T00:00:00.000Z',
+    ...extra,
   };
 }
 
-function validCharacterEntityData() {
+function validEntityData(extra: Record<string, unknown> = {}) {
   return {
     id: 'character-ada',
     type: 'Character',
@@ -49,35 +51,30 @@ function validCharacterEntityData() {
     summary: 'Archivist with a disputed inheritance.',
     aliases: [],
     properties: {},
-    body: {
-      format: 'portable_blocks_v1',
-      blocks: [],
-    },
+    body: { format: 'portable_blocks_v1', blocks: [] },
     visibility: 'public',
     created_at: '2026-06-23T00:00:00.000Z',
     updated_at: '2026-06-23T00:00:00.000Z',
+    ...extra,
   };
 }
 
-function validLoadInput(): BaseJsonValidationInput {
+function doc(path: string, data: unknown): BaseJsonDocument {
+  return { path, data };
+}
+
+function minimalInput(overrides: Partial<BaseJsonValidationInput> = {}): BaseJsonValidationInput {
   return {
-    project: {
-      path: 'project.json',
-      data: validProjectData(),
-    },
-    entityTypes: [
-      {
-        path: 'entity-types/character.json',
-        data: validCharacterTypeData(),
-      },
-    ],
-    entities: [
-      {
-        path: 'entities/Character/character-ada.json',
-        data: validCharacterEntityData(),
-      },
-    ],
+    project: doc('project.json', validProjectData()),
+    entityTypes: [doc('entity-types/character.json', validEntityTypeData())],
+    entities: [doc('entities/Character/character-ada.json', validEntityData())],
+    ...overrides,
   };
+}
+
+// Keep old name for backward compat with existing tests
+function validLoadInput(): BaseJsonValidationInput {
+  return minimalInput();
 }
 
 describe('M1-S04 base JSON validation policy', () => {

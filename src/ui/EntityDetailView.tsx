@@ -34,9 +34,7 @@ export function EntityDetailView({ entityId, database }: EntityDetailViewProps) 
   const [result, setResult] = useState<EffectiveResult | null>(null);
 
   useEffect(() => {
-    if (database) {
-      getEffectiveEntity({ database, entityId }).then(setResult);
-    }
+    getEffectiveEntity({ database: database as DatabaseLike, entityId }).then(setResult).catch(console.error);
   }, [database, entityId]);
 
   if (!result) {

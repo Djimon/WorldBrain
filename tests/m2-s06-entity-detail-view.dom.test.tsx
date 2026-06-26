@@ -1,13 +1,14 @@
 // M2-S06: EntityDetailView with extensible tab system.
 // See: https://github.com/Djimon/WorldBrain/issues/27
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EntityDetailView, registerEntityTab, clearEntityTabs } from '../src/ui/EntityDetailView';
 
 // Minimal database mock — entity data flows via prop/service, not live DB in component tests
 vi.mock('../src/services/entity-service', () => ({
-  getEffectiveEntity: vi.fn(({ entityId }: { entityId: string }) => {
+  listEntitiesByType: vi.fn(async () => []),
+  getEffectiveEntity: vi.fn(async ({ entityId }: { entityId: string }) => {
     if (entityId === 'character-ada') {
       return {
         found: true,
@@ -39,25 +40,27 @@ afterEach(() => {
 
 describe('M2-S06 EntityDetailView with tab system', () => {
   describe('default Overview tab', () => {
-    it('renders the Overview tab by default', () => {
+    it('renders the Overview tab by default', async () => {
       render(<EntityDetailView entityId="character-ada" />);
 
-      expect(screen.getByRole('tab', { name: /overview/i })).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole('tab', { name: /overview/i })).toBeInTheDocument());
     });
 
-    it('shows title and summary in the Overview tab', () => {
+    it('shows title and summary in the Overview tab', async () => {
       render(<EntityDetailView entityId="character-ada" />);
 
-      expect(screen.getByText('Ada Thorn')).toBeInTheDocument();
-      expect(screen.getByText('Archivist.')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Ada Thorn')).toBeInTheDocument();
+        expect(screen.getByText('Archivist.')).toBeInTheDocument();
+      });
     });
   });
 
   describe('error case: missing entity', () => {
-    it('shows a not-found message when the entity does not exist', () => {
+    it('shows a not-found message when the entity does not exist', async () => {
       render(<EntityDetailView entityId="does-not-exist" />);
 
-      expect(screen.getByRole('alert')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
     });
   });
 
@@ -71,11 +74,13 @@ describe('M2-S06 EntityDetailView with tab system', () => {
 
       render(<EntityDetailView entityId="character-ada" />);
 
-      expect(screen.getByRole('tab', { name: /overview/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /relations/i })).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole('tab', { name: /overview/i })).toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: /relations/i })).toBeInTheDocument();
+      });
     });
 
-    it('clicking a registered tab shows its content', () => {
+    it('clicking a registered tab shows its content', async () => {
       registerEntityTab({
         id: 'relations',
         label: 'Relations',
@@ -83,14 +88,16 @@ describe('M2-S06 EntityDetailView with tab system', () => {
       });
 
       render(<EntityDetailView entityId="character-ada" />);
+      await waitFor(() => screen.getByRole('tab', { name: /relations/i }));
       fireEvent.click(screen.getByRole('tab', { name: /relations/i }));
 
       expect(screen.getByText('Relations content')).toBeInTheDocument();
     });
 
-    it('registered tabs are external — no hard-coded tab list in the component', () => {
+    it('registered tabs are external — no hard-coded tab list in the component', async () => {
       render(<EntityDetailView entityId="character-ada" />);
 
+      await waitFor(() => screen.getByRole('tab', { name: /overview/i }));
       const tabs = screen.queryAllByRole('tab');
       // Without registrations, only the Overview tab should exist
       expect(tabs).toHaveLength(1);
@@ -102,13 +109,15 @@ describe('M2-S06 EntityDetailView with tab system', () => {
 
       render(<EntityDetailView entityId="character-ada" />);
 
-      expect(screen.getByRole('tab', { name: /tab a/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /tab b/i })).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole('tab', { name: /tab a/i })).toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: /tab b/i })).toBeInTheDocument();
+      });
     });
   });
 
   describe('standalone usage', () => {
-    it('renders without any master-detail layout context', () => {
+    it('renders without any master-detail layout context', async () => {
       expect(() => render(<EntityDetailView entityId="character-ada" />)).not.toThrow();
     });
   });
@@ -118,9 +127,6 @@ describe('M2-S06 EntityDetailView with tab system', () => {
 describe('issue-30 DatabaseLike type safety', () => {
   describe('entity-service exports', () => {
     it('exports DatabaseLike type (verified via named export at runtime)', async () => {
-      // DatabaseLike must be exported so callers can use it.
-      // In TS, types are erased at runtime — we verify the module loads
-      // cleanly and the service functions that depend on DatabaseLike work.
       const mod = await import('../src/services/entity-service');
       expect(typeof mod.getEffectiveEntity).toBe('function');
       expect(typeof mod.listEntitiesByType).toBe('function');
@@ -130,18 +136,12 @@ describe('issue-30 DatabaseLike type safety', () => {
   describe('EntityDetailView database prop', () => {
     it('accepts a well-shaped DatabaseLike object without casting to never', async () => {
       const { EntityDetailView } = await import('../src/ui/EntityDetailView');
-
-      // A minimal object shaped like DatabaseLike should be accepted without TS error.
-      // If the prop is typed as `unknown` with `as never` cast, the runtime cast still works
-      // but the type contract is broken. The test verifies no runtime throw.
-      const db = { entities: [], entityTypes: [], campaigns: [] };
-      expect(() => render(<EntityDetailView entityId="x" database={db as never} />)).not.toThrow();
+      const db = { execute: vi.fn().mockResolvedValue(undefined), select: vi.fn().mockResolvedValue([]) };
+      expect(() => render(<EntityDetailView entityId="x" database={db} />)).not.toThrow();
     });
 
     it('EntityDetailView database prop is typed — passing undefined does not throw at runtime', async () => {
       const { EntityDetailView } = await import('../src/ui/EntityDetailView');
-
-      // After the fix, database should be optional or DatabaseLike — not needed for mocked service
       expect(() => render(<EntityDetailView entityId="x" />)).not.toThrow();
     });
   });
@@ -149,14 +149,12 @@ describe('issue-30 DatabaseLike type safety', () => {
   describe('EntityMasterDetail database prop', () => {
     it('accepts a well-shaped DatabaseLike object without casting to never', async () => {
       const { EntityMasterDetail } = await import('../src/ui/EntityMasterDetail');
-
-      const db = { entities: [], entityTypes: [], campaigns: [] };
-      expect(() => render(<EntityMasterDetail initialType={null} database={db as never} />)).not.toThrow();
+      const db = { execute: vi.fn().mockResolvedValue(undefined), select: vi.fn().mockResolvedValue([]) };
+      expect(() => render(<EntityMasterDetail initialType={null} database={db} />)).not.toThrow();
     });
 
     it('EntityMasterDetail renders without database prop when service is mocked', async () => {
       const { EntityMasterDetail } = await import('../src/ui/EntityMasterDetail');
-
       expect(() => render(<EntityMasterDetail initialType={null} />)).not.toThrow();
     });
   });
@@ -185,69 +183,56 @@ describe('issue-30 DatabaseLike type safety', () => {
 // Bug #31
 describe('issue-31 tab registry isolation', () => {
   describe('per-instance tab scope', () => {
-    it('tabs registered before render appear in the rendered component', () => {
+    it('tabs registered before render appear in the rendered component', async () => {
       registerEntityTab({ id: 'notes', label: 'Notes', render: () => <div>Notes</div> });
 
-      render(<EntityDetailView entityId="entity-a" />);
+      render(<EntityDetailView entityId="character-ada" />);
 
-      expect(screen.getByRole('tab', { name: /notes/i })).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole('tab', { name: /notes/i })).toBeInTheDocument());
     });
 
-    it('clearEntityTabs removes all registered tabs', () => {
+    it('clearEntityTabs removes all registered tabs', async () => {
       registerEntityTab({ id: 'notes', label: 'Notes', render: () => <div>Notes</div> });
       clearEntityTabs();
 
-      render(<EntityDetailView entityId="entity-a" />);
+      render(<EntityDetailView entityId="character-ada" />);
 
+      await waitFor(() => screen.getByRole('tab', { name: /overview/i }));
       expect(screen.queryByRole('tab', { name: /notes/i })).not.toBeInTheDocument();
     });
 
-    it('two simultaneously mounted EntityDetailView instances do not share tab state', () => {
-      // Register a tab — in the buggy global-state impl, both instances would show it.
-      // In the fixed scoped impl, only the component tree that received the registration shows it.
-      // This test captures the isolation contract: if the registry is per-context, each
-      // instance's tab list must be independent of the other's.
+    it('two simultaneously mounted EntityDetailView instances do not share tab state', async () => {
       registerEntityTab({ id: 'shared-tab', label: 'Shared', render: () => <div>Shared</div> });
 
-      const { unmount: unmountFirst } = render(<EntityDetailView entityId="entity-a" />);
+      const { unmount: unmountFirst } = render(<EntityDetailView entityId="character-ada" />);
+      await waitFor(() => screen.getByRole('tab', { name: /shared/i }));
 
       clearEntityTabs();
 
-      // Second instance rendered AFTER clearEntityTabs — it should have NO extra tabs
-      render(<EntityDetailView entityId="entity-b" />);
+      render(<EntityDetailView entityId="character-ada" />);
+      await waitFor(() => screen.getAllByRole('tab', { name: /overview/i }));
 
-      // There are now two EntityDetailViews in the DOM.
-      // The second one (entity-b) must NOT show "Shared" because clearEntityTabs was called.
       const allTabs = screen.getAllByRole('tab');
       const sharedTabs = allTabs.filter((t) => /shared/i.test(t.textContent ?? ''));
 
-      // Only the first instance (entity-a) should still have the "Shared" tab.
-      // The second instance (entity-b) should not. This is the isolation invariant.
+      // Only the first instance should still have the "Shared" tab.
       expect(sharedTabs.length).toBeLessThanOrEqual(1);
 
       unmountFirst();
     });
 
-    it('tabs registered after mount do not retroactively affect already-mounted instances', () => {
-      // Without React Context, module-level push() updates the array in-place,
-      // but since React doesn't re-render on external array mutations, this is only
-      // detectable if the component re-reads the array on re-render.
-      // The correct fix (Context or local state) means the component re-renders reactively.
-      render(<EntityDetailView entityId="entity-a" />);
+    it('tabs registered after mount do not retroactively affect already-mounted instances', async () => {
+      render(<EntityDetailView entityId="character-ada" />);
+      await waitFor(() => screen.getByRole('tab', { name: /overview/i }));
 
       // Initially only Overview tab
       expect(screen.getAllByRole('tab')).toHaveLength(1);
 
-      // This test documents the requirement: the fix must make tab registration reactive
-      // (i.e., registering after mount should cause a re-render showing the new tab).
-      // With global mutable state, this won't happen without a re-render trigger.
-      // With Context or useState, it can be made reactive if desired.
-      // Minimum contract: clearEntityTabs + re-render shows no tabs.
       clearEntityTabs();
-      render(<EntityDetailView entityId="entity-a" />);
+      render(<EntityDetailView entityId="character-ada" />);
+      await waitFor(() => screen.getAllByRole('tab', { name: /overview/i }));
 
       const tabs = screen.getAllByRole('tab');
-      // All rendered Overview tabs (one per instance) — no "registered" tabs
       expect(tabs.every((t) => /overview/i.test(t.textContent ?? ''))).toBe(true);
     });
   });
@@ -258,15 +243,17 @@ describe('issue-31 tab registry isolation', () => {
       expect(() => { clearEntityTabs(); clearEntityTabs(); }).not.toThrow();
     });
 
-    it('registerEntityTab after clearEntityTabs works correctly', () => {
+    it('registerEntityTab after clearEntityTabs works correctly', async () => {
       registerEntityTab({ id: 'tab-old', label: 'Old', render: () => <div>Old</div> });
       clearEntityTabs();
       registerEntityTab({ id: 'tab-new', label: 'New', render: () => <div>New</div> });
 
-      render(<EntityDetailView entityId="entity-a" />);
+      render(<EntityDetailView entityId="character-ada" />);
 
-      expect(screen.queryByRole('tab', { name: /old/i })).not.toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /new/i })).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByRole('tab', { name: /old/i })).not.toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: /new/i })).toBeInTheDocument();
+      });
     });
   });
 });

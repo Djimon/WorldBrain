@@ -22,9 +22,7 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
   const [entities, setEntities] = useState<EntityListItem[]>([]);
 
   useEffect(() => {
-    if (database) {
-      listEntitiesByType({ database, type: initialType }).then(setEntities);
-    }
+    listEntitiesByType({ database: database as DatabaseLike, type: initialType }).then(setEntities).catch(console.error);
   }, [database, initialType]);
 
   function handleSelect(id: string) {

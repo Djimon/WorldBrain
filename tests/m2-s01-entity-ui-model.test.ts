@@ -6,6 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { DatabaseLike } from '../src/services/entity-service';
 
 const runtimeSchemaSql = readFileSync(new URL('../src/data/runtime/schema.sql', import.meta.url), 'utf8');
 const openDatabases: DatabaseSync[] = [];
@@ -15,11 +16,24 @@ async function getEntityService() {
   return module;
 }
 
+// Unavoidable scaffolding: wraps DatabaseSync as async DatabaseLike for tests.
+function makeAsyncDb(db: DatabaseSync): DatabaseLike {
+  return {
+    execute: (sql: string, args: unknown[] = []) => {
+      db.prepare(sql).run(...args);
+      return Promise.resolve();
+    },
+    select: <T>(sql: string, args: unknown[] = []): Promise<T[]> => {
+      return Promise.resolve(db.prepare(sql).all(...args) as T[]);
+    },
+  };
+}
+
 function createDatabase() {
   const db = new DatabaseSync(':memory:');
   db.exec(runtimeSchemaSql);
   openDatabases.push(db);
-  return db;
+  return { db, asyncDb: makeAsyncDb(db) };
 }
 
 afterEach(() => {
@@ -70,12 +84,12 @@ function insertSecondEntity(db: DatabaseSync) {
 describe('M2-S01 entity UI model and service adapter', () => {
   describe('getEffectiveEntity', () => {
     it('maps SQLite DTO to UI-ready Entity model with parsed fields', async () => {
-      const db = createDatabase();
+      const { db, asyncDb } = createDatabase();
       insertEntityType(db);
       insertBaseEntity(db);
       const { getEffectiveEntity } = await getEntityService();
 
-      const result = getEffectiveEntity({ database: db, entityId: 'character-ada' });
+      const result = await getEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
       expect(result.found).toBe(true);
       if (!result.found) return;
@@ -92,10 +106,10 @@ describe('M2-S01 entity UI model and service adapter', () => {
     });
 
     it('returns found: false with reason when entity does not exist', async () => {
-      const db = createDatabase();
+      const { asyncDb } = createDatabase();
       const { getEffectiveEntity } = await getEntityService();
 
-      const result = getEffectiveEntity({ database: db, entityId: 'does-not-exist' });
+      const result = await getEffectiveEntity({ database: asyncDb, entityId: 'does-not-exist' });
 
       expect(result.found).toBe(false);
       if (result.found) return;
@@ -104,7 +118,7 @@ describe('M2-S01 entity UI model and service adapter', () => {
     });
 
     it('exposes overriddenFields so UI can highlight campaign-patched values', async () => {
-      const db = createDatabase();
+      const { db, asyncDb } = createDatabase();
       insertEntityType(db);
       insertBaseEntity(db);
       db.prepare(
@@ -112,7 +126,7 @@ describe('M2-S01 entity UI model and service adapter', () => {
       ).run('character-ada', JSON.stringify({ title: 'Lady Thorn' }), '2026-06-23T00:00:00.000Z', '2026-06-23T00:00:00.000Z');
       const { getEffectiveEntity } = await getEntityService();
 
-      const result = getEffectiveEntity({ database: db, entityId: 'character-ada' });
+      const result = await getEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
       expect(result.found).toBe(true);
       if (!result.found) return;
@@ -123,13 +137,13 @@ describe('M2-S01 entity UI model and service adapter', () => {
 
   describe('listEntitiesByType', () => {
     it('returns all entities of the given type, sorted by title', async () => {
-      const db = createDatabase();
+      const { db, asyncDb } = createDatabase();
       insertEntityType(db);
       insertBaseEntity(db);
       insertSecondEntity(db);
       const { listEntitiesByType } = await getEntityService();
 
-      const list = listEntitiesByType({ database: db, type: 'Character' });
+      const list = await listEntitiesByType({ database: asyncDb, type: 'Character' });
 
       expect(list).toHaveLength(2);
       expect(list[0].id).toBe('character-ada');
@@ -138,21 +152,21 @@ describe('M2-S01 entity UI model and service adapter', () => {
     });
 
     it('returns an empty list when no entities of that type exist', async () => {
-      const db = createDatabase();
+      const { asyncDb } = createDatabase();
       const { listEntitiesByType } = await getEntityService();
 
-      const list = listEntitiesByType({ database: db, type: 'Location' });
+      const list = await listEntitiesByType({ database: asyncDb, type: 'Location' });
 
       expect(list).toEqual([]);
     });
 
     it('each list entry contains id, type, title, and summary', async () => {
-      const db = createDatabase();
+      const { db, asyncDb } = createDatabase();
       insertEntityType(db);
       insertBaseEntity(db);
       const { listEntitiesByType } = await getEntityService();
 
-      const list = listEntitiesByType({ database: db, type: 'Character' });
+      const list = await listEntitiesByType({ database: asyncDb, type: 'Character' });
 
       expect(list[0]).toMatchObject({
         id: 'character-ada',
@@ -165,12 +179,12 @@ describe('M2-S01 entity UI model and service adapter', () => {
 
   describe('UI model shape — separate from SQLite DTO', () => {
     it('entity UI model has aliases as string array, not JSON string', async () => {
-      const db = createDatabase();
+      const { db, asyncDb } = createDatabase();
       insertEntityType(db);
       insertBaseEntity(db);
       const { getEffectiveEntity } = await getEntityService();
 
-      const result = getEffectiveEntity({ database: db, entityId: 'character-ada' });
+      const result = await getEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
       expect(result.found).toBe(true);
       if (!result.found) return;
@@ -179,12 +193,12 @@ describe('M2-S01 entity UI model and service adapter', () => {
     });
 
     it('entity UI model has properties as object, not JSON string', async () => {
-      const db = createDatabase();
+      const { db, asyncDb } = createDatabase();
       insertEntityType(db);
       insertBaseEntity(db);
       const { getEffectiveEntity } = await getEntityService();
 
-      const result = getEffectiveEntity({ database: db, entityId: 'character-ada' });
+      const result = await getEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
       expect(result.found).toBe(true);
       if (!result.found) return;

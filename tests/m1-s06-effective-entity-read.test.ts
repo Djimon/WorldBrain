@@ -5,9 +5,23 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { DatabaseLike } from '../src/services/entity-service';
+
+// Unavoidable scaffolding: wraps DatabaseSync as async DatabaseLike.
+function makeAsyncDb(db: DatabaseSync): DatabaseLike {
+  return {
+    execute: (sql: string, args: unknown[] = []) => {
+      db.prepare(sql).run(...args);
+      return Promise.resolve();
+    },
+    select: <T>(sql: string, args: unknown[] = []): Promise<T[]> => {
+      return Promise.resolve(db.prepare(sql).all(...args) as T[]);
+    },
+  };
+}
 
 type ReadEffectiveEntityInput = {
-  database: DatabaseSync;
+  database: DatabaseLike;
   entityId: string;
   projectRoot?: string;
 };
@@ -21,11 +35,15 @@ async function readEffectiveEntity(input: ReadEffectiveEntityInput) {
   return module.readEffectiveEntity(input);
 }
 
-function createDatabase() {
+function createRawDb() {
   const database = new DatabaseSync(':memory:');
   database.exec(runtimeSchemaSql);
-
   return database;
+}
+
+function createDatabase() {
+  const raw = createRawDb();
+  return { db: raw, asyncDb: makeAsyncDb(raw) };
 }
 
 function baseEntityRecord(overrides: Record<string, unknown> = {}) {
@@ -116,13 +134,18 @@ afterEach(() => {
   }
 });
 
+// Shorthand: insert a campaign override for the default test entity.
+function insertOverride(db: DatabaseSync, patch: Record<string, unknown>) {
+  insertCampaignOverride(db, 'character-ada', patch);
+}
+
 describe('M1-S06 effective entity read model', () => {
   it('reads a base entity by ID from SQLite without campaign overrides', async () => {
-    const database = createDatabase();
-    insertBaseEntity(database);
+    const { db, asyncDb } = createDatabase();
+    insertBaseEntity(db);
 
     try {
-      const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+      const result = await readEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
       expect(result).toEqual({
         found: true,
@@ -133,64 +156,57 @@ describe('M1-S06 effective entity read model', () => {
         orphanedOverrideCount: 0,
       });
     } finally {
-      database.close();
+      db.close();
     }
   });
 
   it('applies supported campaign overrides while keeping the base table row unchanged', async () => {
-    const database = createDatabase();
-    insertBaseEntity(database);
-    const baseRowBeforeOverride = readBaseRow(database, 'character-ada');
-    insertCampaignOverride(database, 'character-ada', {
+    const { db, asyncDb } = createDatabase();
+    insertBaseEntity(db);
+    const baseRowBeforeOverride = readBaseRow(db, 'character-ada');
+    insertCampaignOverride(db, 'character-ada', {
       summary: 'Known to the party as the Red Notary.',
-      properties: {
-        status: 'revealed',
-      },
+      properties: { status: 'revealed' },
     });
 
     try {
-      const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+      const result = await readEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
       expect(result.found).toBe(true);
       expect(result.entity).toEqual({
         ...baseEntityRecord(),
         summary: 'Known to the party as the Red Notary.',
-        properties: {
-          role: 'archivist',
-          status: 'revealed',
-        },
+        properties: { role: 'archivist', status: 'revealed' },
       });
       expect(result.baseEntity).toEqual(baseEntityRecord());
       expect(result.overriddenFields).toEqual(['properties.status', 'summary']);
-      expect(readBaseRow(database, 'character-ada')).toEqual(baseRowBeforeOverride);
+      expect(readBaseRow(db, 'character-ada')).toEqual(baseRowBeforeOverride);
     } finally {
-      database.close();
+      db.close();
     }
   });
 
   it('does not modify base JSON files during effective read behavior', async () => {
-    const database = createDatabase();
+    const { db, asyncDb } = createDatabase();
     const { projectRoot, entityPath } = createSourceProjectFile();
     const sourceBeforeRead = readFileSync(entityPath, 'utf8');
-    insertBaseEntity(database);
-    insertCampaignOverride(database, 'character-ada', {
-      title: 'Campaign-only alias',
-    });
+    insertBaseEntity(db);
+    insertCampaignOverride(db, 'character-ada', { title: 'Campaign-only alias' });
 
     try {
-      await readEffectiveEntity({ database, entityId: 'character-ada', projectRoot });
+      await readEffectiveEntity({ database: asyncDb, entityId: 'character-ada', projectRoot });
 
       expect(readFileSync(entityPath, 'utf8')).toBe(sourceBeforeRead);
     } finally {
-      database.close();
+      db.close();
     }
   });
 
   it('returns an explicit missing-base result when no base entity exists for the requested ID', async () => {
-    const database = createDatabase();
+    const { db, asyncDb } = createDatabase();
 
     try {
-      const result = await readEffectiveEntity({ database, entityId: 'missing-entity' });
+      const result = await readEffectiveEntity({ database: asyncDb, entityId: 'missing-entity' });
 
       expect(result).toEqual({
         found: false,
@@ -199,18 +215,18 @@ describe('M1-S06 effective entity read model', () => {
         orphanedOverrideCount: 0,
       });
     } finally {
-      database.close();
+      db.close();
     }
   });
 
   it('reports orphaned campaign overrides without synthesizing an entity', async () => {
-    const database = createDatabase();
-    insertCampaignOverride(database, 'orphaned-entity', {
+    const { db, asyncDb } = createDatabase();
+    insertCampaignOverride(db, 'orphaned-entity', {
       summary: 'This override has no imported base row.',
     });
 
     try {
-      const result = await readEffectiveEntity({ database, entityId: 'orphaned-entity' });
+      const result = await readEffectiveEntity({ database: asyncDb, entityId: 'orphaned-entity' });
 
       expect(result).toEqual({
         found: false,
@@ -219,7 +235,7 @@ describe('M1-S06 effective entity read model', () => {
         orphanedOverrideCount: 1,
       });
     } finally {
-      database.close();
+      db.close();
     }
   });
 });
@@ -227,116 +243,107 @@ describe('M1-S06 effective entity read model', () => {
 // Bug #20
 describe('issue #20: overriddenFields accuracy', () => {
   it('does not include "body" in overriddenFields when patch contains body but body is not an applied field', async () => {
-    const database = createDatabase();
-    insertBaseEntity(database);
-    insertOverride(database, { body: { format: 'portable_blocks_v1', blocks: [{ type: 'paragraph' }] } });
+    const { db, asyncDb } = createDatabase();
+    insertBaseEntity(db);
+    insertOverride(db, { body: { format: 'portable_blocks_v1', blocks: [{ type: 'paragraph' }] } });
 
-    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+    const result = await readEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
     expect(result.found).toBe(true);
     if (!result.found) return;
-
     expect(result.overriddenFields).not.toContain('body');
   });
 
   it('only lists fields that actually changed the effective entity value', async () => {
-    const database = createDatabase();
-    insertBaseEntity(database);
-    insertOverride(database, {
+    const { db, asyncDb } = createDatabase();
+    insertBaseEntity(db);
+    insertOverride(db, {
       title: 'Ada Thorn (Renamed)',
       body: { format: 'portable_blocks_v1', blocks: [] },
       unknownField: 'ignored',
     });
 
-    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+    const result = await readEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
     expect(result.found).toBe(true);
     if (!result.found) return;
-
     expect(result.overriddenFields).toContain('title');
     expect(result.overriddenFields).not.toContain('body');
     expect(result.overriddenFields).not.toContain('unknownField');
   });
 
   it('does not list a field as overridden when the patch value equals the base value', async () => {
-    const database = createDatabase();
-    insertBaseEntity(database);
-    // Patch sets title to the same value as base — not a real override
-    insertOverride(database, { title: 'Ada Thorn' });
+    const { db, asyncDb } = createDatabase();
+    insertBaseEntity(db);
+    insertOverride(db, { title: 'Ada Thorn' });
 
-    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+    const result = await readEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
     expect(result.found).toBe(true);
     if (!result.found) return;
-
     expect(result.overriddenFields).not.toContain('title');
   });
 
   it('includes "title" in overriddenFields when patch changes the title', async () => {
-    const database = createDatabase();
-    insertBaseEntity(database);
-    insertOverride(database, { title: 'Lady Thorn' });
+    const { db, asyncDb } = createDatabase();
+    insertBaseEntity(db);
+    insertOverride(db, { title: 'Lady Thorn' });
 
-    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+    const result = await readEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
     expect(result.found).toBe(true);
     if (!result.found) return;
-
     expect(result.overriddenFields).toContain('title');
     expect(result.entity.title).toBe('Lady Thorn');
   });
 
   it('includes "summary" in overriddenFields when patch changes the summary', async () => {
-    const database = createDatabase();
-    insertBaseEntity(database);
-    insertOverride(database, { summary: 'Now a fugitive.' });
+    const { db, asyncDb } = createDatabase();
+    insertBaseEntity(db);
+    insertOverride(db, { summary: 'Now a fugitive.' });
 
-    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+    const result = await readEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
     expect(result.found).toBe(true);
     if (!result.found) return;
-
     expect(result.overriddenFields).toContain('summary');
     expect(result.overriddenFields).not.toContain('body');
   });
 
   it('includes "visibility" in overriddenFields when patch changes visibility', async () => {
-    const database = createDatabase();
-    insertBaseEntity(database);
-    insertOverride(database, { visibility: 'hidden' });
+    const { db, asyncDb } = createDatabase();
+    insertBaseEntity(db);
+    insertOverride(db, { visibility: 'hidden' });
 
-    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+    const result = await readEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
     expect(result.found).toBe(true);
     if (!result.found) return;
-
     expect(result.overriddenFields).toContain('visibility');
   });
 
   it('includes "properties.role" in overriddenFields when a property key changes', async () => {
-    const database = createDatabase();
-    insertBaseEntity(database);
-    insertOverride(database, { properties: { role: 'fugitive' } });
+    const { db, asyncDb } = createDatabase();
+    insertBaseEntity(db);
+    insertOverride(db, { properties: { role: 'fugitive' } });
 
-    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+    const result = await readEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
     expect(result.found).toBe(true);
     if (!result.found) return;
-
     expect(result.overriddenFields).toContain('properties.role');
     expect(result.overriddenFields).not.toContain('body');
   });
 
   it('returns an empty overriddenFields array when patch contains only unapplied fields', async () => {
-    const database = createDatabase();
-    insertBaseEntity(database);
-    insertOverride(database, { body: { format: 'portable_blocks_v1', blocks: [] }, unknownField: 'x' });
+    const { db, asyncDb } = createDatabase();
+    insertBaseEntity(db);
+    insertOverride(db, { body: { format: 'portable_blocks_v1', blocks: [] }, unknownField: 'x' });
 
-    const result = await readEffectiveEntity({ database, entityId: 'character-ada' });
+    const result = await readEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });
 
     expect(result.found).toBe(true);
     if (!result.found) return;
-
     expect(result.overriddenFields).toEqual([]);
   });
 });

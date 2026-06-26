@@ -86,6 +86,15 @@ function selectRows(database: DatabaseSync, tableName: string) {
   return database.prepare(`SELECT * FROM ${tableName} ORDER BY id`).all();
 }
 
+async function writeValidProjectBase(projectRoot: string) {
+  await writeValidProject(projectRoot);
+}
+
+async function writeRaw(filePath: string, content: string) {
+  await mkdir(new URL('.', `file:///${filePath.replaceAll('\\', '/')}`), { recursive: true });
+  writeFileSync(filePath, content, 'utf8');
+}
+
 afterEach(() => {
   while (temporaryRoots.length > 0) {
     const projectRoot = temporaryRoots.pop();

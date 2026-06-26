@@ -11,31 +11,31 @@ import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/services/search-service', () => ({
-  searchEntities: vi.fn(() => []),
-  getSearchFacets: vi.fn(() => ({})),
+  searchEntities: vi.fn(async () => []),
+  getSearchFacets: vi.fn(async () => ({})),
 }));
 vi.mock('../src/services/entity-service', () => ({
-  listEntitiesByType: vi.fn(() => []),
-  getEffectiveEntity: vi.fn(() => null),
+  listEntitiesByType: vi.fn(async () => []),
+  getEffectiveEntity: vi.fn(async () => null),
 }));
 vi.mock('../src/services/relation-service', () => ({
-  listRelations: vi.fn(() => []),
-  getAllRelations: vi.fn(() => []),
+  listRelations: vi.fn(async () => []),
+  getAllRelations: vi.fn(async () => []),
 }));
 vi.mock('../src/services/capture-service', () => ({
-  listCaptures: vi.fn(() => []),
-  createCapture: vi.fn(),
-  updateCaptureStatus: vi.fn(),
+  listCaptures: vi.fn(async () => []),
+  createCapture: vi.fn(async () => undefined),
+  updateCaptureStatus: vi.fn(async () => undefined),
 }));
 vi.mock('../src/services/visibility-service', () => ({
   resolveVisibility: vi.fn(() => 'visible'),
 }));
 
-// Minimal object satisfying DatabaseLike (exec + prepare with run/all/get)
+// Minimal object satisfying DatabaseLike (async execute + select)
 function makeMockDb() {
   return {
-    exec: vi.fn(),
-    prepare: vi.fn(() => ({ run: vi.fn(), all: vi.fn(() => []), get: vi.fn(() => null) })),
+    execute: vi.fn().mockResolvedValue(undefined),
+    select: vi.fn().mockResolvedValue([]),
   };
 }
 
