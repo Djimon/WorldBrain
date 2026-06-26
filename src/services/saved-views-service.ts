@@ -14,22 +14,31 @@ export interface SaveViewParams {
   config: unknown;
 }
 
-export function saveView(db: DatabaseLike, params: SaveViewParams): { id: string } {
+export async function saveView(db: DatabaseLike, params: SaveViewParams): Promise<{ id: string }> {
   const id = 'view_' + crypto.randomUUID();
   const now = new Date().toISOString();
-  db.prepare(
+  await db.execute(
     `INSERT OR REPLACE INTO saved_views (id, name, view_type, config_json, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(id, params.name, params.view_type, JSON.stringify(params.config), now, now);
+    [id, params.name, params.view_type, JSON.stringify(params.config), now, now],
+  );
   return { id };
 }
 
-export function listViews(db: DatabaseLike): SavedViewRow[] {
-  return db.prepare(`SELECT id, name, view_type, config_json, updated_at FROM saved_views ORDER BY updated_at DESC`).all() as SavedViewRow[];
+export async function listViews(db: DatabaseLike): Promise<SavedViewRow[]> {
+  return db.select<SavedViewRow>(
+    `SELECT id, name, view_type, config_json, updated_at FROM saved_views ORDER BY updated_at DESC`,
+  );
 }
 
-export function loadView(db: DatabaseLike, id: string): { id: string; name: string; view_type: string; config: unknown; updated_at: string } | null {
-  const row = db.prepare(`SELECT id, name, view_type, config_json, updated_at FROM saved_views WHERE id = ?`).get(id) as SavedViewRow | undefined;
+export const listSavedViews = listViews;
+
+export async function loadView(db: DatabaseLike, id: string): Promise<{ id: string; name: string; view_type: string; config: unknown; updated_at: string } | null> {
+  const rows = await db.select<SavedViewRow>(
+    `SELECT id, name, view_type, config_json, updated_at FROM saved_views WHERE id = ?`,
+    [id],
+  );
+  const row = rows[0];
   if (!row) return null;
   return {
     id: row.id,
@@ -40,11 +49,11 @@ export function loadView(db: DatabaseLike, id: string): { id: string; name: stri
   };
 }
 
-export function renameView(db: DatabaseLike, id: string, name: string): void {
+export async function renameView(db: DatabaseLike, id: string, name: string): Promise<void> {
   const now = new Date().toISOString();
-  db.prepare(`UPDATE saved_views SET name = ?, updated_at = ? WHERE id = ?`).run(name, now, id);
+  await db.execute(`UPDATE saved_views SET name = ?, updated_at = ? WHERE id = ?`, [name, now, id]);
 }
 
-export function deleteView(db: DatabaseLike, id: string): void {
-  db.prepare(`DELETE FROM saved_views WHERE id = ?`).run(id);
+export async function deleteView(db: DatabaseLike, id: string): Promise<void> {
+  await db.execute(`DELETE FROM saved_views WHERE id = ?`, [id]);
 }

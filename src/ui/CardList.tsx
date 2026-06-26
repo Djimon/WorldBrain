@@ -15,8 +15,8 @@ export function CardList({ database }: Props) {
   const [entities, setEntities] = useState<Array<{ id: string; type: string; title: string }>>([]);
 
   useEffect(() => {
-    listCardInstances(database).then(setInstances);
-    listCardTemplates(database).then(setTemplates);
+    listCardInstances(database).then(setInstances).catch(console.error);
+    listCardTemplates(database).then(setTemplates).catch(console.error);
     listEntitiesByType({ database, type: null }).then(rows =>
       setEntities(rows as Array<{ id: string; type: string; title: string }>)
     );

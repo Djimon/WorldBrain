@@ -32,11 +32,11 @@ export function CaptureInbox({ sessionId, database }: Props) {
   const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
-    listCaptures(database, sessionId).then(rows => setCaptures(rows as CaptureRow[]));
+    listCaptures(database, sessionId).then(rows => setCaptures(rows as CaptureRow[])).catch(console.error);
   }, [database, sessionId]);
 
   function refresh() {
-    listCaptures(database, sessionId).then(rows => setCaptures(rows as CaptureRow[]));
+    listCaptures(database, sessionId).then(rows => setCaptures(rows as CaptureRow[])).catch(console.error);
   }
 
   async function handleSubmit() {

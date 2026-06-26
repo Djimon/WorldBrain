@@ -67,3 +67,20 @@ Implementation Agent: any instance is a blocker, not a style note.
 **Exceptions:** `JSON.parse` of external/DB data (return safe fallback) · filesystem I/O at load boundaries (return structured error) · FTS5→LIKE fallback by design (comment required).
 
 **AC fragment:** "No `try/catch` around DB operations; errors propagate to the caller."
+
+---
+
+## AP-007 — Infinite test-fix loop (recurring since M6-S06)
+
+**Pattern:** Test fails → fix → still fails → agent reasons 20+ lines about structural impossibility → tries another approach → repeat. The agent never invokes the stop rule.
+
+**Why it breaks:** Produces convoluted production code shaped around broken tests. Wastes context. The Test Conflict Stop Rule in AGENTS.md exists precisely for this.
+
+**Rule:** After ONE fix attempt that still fails, stop and classify:
+1. Test wrong (impossible DOM expectation, selector mismatch) → `BLOCKED`
+2. Requirement ambiguous → `NEEDS_DECISION`
+3. Implementation wrong → fix it (only branch allowing a second attempt)
+
+"I almost have it" is not grounds to continue. Reasoning for more than 3 lines about why a test is structurally unpassable = you already know the answer is `BLOCKED`.
+
+**AC fragment to copy:** "If test fails after one fix attempt, classify as BLOCKED/NEEDS_DECISION before attempting further changes."

@@ -18,8 +18,8 @@ export function CardCreationFlow({ database, onComplete }: Props) {
   useEffect(() => {
     listEntitiesByType({ database, type: null }).then(rows =>
       setEntities(rows as Array<{ id: string; type: string; title: string; summary: string }>)
-    );
-    listCardTemplates(database).then(setAllTemplates);
+    ).catch(console.error);
+    listCardTemplates(database).then(setAllTemplates).catch(console.error);
   }, [database]);
 
   const filteredTemplates = selectedEntity

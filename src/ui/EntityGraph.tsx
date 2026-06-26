@@ -102,7 +102,7 @@ export function EntityGraph({ entityId, database, onNavigate }: Props) {
   const db = database ?? ({} as DatabaseLike);
 
   useEffect(() => {
-    fetchRelationsForDepth(db, entityId, depth, showInactive).then(setRelations);
+    fetchRelationsForDepth(db, entityId, depth, showInactive).then(setRelations).catch(console.error);
   }, [entityId, depth, showInactive, database]);
 
   const graphData = buildGraphData(entityId, relations, {

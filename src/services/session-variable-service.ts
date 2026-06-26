@@ -23,18 +23,20 @@ function parseVal(json: string | null | undefined): unknown {
   try { return JSON.parse(String(json)); } catch { return null; }
 }
 
-export function setVar(db: DatabaseLike, sessionId: string, params: VarParams): void {
-  const prev = getVar(db, sessionId, params.id);
+export async function setVar(db: DatabaseLike, sessionId: string, params: VarParams): Promise<void> {
+  const prev = await getVar(db, sessionId, params.id);
 
-  const existing = db
-    .prepare(`SELECT default_value FROM session_variables WHERE session_id = ? AND id = ?`)
-    .get(sessionId, params.id) as { default_value: string } | undefined;
+  const existingRows = await db.select<{ default_value: string }>(
+    `SELECT default_value FROM session_variables WHERE session_id = ? AND id = ?`,
+    [sessionId, params.id],
+  );
+  const existing = existingRows[0];
 
   const defaultJson = params.default_value !== undefined
     ? JSON.stringify(params.default_value)
     : existing?.default_value ?? 'null';
 
-  db.prepare(`
+  await db.execute(`
     INSERT INTO session_variables (id, session_id, type, label, value, default_value, allow_global_override)
     VALUES (?, ?, ?, ?, ?, ?, 0)
     ON CONFLICT(session_id, id) DO UPDATE SET
@@ -42,24 +44,21 @@ export function setVar(db: DatabaseLike, sessionId: string, params: VarParams): 
       label = excluded.label,
       value = excluded.value,
       default_value = excluded.default_value
-  `).run(params.id, sessionId, params.type, params.label, JSON.stringify(params.value), defaultJson);
+  `, [params.id, sessionId, params.type, params.label, JSON.stringify(params.value), defaultJson]);
 
   const logId = 'log_' + crypto.randomUUID();
-  db.prepare(`
+  await db.execute(`
     INSERT INTO session_log (id, session_id, action_type, payload_json, created_at)
     VALUES (?, ?, 'var_set', ?, ?)
-  `).run(
-    logId,
-    sessionId,
-    JSON.stringify({ varId: params.id, prevValue: prev?.value ?? null, newValue: params.value }),
-    new Date().toISOString(),
-  );
+  `, [logId, sessionId, JSON.stringify({ varId: params.id, prevValue: prev?.value ?? null, newValue: params.value }), new Date().toISOString()]);
 }
 
-export function getVar(db: DatabaseLike, sessionId: string, varId: string): VarRow | null {
-  const row = db
-    .prepare(`SELECT id, session_id, type, label, value, default_value, allow_global_override FROM session_variables WHERE session_id = ? AND id = ?`)
-    .get(sessionId, varId) as { id: string; session_id: string; type: string; label: string; value: string; default_value: string; allow_global_override: number } | undefined;
+export async function getVar(db: DatabaseLike, sessionId: string, varId: string): Promise<VarRow | null> {
+  const rows = await db.select<{ id: string; session_id: string; type: string; label: string; value: string; default_value: string; allow_global_override: number }>(
+    `SELECT id, session_id, type, label, value, default_value, allow_global_override FROM session_variables WHERE session_id = ? AND id = ?`,
+    [sessionId, varId],
+  );
+  const row = rows[0];
   if (!row) return null;
   return {
     id: row.id,
@@ -72,34 +71,29 @@ export function getVar(db: DatabaseLike, sessionId: string, varId: string): VarR
   };
 }
 
-export function resetVar(db: DatabaseLike, sessionId: string, varId: string): void {
-  const row = db
-    .prepare(`SELECT value, default_value FROM session_variables WHERE session_id = ? AND id = ?`)
-    .get(sessionId, varId) as { value: string; default_value: string } | undefined;
+export async function resetVar(db: DatabaseLike, sessionId: string, varId: string): Promise<void> {
+  const rows = await db.select<{ value: string; default_value: string }>(
+    `SELECT value, default_value FROM session_variables WHERE session_id = ? AND id = ?`,
+    [sessionId, varId],
+  );
+  const row = rows[0];
   if (!row) return;
-  db.prepare(`UPDATE session_variables SET value = ? WHERE session_id = ? AND id = ?`)
-    .run(row.default_value, sessionId, varId);
+  await db.execute(`UPDATE session_variables SET value = ? WHERE session_id = ? AND id = ?`, [row.default_value, sessionId, varId]);
 
   const logId = 'log_' + crypto.randomUUID();
-  db.prepare(
+  await db.execute(
     `INSERT INTO session_log (id, session_id, action_type, payload_json, prev_value, created_at)
      VALUES (?, ?, 'var_reset', ?, ?, ?)`,
-  ).run(
-    logId,
-    sessionId,
-    JSON.stringify({ varId, restoredToDefault: true }),
-    row.value,
-    new Date().toISOString(),
+    [logId, sessionId, JSON.stringify({ varId, restoredToDefault: true }), row.value, new Date().toISOString()],
   );
 }
 
-export function listVars(db: DatabaseLike, sessionId?: string): VarRow[] {
-  let rows: Array<{ id: string; session_id: string; type: string; label: string; value: string; default_value: string; allow_global_override: number }>;
-  if (sessionId) {
-    rows = db.prepare(`SELECT * FROM session_variables WHERE session_id = ?`).all(sessionId) as typeof rows;
-  } else {
-    rows = db.prepare(`SELECT * FROM session_variables`).all() as typeof rows;
-  }
+export async function listVars(db: DatabaseLike, sessionId?: string): Promise<VarRow[]> {
+  const rows = sessionId
+    ? await db.select<{ id: string; session_id: string; type: string; label: string; value: string; default_value: string; allow_global_override: number }>(
+        `SELECT * FROM session_variables WHERE session_id = ?`, [sessionId])
+    : await db.select<{ id: string; session_id: string; type: string; label: string; value: string; default_value: string; allow_global_override: number }>(
+        `SELECT * FROM session_variables`);
   return rows.map((r) => ({
     id: r.id,
     session_id: r.session_id,
@@ -111,36 +105,31 @@ export function listVars(db: DatabaseLike, sessionId?: string): VarRow[] {
   }));
 }
 
-export function setGlobalVar(db: DatabaseLike, params: VarParams | string, value?: unknown): void {
+export async function setGlobalVar(db: DatabaseLike, params: VarParams | string, value?: unknown): Promise<void> {
   if (typeof params === 'string') {
-    const id = params;
-    db.prepare(`
+    await db.execute(`
       INSERT INTO global_variables (id, type, label, value)
       VALUES (?, 'unknown', ?, ?)
       ON CONFLICT(id) DO UPDATE SET value = excluded.value
-    `).run(id, id, JSON.stringify(value));
+    `, [params, params, JSON.stringify(value)]);
     return;
   }
-  db.prepare(`
+  await db.execute(`
     INSERT INTO global_variables (id, type, label, value, default_value)
     VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       type = excluded.type,
       label = excluded.label,
       value = excluded.value
-  `).run(
-    params.id,
-    params.type,
-    params.label,
-    JSON.stringify(params.value),
-    JSON.stringify(params.default_value ?? null),
-  );
+  `, [params.id, params.type, params.label, JSON.stringify(params.value), JSON.stringify(params.default_value ?? null)]);
 }
 
-export function getGlobalVar(db: DatabaseLike, varId: string): { id: string; type: string; label: string; value: unknown } | null {
-  const row = db
-    .prepare(`SELECT id, type, label, value FROM global_variables WHERE id = ?`)
-    .get(varId) as { id: string; type: string; label: string; value: string } | undefined;
+export async function getGlobalVar(db: DatabaseLike, varId: string): Promise<{ id: string; type: string; label: string; value: unknown } | null> {
+  const rows = await db.select<{ id: string; type: string; label: string; value: string }>(
+    `SELECT id, type, label, value FROM global_variables WHERE id = ?`,
+    [varId],
+  );
+  const row = rows[0];
   if (!row) return null;
   return { id: row.id, type: row.type, label: row.label, value: parseVal(row.value) };
 }

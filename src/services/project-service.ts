@@ -1,5 +1,5 @@
 import { exists, mkdir, writeTextFile } from '@tauri-apps/plugin-fs';
-import { join } from '@tauri-apps/api/path';
+import { appDataDir, join } from '@tauri-apps/api/path';
 
 export interface ProjectMeta {
   id: string;
@@ -19,7 +19,7 @@ export async function createProject(opts: {
   description?: string;
   baseDir?: string;
 }): Promise<{ id: string; path: string }> {
-  const baseDir = opts.baseDir ?? 'projects';
+  const baseDir = opts.baseDir ?? await join(await appDataDir(), 'projects');
   const slug = titleToSlug(opts.title);
   const projectPath = await join(baseDir, slug);
 

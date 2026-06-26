@@ -18,7 +18,7 @@ export function PrintSheetComposer({ database, initialCards = [] }: Props) {
   const [availableCards, setAvailableCards] = useState<CardInstanceRow[]>([]);
 
   useEffect(() => {
-    listCardInstances(database).then(setAvailableCards);
+    listCardInstances(database).then(setAvailableCards).catch(console.error);
   }, [database]);
 
   const totalPages = Math.ceil(Math.max(cards.length, 1) / SLOTS_PER_SHEET);

@@ -23,7 +23,7 @@ export function ChronicleView({ database, onEventSelect }: Props) {
   const [rawEvents, setRawEvents] = useState<EventItem[]>([]);
 
   useEffect(() => {
-    listEvents(database, {}).then(rows => setRawEvents(rows as EventItem[]));
+    listEvents(database, {}).then(rows => setRawEvents(rows as EventItem[])).catch(console.error);
   }, [database]);
 
   let events = typeFilter ? rawEvents.filter(e => e.type === typeFilter) : rawEvents;

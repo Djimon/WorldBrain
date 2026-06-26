@@ -10,22 +10,23 @@ export interface HandoutRow {
   created_at?: string;
 }
 
-export function createHandout(
+export async function createHandout(
   db: DatabaseLike,
   opts: { type: string; title: string; audience: string; content: Record<string, unknown>; sourceEntityId?: string },
-): { id: string } {
+): Promise<{ id: string }> {
   const id = `handout-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-  db.prepare(
+  await db.execute(
     `INSERT INTO handouts (id, type, title, source_entity_id, audience, content_json) VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(id, opts.type, opts.title, opts.sourceEntityId ?? null, opts.audience, JSON.stringify(opts.content));
+    [id, opts.type, opts.title, opts.sourceEntityId ?? null, opts.audience, JSON.stringify(opts.content)],
+  );
   return { id };
 }
 
-export function listHandouts(db: DatabaseLike, filter?: { type?: string; audience?: string }): HandoutRow[] {
+export async function listHandouts(db: DatabaseLike, filter?: { type?: string; audience?: string }): Promise<HandoutRow[]> {
   if (filter?.type) {
-    return db.prepare('SELECT * FROM handouts WHERE type = ?').all(filter.type) as unknown as HandoutRow[];
+    return db.select<HandoutRow>('SELECT * FROM handouts WHERE type = ?', [filter.type]);
   }
-  return db.prepare('SELECT * FROM handouts').all() as unknown as HandoutRow[];
+  return db.select<HandoutRow>('SELECT * FROM handouts');
 }
 
 interface HandoutBlock {

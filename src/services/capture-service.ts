@@ -15,22 +15,22 @@ export interface CreateCaptureParams {
   links?: string[];
 }
 
-export function createCapture(db: DatabaseLike, sessionId: string, params: CreateCaptureParams): { id: string } {
+export async function createCapture(db: DatabaseLike, sessionId: string, params: CreateCaptureParams): Promise<{ id: string }> {
   const id = 'cap_' + crypto.randomUUID();
   const now = new Date().toISOString();
-  db.prepare(
+  await db.execute(
     `INSERT INTO capture_notes (id, session_id, type, raw_text, status, links_json, created_at)
      VALUES (?, ?, ?, ?, 'needs_processing', ?, ?)`,
-  ).run(id, sessionId, params.type, params.raw_text, JSON.stringify(params.links ?? []), now);
+    [id, sessionId, params.type, params.raw_text, JSON.stringify(params.links ?? []), now],
+  );
   return { id };
 }
 
-export function listCaptures(db: DatabaseLike, sessionId: string): CaptureRow[] {
-  const rows = db
-    .prepare(
-      `SELECT id, session_id, type, raw_text, status, links_json FROM capture_notes WHERE session_id = ? ORDER BY rowid DESC`,
-    )
-    .all(sessionId) as Array<{ id: string; session_id: string; type: string; raw_text: string; status: string; links_json: string }>;
+export async function listCaptures(db: DatabaseLike, sessionId: string): Promise<CaptureRow[]> {
+  const rows = await db.select<{ id: string; session_id: string; type: string; raw_text: string; status: string; links_json: string }>(
+    `SELECT id, session_id, type, raw_text, status, links_json FROM capture_notes WHERE session_id = ? ORDER BY rowid DESC`,
+    [sessionId],
+  );
   return rows.map((r) => ({
     id: r.id,
     session_id: r.session_id,
@@ -41,6 +41,6 @@ export function listCaptures(db: DatabaseLike, sessionId: string): CaptureRow[] 
   }));
 }
 
-export function updateCaptureStatus(db: DatabaseLike, id: string, status: string): void {
-  db.prepare(`UPDATE capture_notes SET status = ? WHERE id = ?`).run(status, id);
+export async function updateCaptureStatus(db: DatabaseLike, id: string, status: string): Promise<void> {
+  await db.execute(`UPDATE capture_notes SET status = ? WHERE id = ?`, [status, id]);
 }

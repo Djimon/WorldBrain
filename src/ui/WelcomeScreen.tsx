@@ -22,24 +22,33 @@ export function WelcomeScreen({ configPath = 'app-config.json', onCreateProject,
   const isStale = last_opened_project_id != null && !projects.some((p) => p.id === last_opened_project_id);
 
   return (
-    <div>
+    <div className="welcome-screen">
       <h1>WorldBuilderX</h1>
 
       {isStale && (
-        <p role="status">Das zuletzt geöffnete Projekt ist nicht mehr vorhanden.</p>
+        <p role="status" style={{ color: 'var(--color-status-warning)' }}>
+          Das zuletzt geöffnete Projekt ist nicht mehr vorhanden.
+        </p>
       )}
 
-      <button onClick={onCreateProject}>Neues Projekt erstellen</button>
-      <button onClick={onImportZip}>Bestehendes ZIP importieren</button>
+      <div className="welcome-screen__actions">
+        <button className="btn btn--primary" onClick={onCreateProject}>Neues Projekt erstellen</button>
+        <button className="btn" onClick={onImportZip}>ZIP importieren</button>
+      </div>
 
       {projects.length > 0 && (
-        <ul>
+        <div className="welcome-screen__projects">
+          <h2>Zuletzt geöffnet</h2>
           {projects.map((p: ProjectEntry) => (
-            <li key={p.id}>
-              <button onClick={() => onOpenProject(p.id)}>{p.title}</button>
-            </li>
+            <button
+              key={p.id}
+              className="welcome-screen__project-btn"
+              onClick={() => onOpenProject(p.id)}
+            >
+              {p.title}
+            </button>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

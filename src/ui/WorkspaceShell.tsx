@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useDatabase } from '../services/DatabaseContext';
 import { listEntityTypes } from '../services/plugin-entity-service';
-import { listMaps, createMap } from '../services/map-service';
+import { listMaps, importMapImage } from '../services/map-service';
 import type { MapRow } from '../services/map-service';
 import { listViews } from '../services/saved-views-service';
 import type { SavedViewRow } from '../services/saved-views-service';
@@ -38,6 +38,7 @@ type Area =
   | 'search'
   | 'maps'
   | 'calendar'
+  | 'chronicle'
   | 'cards'
   | 'plugins'
   | 'rules'
@@ -54,6 +55,7 @@ interface CalendarRow {
 
 interface Props {
   projectId: string;
+  projectTitle?: string;
   projectDir: string;
   snapshotsDir: string;
   onProjectClose: () => void;
@@ -63,8 +65,9 @@ const AREAS: { id: Area; label: string; icon: string }[] = [
   { id: 'entities', label: 'Entities',  icon: '🗂' },
   { id: 'search',   label: 'Suche',     icon: '🔍' },
   { id: 'maps',     label: 'Karten',    icon: '🗺' },
-  { id: 'calendar', label: 'Kalender',  icon: '📅' },
-  { id: 'cards',    label: 'Cards',     icon: '🃏' },
+  { id: 'calendar',  label: 'Kalender',  icon: '📅' },
+  { id: 'chronicle', label: 'Chronik',  icon: '📜' },
+  { id: 'cards',     label: 'Cards',    icon: '🃏' },
   { id: 'plugins',  label: 'Plugins',   icon: '🔌' },
   { id: 'rules',    label: 'Regeln',    icon: '📖' },
   { id: 'session',  label: 'Session',   icon: '🎲' },
@@ -76,7 +79,7 @@ const CORE_ENTITY_TYPES = [
   'Quest', 'Event', 'Scene', 'Rule', 'Resource', 'Culture',
 ];
 
-export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectClose }: Props) {
+export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsDir, onProjectClose }: Props) {
   const database = useDatabase();
   const [activeArea, setActiveArea] = useState<Area>('entities');
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
@@ -89,19 +92,20 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
   const [showPrintSheet, setShowPrintSheet] = useState(false);
   const [activeCalendar, setActiveCalendar] = useState<CalendarRow | null>(null);
   const [evalResult, setEvalResult] = useState<string | null>(null);
+  const [mapImporting, setMapImporting] = useState(false);
   const [savedViews, setSavedViews] = useState<SavedViewRow[]>([]);
   const [sessionVarsRaw, setSessionVarsRaw] = useState<VarRow[]>([]);
 
   useEffect(() => {
-    listMaps(database).then(setMaps);
+    listMaps(database).then(setMaps).catch(console.error);
   }, [database]);
 
   useEffect(() => {
-    listViews(database).then(setSavedViews);
+    listViews(database).then(setSavedViews).catch(console.error);
   }, [database]);
 
   useEffect(() => {
-    listVars(database, projectId).then(setSessionVarsRaw);
+    listVars(database, projectId).then(setSessionVarsRaw).catch(console.error);
   }, [database, projectId]);
 
   // #187: Ctrl+K / Cmd+K → search area
@@ -139,13 +143,20 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
     };
   }
 
-  async function handleMapImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    await createMap(database, { title: file.name.replace(/\.[^.]+$/, '') });
-    const updatedMaps = await listMaps(database);
-    setMaps(updatedMaps);
-    e.target.value = '';
+  async function handleMapImport() {
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const selected = await open({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
+    if (typeof selected !== 'string') return;
+    setMapImporting(true);
+    try {
+      const title = selected.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? 'Karte';
+      const result = await importMapImage(database, { srcPath: selected, title, projectDir });
+      const updatedMaps = await listMaps(database);
+      setMaps(updatedMaps);
+      setSelectedMapId(result.id);
+    } finally {
+      setMapImporting(false);
+    }
   }
 
   function runEvaluation(kind: 'mystery' | 'role' | 'quest') {
@@ -203,12 +214,6 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
                   </li>
                 ))}
               </ul>
-              <hr />
-              <GlobalEntityGraph
-                database={database}
-                onNavigate={navigateToEntity}
-                initialConfig={{ entityTypes: entityType ? [entityType] : [] }}
-              />
             </div>
             <div className="workspace-area__main">
               <EntityMasterDetail
@@ -242,39 +247,47 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
 
       case 'maps':
         return (
-          <div className="workspace-area">
+          <div className="workspace-area" style={{ overflow: 'hidden' }}>
             <div className="workspace-area__sidebar">
               <h3>Karten</h3>
-                {/* #188: map import button */}
-              <label>
-                Karte importieren
-                <input type="file" accept="image/*" onChange={(e) => void handleMapImport(e)} />
-              </label>
+              <button
+                className="emd__create-btn"
+                style={{ width: '100%', marginBottom: 'var(--space-2)' }}
+                onClick={() => void handleMapImport()}
+                disabled={mapImporting}
+              >
+                {mapImporting ? '⏳ Importiere…' : '+ Karte importieren'}
+              </button>
+              {mapImporting && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', padding: 'var(--space-1) var(--space-2)', background: 'var(--color-surface-alt)', borderRadius: 'var(--radius-sm)', marginBottom: 'var(--space-2)' }}>
+                  Bild wird kopiert und vorbereitet…
+                </div>
+              )}
               <ul>
                 {maps.map((m) => (
                   <li key={m.id}>
-                    <button aria-pressed={selectedMapId === m.id} onClick={() => setSelectedMapId(m.id)}>
-                      {m.title}
+                    <button
+                      className={`emd__item${selectedMapId === m.id ? ' emd__item--active' : ''}`}
+                      onClick={() => setSelectedMapId(m.id)}
+                    >
+                      <span className="emd__item-title">{m.title}</span>
                     </button>
                   </li>
                 ))}
               </ul>
+              {maps.length === 0 && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: 'var(--space-2)' }}>
+                  Noch keine Karten. PNG, JPG oder WebP importieren.
+                </p>
+              )}
             </div>
-            <div className="workspace-area__main">
+            <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
               {selectedMapId ? (
-                <>
-                  <MapViewer mapId={selectedMapId} database={database} showCoordinates />
-                  <MarkerPanel mapId={selectedMapId} database={database} onNavigateToEntity={navigateToEntity} />
-                  {/* #188: SessionGridTracker */}
-                  <SessionGridTracker
-                    sessionId={projectId}
-                    mapId={selectedMapId}
-                    database={database}
-                    cellSize={40}
-                  />
-                </>
+                <MapViewer mapId={selectedMapId} sessionId={projectId} database={database} showCoordinates onNavigateToEntity={navigateToEntity} />
               ) : (
-                <p>Keine Karte ausgewählt.</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)' }}>
+                  Karte aus der Liste wählen oder importieren
+                </div>
               )}
             </div>
           </div>
@@ -282,23 +295,33 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
 
       case 'calendar':
         return (
+          <div className="workspace-area" style={{ flexDirection: 'column', overflow: 'hidden' }}>
+            {!activeCalendar ? (
+              <CalendarWizard
+                database={database}
+                onComplete={(id) => {
+                  if (id) void loadCalendarById(id).then((cal) => { if (cal) setActiveCalendar(cal); }).catch(console.error);
+                }}
+              />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                <div style={{ padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                  <strong>{activeCalendar.title}</strong>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{activeCalendar.year_length_days} Tage/Jahr · {activeCalendar.months.length} Monate · {activeCalendar.week.length} Wochentage</span>
+                  <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setActiveCalendar(null)}>Kalender ändern</button>
+                </div>
+                <div style={{ flex: 1, overflow: 'auto' }}>
+                  <CalendarMonthView calendar={activeCalendar} database={database} />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'chronicle':
+        return (
           <div className="workspace-area">
-            {/* #185: CalendarWizard sets active calendar for month view and session clock */}
-            <CalendarWizard
-              database={database}
-              onComplete={(id) => {
-                if (id) void loadCalendarById(id).then(setActiveCalendar);
-              }}
-            />
             <ChronicleView database={database} />
-            {/* #185: CalendarMonthView — only rendered once a calendar is configured */}
-            {activeCalendar && (
-              <CalendarMonthView calendar={activeCalendar} database={database} />
-            )}
-            {/* #185: EntityTimeline — shows timeline for currently selected entity */}
-            {selectedEntityId && entityType && (
-              <EntityTimeline entityId={selectedEntityId} entityType={entityType} database={database} />
-            )}
           </div>
         );
 
@@ -413,6 +436,8 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
     }
   }
 
+  const activeAreaLabel = AREAS.find((a) => a.id === activeArea)?.label ?? '';
+
   return (
     <div className="workspace-shell">
       <nav className="workspace-shell__sidebar" aria-label="Workspace navigation">
@@ -428,8 +453,21 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
             {icon}
           </button>
         ))}
+        <div className="workspace-shell__sidebar-spacer" />
+        <button
+          className="workspace-shell__close-btn"
+          aria-label="Projekt schließen"
+          title="Projekt schließen"
+          onClick={onProjectClose}
+        >
+          ✕
+        </button>
       </nav>
       <div className="workspace-shell__content">
+        <header className="workspace-shell__header">
+          <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
+          <span className="workspace-shell__area-name">{activeAreaLabel}</span>
+        </header>
         {renderArea()}
       </div>
     </div>

@@ -29,64 +29,6 @@ function generateId(): string {
   return 'ev_' + crypto.randomUUID();
 }
 
-export function createEvent(db: DatabaseLike, params: CreateEventParams): { id: string } {
-  const id = generateId();
-  db.prepare(
-    `INSERT INTO events (id, title, type, start_day, end_day, precision, visibility, participants_json, locations_json, variable_triggers_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    id,
-    params.title,
-    params.type,
-    params.start_day,
-    params.end_day ?? null,
-    params.precision,
-    params.visibility,
-    JSON.stringify(params.participants),
-    JSON.stringify(params.locations),
-    JSON.stringify(params.variable_triggers ?? [])
-  );
-  return { id };
-}
-
-export function getEvent(db: DatabaseLike, id: string): EventRow | null {
-  const row = db.prepare('SELECT * FROM events WHERE id = ?').get(id) as Record<string, unknown> | null | undefined;
-  if (!row) return null;
-  return parseEventRow(row);
-}
-
-export function listEvents(db: DatabaseLike, options: { type?: string; participantId?: string; locationId?: string }): EventRow[] {
-  const conditions: string[] = [];
-  const params: unknown[] = [];
-
-  if (options.type) {
-    conditions.push('type = ?');
-    params.push(options.type);
-  }
-  if (options.participantId) {
-    conditions.push('participants_json LIKE ?');
-    params.push(`%"${options.participantId}"%`);
-  }
-  if (options.locationId) {
-    conditions.push('locations_json LIKE ?');
-    params.push(`%"${options.locationId}"%`);
-  }
-
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  const rows = db.prepare(`SELECT * FROM events ${where} ORDER BY start_day ASC`).all(...params) as Array<Record<string, unknown>>;
-  return rows.map(parseEventRow);
-}
-
-export function updateEvent(db: DatabaseLike, id: string, patch: Partial<CreateEventParams>): void {
-  if (patch.title !== undefined) db.prepare('UPDATE events SET title = ? WHERE id = ?').run(patch.title, id);
-  if (patch.type !== undefined) db.prepare('UPDATE events SET type = ? WHERE id = ?').run(patch.type, id);
-  if (patch.start_day !== undefined) db.prepare('UPDATE events SET start_day = ? WHERE id = ?').run(patch.start_day, id);
-  if (patch.end_day !== undefined) db.prepare('UPDATE events SET end_day = ? WHERE id = ?').run(patch.end_day, id);
-  if (patch.visibility !== undefined) db.prepare('UPDATE events SET visibility = ? WHERE id = ?').run(patch.visibility, id);
-  if (patch.participants !== undefined) db.prepare('UPDATE events SET participants_json = ? WHERE id = ?').run(JSON.stringify(patch.participants), id);
-  if (patch.locations !== undefined) db.prepare('UPDATE events SET locations_json = ? WHERE id = ?').run(JSON.stringify(patch.locations), id);
-}
-
 function parseEventRow(row: Record<string, unknown>): EventRow {
   return {
     id: String(row.id),
@@ -100,4 +42,48 @@ function parseEventRow(row: Record<string, unknown>): EventRow {
     locations: JSON.parse(String(row.locations_json ?? '[]')),
     variable_triggers: JSON.parse(String(row.variable_triggers_json ?? '[]')),
   };
+}
+
+export async function createEvent(db: DatabaseLike, params: CreateEventParams): Promise<{ id: string }> {
+  const id = generateId();
+  await db.execute(
+    `INSERT INTO events (id, title, type, start_day, end_day, precision, visibility, participants_json, locations_json, variable_triggers_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, params.title, params.type, params.start_day, params.end_day ?? null, params.precision, params.visibility,
+     JSON.stringify(params.participants), JSON.stringify(params.locations), JSON.stringify(params.variable_triggers ?? [])],
+  );
+  return { id };
+}
+
+export async function getEvent(db: DatabaseLike, id: string): Promise<EventRow | null> {
+  const rows = await db.select<Record<string, unknown>>('SELECT * FROM events WHERE id = ?', [id]);
+  const row = rows[0];
+  if (!row) return null;
+  return parseEventRow(row);
+}
+
+export async function listEvents(db: DatabaseLike, options: { type?: string; participantId?: string; locationId?: string }): Promise<EventRow[]> {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (options.type) { conditions.push('type = ?'); params.push(options.type); }
+  if (options.participantId) { conditions.push('participants_json LIKE ?'); params.push(`%"${options.participantId}"%`); }
+  if (options.locationId) { conditions.push('locations_json LIKE ?'); params.push(`%"${options.locationId}"%`); }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const rows = await db.select<Record<string, unknown>>(
+    `SELECT * FROM events ${where} ORDER BY start_day ASC`,
+    params,
+  );
+  return rows.map(parseEventRow);
+}
+
+export async function updateEvent(db: DatabaseLike, id: string, patch: Partial<CreateEventParams>): Promise<void> {
+  if (patch.title !== undefined) await db.execute('UPDATE events SET title = ? WHERE id = ?', [patch.title, id]);
+  if (patch.type !== undefined) await db.execute('UPDATE events SET type = ? WHERE id = ?', [patch.type, id]);
+  if (patch.start_day !== undefined) await db.execute('UPDATE events SET start_day = ? WHERE id = ?', [patch.start_day, id]);
+  if (patch.end_day !== undefined) await db.execute('UPDATE events SET end_day = ? WHERE id = ?', [patch.end_day, id]);
+  if (patch.visibility !== undefined) await db.execute('UPDATE events SET visibility = ? WHERE id = ?', [patch.visibility, id]);
+  if (patch.participants !== undefined) await db.execute('UPDATE events SET participants_json = ? WHERE id = ?', [JSON.stringify(patch.participants), id]);
+  if (patch.locations !== undefined) await db.execute('UPDATE events SET locations_json = ? WHERE id = ?', [JSON.stringify(patch.locations), id]);
 }

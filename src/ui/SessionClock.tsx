@@ -32,7 +32,7 @@ export function SessionClock({ sessionId: _sessionId, calendar: _calendar, world
   const [vars, setVars] = useState<VarRow[]>([]);
 
   useEffect(() => {
-    listVars(database, _sessionId).then(rows => setVars(rows as VarRow[]));
+    listVars(database, _sessionId).then(rows => setVars(rows as VarRow[])).catch(console.error);
   }, [database, _sessionId]);
 
   const counters = vars.filter(v => v.type === 'number');

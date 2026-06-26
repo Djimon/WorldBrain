@@ -25,11 +25,11 @@ export function MarkerPanel({ mapId, database, onNavigateToEntity }: Props) {
   const [markers, setMarkers] = useState<MarkerRow[]>([]);
 
   useEffect(() => {
-    getMarkersForMap(database, mapId).then(rows => setMarkers(rows as MarkerRow[]));
+    getMarkersForMap(database, mapId).then(rows => setMarkers(rows as MarkerRow[])).catch(console.error);
   }, [database, mapId]);
 
   function refresh() {
-    getMarkersForMap(database, mapId).then(rows => setMarkers(rows as MarkerRow[]));
+    getMarkersForMap(database, mapId).then(rows => setMarkers(rows as MarkerRow[])).catch(console.error);
   }
 
   const filtered = kindFilter ? markers.filter(m => m.kind === kindFilter) : markers;
@@ -44,6 +44,8 @@ export function MarkerPanel({ mapId, database, onNavigateToEntity }: Props) {
       elevation_value: null,
       elevation_unit: null,
       visibility_json: '"public"',
+      style_json: '{}',
+      group_name: '',
     });
     refresh();
   }

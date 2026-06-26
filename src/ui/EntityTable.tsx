@@ -26,7 +26,7 @@ export function EntityTable({ entityType, propertiesSchema = {}, database }: Pro
 
   useEffect(() => {
     if (database) {
-      listEntitiesByType({ database, type: entityType }).then(setEntities);
+      listEntitiesByType({ database, type: entityType }).then(setEntities).catch(console.error);
     }
   }, [entityType, database]);
 

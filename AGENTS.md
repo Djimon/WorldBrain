@@ -87,7 +87,13 @@ Bug tests for a Story belong in the **existing Story test file**, not a new `iss
 
 ### 3. Implementation Agent
 
-Read Story + tests first. Read `ANTI_PATTERNS.md` before writing — any listed pattern is a blocker. Do not edit tests. Tests wrong → stop and report.
+Read order — mandatory, in sequence:
+1. GitHub Issue (AC is the contract)
+2. Epic file in `planning/epics/` (decisions and constraints)
+3. Test file (expected behavior)
+4. `ANTI_PATTERNS.md` (any listed pattern is a blocker)
+
+AC in the Issue overrides test assumptions when they conflict — tests describe behavior, the Issue describes intent. Do not edit tests. Tests wrong → stop and report.
 
 ### 4. Review Agent
 

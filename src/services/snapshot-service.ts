@@ -14,16 +14,21 @@ interface SnapshotMeta {
   createdAt: string;
 }
 
-async function copyDirAsync(src: string, dest: string, exclude?: string, depth = 0): Promise<void> {
+async function copyDirAsync(src: string, dest: string, excludeNorm?: string, depth = 0): Promise<void> {
   if (depth > 50) return;
   await mkdir(dest, { recursive: true });
   const entries = await readDir(src);
   for (const entry of entries) {
     const srcFull = await join(src, entry.name);
-    if (exclude && srcFull === exclude) continue;
+    // Normalize both sides so Windows backslash vs forward-slash doesn't break the comparison.
+    // Also use startsWith so any nested path under excludeNorm is also skipped.
+    if (excludeNorm) {
+      const srcNorm = await join(srcFull);
+      if (srcNorm === excludeNorm || srcNorm.startsWith(excludeNorm + '\\') || srcNorm.startsWith(excludeNorm + '/')) continue;
+    }
     const destFull = await join(dest, entry.name);
     if (entry.isDirectory) {
-      await copyDirAsync(srcFull, destFull, exclude, depth + 1);
+      await copyDirAsync(srcFull, destFull, excludeNorm, depth + 1);
     } else {
       await copyFile(srcFull, destFull);
     }
@@ -44,7 +49,9 @@ export async function createSnapshot(opts: {
   if (snapshotsDir && projectDir) {
     const snapDir = await join(snapshotsDir, id);
     await mkdir(snapDir, { recursive: true });
-    await copyDirAsync(projectDir, snapDir, snapshotsDir);
+    // Normalize snapshotsDir via join() so separators match what join() returns during recursion.
+    const snapshotsDirNorm = await join(snapshotsDir);
+    await copyDirAsync(projectDir, snapDir, snapshotsDirNorm);
     const meta: SnapshotMeta = { id, name: opts.name, createdAt: new Date().toISOString() };
     await writeTextFile(await join(snapDir, 'snapshot.json'), JSON.stringify(meta, null, 2));
   }

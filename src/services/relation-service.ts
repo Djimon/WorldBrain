@@ -24,63 +24,47 @@ function generateId(): string {
   return 'rel_' + crypto.randomUUID();
 }
 
-function logEvent(db: DatabaseLike, relationId: string, event: string): void {
-  db.prepare(
-    "INSERT INTO campaign_relation_log (id, relation_id, event, timestamp) VALUES (?, ?, ?, datetime('now'))"
-  ).run(generateId(), relationId, event);
+async function logEvent(db: DatabaseLike, relationId: string, event: string): Promise<void> {
+  await db.execute(
+    "INSERT INTO campaign_relation_log (id, relation_id, event, timestamp) VALUES (?, ?, ?, datetime('now'))",
+    [generateId(), relationId, event],
+  );
 }
 
-export function addRelation(
-  db: DatabaseLike,
-  params: AddRelationParams
-): { id: string } {
+export async function addRelation(db: DatabaseLike, params: AddRelationParams): Promise<{ id: string }> {
   const id = generateId();
   const inverseType = params.inverse_type ?? params.relation_type;
-
-  db.prepare(
+  await db.execute(
     `INSERT INTO relations (id, source_id, target_id, relation_type, inverse_type, active, visibility_json, notes)
-     VALUES (?, ?, ?, ?, ?, 1, ?, ?)`
-  ).run(
-    id,
-    params.source_id,
-    params.target_id,
-    params.relation_type,
-    inverseType,
-    JSON.stringify(params.visibility),
-    params.notes ?? null
+     VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
+    [id, params.source_id, params.target_id, params.relation_type, inverseType,
+     JSON.stringify(params.visibility), params.notes ?? null],
   );
-
-  logEvent(db, id, 'added');
+  await logEvent(db, id, 'added');
   return { id };
 }
 
-export function getRelations(
-  db: DatabaseLike,
-  entityId: string,
-  options: { includeInactive: boolean }
-): RelationRow[] {
+export async function getRelations(db: DatabaseLike, entityId: string, options: { includeInactive: boolean }): Promise<RelationRow[]> {
   const activeClause = options.includeInactive ? '' : 'AND active = 1';
-  return db.prepare(
-    `SELECT * FROM relations WHERE (source_id = ? OR target_id = ?) ${activeClause}`
-  ).all(entityId, entityId) as RelationRow[];
+  return db.select<RelationRow>(
+    `SELECT * FROM relations WHERE (source_id = ? OR target_id = ?) ${activeClause}`,
+    [entityId, entityId],
+  );
 }
 
-export function deactivateRelation(db: DatabaseLike, relationId: string): void {
-  db.prepare('UPDATE relations SET active = 0 WHERE id = ?').run(relationId);
-  logEvent(db, relationId, 'removed');
+export async function deactivateRelation(db: DatabaseLike, relationId: string): Promise<void> {
+  await db.execute('UPDATE relations SET active = 0 WHERE id = ?', [relationId]);
+  await logEvent(db, relationId, 'removed');
 }
 
-export function reactivateRelation(db: DatabaseLike, relationId: string): void {
-  db.prepare('UPDATE relations SET active = 1 WHERE id = ?').run(relationId);
-  logEvent(db, relationId, 'added');
+export async function reactivateRelation(db: DatabaseLike, relationId: string): Promise<void> {
+  await db.execute('UPDATE relations SET active = 1 WHERE id = ?', [relationId]);
+  await logEvent(db, relationId, 'added');
 }
 
-export function getAllRelations(
-  db: DatabaseLike,
-  { includeInactive }: { includeInactive?: boolean } = {},
-): RelationRow[] {
+export async function getAllRelations(db: DatabaseLike, { includeInactive }: { includeInactive?: boolean } = {}): Promise<RelationRow[]> {
   const sql = includeInactive
     ? 'SELECT id, source_id, target_id, relation_type, inverse_type, active, visibility_json, notes FROM relations'
     : 'SELECT id, source_id, target_id, relation_type, inverse_type, active, visibility_json, notes FROM relations WHERE active = 1';
-  return db.prepare(sql).all() as RelationRow[];
+  return db.select<RelationRow>(sql);
 }

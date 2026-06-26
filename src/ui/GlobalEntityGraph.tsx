@@ -28,8 +28,8 @@ export function GlobalEntityGraph({ onNavigate, database, initialConfig, onConfi
 
   useEffect(() => {
     if (database) {
-      listEntitiesByType({ database, type: null }).then(rows => setAllEntities(rows as EntityListItem[]));
-      getAllRelations(database, { includeInactive: false }).then(setAllRelations);
+      listEntitiesByType({ database, type: null }).then(rows => setAllEntities(rows as EntityListItem[])).catch(console.error);
+      getAllRelations(database, { includeInactive: false }).then(setAllRelations).catch(console.error);
     }
   }, [database]);
 

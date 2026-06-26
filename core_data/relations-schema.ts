@@ -1,11 +1,7 @@
-export interface RelationsDb {
-  prepare: (sql: string) => { run: (...args: unknown[]) => void };
-}
+import type { DatabaseLike } from '../src/services/entity-service';
 
-export function applyRelationsSchema(db: RelationsDb): void {
-  const exec = (sql: string) => db.prepare(sql).run();
-
-  exec(`
+export async function applyRelationsSchema(db: DatabaseLike): Promise<void> {
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS relations (
       id TEXT PRIMARY KEY NOT NULL,
       source_id TEXT NOT NULL,
@@ -22,7 +18,7 @@ export function applyRelationsSchema(db: RelationsDb): void {
     )
   `);
 
-  exec(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS campaign_relation_log (
       id TEXT PRIMARY KEY NOT NULL,
       relation_id TEXT NOT NULL,

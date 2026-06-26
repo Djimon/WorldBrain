@@ -12,7 +12,7 @@ interface Props {
 export function MapEmbedBlock({ mapId, database }: Props) {
   const [map, setMap] = useState<MapRow | null>(null);
   useEffect(() => {
-    if (mapId && database) getMap(database, mapId).then(setMap);
+    if (mapId && database) getMap(database, mapId).then(setMap).catch(console.error);
   }, [mapId, database]);
 
   if (!mapId) {

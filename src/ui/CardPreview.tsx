@@ -23,8 +23,8 @@ export function CardPreview({ templateId, entityId, database, overflowMap, summa
   const [entityResult, setEntityResult] = useState<EffectiveResult | null>(null);
 
   useEffect(() => {
-    listCardTemplates(database).then(setTemplates);
-    getEffectiveEntity({ database, entityId }).then(setEntityResult);
+    listCardTemplates(database).then(setTemplates).catch(console.error);
+    getEffectiveEntity({ database, entityId }).then(setEntityResult).catch(console.error);
   }, [database, entityId]);
 
   const tpl = templates.find((t) => t.id === templateId);

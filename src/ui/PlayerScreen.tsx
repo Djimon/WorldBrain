@@ -24,7 +24,7 @@ export function PlayerScreen({ context, entityId, database, onReveal: _onReveal 
 
   useEffect(() => {
     if (entityId && database) {
-      getEffectiveEntity({ database, entityId }).then(setEffectiveResult);
+      getEffectiveEntity({ database, entityId }).then(setEffectiveResult).catch(console.error);
     } else {
       setEffectiveResult(null);
     }

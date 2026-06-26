@@ -19,7 +19,7 @@ export function NewProjectDialog({ onCreated, onCancel, baseDir }: NewProjectDia
     }
     createProject({ title: name.trim(), description: description.trim() || undefined, baseDir })
       .then((result) => onCreated(result.id))
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Fehler beim Anlegen des Projekts.'));
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)));
   }
 
   return (

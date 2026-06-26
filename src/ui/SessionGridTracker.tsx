@@ -21,7 +21,7 @@ export function SessionGridTracker({ sessionId, mapId, database, cellSize }: Pro
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    getActivatedCells(database, sessionId, mapId).then(setCells);
+    getActivatedCells(database, sessionId, mapId).then(setCells).catch(console.error);
   }, [database, sessionId, mapId]);
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export function SessionGridTracker({ sessionId, mapId, database, cellSize }: Pro
   }, [cells, cellSize]);
 
   function refresh() {
-    getActivatedCells(database, sessionId, mapId).then(setCells);
+    getActivatedCells(database, sessionId, mapId).then(setCells).catch(console.error);
   }
 
   async function handleClearAll() {
