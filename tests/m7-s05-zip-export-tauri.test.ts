@@ -21,11 +21,17 @@ vi.mock('@tauri-apps/plugin-sql', () => ({
   default: { load: vi.fn() },
 }));
 
+vi.mock('@tauri-apps/api/path', () => ({
+  join: vi.fn((...parts: string[]) => Promise.resolve(parts.join('/'))),
+  dirname: vi.fn((p: string) => Promise.resolve(p.slice(0, p.lastIndexOf('/')))),
+}));
+
 import * as tauriFs from '@tauri-apps/plugin-fs';
 
 const mockReadDir = tauriFs.readDir as ReturnType<typeof vi.fn>;
 const mockReadFile = tauriFs.readFile as ReturnType<typeof vi.fn>;
 const mockWriteFile = tauriFs.writeFile as ReturnType<typeof vi.fn>;
+const mockExists = tauriFs.exists as ReturnType<typeof vi.fn>;
 
 async function getZipExportService() { return import('../src/services/zip-export-service'); }
 
@@ -34,6 +40,7 @@ describe('M7-S05 zip-export-service (Tauri)', () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockWriteFile.mockResolvedValue(undefined);
+    mockExists.mockResolvedValue(true);
   });
 
   describe('exportProjectToZip', () => {
@@ -94,19 +101,19 @@ describe('M7-S05 zip-export-service (Tauri)', () => {
   describe('buildZipFilename', () => {
     it('generates filename without spaces', async () => {
       const { buildZipFilename } = await getZipExportService();
-      const name = await buildZipFilename({ title: 'Forgotten Realms', date: '2026-06-25' });
+      const name = buildZipFilename('Forgotten Realms', new Date('2026-06-25'));
       expect(name).not.toContain(' ');
     });
 
     it('filename ends with .zip', async () => {
       const { buildZipFilename } = await getZipExportService();
-      const name = await buildZipFilename({ title: 'World', date: '2026-01-01' });
+      const name = buildZipFilename('World', new Date('2026-01-01'));
       expect(name).toMatch(/\.zip$/);
     });
 
     it('filename includes sanitized project title', async () => {
       const { buildZipFilename } = await getZipExportService();
-      const name = await buildZipFilename({ title: 'Forgotten Realms', date: '2026-06-25' });
+      const name = buildZipFilename('Forgotten Realms', new Date('2026-06-25'));
       expect(name.toLowerCase()).toContain('forgotten');
     });
   });

@@ -18,6 +18,11 @@ vi.mock('@tauri-apps/plugin-sql', () => ({
   default: { load: vi.fn() },
 }));
 
+vi.mock('@tauri-apps/api/path', () => ({
+  join: vi.fn((...parts: string[]) => Promise.resolve(parts.join('/'))),
+  dirname: vi.fn((p: string) => Promise.resolve(p.slice(0, p.lastIndexOf('/')))),
+}));
+
 import * as tauriFs from '@tauri-apps/plugin-fs';
 
 const mockMkdir = tauriFs.mkdir as ReturnType<typeof vi.fn>;
@@ -26,6 +31,7 @@ const mockReadDir = tauriFs.readDir as ReturnType<typeof vi.fn>;
 const mockReadTextFile = tauriFs.readTextFile as ReturnType<typeof vi.fn>;
 const mockRemove = tauriFs.remove as ReturnType<typeof vi.fn>;
 const mockCopyFile = tauriFs.copyFile as ReturnType<typeof vi.fn>;
+const mockExists = tauriFs.exists as ReturnType<typeof vi.fn>;
 
 async function getSnapshotService() { return import('../src/services/snapshot-service'); }
 
@@ -39,6 +45,7 @@ describe('M7-S04 snapshot-service (Tauri)', () => {
     mockWriteTextFile.mockResolvedValue(undefined);
     mockCopyFile.mockResolvedValue(undefined);
     mockRemove.mockResolvedValue(undefined);
+    mockExists.mockResolvedValue(true);
   });
 
   describe('createSnapshot', () => {

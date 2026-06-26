@@ -20,6 +20,11 @@ vi.mock('@tauri-apps/plugin-sql', () => ({
   default: { load: vi.fn() },
 }));
 
+vi.mock('@tauri-apps/api/path', () => ({
+  join: vi.fn((...parts: string[]) => Promise.resolve(parts.join('/'))),
+  dirname: vi.fn((p: string) => Promise.resolve(p.slice(0, p.lastIndexOf('/')))),
+}));
+
 import * as tauriFs from '@tauri-apps/plugin-fs';
 
 const mockReadFile = tauriFs.readFile as ReturnType<typeof vi.fn>;
@@ -91,6 +96,7 @@ describe('M7-S06 zip-import-service (Tauri)', () => {
     it('is async (returns a Promise)', async () => {
       const { importProjectZip } = await getZipImportService();
       const result = importProjectZip({ zipPath: '/p.zip', baseDir: '/projects', conflictStrategy: 'keep-both' });
+      result.catch(() => {}); // suppress expected rejection from fake bytes
       expect(result).toBeInstanceOf(Promise);
     });
 
@@ -132,17 +138,9 @@ describe('M7-S06 zip-import-service (Tauri)', () => {
       expect(src).not.toMatch(/writeFileSync|from ['"]node:fs['"]/);
     });
 
-    it('keep-both strategy: checks exists() before writing to detect conflict', async () => {
-      mockExists.mockResolvedValue(true);
-      const { importProjectZip } = await getZipImportService();
-      try {
-        await importProjectZip({ zipPath: '/p.zip', baseDir: '/projects', conflictStrategy: 'keep-both' });
-      } catch {
-        // expected in Red phase
-      }
-      // If conflict detection is implemented, exists should be called
-      // This test documents the expected call — fails if exists() not called at all
-      // (in Red phase: service may not exist yet → test fails as intended)
+    it('keep-both strategy: source calls exists() for conflict detection', async () => {
+      const src = await import('fs').then(fs => fs.readFileSync('src/services/zip-import-service.ts', 'utf-8'));
+      expect(src).toMatch(/exists\(/);
     });
   });
 
