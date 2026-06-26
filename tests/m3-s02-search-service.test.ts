@@ -1,9 +1,24 @@
 // @vitest-environment node
 // M3-S02: Search service layer — FTS5 + LIKE fallback, facets, ranking.
 // See: https://github.com/Djimon/WorldBrain/issues/43
+// Rewritten to target async DatabaseLike after search-service migration to execute()/select().
 
 import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
+import type { DatabaseLike } from '../src/services/entity-service';
+
+// Unavoidable scaffolding: wraps DatabaseSync as async DatabaseLike for tests.
+function makeAsyncDb(db: DatabaseSync): DatabaseLike {
+  return {
+    execute: (sql: string, args: unknown[] = []) => {
+      db.prepare(sql).run(...args);
+      return Promise.resolve();
+    },
+    select: <T>(sql: string, args: unknown[] = []): Promise<T[]> => {
+      return Promise.resolve(db.prepare(sql).all(...args) as T[]);
+    },
+  };
+}
 
 async function getSearchService() {
   return import('../src/services/search-service');
@@ -12,21 +27,22 @@ async function getSearchService() {
 async function openSearchDb() {
   const { applySearchSchema, indexEntity } = await import('../core_data/search-schema');
   const db = new DatabaseSync(':memory:');
-  applySearchSchema(db);
+  const asyncDb = makeAsyncDb(db);
+  await applySearchSchema(asyncDb);
 
   const entities = [
-    { entity_id: 'char-ada', title: 'Ada Thorn', aliases: 'The Red Notary', summary: 'Archivist of the Weavers.', body: 'She keeps records.', tags: 'archivist mage', properties_text: 'role:archivist' },
-    { entity_id: 'char-bram', title: 'Bram Holt', aliases: 'Innkeeper', summary: 'Runs the inn.', body: 'He brews ale.', tags: 'commoner', properties_text: 'role:innkeeper' },
-    { entity_id: 'char-silas', title: 'Silas da Silva', aliases: '', summary: 'Merchant.', body: 'Trades in secrets.', tags: 'merchant', properties_text: 'role:merchant' },
-    { entity_id: 'loc-keep', title: 'The Keep', aliases: 'Iron Keep', summary: 'Crumbling fortress.', body: 'Ancient walls.', tags: 'location', properties_text: 'type:fortress' },
-    { entity_id: 'loc-inn', title: 'The Rusty Anchor', aliases: '', summary: 'A tavern.', body: 'Smells of ale.', tags: 'location tavern', properties_text: 'type:tavern' },
+    { entity_id: 'char-ada', entity_type: 'Character', title: 'Ada Thorn', aliases: 'The Red Notary', summary: 'Archivist of the Weavers.', body: 'She keeps records.', tags: 'archivist mage', properties_text: 'role:archivist' },
+    { entity_id: 'char-bram', entity_type: 'Character', title: 'Bram Holt', aliases: 'Innkeeper', summary: 'Runs the inn.', body: 'He brews ale.', tags: 'commoner', properties_text: 'role:innkeeper' },
+    { entity_id: 'char-silas', entity_type: 'Character', title: 'Silas da Silva', aliases: '', summary: 'Merchant.', body: 'Trades in secrets.', tags: 'merchant', properties_text: 'role:merchant' },
+    { entity_id: 'loc-keep', entity_type: 'Location', title: 'The Keep', aliases: 'Iron Keep', summary: 'Crumbling fortress.', body: 'Ancient walls.', tags: 'location', properties_text: 'type:fortress' },
+    { entity_id: 'loc-inn', entity_type: 'Location', title: 'The Rusty Anchor', aliases: '', summary: 'A tavern.', body: 'Smells of ale.', tags: 'location tavern', properties_text: 'type:tavern' },
   ];
 
   for (const e of entities) {
-    indexEntity(db, e);
+    await indexEntity(asyncDb, e);
   }
 
-  return db;
+  return asyncDb;
 }
 
 describe('M3-S02 search service layer', () => {
@@ -36,11 +52,19 @@ describe('M3-S02 search service layer', () => {
       expect(typeof mod.searchEntities).toBe('function');
     });
 
+    it('searchEntities returns a Promise', async () => {
+      const { searchEntities } = await getSearchService();
+      const db = await openSearchDb();
+      const result = searchEntities(db, 'Ada', {});
+      expect(result).toBeInstanceOf(Promise);
+      await result;
+    });
+
     it('returns a SearchResult array', async () => {
       const { searchEntities } = await getSearchService();
       const db = await openSearchDb();
 
-      const results = searchEntities(db, 'Ada', {});
+      const results = await searchEntities(db, 'Ada', {});
 
       expect(Array.isArray(results)).toBe(true);
     });
@@ -49,7 +73,7 @@ describe('M3-S02 search service layer', () => {
       const { searchEntities } = await getSearchService();
       const db = await openSearchDb();
 
-      const results = searchEntities(db, 'Ada', {});
+      const results = await searchEntities(db, 'Ada', {});
 
       expect(results.length).toBeGreaterThan(0);
       const r = results[0];
@@ -65,7 +89,7 @@ describe('M3-S02 search service layer', () => {
       const { searchEntities } = await getSearchService();
       const db = await openSearchDb();
 
-      const results = searchEntities(db, 'Ada Thorn', {});
+      const results = await searchEntities(db, 'Ada Thorn', {});
 
       expect(results.some((r) => r.entityId === 'char-ada')).toBe(true);
     });
@@ -74,7 +98,7 @@ describe('M3-S02 search service layer', () => {
       const { searchEntities } = await getSearchService();
       const db = await openSearchDb();
 
-      const results = searchEntities(db, 'Red Notary', {});
+      const results = await searchEntities(db, 'Red Notary', {});
 
       expect(results.some((r) => r.entityId === 'char-ada')).toBe(true);
     });
@@ -83,7 +107,7 @@ describe('M3-S02 search service layer', () => {
       const { searchEntities } = await getSearchService();
       const db = await openSearchDb();
 
-      const results = searchEntities(db, 'Archivist', {});
+      const results = await searchEntities(db, 'Archivist', {});
 
       expect(results.some((r) => r.entityId === 'char-ada')).toBe(true);
     });
@@ -92,7 +116,7 @@ describe('M3-S02 search service layer', () => {
       const { searchEntities } = await getSearchService();
       const db = await openSearchDb();
 
-      const results = searchEntities(db, 'secrets', {});
+      const results = await searchEntities(db, 'secrets', {});
 
       expect(results.some((r) => r.entityId === 'char-silas')).toBe(true);
     });
@@ -101,7 +125,7 @@ describe('M3-S02 search service layer', () => {
       const { searchEntities } = await getSearchService();
       const db = await openSearchDb();
 
-      const results = searchEntities(db, 'zzznomatchstring', {});
+      const results = await searchEntities(db, 'zzznomatchstring', {});
 
       expect(results.length).toBe(0);
     });
@@ -112,7 +136,7 @@ describe('M3-S02 search service layer', () => {
       const { searchEntities } = await getSearchService();
       const db = await openSearchDb();
 
-      const results = searchEntities(db, 'Sil', {});
+      const results = await searchEntities(db, 'Sil', {});
 
       expect(results.some((r) => r.entityId === 'char-silas')).toBe(true);
     });
@@ -121,20 +145,19 @@ describe('M3-S02 search service layer', () => {
       const { searchEntities } = await getSearchService();
       const db = await openSearchDb();
 
-      const results = searchEntities(db, 'silva', {});
+      const results = await searchEntities(db, 'silva', {});
 
       expect(results.some((r) => r.entityId === 'char-silas')).toBe(true);
     });
   });
 
   describe('facet aggregation', () => {
-    it('returns facets alongside results', async () => {
+    it('returns results for broad query', async () => {
       const { searchEntities } = await getSearchService();
       const db = await openSearchDb();
 
-      const results = searchEntities(db, 'Keep', {});
+      const results = await searchEntities(db, 'Keep', {});
 
-      // Results may carry facets or a separate call — check the result object
       expect(results).toBeDefined();
     });
 
@@ -143,11 +166,19 @@ describe('M3-S02 search service layer', () => {
       expect(typeof (mod as Record<string, unknown>).getSearchFacets).toBe('function');
     });
 
+    it('getSearchFacets returns a Promise', async () => {
+      const { getSearchFacets } = await getSearchService();
+      const db = await openSearchDb();
+      const result = getSearchFacets(db, 'a', {});
+      expect(result).toBeInstanceOf(Promise);
+      await result;
+    });
+
     it('getSearchFacets returns entity type counts', async () => {
       const { getSearchFacets } = await getSearchService();
       const db = await openSearchDb();
 
-      const facets = getSearchFacets(db, 'a', {});
+      const facets = await getSearchFacets(db, 'a', {});
 
       expect(facets).toHaveProperty('entityTypes');
       expect(typeof facets.entityTypes).toBe('object');
@@ -159,11 +190,8 @@ describe('M3-S02 search service layer', () => {
       const { searchEntities } = await getSearchService();
       const db = await openSearchDb();
 
-      // 'archivist' appears in Ada's title area (summary) AND as a tag
-      // 'Archivist of the Weavers' is her summary, 'archivist' is a tag
-      const results = searchEntities(db, 'archivist', {});
+      const results = await searchEntities(db, 'archivist', {});
 
-      // Ada should appear first or have the highest score
       if (results.length > 1) {
         const adaIdx = results.findIndex((r) => r.entityId === 'char-ada');
         expect(adaIdx).toBe(0);
@@ -174,14 +202,11 @@ describe('M3-S02 search service layer', () => {
   });
 
   describe('filters', () => {
-    it('entityType filter narrows results', async () => {
+    it('entityType filter narrows results without throwing', async () => {
       const { searchEntities } = await getSearchService();
       const db = await openSearchDb();
 
-      // Only locations — keep results should not include characters
-      // Note: entity_search only has what was indexed; type filter requires type stored in index
-      // This test verifies the filter parameter is accepted without throwing
-      expect(() => searchEntities(db, 'the', { entityType: 'Location' })).not.toThrow();
+      await expect(searchEntities(db, 'the', { entityType: 'Location' })).resolves.toBeDefined();
     });
   });
 });
@@ -192,10 +217,8 @@ describe('issue #115: LIKE fallback wildcard escaping', () => {
     const { searchEntities } = await getSearchService();
     const db = await openSearchDb();
 
-    const results = searchEntities(db, '%', {});
+    const results = await searchEntities(db, '%', {});
 
-    // Without escaping, '%' becomes '%%%' which matches everything.
-    // With escaping, '\\%' matches only a literal %, so results must be empty.
     expect(results.length).toBe(0);
   });
 
@@ -203,7 +226,7 @@ describe('issue #115: LIKE fallback wildcard escaping', () => {
     const { searchEntities } = await getSearchService();
     const db = await openSearchDb();
 
-    const results = searchEntities(db, '_', {});
+    const results = await searchEntities(db, '_', {});
 
     expect(results.length).toBe(0);
   });
@@ -212,12 +235,10 @@ describe('issue #115: LIKE fallback wildcard escaping', () => {
     const { searchEntities } = await getSearchService();
     const db = await openSearchDb();
 
-    const results = searchEntities(db, 'a%b', {});
+    const results = await searchEntities(db, 'a%b', {});
 
     expect(results.some((r) => r.entityId === 'char-ada')).toBe(false);
   });
-
-
 });
 
 // Bug #116: getSearchFacets must not re-run FTS5 query internally; entityType facets must be populated
@@ -226,9 +247,8 @@ describe('issue #116: getSearchFacets returns populated entityType counts withou
     const { getSearchFacets } = await getSearchService();
     const db = await openSearchDb();
 
-    const facets = getSearchFacets(db, 'a', {});
+    const facets = await getSearchFacets(db, 'a', {});
 
-    // If entityType is never populated (current bug), this will be {}
     expect(facets.entityTypes).not.toEqual({});
   });
 
@@ -236,18 +256,14 @@ describe('issue #116: getSearchFacets returns populated entityType counts withou
     const { getSearchFacets } = await getSearchService();
     const db = await openSearchDb();
 
-    // Indexed entities include 3 Characters and 2 Locations — both types must appear
-    const facets = getSearchFacets(db, 'a', {});
+    const facets = await getSearchFacets(db, 'a', {});
 
     const typeKeys = Object.keys(facets.entityTypes ?? {});
     expect(typeKeys.length).toBeGreaterThan(0);
   });
 
-  it('getSearchFacets accepts pre-computed results to avoid double query', async () => {
+  it('getSearchFacets accepts db and query to avoid double query', async () => {
     const mod = await getSearchService();
-
-    // After fix, getSearchFacets should accept an optional results param
-    // (or be merged into searchEntities). Either way it must not crash.
     expect(typeof mod.getSearchFacets).toBe('function');
   });
 });
