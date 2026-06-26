@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { listSnapshots, createSnapshot, restoreSnapshot, deleteSnapshot } from '../services/snapshot-service';
 import type { SnapshotEntry } from '../services/snapshot-service';
 
@@ -15,27 +15,35 @@ type DialogState =
   | null;
 
 export function SnapshotManager({ projectId, onRestored, projectDir, snapshotsDir }: SnapshotManagerProps) {
-  const snapshots = listSnapshots({ projectId, snapshotsDir });
+  const [snapshots, setSnapshots] = useState<SnapshotEntry[]>([]);
   const [newName, setNewName] = useState('');
   const [dialog, setDialog] = useState<DialogState>(null);
 
+  function reload() {
+    listSnapshots({ projectId, snapshotsDir }).then(setSnapshots).catch(() => setSnapshots([]));
+  }
+
+  useEffect(() => { reload(); }, [projectId, snapshotsDir]);
+
   function handleCreate() {
     if (!newName.trim()) return;
-    createSnapshot({ projectId, name: newName.trim(), projectDir, snapshotsDir });
-    setNewName('');
+    createSnapshot({ projectId, name: newName.trim(), projectDir, snapshotsDir })
+      .then(() => { setNewName(''); reload(); })
+      .catch(() => { /* ignore */ });
   }
 
   function handleConfirmRestore() {
     if (dialog?.type !== 'restore') return;
-    restoreSnapshot({ id: dialog.snapshot.id, projectDir, snapshotsDir });
-    setDialog(null);
-    onRestored();
+    restoreSnapshot({ id: dialog.snapshot.id, projectDir, snapshotsDir })
+      .then(() => { setDialog(null); onRestored(); })
+      .catch(() => setDialog(null));
   }
 
   function handleConfirmDelete() {
     if (dialog?.type !== 'delete') return;
-    deleteSnapshot({ id: dialog.snapshot.id, snapshotsDir });
-    setDialog(null);
+    deleteSnapshot({ id: dialog.snapshot.id, snapshotsDir })
+      .then(() => { setDialog(null); reload(); })
+      .catch(() => setDialog(null));
   }
 
   function formatDate(iso: string): string {

@@ -1,5 +1,5 @@
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { exists, readDir, readFile, writeFile } from '@tauri-apps/plugin-fs';
+import { join } from '@tauri-apps/api/path';
 import { createZip } from './_zip-utils';
 import { createSnapshot } from './snapshot-service';
 
@@ -23,16 +23,21 @@ function isExcluded(relPath: string): boolean {
   );
 }
 
-function collectFiles(dir: string, baseDir: string): Array<{ name: string; data: Buffer }> {
+function makeRelative(baseDir: string, fullPath: string): string {
+  const base = baseDir.replace(/\\/g, '/').replace(/\/$/, '') + '/';
+  return fullPath.replace(/\\/g, '/').replace(base, '');
+}
+
+async function collectFiles(dir: string, baseDir: string): Promise<Array<{ name: string; data: Buffer }>> {
   const results: Array<{ name: string; data: Buffer }> = [];
-  for (const dirent of readdirSync(dir, { withFileTypes: true })) {
-    const full = join(dir, dirent.name);
-    const rel = relative(baseDir, full).replace(/\\/g, '/');
+  for (const dirent of await readDir(dir)) {
+    const full = await join(dir, dirent.name);
+    const rel = makeRelative(baseDir, full);
     if (isExcluded(rel)) continue;
-    if (dirent.isDirectory()) {
-      results.push(...collectFiles(full, baseDir));
+    if (dirent.isDirectory) {
+      results.push(...await collectFiles(full, baseDir));
     } else {
-      const data = Buffer.from(readFileSync(full, 'binary'), 'binary');
+      const data = Buffer.from(await readFile(full));
       results.push({ name: rel, data });
     }
   }
@@ -49,12 +54,12 @@ export async function exportProjectToZip(opts: {
 }): Promise<void> {
   const projectDir = opts.projectDir ?? opts.projectPath;
   if (projectDir && opts.snapshotsDir) {
-    createSnapshot({ projectId: opts.projectId, name: `pre-export-${Date.now()}`, projectDir, snapshotsDir: opts.snapshotsDir });
+    await createSnapshot({ projectId: opts.projectId, name: `pre-export-${Date.now()}`, projectDir, snapshotsDir: opts.snapshotsDir });
   }
 
-  if (projectDir && existsSync(projectDir)) {
-    const files = collectFiles(projectDir, projectDir);
+  if (projectDir && (await exists(projectDir))) {
+    const files = await collectFiles(projectDir, projectDir);
     const zipBuf = createZip(files);
-    writeFileSync(opts.outputPath, zipBuf);
+    await writeFile(opts.outputPath, zipBuf);
   }
 }

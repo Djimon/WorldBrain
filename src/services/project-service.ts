@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { exists, mkdir, writeTextFile } from '@tauri-apps/plugin-fs';
+import { join } from '@tauri-apps/api/path';
 
 export interface ProjectMeta {
   id: string;
@@ -14,16 +14,16 @@ export function titleToSlug(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-export function createProject(opts: {
+export async function createProject(opts: {
   title: string;
   description?: string;
   baseDir?: string;
-}): { id: string; path: string } {
+}): Promise<{ id: string; path: string }> {
   const baseDir = opts.baseDir ?? 'projects';
   const slug = titleToSlug(opts.title);
-  const projectPath = join(baseDir, slug);
+  const projectPath = await join(baseDir, slug);
 
-  if (existsSync(projectPath)) {
+  if (await exists(projectPath)) {
     throw new Error(`Folder already exists: ${projectPath}`);
   }
 
@@ -31,7 +31,7 @@ export function createProject(opts: {
   const now = new Date().toISOString();
 
   for (const sub of ['entities', 'maps', 'sessions', 'assets', 'plugins']) {
-    mkdirSync(join(projectPath, sub), { recursive: true });
+    await mkdir(await join(projectPath, sub), { recursive: true });
   }
 
   const meta: ProjectMeta = {
@@ -43,7 +43,7 @@ export function createProject(opts: {
     ...(opts.description ? { description: opts.description } : {}),
   };
 
-  writeFileSync(join(projectPath, 'project.json'), JSON.stringify(meta, null, 2), 'utf-8');
+  await writeTextFile(await join(projectPath, 'project.json'), JSON.stringify(meta, null, 2));
 
   return { id, path: projectPath };
 }

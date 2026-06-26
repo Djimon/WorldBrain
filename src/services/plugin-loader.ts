@@ -1,5 +1,5 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readDir, readTextFile } from '@tauri-apps/plugin-fs';
+import { join } from '@tauri-apps/api/path';
 
 export interface PluginManifest {
   id: string;
@@ -33,12 +33,12 @@ export function validatePluginManifest(manifest: object): { errors: string[] } {
   return { errors };
 }
 
-export function scanPlugins(pluginDir: string): Record<string, PluginRegistryEntry> {
+export async function scanPlugins(pluginDir: string): Promise<Record<string, PluginRegistryEntry>> {
   _registry = {};
   let entries: string[] = [];
   try {
-    entries = readdirSync(pluginDir, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
+    entries = (await readDir(pluginDir))
+      .filter((d) => d.isDirectory)
       .map((d) => d.name)
       .sort();
   } catch {
@@ -47,9 +47,9 @@ export function scanPlugins(pluginDir: string): Record<string, PluginRegistryEnt
   }
 
   for (const folder of entries) {
-    const manifestPath = join(pluginDir, folder, 'plugin.json');
+    const manifestPath = await join(pluginDir, folder, 'plugin.json');
     try {
-      const raw = readFileSync(manifestPath, 'utf8');
+      const raw = await readTextFile(manifestPath);
       const manifest = JSON.parse(raw) as PluginManifest;
       _registry[folder] = { manifest, status: 'loaded' };
     } catch {

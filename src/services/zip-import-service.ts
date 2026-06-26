@@ -1,5 +1,5 @@
-import * as fs from 'node:fs';
-import { dirname, join } from 'node:path';
+import { exists, mkdir, readFile, writeFile } from '@tauri-apps/plugin-fs';
+import { dirname, join } from '@tauri-apps/api/path';
 import { readZip } from './_zip-utils';
 
 export interface ZipValidationResult {
@@ -8,13 +8,9 @@ export interface ZipValidationResult {
   error?: string;
 }
 
-function readBinaryFile(filePath: string): Buffer {
-  return Buffer.from(fs.readFileSync(filePath, 'binary'), 'binary');
-}
-
-export function validateProjectZip(zipPath: string): ZipValidationResult {
+export async function validateProjectZip(zipPath: string): Promise<ZipValidationResult> {
   try {
-    const raw = readBinaryFile(zipPath);
+    const raw = Buffer.from(await readFile(zipPath));
     const entries = readZip(raw);
     const projectEntry = entries.find((e) => e.name === 'project.json' || e.name.endsWith('/project.json'));
     if (!projectEntry) return { valid: false, error: 'No project.json found in ZIP' };
@@ -33,22 +29,22 @@ function titleToSlug(title: string): string {
   return String(title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-function resolveDestPath(baseDir: string, slug: string): string {
-  let dest = join(baseDir, slug);
+async function resolveDestPath(baseDir: string, slug: string): Promise<string> {
+  let dest = await join(baseDir, slug);
   let counter = 1;
-  while (fs.existsSync(dest)) {
-    dest = join(baseDir, `${slug}-${counter}`);
+  while (await exists(dest)) {
+    dest = await join(baseDir, `${slug}-${counter}`);
     counter++;
   }
   return dest;
 }
 
-export function importProjectZip(opts: {
+export async function importProjectZip(opts: {
   zipPath: string;
   baseDir?: string;
   conflictStrategy?: 'overwrite' | 'keep-both';
-}): { id: string; path: string } {
-  const validation = validateProjectZip(opts.zipPath);
+}): Promise<{ id: string; path: string }> {
+  const validation = await validateProjectZip(opts.zipPath);
   if (!validation.valid || !validation.projectJson) {
     throw new Error(validation.error ?? 'Invalid ZIP');
   }
@@ -60,16 +56,16 @@ export function importProjectZip(opts: {
   const slug = titleToSlug(title);
 
   const destPath = opts.conflictStrategy === 'keep-both'
-    ? resolveDestPath(baseDir, slug)
-    : join(baseDir, slug);
+    ? await resolveDestPath(baseDir, slug)
+    : await join(baseDir, slug);
 
-  const raw = readBinaryFile(opts.zipPath);
+  const raw = Buffer.from(await readFile(opts.zipPath));
   const entries = readZip(raw);
 
   for (const entry of entries) {
-    const filePath = join(destPath, entry.name);
-    fs.mkdirSync(dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, entry.data);
+    const filePath = await join(destPath, entry.name);
+    await mkdir(await dirname(filePath), { recursive: true });
+    await writeFile(filePath, entry.data);
   }
 
   return { id, path: destPath };

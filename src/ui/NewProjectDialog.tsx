@@ -17,12 +17,9 @@ export function NewProjectDialog({ onCreated, onCancel, baseDir }: NewProjectDia
       setError('Projektname ist erforderlich.');
       return;
     }
-    try {
-      const result = createProject({ title: name.trim(), description: description.trim() || undefined, baseDir });
-      onCreated(result.id);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler beim Anlegen des Projekts.');
-    }
+    createProject({ title: name.trim(), description: description.trim() || undefined, baseDir })
+      .then((result) => onCreated(result.id))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Fehler beim Anlegen des Projekts.'));
   }
 
   return (

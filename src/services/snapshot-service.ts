@@ -1,5 +1,5 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { copyFile, exists, mkdir, readDir, readTextFile, remove, writeTextFile } from '@tauri-apps/plugin-fs';
+import { join } from '@tauri-apps/api/path';
 
 export interface SnapshotEntry {
   id: string;
@@ -14,52 +14,55 @@ interface SnapshotMeta {
   createdAt: string;
 }
 
-
-function copyDirSync(src: string, dest: string, exclude?: string): void {
-  mkdirSync(dest, { recursive: true });
-  for (const dirent of readdirSync(src, { withFileTypes: true })) {
-    const srcFull = join(src, dirent.name);
+async function copyDirAsync(src: string, dest: string, exclude?: string): Promise<void> {
+  await mkdir(dest, { recursive: true });
+  const entries = await readDir(src);
+  for (const entry of entries) {
+    const srcFull = await join(src, entry.name);
     if (exclude && srcFull === exclude) continue;
-    const destFull = join(dest, dirent.name);
-    if (dirent.isDirectory()) copyDirSync(srcFull, destFull, exclude);
-    else copyFileSync(srcFull, destFull);
+    const destFull = await join(dest, entry.name);
+    if (entry.isDirectory) {
+      await copyDirAsync(srcFull, destFull, exclude);
+    } else {
+      await copyFile(srcFull, destFull);
+    }
   }
 }
 
-export function createSnapshot(opts: {
+export async function createSnapshot(opts: {
   projectId: string;
   name: string;
   projectDir?: string;
   snapshotsDir?: string;
   projectPath?: string;
-}): { id: string } {
+}): Promise<{ id: string }> {
   const id = `snap-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   const snapshotsDir = opts.snapshotsDir;
   const projectDir = opts.projectDir ?? opts.projectPath;
 
   if (snapshotsDir && projectDir) {
-    const snapDir = join(snapshotsDir, id);
-    mkdirSync(snapDir, { recursive: true });
-    copyDirSync(projectDir, snapDir, snapshotsDir);
+    const snapDir = await join(snapshotsDir, id);
+    await mkdir(snapDir, { recursive: true });
+    await copyDirAsync(projectDir, snapDir, snapshotsDir);
     const meta: SnapshotMeta = { id, name: opts.name, createdAt: new Date().toISOString() };
-    writeFileSync(join(snapDir, 'snapshot.json'), JSON.stringify(meta, null, 2), 'utf-8');
+    await writeTextFile(await join(snapDir, 'snapshot.json'), JSON.stringify(meta, null, 2));
   }
 
   return { id };
 }
 
-export function listSnapshots(opts: { projectId?: string; snapshotsDir?: string }): SnapshotEntry[] {
+export async function listSnapshots(opts: { projectId?: string; snapshotsDir?: string }): Promise<SnapshotEntry[]> {
   const snapshotsDir = opts.snapshotsDir;
-  if (!snapshotsDir || !existsSync(snapshotsDir)) return [];
+  if (!snapshotsDir || !(await exists(snapshotsDir))) return [];
 
   const entries: SnapshotEntry[] = [];
-  for (const dirent of readdirSync(snapshotsDir, { withFileTypes: true })) {
-    if (!dirent.isDirectory()) continue;
-    const snapDir = join(snapshotsDir, dirent.name);
-    const metaPath = join(snapDir, 'snapshot.json');
-    if (!existsSync(metaPath)) continue;
+  for (const dirent of await readDir(snapshotsDir)) {
+    if (!dirent.isDirectory) continue;
+    const snapDir = await join(snapshotsDir, dirent.name);
+    const metaPath = await join(snapDir, 'snapshot.json');
+    if (!(await exists(metaPath))) continue;
     try {
-      const meta = JSON.parse(readFileSync(metaPath, 'utf-8')) as SnapshotMeta;
+      const meta = JSON.parse(await readTextFile(metaPath)) as SnapshotMeta;
       entries.push({ id: meta.id, name: meta.name, createdAt: meta.createdAt, sizeBytes: 0 });
     } catch {
       // AP-006 exception: corrupt snapshot.json at filesystem boundary — skip entry
@@ -68,30 +71,30 @@ export function listSnapshots(opts: { projectId?: string; snapshotsDir?: string 
   return entries;
 }
 
-export function deleteSnapshot(opts: string | { id: string; snapshotsDir?: string }): void {
+export async function deleteSnapshot(opts: string | { id: string; snapshotsDir?: string }): Promise<void> {
   if (typeof opts === 'string') return;
   const { id, snapshotsDir } = opts;
   if (!snapshotsDir) return;
-  const snapDir = join(snapshotsDir, id);
-  if (existsSync(snapDir)) rmSync(snapDir, { recursive: true, force: true });
+  const snapDir = await join(snapshotsDir, id);
+  if (await exists(snapDir)) await remove(snapDir, { recursive: true });
 }
 
-export function restoreSnapshot(opts: {
+export async function restoreSnapshot(opts: {
   snapshotId?: string;
   id?: string;
   projectDir?: string;
   projectPath?: string;
   snapshotsDir?: string;
-}): void {
+}): Promise<void> {
   const id = opts.id ?? opts.snapshotId;
   const projectDir = opts.projectDir ?? opts.projectPath;
   const { snapshotsDir } = opts;
   if (!id || !projectDir || !snapshotsDir) return;
 
-  const snapDir = join(snapshotsDir, id);
-  if (!existsSync(snapDir)) return;
-  rmSync(projectDir, { recursive: true, force: true });
-  copyDirSync(snapDir, projectDir);
-  const metaInProject = join(projectDir, 'snapshot.json');
-  if (existsSync(metaInProject)) rmSync(metaInProject);
+  const snapDir = await join(snapshotsDir, id);
+  if (!(await exists(snapDir))) return;
+  await remove(projectDir, { recursive: true });
+  await copyDirAsync(snapDir, projectDir);
+  const metaInProject = await join(projectDir, 'snapshot.json');
+  if (await exists(metaInProject)) await remove(metaInProject);
 }

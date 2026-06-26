@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { readAppConfig } from '../services/app-config-service';
-import type { ProjectEntry } from '../services/app-config-service';
+import type { AppConfig, ProjectEntry } from '../services/app-config-service';
 
 interface WelcomeScreenProps {
   configPath?: string;
@@ -9,10 +9,16 @@ interface WelcomeScreenProps {
   onOpenProject: (projectId: string) => void;
 }
 
-export function WelcomeScreen({ configPath = 'app-config.json', onCreateProject, onImportZip, onOpenProject }: WelcomeScreenProps) {
-  const [config] = useState(() => readAppConfig(configPath));
-  const { last_opened_project_id, projects } = config;
+const EMPTY_CONFIG: AppConfig = { last_opened_project_id: null, projects: [] };
 
+export function WelcomeScreen({ configPath = 'app-config.json', onCreateProject, onImportZip, onOpenProject }: WelcomeScreenProps) {
+  const [config, setConfig] = useState<AppConfig>(EMPTY_CONFIG);
+
+  useEffect(() => {
+    readAppConfig(configPath).then(setConfig).catch(() => setConfig(EMPTY_CONFIG));
+  }, [configPath]);
+
+  const { last_opened_project_id, projects } = config;
   const isStale = last_opened_project_id != null && !projects.some((p) => p.id === last_opened_project_id);
 
   return (

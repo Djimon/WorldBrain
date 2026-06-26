@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { validateProjectZip, importProjectZip } from '../services/zip-import-service';
+import type { ZipValidationResult } from '../services/zip-import-service';
 
 interface ZipImportDialogProps {
   onImported: (projectId: string) => void;
@@ -9,16 +10,22 @@ interface ZipImportDialogProps {
 }
 
 export function ZipImportDialog({ onImported, onCancel, zipPath, existingProjectIds = [] }: ZipImportDialogProps) {
-  const validation = zipPath ? validateProjectZip(zipPath) : null;
+  const [validation, setValidation] = useState<ZipValidationResult | null>(null);
   const [conflictStrategy, setConflictStrategy] = useState<'overwrite' | 'keep-both' | null>(null);
+
+  useEffect(() => {
+    if (!zipPath) { setValidation(null); return; }
+    validateProjectZip(zipPath).then(setValidation).catch(() => setValidation({ valid: false, error: 'Ungültige ZIP-Datei.' }));
+  }, [zipPath]);
 
   const importedId = validation?.projectJson?.id as string | undefined;
   const hasConflict = importedId != null && existingProjectIds.includes(importedId);
 
   function handleImport(strategy?: 'overwrite' | 'keep-both') {
     if (!zipPath || !validation?.valid) return;
-    const result = importProjectZip({ zipPath, conflictStrategy: strategy });
-    onImported(result.id);
+    importProjectZip({ zipPath, conflictStrategy: strategy })
+      .then((result) => onImported(result.id))
+      .catch(() => { /* stay on dialog */ });
   }
 
   if (!zipPath) {

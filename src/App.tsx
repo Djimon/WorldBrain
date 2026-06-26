@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { useEffect, useState } from 'react';
+import { join } from '@tauri-apps/api/path';
+import { exists, readDir, readTextFile } from '@tauri-apps/plugin-fs';
 import type { DatabaseLike } from './services/entity-service';
 import { readAppConfig, registerProject } from './services/app-config-service';
 import type { ProjectEntry } from './services/app-config-service';
@@ -19,53 +19,67 @@ const PROJECTS_BASE_DIR = 'projects';
 
 type AppMode =
   | { kind: 'welcome' }
+  | { kind: 'loading' }
   | { kind: 'new-project' }
   | { kind: 'import-zip' }
   | { kind: 'workspace'; projectId: string; projectDir: string; db: DatabaseLike };
 
-function initWorkspace(projectEntry: ProjectEntry): AppMode & { kind: 'workspace' } {
-  const dbPath = join(projectEntry.path, 'world.db');
-  const db = openProjectDb(dbPath);
-  // #186: scan plugins after DB init so PluginManager and entity type list are populated
-  scanPlugins(join(projectEntry.path, 'plugins'));
+async function initWorkspace(projectEntry: ProjectEntry): Promise<AppMode & { kind: 'workspace' }> {
+  const dbPath = await join(projectEntry.path, 'world.db');
+  const db = await openProjectDb(dbPath);
+  await scanPlugins(await join(projectEntry.path, 'plugins'));
   return { kind: 'workspace', projectId: projectEntry.id, projectDir: projectEntry.path, db };
 }
 
-function findProjectPath(projectId: string, baseDir: string): string | null {
-  if (!existsSync(baseDir)) return null;
-  for (const dirent of readdirSync(baseDir, { withFileTypes: true })) {
-    if (!dirent.isDirectory()) continue;
-    const metaPath = join(baseDir, dirent.name, 'project.json');
-    if (!existsSync(metaPath)) continue;
+async function findProjectPath(projectId: string, baseDir: string): Promise<string | null> {
+  if (!(await exists(baseDir))) return null;
+  for (const dirent of await readDir(baseDir)) {
+    if (!dirent.isDirectory) continue;
+    const metaPath = await join(baseDir, dirent.name, 'project.json');
+    if (!(await exists(metaPath))) continue;
     try {
-      const meta = JSON.parse(readFileSync(metaPath, 'utf-8')) as { id?: string; title?: string };
-      if (meta.id === projectId) return join(baseDir, dirent.name);
+      const meta = JSON.parse(await readTextFile(metaPath)) as { id?: string; title?: string };
+      if (meta.id === projectId) return await join(baseDir, dirent.name);
     } catch { /* skip */ }
   }
   return null;
 }
 
-function resolveInitialMode(): AppMode {
-  try {
-    const config = readAppConfig(APP_CONFIG_PATH);
-    if (config.last_opened_project_id) {
-      const entry = config.projects.find((p) => p.id === config.last_opened_project_id);
-      if (entry) return initWorkspace(entry);
-    }
-  } catch {
-    // AP-006 exception: config read at startup boundary — fall through to welcome
-  }
-  return { kind: 'welcome' };
-}
-
 export function App() {
-  const [mode, setMode] = useState<AppMode>(() => resolveInitialMode());
+  const [mode, setMode] = useState<AppMode>({ kind: 'loading' });
+
+  useEffect(() => {
+    let cancelled = false;
+    readAppConfig(APP_CONFIG_PATH).then(async (config) => {
+      if (cancelled) return;
+      if (config.last_opened_project_id) {
+        const entry = config.projects.find((p) => p.id === config.last_opened_project_id);
+        if (entry) {
+          try {
+            const workspace = await initWorkspace(entry);
+            if (!cancelled) setMode(workspace);
+            return;
+          } catch { /* fall through to welcome */ }
+        }
+      }
+      if (!cancelled) setMode({ kind: 'welcome' });
+    }).catch(() => {
+      if (!cancelled) setMode({ kind: 'welcome' });
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   function openProject(projectId: string) {
-    const config = readAppConfig(APP_CONFIG_PATH);
-    const entry = config.projects.find((p) => p.id === projectId);
-    if (!entry) return;
-    setMode(initWorkspace(entry));
+    setMode({ kind: 'loading' });
+    readAppConfig(APP_CONFIG_PATH).then(async (config) => {
+      const entry = config.projects.find((p) => p.id === projectId);
+      if (!entry) { setMode({ kind: 'welcome' }); return; }
+      try {
+        setMode(await initWorkspace(entry));
+      } catch {
+        setMode({ kind: 'welcome' });
+      }
+    }).catch(() => setMode({ kind: 'welcome' }));
   }
 
   function closeProject() {
@@ -73,21 +87,31 @@ export function App() {
   }
 
   function handleProjectCreated(projectId: string) {
-    const projectPath = findProjectPath(projectId, PROJECTS_BASE_DIR);
-    if (!projectPath) return;
-    const meta = JSON.parse(readFileSync(join(projectPath, 'project.json'), 'utf-8')) as { title: string };
-    registerProject(APP_CONFIG_PATH, { id: projectId, title: meta.title, path: projectPath });
-    const db = openProjectDb(join(projectPath, 'world.db'));
-    setMode({ kind: 'workspace', projectId, projectDir: projectPath, db });
+    setMode({ kind: 'loading' });
+    findProjectPath(projectId, PROJECTS_BASE_DIR).then(async (projectPath) => {
+      if (!projectPath) { setMode({ kind: 'welcome' }); return; }
+      const metaPath = await join(projectPath, 'project.json');
+      const meta = JSON.parse(await readTextFile(metaPath)) as { title: string };
+      await registerProject(APP_CONFIG_PATH, { id: projectId, title: meta.title, path: projectPath });
+      const db = await openProjectDb(await join(projectPath, 'world.db'));
+      setMode({ kind: 'workspace', projectId, projectDir: projectPath, db });
+    }).catch(() => setMode({ kind: 'welcome' }));
   }
 
   function handleZipImported(projectId: string) {
-    const projectPath = findProjectPath(projectId, PROJECTS_BASE_DIR);
-    if (!projectPath) return;
-    const meta = JSON.parse(readFileSync(join(projectPath, 'project.json'), 'utf-8')) as { title: string };
-    registerProject(APP_CONFIG_PATH, { id: projectId, title: meta.title, path: projectPath });
-    const db = openProjectDb(join(projectPath, 'world.db'));
-    setMode({ kind: 'workspace', projectId, projectDir: projectPath, db });
+    setMode({ kind: 'loading' });
+    findProjectPath(projectId, PROJECTS_BASE_DIR).then(async (projectPath) => {
+      if (!projectPath) { setMode({ kind: 'welcome' }); return; }
+      const metaPath = await join(projectPath, 'project.json');
+      const meta = JSON.parse(await readTextFile(metaPath)) as { title: string };
+      await registerProject(APP_CONFIG_PATH, { id: projectId, title: meta.title, path: projectPath });
+      const db = await openProjectDb(await join(projectPath, 'world.db'));
+      setMode({ kind: 'workspace', projectId, projectDir: projectPath, db });
+    }).catch(() => setMode({ kind: 'welcome' }));
+  }
+
+  if (mode.kind === 'loading') {
+    return <div style={{ padding: '2rem' }}>Laden…</div>;
   }
 
   if (mode.kind === 'welcome') {
@@ -121,7 +145,7 @@ export function App() {
 
   // mode.kind === 'workspace'
   const { projectId, projectDir, db } = mode;
-  const snapshotsDir = join(projectDir, 'snapshots');
+  const snapshotsDir = `${projectDir}/snapshots`;
 
   return (
     <DatabaseProvider value={db}>
