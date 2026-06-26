@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import { useDatabase } from '../services/DatabaseContext';
 import { listEntityTypes } from '../services/plugin-entity-service';
 import { listMaps, createMap } from '../services/map-service';
+import type { MapRow } from '../services/map-service';
 import { listViews } from '../services/saved-views-service';
+import type { SavedViewRow } from '../services/saved-views-service';
 import { importRules } from '../services/rule-import-service';
 import { detectMysteryBreakers, analyzeRoleCoverage, detectQuestBlockers } from '../services/rule-evaluations';
 import { listVars } from '../services/session-variable-service';
+import type { VarRow } from '../services/session-variable-service';
 import { EntityMasterDetail } from './EntityMasterDetail';
 import { GlobalSearch } from './GlobalSearch';
 import { GlobalEntityGraph } from './GlobalEntityGraph';
@@ -79,14 +82,28 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | null>('Character');
   const [selectedScreenId, setSelectedScreenId] = useState<string | null>(null);
-  // #182: maps loaded once via lazy init, not on every render
-  const [maps, setMaps] = useState(() => listMaps(database));
+  const [maps, setMaps] = useState<MapRow[]>([]);
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   const [showCardCreation, setShowCardCreation] = useState(false);
   const [showPrintSheet, setShowPrintSheet] = useState(false);
   const [activeCalendar, setActiveCalendar] = useState<CalendarRow | null>(null);
   const [evalResult, setEvalResult] = useState<string | null>(null);
+  const [savedViews, setSavedViews] = useState<SavedViewRow[]>([]);
+  const [sessionVarsRaw, setSessionVarsRaw] = useState<VarRow[]>([]);
+
+  useEffect(() => {
+    listMaps(database).then(setMaps);
+  }, [database]);
+
+  useEffect(() => {
+    listViews(database).then(setSavedViews);
+  }, [database]);
+
+  useEffect(() => {
+    listVars(database, projectId).then(setSessionVarsRaw);
+  }, [database, projectId]);
+
   // #187: Ctrl+K / Cmd+K → search area
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -107,23 +124,27 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
     setActiveArea('entities');
   }
 
-  function loadCalendarById(id: string): CalendarRow | null {
-    const row = database.prepare('SELECT id, title, year_length_days, months_json, week_json FROM calendars WHERE id = ?').get(id);
+  async function loadCalendarById(id: string): Promise<CalendarRow | null> {
+    const rows = await database.select<{ id: string; title: string; year_length_days: number; months_json: string; week_json: string }>(
+      'SELECT id, title, year_length_days, months_json, week_json FROM calendars WHERE id = ?', [id],
+    );
+    const row = rows[0];
     if (!row) return null;
     return {
-      id: String(row.id),
-      title: String(row.title),
-      year_length_days: Number(row.year_length_days),
-      months: JSON.parse(String(row.months_json ?? '[]')) as { name: string; days: number }[],
-      week: JSON.parse(String(row.week_json ?? '[]')) as string[],
+      id: row.id,
+      title: row.title,
+      year_length_days: row.year_length_days,
+      months: JSON.parse(row.months_json ?? '[]') as { name: string; days: number }[],
+      week: JSON.parse(row.week_json ?? '[]') as string[],
     };
   }
 
-  function handleMapImport(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleMapImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    createMap(database, { title: file.name.replace(/\.[^.]+$/, '') });
-    setMaps(listMaps(database));
+    await createMap(database, { title: file.name.replace(/\.[^.]+$/, '') });
+    const updatedMaps = await listMaps(database);
+    setMaps(updatedMaps);
     e.target.value = '';
   }
 
@@ -151,11 +172,20 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
     reader.onload = (ev) => {
       try {
         const params = JSON.parse(ev.target?.result as string) as Parameters<typeof importRules>[1];
-        importRules(database, params);
+        void importRules(database, params);
       } catch { /* ignore parse errors */ }
     };
     reader.readAsText(file);
   }
+
+  const VALID_TYPES = new Set(['boolean', 'number', 'string', 'enum']);
+  const sessionVars: VarDef[] = sessionVarsRaw
+    .filter((v) => VALID_TYPES.has(v.type))
+    .map((v) => ({
+      id: v.id,
+      label: v.label,
+      type: v.type as VarDef['type'],
+    }));
 
   function renderArea() {
     switch (activeArea) {
@@ -191,9 +221,7 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
           </div>
         );
 
-      case 'search': {
-        // #187: saved views quick access
-        const savedViews = listViews(database);
+      case 'search':
         return (
           <div className="workspace-area">
             <GlobalSearch database={database} onNavigate={navigateToEntity} />
@@ -211,7 +239,6 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
             )}
           </div>
         );
-      }
 
       case 'maps':
         return (
@@ -221,7 +248,7 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
                 {/* #188: map import button */}
               <label>
                 Karte importieren
-                <input type="file" accept="image/*" onChange={handleMapImport} />
+                <input type="file" accept="image/*" onChange={(e) => void handleMapImport(e)} />
               </label>
               <ul>
                 {maps.map((m) => (
@@ -260,7 +287,7 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
             <CalendarWizard
               database={database}
               onComplete={(id) => {
-                if (id) setActiveCalendar(loadCalendarById(id));
+                if (id) void loadCalendarById(id).then(setActiveCalendar);
               }}
             />
             <ChronicleView database={database} />
@@ -343,15 +370,7 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
           </div>
         );
 
-      case 'session': {
-        const VALID_TYPES = new Set(['boolean', 'number', 'string', 'enum']);
-        const sessionVars: VarDef[] = listVars(database, projectId)
-          .filter((v) => VALID_TYPES.has(v.type))
-          .map((v) => ({
-            id: v.id,
-            label: v.label,
-            type: v.type as VarDef['type'],
-          }));
+      case 'session':
         return (
           <div className="workspace-area">
             <CaptureInbox sessionId={projectId} database={database} />
@@ -373,7 +392,6 @@ export function WorkspaceShell({ projectId, projectDir, snapshotsDir, onProjectC
             )}
           </div>
         );
-      }
 
       case 'project':
         return (

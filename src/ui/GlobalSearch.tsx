@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { searchEntities, getSearchFacets } from '../services/search-service';
-import type { SearchResult } from '../services/search-service';
+import type { SearchResult, SearchFacets } from '../services/search-service';
 import type { DatabaseLike } from '../services/entity-service';
 
 interface Props {
@@ -13,15 +13,24 @@ export function GlobalSearch({ onNavigate, database }: Props) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [activeTypeFilter, setActiveTypeFilter] = useState<string | null>(null);
+  const [facets, setFacets] = useState<SearchFacets | null>(null);
 
-  function handleChange(value: string) {
+  useEffect(() => {
+    if (results.length > 0) {
+      getSearchFacets(database!, query, {}).then(setFacets);
+    } else {
+      setFacets(null);
+    }
+  }, [results, database, query]);
+
+  async function handleChange(value: string) {
     setQuery(value);
     setSelectedIndex(-1);
     if (!value.trim()) {
       setResults([]);
       return;
     }
-    const res = searchEntities(database!, value, {});
+    const res = await searchEntities(database!, value, {});
     setResults(res);
   }
 
@@ -39,7 +48,6 @@ export function GlobalSearch({ onNavigate, database }: Props) {
     }
   }
 
-  const facets = results.length > 0 ? getSearchFacets(database!, query, {}) : null;
   const filtered = activeTypeFilter
     ? results.filter((r) => r.entityType === activeTypeFilter)
     : results;
@@ -51,7 +59,7 @@ export function GlobalSearch({ onNavigate, database }: Props) {
         aria-label="Search"
         type="search"
         value={query}
-        onChange={(e) => handleChange(e.target.value)}
+        onChange={(e) => void handleChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Search entities…"
       />

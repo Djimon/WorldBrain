@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { listEntitiesByType, updateEntityProperties } from '../services/entity-service';
 import type { DatabaseLike } from '../services/entity-service';
 
@@ -15,20 +15,23 @@ interface Props {
 }
 
 export function EntityTable({ entityType, propertiesSchema = {}, database }: Props) {
-  const entities = useMemo(
-    () => listEntitiesByType({ database: database!, type: entityType }) as Array<{
-      id: string;
-      type: string;
-      title: string;
-      summary: string;
-      aliases?: string[];
-      properties?: Record<string, unknown>;
-    }>,
-    [entityType, database],
-  );
+  const [entities, setEntities] = useState<Array<{
+    id: string;
+    type: string;
+    title: string;
+    summary: string;
+    aliases?: string[];
+    properties?: Record<string, unknown>;
+  }>>([]);
+
+  useEffect(() => {
+    if (database) {
+      listEntitiesByType({ database, type: entityType }).then(setEntities);
+    }
+  }, [entityType, database]);
 
   const propKeys = Object.keys(propertiesSchema);
-  const allColumns = ['title', ...propKeys];
+  const allColumns = useMemo(() => ['title', ...propKeys], [propertiesSchema]);
 
   const [visibleCols, setVisibleCols] = useState(new Set(allColumns));
   const [showPicker, setShowPicker] = useState(false);
@@ -58,10 +61,10 @@ export function EntityTable({ entityType, propertiesSchema = {}, database }: Pro
     setEditValue(String(value ?? ''));
   }
 
-  function handleEditCommit(entity: { id: string; properties?: Record<string, unknown> }) {
-    if (!editCell) return;
+  async function handleEditCommit(entity: { id: string; properties?: Record<string, unknown> }) {
+    if (!editCell || !database) return;
     const newProps = { ...(entity.properties ?? {}), [editCell.key]: editValue };
-    updateEntityProperties({ database: database!, entityId: entity.id, properties: newProps });
+    await updateEntityProperties({ database, entityId: entity.id, properties: newProps });
     setEditCell(null);
   }
 
@@ -138,7 +141,7 @@ export function EntityTable({ entityType, propertiesSchema = {}, database }: Pro
                       <select
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
-                        onBlur={() => handleEditCommit(entity)}
+                        onBlur={() => void handleEditCommit(entity)}
                         autoFocus
                       >
                         {schema?.enum

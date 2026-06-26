@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getMarkersForMap, createMarker, deleteMarker } from '../services/map-marker-service';
 import type { DatabaseLike } from '../services/entity-service';
 
@@ -22,18 +22,20 @@ interface Props {
 
 export function MarkerPanel({ mapId, database, onNavigateToEntity }: Props) {
   const [kindFilter, setKindFilter] = useState('');
-  const [markers, setMarkers] = useState<MarkerRow[]>(() =>
-    getMarkersForMap(database, mapId) as MarkerRow[]
-  );
+  const [markers, setMarkers] = useState<MarkerRow[]>([]);
+
+  useEffect(() => {
+    getMarkersForMap(database, mapId).then(rows => setMarkers(rows as MarkerRow[]));
+  }, [database, mapId]);
 
   function refresh() {
-    setMarkers(getMarkersForMap(database, mapId) as MarkerRow[]);
+    getMarkersForMap(database, mapId).then(rows => setMarkers(rows as MarkerRow[]));
   }
 
   const filtered = kindFilter ? markers.filter(m => m.kind === kindFilter) : markers;
 
-  function handleAdd() {
-    createMarker(database, {
+  async function handleAdd() {
+    await createMarker(database, {
       map_id: mapId,
       entity_id: null,
       kind: 'pin',
@@ -46,9 +48,9 @@ export function MarkerPanel({ mapId, database, onNavigateToEntity }: Props) {
     refresh();
   }
 
-  function handleDelete(id: string, e: React.MouseEvent) {
+  async function handleDelete(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    deleteMarker(database, id);
+    await deleteMarker(database, id);
     setMarkers(prev => prev.filter(m => m.id !== id));
   }
 
@@ -62,7 +64,7 @@ export function MarkerPanel({ mapId, database, onNavigateToEntity }: Props) {
           <option value="polygon">Shape</option>
           <option value="label">Caption</option>
         </select>
-        <button onClick={handleAdd}>Add Marker</button>
+        <button onClick={() => void handleAdd()}>Add Marker</button>
       </div>
       <ul>
         {filtered.map(m => (
@@ -77,7 +79,7 @@ export function MarkerPanel({ mapId, database, onNavigateToEntity }: Props) {
             {m.elevation_value != null && (
               <span> {m.elevation_value}{m.elevation_unit}</span>
             )}
-            <button aria-label="delete" onClick={e => handleDelete(m.id, e)}>Delete</button>
+            <button aria-label="delete" onClick={e => void handleDelete(m.id, e)}>Delete</button>
           </li>
         ))}
       </ul>

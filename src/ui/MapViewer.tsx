@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { getMap, listMaps, getAssetUrl } from '../services/map-service';
+import type { MapRow } from '../services/map-service';
 import type { DatabaseLike } from '../services/entity-service';
 
 interface Props {
@@ -10,9 +11,13 @@ interface Props {
 }
 
 export function MapViewer({ mapId, database, format: _format, showCoordinates }: Props) {
-  const map = getMap(database, mapId);
+  const [map, setMap] = useState<MapRow | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [coords, setCoords] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    getMap(database, mapId).then(setMap);
+  }, [database, mapId]);
 
   useEffect(() => {
     if (!canvasRef.current || !map) return;
@@ -48,7 +53,10 @@ export function MapViewer({ mapId, database, format: _format, showCoordinates }:
 }
 
 export function MapList({ database, onSelectMap }: { database: DatabaseLike; onSelectMap: (mapId: string) => void }) {
-  const maps = listMaps(database);
+  const [maps, setMaps] = useState<MapRow[]>([]);
+  useEffect(() => {
+    listMaps(database).then(setMaps);
+  }, [database]);
   return (
     <ul>
       {maps.map((m) => (

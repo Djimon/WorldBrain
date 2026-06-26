@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatAbsoluteDay } from '../services/calendar-service';
 import { listVars, setGlobalVar } from '../services/session-variable-service';
 import type { DatabaseLike } from '../services/entity-service';
@@ -29,7 +29,11 @@ interface Props {
 
 export function SessionClock({ sessionId: _sessionId, calendar: _calendar, worldTimeStart, database, onWorldTimeChange }: Props) {
   const [worldTime, setWorldTime] = useState(worldTimeStart);
-  const [vars, setVars] = useState<VarRow[]>(() => listVars(database, _sessionId) as VarRow[]);
+  const [vars, setVars] = useState<VarRow[]>([]);
+
+  useEffect(() => {
+    listVars(database, _sessionId).then(rows => setVars(rows as VarRow[]));
+  }, [database, _sessionId]);
 
   const counters = vars.filter(v => v.type === 'number');
 
@@ -39,15 +43,15 @@ export function SessionClock({ sessionId: _sessionId, calendar: _calendar, world
     onWorldTimeChange?.(next);
   }
 
-  function handleIncrement(v: VarRow) {
+  async function handleIncrement(v: VarRow) {
     const next = Number(v.value) + 1;
-    setGlobalVar(database, v.id, next);
+    await setGlobalVar(database, v.id, next);
     setVars(prev => prev.map(x => x.id === v.id ? { ...x, value: next } : x));
   }
 
-  function handleDecrement(v: VarRow) {
+  async function handleDecrement(v: VarRow) {
     const next = Number(v.value) - 1;
-    setGlobalVar(database, v.id, next);
+    await setGlobalVar(database, v.id, next);
     setVars(prev => prev.map(x => x.id === v.id ? { ...x, value: next } : x));
   }
 
@@ -62,9 +66,9 @@ export function SessionClock({ sessionId: _sessionId, calendar: _calendar, world
         {counters.map(v => (
           <div key={v.id}>
             <span>{v.label}</span>
-            <button aria-label="decrement" onClick={() => handleDecrement(v)}>-</button>
+            <button aria-label="decrement" onClick={() => void handleDecrement(v)}>-</button>
             <span>{String(v.value)}</span>
-            <button aria-label="increment" onClick={() => handleIncrement(v)}>+</button>
+            <button aria-label="increment" onClick={() => void handleIncrement(v)}>+</button>
           </div>
         ))}
       </div>

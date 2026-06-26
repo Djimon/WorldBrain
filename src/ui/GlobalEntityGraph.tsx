@@ -3,7 +3,15 @@ import Cytoscape from 'cytoscape';
 import { listEntitiesByType } from '../services/entity-service';
 import type { DatabaseLike } from '../services/entity-service';
 import { getAllRelations } from '../services/relation-service';
+import type { RelationRow } from '../services/relation-service';
 import { getAllRelationTypes } from '../data/relation-type-registry';
+
+interface EntityListItem {
+  id: string;
+  type: string;
+  title: string;
+  summary: string;
+}
 
 interface Props {
   onNavigate: (entityId: string) => void;
@@ -14,20 +22,24 @@ interface Props {
 
 export function GlobalEntityGraph({ onNavigate, database, initialConfig, onConfigChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const allEntities = useMemo(
-    () => database ? listEntitiesByType({ database, type: null }) : [],
-    [database],
-  );
-  const allRelations = useMemo(
-    () => database ? getAllRelations(database, { includeInactive: false }) : [],
-    [database],
-  );
+  const [allEntities, setAllEntities] = useState<EntityListItem[]>([]);
+  const [allRelations, setAllRelations] = useState<RelationRow[]>([]);
   const relationTypeDefs = useMemo(() => getAllRelationTypes(), []);
 
-  const entityTypes = [...new Set(allEntities.map((e) => e.type))];
+  useEffect(() => {
+    if (database) {
+      listEntitiesByType({ database, type: null }).then(rows => setAllEntities(rows as EntityListItem[]));
+      getAllRelations(database, { includeInactive: false }).then(setAllRelations);
+    }
+  }, [database]);
+
+  const entityTypes = useMemo(
+    () => [...new Set(allEntities.map((e) => e.type))],
+    [allEntities],
+  );
+
   const [selectedEntityTypes, setSelectedEntityTypes] = useState<Set<string>>(
-    new Set(initialConfig?.entityTypes ?? entityTypes),
+    new Set(initialConfig?.entityTypes ?? []),
   );
   const [selectedRelTypes, setSelectedRelTypes] = useState<Set<string>>(
     new Set(initialConfig?.relationTypes ?? relationTypeDefs.map((r) => r.relation_type)),
@@ -53,7 +65,7 @@ export function GlobalEntityGraph({ onNavigate, database, initialConfig, onConfi
 
   useEffect(() => {
     if (!containerRef.current) return;
-    let cy: ReturnType<typeof import('cytoscape')['default']> | undefined;
+    let cy: cytoscape.Core | undefined;
 
     const nodes = allEntities
       .filter((e) => selectedEntityTypes.has(e.type))
@@ -85,7 +97,7 @@ export function GlobalEntityGraph({ onNavigate, database, initialConfig, onConfi
     });
 
     return () => { cy?.destroy(); };
-  }, [selectedEntityTypes, selectedRelTypes]);
+  }, [selectedEntityTypes, selectedRelTypes, allEntities, allRelations]);
 
   return (
     <div>

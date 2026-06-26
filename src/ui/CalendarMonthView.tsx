@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { listEvents } from '../services/event-service';
 import type { DatabaseLike } from '../services/entity-service';
 
@@ -30,13 +30,18 @@ function monthStartDay(calendar: Calendar, monthIndex: number): number {
 
 export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) {
   const [monthIndex, setMonthIndex] = useState(0);
+  const [allEvents, setAllEvents] = useState<EventItem[]>([]);
+
+  useEffect(() => {
+    listEvents(database, {}).then(rows => setAllEvents(rows as EventItem[]));
+  }, [database]);
 
   const months = calendar.months.length > 0 ? calendar.months : [{ name: 'Month 1', days: calendar.year_length_days }];
   const currentMonth = months[monthIndex % months.length];
   const startDay = monthStartDay(calendar, monthIndex % months.length);
   const endDay = startDay + currentMonth.days - 1;
 
-  const events = (listEvents(database, {}) as EventItem[]).filter(e => {
+  const events = allEvents.filter(e => {
     const evEnd = e.end_day ?? e.start_day;
     return e.start_day <= endDay && evEnd >= startDay;
   });

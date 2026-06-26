@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createCapture, listCaptures, updateCaptureStatus } from '../services/capture-service';
 import type { DatabaseLike } from '../services/entity-service';
 
@@ -26,32 +26,34 @@ interface Props {
 }
 
 export function CaptureInbox({ sessionId, database }: Props) {
-  const [captures, setCaptures] = useState<CaptureRow[]>(() =>
-    listCaptures(database, sessionId) as CaptureRow[],
-  );
+  const [captures, setCaptures] = useState<CaptureRow[]>([]);
   const [text, setText] = useState('');
   const [captureType, setCaptureType] = useState<string>('new_npc');
   const [statusFilter, setStatusFilter] = useState('');
 
+  useEffect(() => {
+    listCaptures(database, sessionId).then(rows => setCaptures(rows as CaptureRow[]));
+  }, [database, sessionId]);
+
   function refresh() {
-    setCaptures(listCaptures(database, sessionId) as CaptureRow[]);
+    listCaptures(database, sessionId).then(rows => setCaptures(rows as CaptureRow[]));
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!text.trim()) return;
-    createCapture(database, sessionId, { type: captureType, raw_text: text });
+    await createCapture(database, sessionId, { type: captureType, raw_text: text });
     setText('');
     refresh();
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') handleSubmit();
+    if (e.key === 'Enter') void handleSubmit();
   }
 
-  function handleMarkProcessed() {
+  async function handleMarkProcessed() {
     const pending = filtered.find((c) => c.status === 'needs_processing');
     if (pending) {
-      updateCaptureStatus(database, pending.id, 'processed');
+      await updateCaptureStatus(database, pending.id, 'processed');
       refresh();
     }
   }
@@ -89,7 +91,7 @@ export function CaptureInbox({ sessionId, database }: Props) {
           type="search"
           placeholder="Link entity…"
         />
-        <button onClick={handleSubmit}>Add capture</button>
+        <button onClick={() => void handleSubmit()}>Add capture</button>
       </div>
       <div>
         {/* status options carry the label text — getByText finds needs_processing here (one match) */}
@@ -103,7 +105,7 @@ export function CaptureInbox({ sessionId, database }: Props) {
           <option value="processed">processed</option>
         </select>
         {hasPending && (
-          <button onClick={handleMarkProcessed}>Mark processed</button>
+          <button onClick={() => void handleMarkProcessed()}>Mark processed</button>
         )}
       </div>
       <ul>

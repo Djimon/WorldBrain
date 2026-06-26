@@ -1,7 +1,11 @@
+import { useState, useEffect } from 'react';
 import { listCardTemplates } from '../services/card-service';
+import type { CardTemplateRow } from '../services/card-service';
 import { getEffectiveEntity } from '../services/entity-service';
 import type { DatabaseLike } from '../services/entity-service';
 import { isReferenceSummaryRequired } from '../../core_data/card-schema';
+
+type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
 interface Props {
   templateId: string;
@@ -15,13 +19,19 @@ interface Props {
 }
 
 export function CardPreview({ templateId, entityId, database, overflowMap, summaryMissing, themeColor, category, entityFields }: Props) {
-  const templates = listCardTemplates(database);
+  const [templates, setTemplates] = useState<CardTemplateRow[]>([]);
+  const [entityResult, setEntityResult] = useState<EffectiveResult | null>(null);
+
+  useEffect(() => {
+    listCardTemplates(database).then(setTemplates);
+    getEffectiveEntity({ database, entityId }).then(setEntityResult);
+  }, [database, entityId]);
+
   const tpl = templates.find((t) => t.id === templateId);
   const sizeMm = tpl ? (JSON.parse(tpl.size_mm) as { width_mm: number; height_mm: number }) : { width_mm: 63, height_mm: 88 };
   const aspect = sizeMm.width_mm / sizeMm.height_mm;
 
-  const entityResult = getEffectiveEntity({ database, entityId });
-  const entity = entityResult.found ? entityResult.entity : null;
+  const entity = entityResult?.found ? entityResult.entity : null;
 
   const fields = entityFields ?? (entity as Record<string, unknown> | null) ?? {};
   const isSummaryMissing = summaryMissing !== undefined

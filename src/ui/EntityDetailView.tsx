@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { DatabaseLike } from '../services/entity-service';
 import { getEffectiveEntity } from '../services/entity-service';
+
+type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
 type TabDefinition = {
   id: string;
   label: string;
-  render: () => React.ReactNode;
+  render: (props: { entityId: string; database?: DatabaseLike }) => React.ReactNode;
 };
 
 const registeredTabs: TabDefinition[] = [];
@@ -29,8 +31,17 @@ export function EntityDetailView({ entityId, database }: EntityDetailViewProps) 
   // Post-mount calls to registerEntityTab/clearEntityTabs do not retroactively
   // affect already-mounted instances, satisfying the isolation contract.
   const [extraTabs] = useState<TabDefinition[]>(() => [...registeredTabs]);
+  const [result, setResult] = useState<EffectiveResult | null>(null);
 
-  const result = getEffectiveEntity({ database: database as DatabaseLike, entityId });
+  useEffect(() => {
+    if (database) {
+      getEffectiveEntity({ database, entityId }).then(setResult);
+    }
+  }, [database, entityId]);
+
+  if (!result) {
+    return null;
+  }
 
   if (!result.found) {
     return <div role="alert">Entity not found: {entityId}</div>;
@@ -67,7 +78,7 @@ export function EntityDetailView({ entityId, database }: EntityDetailViewProps) 
           </button>
         ))}
       </div>
-      <div role="tabpanel">{activeTabDef?.render()}</div>
+      <div role="tabpanel">{activeTabDef?.render({ entityId, database })}</div>
     </div>
   );
 }

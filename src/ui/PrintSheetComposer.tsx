@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { listCardInstances, savePrintJob } from '../services/card-service';
+import type { CardInstanceRow } from '../services/card-service';
 import type { DatabaseLike } from '../services/entity-service';
 
 const SLOTS_PER_SHEET = 9;
@@ -14,8 +15,12 @@ export function PrintSheetComposer({ database, initialCards = [] }: Props) {
   const [cutMarks, setCutMarks] = useState(false);
   const [backside, setBackside] = useState('blank');
   const [page, setPage] = useState(1);
+  const [availableCards, setAvailableCards] = useState<CardInstanceRow[]>([]);
 
-  const availableCards = listCardInstances(database);
+  useEffect(() => {
+    listCardInstances(database).then(setAvailableCards);
+  }, [database]);
+
   const totalPages = Math.ceil(Math.max(cards.length, 1) / SLOTS_PER_SHEET);
   const currentPageCards = cards.slice((page - 1) * SLOTS_PER_SHEET, page * SLOTS_PER_SHEET);
 
@@ -24,8 +29,8 @@ export function PrintSheetComposer({ database, initialCards = [] }: Props) {
     if (next) setCards((prev) => [...prev, next.id]);
   }
 
-  function handleSave() {
-    savePrintJob(database, { cards, cutMarks, backside: backside === 'blank' ? null : backside });
+  async function handleSave() {
+    await savePrintJob(database, { cards, cutMarks, backside: backside === 'blank' ? null : backside });
   }
 
   const slots = Array.from({ length: SLOTS_PER_SHEET }, (_, i) => currentPageCards[i] ?? null);
@@ -83,7 +88,7 @@ export function PrintSheetComposer({ database, initialCards = [] }: Props) {
       </select>
 
       <button onClick={handleAddCard}>Add Card</button>
-      <button onClick={handleSave}>Save Print Job</button>
+      <button onClick={() => void handleSave()}>Save Print Job</button>
     </div>
   );
 }

@@ -17,10 +17,12 @@ interface Props {
 
 export function SessionGridTracker({ sessionId, mapId, database, cellSize }: Props) {
   const [paintMode, setPaintMode] = useState(false);
-  const [cells, setCells] = useState<ActivatedCell[]>(() =>
-    getActivatedCells(database, sessionId, mapId)
-  );
+  const [cells, setCells] = useState<ActivatedCell[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    getActivatedCells(database, sessionId, mapId).then(setCells);
+  }, [database, sessionId, mapId]);
 
   useEffect(() => {
     const ctx = canvasRef.current?.getContext('2d');
@@ -34,24 +36,24 @@ export function SessionGridTracker({ sessionId, mapId, database, cellSize }: Pro
   }, [cells, cellSize]);
 
   function refresh() {
-    setCells(getActivatedCells(database, sessionId, mapId));
+    getActivatedCells(database, sessionId, mapId).then(setCells);
   }
 
-  function handleClearAll() {
-    clearAllCells(database, sessionId, mapId);
+  async function handleClearAll() {
+    await clearAllCells(database, sessionId, mapId);
     setCells([]);
   }
 
-  function handleMapClick(e: React.MouseEvent<HTMLCanvasElement>) {
+  async function handleMapClick(e: React.MouseEvent<HTMLCanvasElement>) {
     if (!paintMode) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const col = Math.floor((e.clientX - rect.left) / cellSize);
     const row = Math.floor((e.clientY - rect.top) / cellSize);
     const key = `${col}:${row}`;
     if (cells.some(c => c.cell_key === key)) {
-      deactivateCell(database, sessionId, mapId, key);
+      await deactivateCell(database, sessionId, mapId, key);
     } else {
-      activateCell(database, sessionId, mapId, key);
+      await activateCell(database, sessionId, mapId, key);
     }
     refresh();
   }
@@ -66,14 +68,14 @@ export function SessionGridTracker({ sessionId, mapId, database, cellSize }: Pro
           {paintMode ? 'Tracking Mode: ON' : 'Paint Mode'}
         </button>
         <span>{cells.length} cell{cells.length !== 1 ? 's' : ''} activated</span>
-        <button onClick={handleClearAll}>Clear All</button>
+        <button onClick={() => void handleClearAll()}>Clear All</button>
       </div>
       <canvas
         ref={canvasRef}
         data-testid="map-canvas"
         width={1000}
         height={1000}
-        onClick={handleMapClick}
+        onClick={(e) => void handleMapClick(e)}
         style={{ cursor: paintMode ? 'crosshair' : 'default' }}
       />
     </div>

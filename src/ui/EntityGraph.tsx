@@ -54,12 +54,12 @@ export function buildGraphData(
   };
 }
 
-function fetchRelationsForDepth(
+async function fetchRelationsForDepth(
   db: DatabaseLike,
   rootId: string,
   depth: number,
   includeInactive: boolean
-): RelationRow[] {
+): Promise<RelationRow[]> {
   const visited = new Set<string>([rootId]);
   const allRelations: RelationRow[] = [];
   let frontier = [rootId];
@@ -67,7 +67,7 @@ function fetchRelationsForDepth(
   for (let d = 0; d < depth; d++) {
     const nextFrontier: string[] = [];
     for (const id of frontier) {
-      const rels = getRelations(db, id, { includeInactive });
+      const rels = await getRelations(db, id, { includeInactive });
       allRelations.push(...rels);
       for (const rel of rels) {
         const other = rel.source_id === id ? rel.target_id : rel.source_id;
@@ -97,9 +97,14 @@ export function EntityGraph({ entityId, database, onNavigate }: Props) {
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(
     new Set(allTypes.map((t) => t.relation_type))
   );
+  const [relations, setRelations] = useState<RelationRow[]>([]);
 
   const db = database ?? ({} as DatabaseLike);
-  const relations = fetchRelationsForDepth(db, entityId, depth, showInactive);
+
+  useEffect(() => {
+    fetchRelationsForDepth(db, entityId, depth, showInactive).then(setRelations);
+  }, [entityId, depth, showInactive, database]);
+
   const graphData = buildGraphData(entityId, relations, {
     depth,
     selectedTypes: Array.from(selectedTypes),
@@ -125,7 +130,7 @@ export function EntityGraph({ entityId, database, onNavigate }: Props) {
     });
 
     return () => { cy.destroy(); };
-  }, [entityId, depth, showInactive, selectedTypes]);
+  }, [entityId, depth, showInactive, selectedTypes, relations]);
 
   function toggleType(type: string) {
     setSelectedTypes((prev) => {

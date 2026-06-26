@@ -1,9 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { listScreens, getScreen, saveScreen } from '../services/dm-screen-service';
+import type { DmScreenRecord, DmPanel } from '../services/dm-screen-service';
 import { listRuleEntities } from '../services/rule-import-service';
 import { listEntitiesByType } from '../services/entity-service';
 import type { DatabaseLike } from '../services/entity-service';
-import type { DmPanel } from '../services/dm-screen-service';
+
+interface EntityListItem {
+  id: string;
+  type: string;
+  title: string;
+  summary: string;
+}
 
 interface DmScreenSelectorProps {
   database: DatabaseLike;
@@ -11,13 +18,17 @@ interface DmScreenSelectorProps {
 }
 
 export function DmScreenSelector({ database, onSelectScreen }: DmScreenSelectorProps) {
-  const screens = listScreens(database);
+  const [screens, setScreens] = useState<DmScreenRecord[]>([]);
   const [showNewInput, setShowNewInput] = useState(false);
   const [newTitle, setNewTitle] = useState('');
 
-  function handleCreate() {
+  useEffect(() => {
+    listScreens(database).then(setScreens);
+  }, [database]);
+
+  async function handleCreate() {
     if (newTitle.trim()) {
-      const result = saveScreen(database, { title: newTitle.trim(), layout: { columns: 2 }, panels: [] });
+      const result = await saveScreen(database, { title: newTitle.trim(), layout: { columns: 2 }, panels: [] });
       setShowNewInput(false);
       setNewTitle('');
       onSelectScreen(result.id);
@@ -43,7 +54,7 @@ export function DmScreenSelector({ database, onSelectScreen }: DmScreenSelectorP
             placeholder="Screen name"
             aria-label="New screen name"
           />
-          <button onClick={handleCreate}>Create</button>
+          <button onClick={() => void handleCreate()}>Create</button>
           <button onClick={() => setShowNewInput(false)}>Cancel</button>
         </div>
       ) : (
@@ -54,8 +65,19 @@ export function DmScreenSelector({ database, onSelectScreen }: DmScreenSelectorP
 }
 
 function PanelContent({ panel, database }: { panel: DmPanel; database: DatabaseLike }) {
+  const [rules, setRules] = useState<Record<string, unknown>[]>([]);
+  const [entities, setEntities] = useState<EntityListItem[]>([]);
+
+  useEffect(() => {
+    if (panel.source === 'rule_table') {
+      listRuleEntities(database, { type: panel.config.tag as string }).then(setRules);
+    } else if (panel.source === 'entity_type') {
+      listEntitiesByType({ database, type: panel.config.entity_type as string })
+        .then(rows => setEntities(rows as EntityListItem[]));
+    }
+  }, [panel, database]);
+
   if (panel.source === 'rule_table') {
-    const rules = listRuleEntities(database, { type: panel.config.tag as string });
     return (
       <ul>
         {rules.map((r) => <li key={String(r.id)}>{String(r.title)}: {String(r.reference_summary ?? '')}</li>)}
@@ -63,7 +85,6 @@ function PanelContent({ panel, database }: { panel: DmPanel; database: DatabaseL
     );
   }
   if (panel.source === 'entity_type') {
-    const entities = listEntitiesByType({ database, type: panel.config.entity_type as string });
     return (
       <ul>
         {entities.map((e) => <li key={e.id}>{e.title}</li>)}
@@ -79,9 +100,22 @@ interface DmScreenProps {
 }
 
 export function DmScreen({ screenId, database }: DmScreenProps) {
-  const screens = listScreens(database);
-  const screen = screens.find((s) => s.id === screenId) ?? getScreen(database, screenId);
-  const [panels, setPanels] = useState<DmPanel[]>(screen?.panels ?? []);
+  const [screen, setScreen] = useState<DmScreenRecord | null>(null);
+  const [panels, setPanels] = useState<DmPanel[]>([]);
+
+  useEffect(() => {
+    listScreens(database).then(async (screens) => {
+      const found = screens.find((s) => s.id === screenId);
+      if (found) {
+        setScreen(found);
+        setPanels(found.panels);
+      } else {
+        const s = await getScreen(database, screenId);
+        setScreen(s);
+        setPanels(s?.panels ?? []);
+      }
+    });
+  }, [database, screenId]);
 
   function handleRemovePanel(id: string) {
     setPanels((prev) => prev.filter((p) => p.id !== id));

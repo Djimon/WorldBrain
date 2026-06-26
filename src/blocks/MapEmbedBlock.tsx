@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { MapContainer, ImageOverlay } from 'react-leaflet';
 import { getMap, getAssetUrl } from '../services/map-service';
 import type { DatabaseLike } from '../services/entity-service';
+import type { MapRow } from '../services/map-service';
 
 interface Props {
   mapId: string;
@@ -8,11 +10,15 @@ interface Props {
 }
 
 export function MapEmbedBlock({ mapId, database }: Props) {
+  const [map, setMap] = useState<MapRow | null>(null);
+  useEffect(() => {
+    if (mapId && database) getMap(database, mapId).then(setMap);
+  }, [mapId, database]);
+
   if (!mapId) {
     return <div>No map selected</div>;
   }
 
-  const map = getMap(database!, mapId);
   if (!map) {
     return <div>Map not found</div>;
   }

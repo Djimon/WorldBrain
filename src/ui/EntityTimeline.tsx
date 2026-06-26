@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { listEvents } from '../services/event-service';
 import type { DatabaseLike } from '../services/entity-service';
 
@@ -17,10 +18,12 @@ interface Props {
 
 export function EntityTimeline({ entityId, entityType, database }: Props) {
   const isLocation = entityType === 'Location';
-  const events = (listEvents(database, isLocation
-    ? { locationId: entityId }
-    : { participantId: entityId }
-  ) as EventItem[]);
+  const [events, setEvents] = useState<EventItem[]>([]);
+
+  useEffect(() => {
+    listEvents(database, isLocation ? { locationId: entityId } : { participantId: entityId })
+      .then(rows => setEvents(rows as EventItem[]));
+  }, [database, entityId, entityType]);
 
   return (
     <div>

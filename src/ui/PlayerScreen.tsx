@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getEffectiveEntity } from '../services/entity-service';
 import type { DatabaseLike } from '../services/entity-service';
 import { resolveVisibility } from '../services/visibility-service';
 import type { VisibilityContext } from '../services/visibility-service';
+
+type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
 interface Block {
   type: string;
@@ -18,9 +20,15 @@ interface Props {
 }
 
 export function PlayerScreen({ context, entityId, database, onReveal: _onReveal }: Props) {
-  const effectiveResult = entityId
-    ? getEffectiveEntity({ database: database!, entityId })
-    : null;
+  const [effectiveResult, setEffectiveResult] = useState<EffectiveResult | null>(null);
+
+  useEffect(() => {
+    if (entityId && database) {
+      getEffectiveEntity({ database, entityId }).then(setEffectiveResult);
+    } else {
+      setEffectiveResult(null);
+    }
+  }, [database, entityId]);
 
   const entity = effectiveResult?.found ? effectiveResult.entity : null;
   const blocks = (entity?.body as { blocks?: Block[] } | undefined)?.blocks ?? [];

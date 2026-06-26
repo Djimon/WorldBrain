@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
 import { EntityDetailView } from './EntityDetailView';
@@ -19,8 +19,13 @@ type EntityMasterDetailProps = {
 
 export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySelect, database }: EntityMasterDetailProps) {
   const [selectedId, setSelectedId] = useState<string | null>(selectedEntityId ?? null);
+  const [entities, setEntities] = useState<EntityListItem[]>([]);
 
-  const entities = listEntitiesByType({ database: database as DatabaseLike, type: initialType });
+  useEffect(() => {
+    if (database) {
+      listEntitiesByType({ database, type: initialType }).then(setEntities);
+    }
+  }, [database, initialType]);
 
   function handleSelect(id: string) {
     setSelectedId(id);

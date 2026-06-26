@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
 
@@ -19,9 +19,13 @@ interface Props {
 export function EntityPicker({ onSelect, typeFilter = null, database }: Props) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [all, setAll] = useState<EntityListItem[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const all: EntityListItem[] = listEntitiesByType({ database, type: typeFilter ?? null }) as EntityListItem[];
+  useEffect(() => {
+    listEntitiesByType({ database, type: typeFilter ?? null })
+      .then(rows => setAll(rows as EntityListItem[]));
+  }, [database, typeFilter]);
 
   const lower = query.toLowerCase();
   const filtered = query
