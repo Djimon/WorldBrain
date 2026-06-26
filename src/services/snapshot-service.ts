@@ -14,7 +14,8 @@ interface SnapshotMeta {
   createdAt: string;
 }
 
-async function copyDirAsync(src: string, dest: string, exclude?: string): Promise<void> {
+async function copyDirAsync(src: string, dest: string, exclude?: string, depth = 0): Promise<void> {
+  if (depth > 50) return;
   await mkdir(dest, { recursive: true });
   const entries = await readDir(src);
   for (const entry of entries) {
@@ -22,7 +23,7 @@ async function copyDirAsync(src: string, dest: string, exclude?: string): Promis
     if (exclude && srcFull === exclude) continue;
     const destFull = await join(dest, entry.name);
     if (entry.isDirectory) {
-      await copyDirAsync(srcFull, destFull, exclude);
+      await copyDirAsync(srcFull, destFull, exclude, depth + 1);
     } else {
       await copyFile(srcFull, destFull);
     }
