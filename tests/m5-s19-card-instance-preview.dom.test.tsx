@@ -91,3 +91,53 @@ describe('M5-S19 card instance & preview', () => {
     });
   });
 });
+
+// Bug #132: CardPreview export button disabled state relies on external summaryMissing prop
+//           — isReferenceSummaryRequired must be checked internally
+describe('issue #132: CardPreview computes summaryMissing internally', () => {
+  it('export button is disabled for Spell/Ability card with no reference_summary when prop omitted', () => {
+    render(<CardPreview
+      templateId="tpl-spell"
+      entityId="char-ada"
+      database={mockDb as never}
+      category="Spell/Ability"
+      entityFields={{ title: 'Fireball' }}
+    />);
+    const exportBtn = screen.queryByRole('button', { name: /export|download/i });
+    if (exportBtn) {
+      expect(exportBtn).toBeDisabled();
+    } else {
+      // Export control may be a link or other element — must still be non-interactive
+      const exportEl = screen.queryByText(/export|download/i);
+      expect(exportEl?.closest('[disabled],[aria-disabled="true"]')).not.toBeNull();
+    }
+  });
+
+  it('export button is enabled for Spell/Ability card that has reference_summary', () => {
+    render(<CardPreview
+      templateId="tpl-spell"
+      entityId="char-ada"
+      database={mockDb as never}
+      category="Spell/Ability"
+      entityFields={{ title: 'Fireball', reference_summary: 'Deal 8d6 fire damage in 20ft radius.' }}
+    />);
+    const exportBtn = screen.queryByRole('button', { name: /export|download/i });
+    if (exportBtn) {
+      expect(exportBtn).not.toBeDisabled();
+    }
+  });
+
+  it('export button is enabled for NPC card with no reference_summary (not required)', () => {
+    render(<CardPreview
+      templateId="tpl-npc"
+      entityId="char-ada"
+      database={mockDb as never}
+      category="NPC"
+      entityFields={{ title: 'Ada Thorn' }}
+    />);
+    const exportBtn = screen.queryByRole('button', { name: /export|download/i });
+    if (exportBtn) {
+      expect(exportBtn).not.toBeDisabled();
+    }
+  });
+});

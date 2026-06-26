@@ -1,0 +1,62 @@
+// @vitest-environment node
+// M7-S05: ZIP Export
+// See: https://github.com/Djimon/WorldBrain/issues/138
+
+import { describe, expect, it, vi } from 'vitest';
+
+async function getZipExport() { return import('../src/services/zip-export-service'); }
+async function getSnapshotService() { return import('../src/services/snapshot-service'); }
+
+describe('M7-S05 ZIP export', () => {
+  describe('exports', () => {
+    it('exports exportProjectToZip function', async () => {
+      const mod = await getZipExport();
+      expect(typeof mod.exportProjectToZip).toBe('function');
+    });
+
+    it('exports buildZipFilename function', async () => {
+      const mod = await getZipExport();
+      expect(typeof mod.buildZipFilename).toBe('function');
+    });
+  });
+
+  describe('filename format', () => {
+    it('buildZipFilename returns <title>-<YYYY-MM-DD>.zip', async () => {
+      const { buildZipFilename } = await getZipExport();
+      const date = new Date('2026-06-25');
+      const name = buildZipFilename('Forgotten Realms', date);
+      expect(name).toMatch(/forgotten.realms-2026-06-25\.zip/i);
+    });
+
+    it('buildZipFilename slugifies spaces in title', async () => {
+      const { buildZipFilename } = await getZipExport();
+      const name = buildZipFilename('My Cool World', new Date('2026-01-01'));
+      expect(name).not.toContain(' ');
+    });
+  });
+
+  describe('exclusions', () => {
+    it('exportProjectToZip excludes SQLite runtime DB files (.sqlite, .db)', async () => {
+      const { getZipExclusions } = await getZipExport();
+      const exclusions: string[] = getZipExclusions?.() ?? [];
+      const hasDbExclusion = exclusions.some(e => e.includes('.sqlite') || e.includes('.db') || e.includes('runtime'));
+      expect(hasDbExclusion).toBe(true);
+    });
+
+    it('exportProjectToZip excludes snapshots folder', async () => {
+      const { getZipExclusions } = await getZipExport();
+      const exclusions: string[] = getZipExclusions?.() ?? [];
+      expect(exclusions.some(e => e.includes('snapshot'))).toBe(true);
+    });
+  });
+
+  describe('pre-export snapshot', () => {
+    it('exportProjectToZip calls createSnapshot before zipping', async () => {
+      const { createSnapshot } = await getSnapshotService();
+      const createSpy = vi.spyOn({ createSnapshot }, 'createSnapshot');
+      // Verify the service calls snapshot before export (implementation test via source)
+      const src = await import('fs').then(fs => fs.readFileSync('src/services/zip-export-service.ts', 'utf-8'));
+      expect(src).toMatch(/createSnapshot|snapshot/i);
+    });
+  });
+});

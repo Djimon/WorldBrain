@@ -78,4 +78,21 @@ describe('M6-S04 plugin entity & relation types', () => {
       expect(typeof mod.flagOutdatedSchema).toBe('function');
     });
   });
+
+  describe('issue #144: conflict sets plugin registry status to "conflict"', () => {
+    it('conflicting entity type sets the plugin status to "conflict" in the loader registry', async () => {
+      const { registerPluginEntityType, getPluginConflicts } = await getPluginEntityService();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      registerPluginEntityType({ ...dragonEntityType, id: 'dragon', pluginId: 'plugin-a' });
+      registerPluginEntityType({ ...dragonEntityType, id: 'dragon', pluginId: 'plugin-b' });
+      const conflicts = getPluginConflicts?.() ?? [];
+      expect(conflicts.length).toBeGreaterThan(0);
+      warnSpy.mockRestore();
+    });
+
+    it('exports getPluginConflicts function', async () => {
+      const mod = await getPluginEntityService();
+      expect(typeof mod.getPluginConflicts).toBe('function');
+    });
+  });
 });

@@ -77,3 +77,26 @@ describe('M5-S07 session clock', () => {
     });
   });
 });
+
+// Bug #131: counter increment/decrement not logged to session_log
+describe('issue #131: SessionClock counter changes written to session_log', () => {
+  it('incrementing a counter inserts a session_log row via setGlobalVar or directly', async () => {
+    const { setGlobalVar } = await import('../src/services/session-variable-service');
+    const logInsertSpy = vi.fn();
+    // The component must either call a logging-aware variant or insert directly.
+    // Verify setGlobalVar is called (service-level logging is the fix target).
+    render(<SessionClock sessionId="s1" calendar={earthCalendar} worldTimeStart={1000} database={mockDb as never} />);
+    const bastionRow = screen.getByText('Bastion Turns').closest('[data-counter]') as HTMLElement;
+    fireEvent.click(within(bastionRow).getByRole('button', { name: /increment/i }));
+    // After fix: setGlobalVar must be replaced or augmented to also write session_log.
+    // Test that the call happens — logging verification requires implementation.
+    expect(setGlobalVar).toHaveBeenCalled();
+  });
+
+  it('source does not use setGlobalVar without a session_log write nearby', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/ui/SessionClock.tsx', 'utf8');
+    // After fix, the counter handler must write to session_log (directly or via helper)
+    expect(src).toMatch(/session_log|logCounterChange|insertLog|setGlobalVarLogged/i);
+  });
+});

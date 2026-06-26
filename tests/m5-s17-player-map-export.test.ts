@@ -116,3 +116,22 @@ describe('E8-S09 player map export', () => {
     });
   });
 });
+
+// Bug #126: XSS in player-map-export — </script> in map.title breaks HTML structure
+describe('issue #126: XSS escaping in player map export script block', () => {
+  it('map title containing </script> does not break the HTML structure', async () => {
+    const { generatePlayerMapHtml } = await getExport();
+    const map = { id: 'map-1', title: '</script><script>alert(1)</script>', markers: [] };
+    const html = generatePlayerMapHtml({ map, context: { audience: 'player', revealedEntityIds: [] } });
+    expect(html).not.toMatch(/<\/script><script>/i);
+  });
+
+  it('</script> sequence in title is escaped in the JSON payload', async () => {
+    const { generatePlayerMapHtml } = await getExport();
+    const map = { id: 'map-xss', title: 'x</script>y', markers: [] };
+    const html = generatePlayerMapHtml({ map, context: { audience: 'player', revealedEntityIds: [] } });
+    // The raw </script> tag must not appear inside the <script> block
+    const scriptContent = html.match(/<script[^>]*>([\s\S]*?)<\/script>/i)?.[1] ?? '';
+    expect(scriptContent).not.toContain('</script>');
+  });
+});

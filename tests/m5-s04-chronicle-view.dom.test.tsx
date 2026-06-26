@@ -98,3 +98,11 @@ describe('M5-S04 chronicle view', () => {
     });
   });
 });
+
+// Bug #124: AP-001 — database prop must be DatabaseLike, not unknown/never
+describe('issue #124: ChronicleView database prop typed as DatabaseLike', () => {
+  it('accepts a DatabaseLike-shaped object without as-never cast', () => {
+    const db = { exec: vi.fn(), prepare: vi.fn(() => ({ run: vi.fn(), all: vi.fn(() => []), get: vi.fn(() => null) })) };
+    expect(() => render(<ChronicleView database={db} />)).not.toThrow();
+  });
+});

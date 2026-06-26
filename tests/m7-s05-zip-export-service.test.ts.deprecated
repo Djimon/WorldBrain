@@ -1,0 +1,70 @@
+// @vitest-environment node
+// issue #148: zip-export-service.ts Stub — exportProjectToZip erstellt kein ZIP
+// Standalone: m7-s05-zip-export.test.ts tests filename/exclusion helpers; this tests the actual ZIP output.
+
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+async function getZipExport() { return import('../src/services/zip-export-service'); }
+
+let tmpBase: string;
+let projectDir: string;
+let outputPath: string;
+
+beforeEach(() => {
+  tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'wbx-zip-'));
+  projectDir = path.join(tmpBase, 'my-project');
+  outputPath = path.join(tmpBase, 'output.zip');
+  fs.mkdirSync(projectDir, { recursive: true });
+  fs.writeFileSync(path.join(projectDir, 'project.json'), JSON.stringify({ id: 'proj-1', title: 'Test World' }));
+  fs.mkdirSync(path.join(projectDir, 'entities'), { recursive: true });
+  fs.writeFileSync(path.join(projectDir, 'entities', 'hero.json'), '{}');
+});
+
+afterEach(() => {
+  fs.rmSync(tmpBase, { recursive: true, force: true });
+});
+
+describe('issue #148: zip-export-service real implementation', () => {
+  it('exportProjectToZip creates a file at outputPath', async () => {
+    const { exportProjectToZip } = await getZipExport();
+    await exportProjectToZip({ projectId: 'proj-1', projectDir, outputPath, snapshotsDir: path.join(tmpBase, 'snapshots') });
+    expect(fs.existsSync(outputPath)).toBe(true);
+  });
+
+  it('output file is a valid ZIP (starts with PK magic bytes)', async () => {
+    const { exportProjectToZip } = await getZipExport();
+    await exportProjectToZip({ projectId: 'proj-1', projectDir, outputPath, snapshotsDir: path.join(tmpBase, 'snapshots') });
+    const buf = fs.readFileSync(outputPath);
+    // ZIP files start with PK (0x50 0x4B)
+    expect(buf[0]).toBe(0x50);
+    expect(buf[1]).toBe(0x4b);
+  });
+
+  it('output ZIP contains project.json', async () => {
+    const { exportProjectToZip } = await getZipExport();
+    await exportProjectToZip({ projectId: 'proj-1', projectDir, outputPath, snapshotsDir: path.join(tmpBase, 'snapshots') });
+    const content = fs.readFileSync(outputPath).toString('binary');
+    expect(content).toContain('project.json');
+  });
+
+  it('output ZIP does not contain .sqlite or .db files', async () => {
+    fs.writeFileSync(path.join(projectDir, 'runtime.sqlite'), 'db-content');
+    const { exportProjectToZip } = await getZipExport();
+    await exportProjectToZip({ projectId: 'proj-1', projectDir, outputPath, snapshotsDir: path.join(tmpBase, 'snapshots') });
+    const content = fs.readFileSync(outputPath).toString('binary');
+    expect(content).not.toContain('runtime.sqlite');
+  });
+
+  it('output ZIP does not contain snapshots folder', async () => {
+    const snapshotsDir = path.join(projectDir, 'snapshots');
+    fs.mkdirSync(snapshotsDir, { recursive: true });
+    fs.writeFileSync(path.join(snapshotsDir, 'snap.json'), '{}');
+    const { exportProjectToZip } = await getZipExport();
+    await exportProjectToZip({ projectId: 'proj-1', projectDir, outputPath, snapshotsDir });
+    const content = fs.readFileSync(outputPath).toString('binary');
+    expect(content).not.toContain('snap.json');
+  });
+});

@@ -113,3 +113,28 @@ describe('M5-S08 encounter counters', () => {
     });
   });
 });
+
+// Bug #130: elapsedSeconds shown twice — total should include current round
+describe('issue #130: EncounterCounters elapsed vs total time', () => {
+  it('elapsed and total values differ after round 1', () => {
+    render(<EncounterCounters sessionId="s1" database={mockDb as never} />);
+    fireEvent.click(screen.getByRole('button', { name: /next round|advance round/i }));
+    // After advance: elapsed = (round-1)*6, total = round*6 — they must differ
+    const timeTexts = screen.getAllByText(/\d+s/i).map(el => el.textContent ?? '');
+    const numbers = timeTexts.map(t => parseInt(t)).filter(n => !isNaN(n));
+    expect(numbers.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(numbers).size).toBeGreaterThan(1);
+  });
+
+  it('total time display is strictly greater than elapsed time in round 2+', () => {
+    render(<EncounterCounters sessionId="s1" database={mockDb as never} />);
+    fireEvent.click(screen.getByRole('button', { name: /next round|advance round/i }));
+    fireEvent.click(screen.getByRole('button', { name: /next round|advance round/i }));
+    // Round 3: elapsed = 12s, total = 18s
+    const allText = document.body.textContent ?? '';
+    const nums = [...allText.matchAll(/(\d+)s/g)].map(m => parseInt(m[1]));
+    const max = Math.max(...nums);
+    const min = Math.min(...nums);
+    expect(max).toBeGreaterThan(min);
+  });
+});

@@ -12,8 +12,9 @@ export interface AppConfig {
 }
 
 const DEFAULT_CONFIG: AppConfig = { last_opened_project_id: null, projects: [] };
+const DEFAULT_CONFIG_PATH = 'app-config.json';
 
-export async function readAppConfig(configPath: string): Promise<AppConfig> {
+export async function readAppConfig(configPath = DEFAULT_CONFIG_PATH): Promise<AppConfig> {
   try {
     const raw = await readTextFile(configPath);
     const parsed = JSON.parse(raw) as Partial<AppConfig>;
@@ -27,11 +28,11 @@ export async function readAppConfig(configPath: string): Promise<AppConfig> {
   }
 }
 
-export async function writeAppConfig(configPath: string, config: AppConfig): Promise<void> {
+export async function writeAppConfig(config: AppConfig, configPath = DEFAULT_CONFIG_PATH): Promise<void> {
   await writeTextFile(configPath, JSON.stringify(config, null, 2));
 }
 
-export async function registerProject(configPath: string, project: ProjectEntry): Promise<void> {
+export async function registerProject(project: ProjectEntry, configPath = DEFAULT_CONFIG_PATH): Promise<void> {
   const config = await readAppConfig(configPath);
   const idx = config.projects.findIndex((p) => p.id === project.id);
   if (idx >= 0) {
@@ -39,14 +40,14 @@ export async function registerProject(configPath: string, project: ProjectEntry)
   } else {
     config.projects.push(project);
   }
-  await writeAppConfig(configPath, config);
+  await writeAppConfig(config, configPath);
 }
 
-export async function unregisterProject(configPath: string, projectId: string): Promise<void> {
+export async function unregisterProject(projectId: string, configPath = DEFAULT_CONFIG_PATH): Promise<void> {
   const config = await readAppConfig(configPath);
   config.projects = config.projects.filter((p) => p.id !== projectId);
   if (config.last_opened_project_id === projectId) {
     config.last_opened_project_id = null;
   }
-  await writeAppConfig(configPath, config);
+  await writeAppConfig(config, configPath);
 }

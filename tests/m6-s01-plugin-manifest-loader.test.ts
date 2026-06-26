@@ -105,4 +105,19 @@ describe('M6-S01 plugin manifest & loader', () => {
       expect(plugins.some((p: { manifest: { id: string } }) => p.manifest.id === 'test-plugin')).toBe(true);
     });
   });
+
+  describe('issue #145: AP-006 comment required on filesystem catch blocks', () => {
+    it('every empty catch block in plugin-loader.ts has a comment', async () => {
+      const src = await import('fs').then(fs => fs.readFileSync('src/services/plugin-loader.ts', 'utf-8'));
+      // Find all catch blocks that are empty or near-empty
+      const catchBlocks = [...src.matchAll(/catch\s*\([^)]*\)\s*\{([^}]*)\}/g)];
+      for (const match of catchBlocks) {
+        const body = match[1];
+        // A catch body with no statements must contain a comment (AP-006 exception)
+        if (body.trim() === '' || !/\S/.test(body.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''))) {
+          expect(body).toMatch(/\/\/|\/\*/);
+        }
+      }
+    });
+  });
 });

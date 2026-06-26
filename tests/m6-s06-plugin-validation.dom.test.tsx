@@ -43,7 +43,7 @@ describe('M6-S06 plugin validation & load reporting', () => {
 
     it('conflict plugin shows "conflict" badge', () => {
       render(<PluginManager />);
-      expect(screen.getByText(/conflict/i)).toBeInTheDocument();
+      expect(screen.getByTestId('status-conflict-plugin')).toHaveTextContent(/conflict/i);
     });
 
     it('outdated plugin shows "outdated" badge', () => {
@@ -75,7 +75,7 @@ describe('M6-S06 plugin validation & load reporting', () => {
     it('shows number of contributed entity types', () => {
       render(<PluginManager />);
       // good-plugin has 1 entity type (Dragon)
-      expect(screen.getByText(/1.*type|1 entity/i)).toBeInTheDocument();
+      expect(screen.getByTestId('types-good-plugin')).toHaveTextContent(/1/);
     });
   });
 

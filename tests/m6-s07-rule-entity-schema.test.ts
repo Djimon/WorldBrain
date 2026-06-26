@@ -79,4 +79,23 @@ describe('M6-S07 rule entity schema', () => {
       expect(() => applyRuleSchema(db)).not.toThrow();
     });
   });
+
+  describe('issue #141: applyRuleSchema accepts DatabaseLike (not DatabaseSync)', () => {
+    it('applyRuleSchema parameter accepts an object with only prepare() — no exec() required', async () => {
+      const { applyRuleSchema } = await getRuleSchema();
+      const calls: string[] = [];
+      const fakeDatabaseLike = {
+        prepare: (sql: string) => {
+          calls.push(sql);
+          return { run: () => {}, all: () => [], get: () => undefined };
+        },
+      };
+      expect(() => applyRuleSchema(fakeDatabaseLike)).not.toThrow();
+    });
+
+    it('applyRuleSchema source file does not call db.exec()', async () => {
+      const src = await import('fs').then(fs => fs.readFileSync('core_data/rule-schema.ts', 'utf-8'));
+      expect(src).not.toMatch(/\bdb\.exec\s*\(/);
+    });
+  });
 });

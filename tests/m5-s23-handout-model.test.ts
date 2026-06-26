@@ -94,3 +94,54 @@ describe('M5-S23 handout model', () => {
     });
   });
 });
+
+// Bug #128: generateHandoutHtml missing CSP meta tag + incomplete visibility filtering
+describe('issue #128: handout export CSP and full visibility filtering', () => {
+  it('generateHandoutHtml includes a Content-Security-Policy meta tag', async () => {
+    const { generateHandoutHtml } = await getHandoutService();
+    const html = generateHandoutHtml({
+      handout: { type: 'Letter', title: 'Notice', audience: 'players', content: {} },
+      blocks: [{ type: 'paragraph', text: 'Hello.', visibility: 'public' }],
+      context: { role: 'player', knownEntities: [], sessionVars: {}, globalVars: {} },
+    });
+    expect(html).toMatch(/<meta[^>]+Content-Security-Policy/i);
+  });
+
+  it('generateHandoutHtml strips hidden_until_condition blocks for player when condition unmet', async () => {
+    const { generateHandoutHtml } = await getHandoutService();
+    const html = generateHandoutHtml({
+      handout: { type: 'Letter', title: 'Notice', audience: 'players', content: {} },
+      blocks: [
+        { type: 'paragraph', text: 'Always visible.', visibility: 'public' },
+        { type: 'paragraph', text: 'Conditional secret.', visibility: 'hidden_until_condition', condition: { '==': [{ var: 'vars.revealed' }, true] } },
+      ],
+      context: { role: 'player', knownEntities: [], sessionVars: { revealed: false }, globalVars: {} },
+    });
+    expect(html).toContain('Always visible.');
+    expect(html).not.toContain('Conditional secret.');
+  });
+
+  it('generateHandoutHtml strips player_known blocks for player when entity not known', async () => {
+    const { generateHandoutHtml } = await getHandoutService();
+    const html = generateHandoutHtml({
+      handout: { type: 'Letter', title: 'Notice', audience: 'players', content: {} },
+      blocks: [
+        { type: 'paragraph', text: 'Known info.', visibility: 'player_known', entityId: 'char-ada' },
+      ],
+      context: { role: 'player', knownEntities: [], sessionVars: {}, globalVars: {} },
+    });
+    expect(html).not.toContain('Known info.');
+  });
+
+  it('generateHandoutHtml shows player_known block when entity is known', async () => {
+    const { generateHandoutHtml } = await getHandoutService();
+    const html = generateHandoutHtml({
+      handout: { type: 'Letter', title: 'Notice', audience: 'players', content: {} },
+      blocks: [
+        { type: 'paragraph', text: 'Known info.', visibility: 'player_known', entityId: 'char-ada' },
+      ],
+      context: { role: 'player', knownEntities: ['char-ada'], sessionVars: {}, globalVars: {} },
+    });
+    expect(html).toContain('Known info.');
+  });
+});

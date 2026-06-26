@@ -50,7 +50,7 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
-    readAppConfig(APP_CONFIG_PATH).then(async (config) => {
+    readAppConfig().then(async (config) => {
       if (cancelled) return;
       if (config.last_opened_project_id) {
         const entry = config.projects.find((p) => p.id === config.last_opened_project_id);
@@ -71,7 +71,7 @@ export function App() {
 
   function openProject(projectId: string) {
     setMode({ kind: 'loading' });
-    readAppConfig(APP_CONFIG_PATH).then(async (config) => {
+    readAppConfig().then(async (config) => {
       const entry = config.projects.find((p) => p.id === projectId);
       if (!entry) { setMode({ kind: 'welcome' }); return; }
       try {
@@ -92,7 +92,7 @@ export function App() {
       if (!projectPath) { setMode({ kind: 'welcome' }); return; }
       const metaPath = await join(projectPath, 'project.json');
       const meta = JSON.parse(await readTextFile(metaPath)) as { title: string };
-      await registerProject(APP_CONFIG_PATH, { id: projectId, title: meta.title, path: projectPath });
+      await registerProject({ id: projectId, title: meta.title, path: projectPath });
       const db = await openProjectDb(await join(projectPath, 'world.db'));
       setMode({ kind: 'workspace', projectId, projectDir: projectPath, db });
     }).catch(() => setMode({ kind: 'welcome' }));
@@ -104,7 +104,7 @@ export function App() {
       if (!projectPath) { setMode({ kind: 'welcome' }); return; }
       const metaPath = await join(projectPath, 'project.json');
       const meta = JSON.parse(await readTextFile(metaPath)) as { title: string };
-      await registerProject(APP_CONFIG_PATH, { id: projectId, title: meta.title, path: projectPath });
+      await registerProject({ id: projectId, title: meta.title, path: projectPath });
       const db = await openProjectDb(await join(projectPath, 'world.db'));
       setMode({ kind: 'workspace', projectId, projectDir: projectPath, db });
     }).catch(() => setMode({ kind: 'welcome' }));

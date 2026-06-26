@@ -63,3 +63,33 @@ describe('M5-S22 PNG export', () => {
     });
   });
 });
+
+// Bug #129: renderCard always draws at (0,0) — all cards overlap
+describe('issue #129: PNG export card grid layout', () => {
+  it('exportPrintSheetToPng calls renderCard with distinct x/y offsets for each card', async () => {
+    const mod = await getPngExport();
+    const renderCard = vi.fn();
+    const canvas = { getContext: () => ({ save: vi.fn(), restore: vi.fn(), translate: vi.fn(), clearRect: vi.fn() }) };
+    // If the function accepts an injectable renderCard, verify distinct positions are used
+    if (mod.exportPrintSheetToPng.length >= 3) {
+      const cards = [{ id: 'c1' }, { id: 'c2' }, { id: 'c3' }];
+      await mod.exportPrintSheetToPng(canvas, cards, { renderCard });
+      const positions = renderCard.mock.calls.map((c: unknown[]) => `${c[1]},${c[2]}`);
+      const unique = new Set(positions);
+      expect(unique.size).toBe(cards.length);
+    } else {
+      // Source-level check: translate or offset must be used per card
+      const { readFileSync } = await import('node:fs');
+      const src = readFileSync('src/services/png-export.ts', 'utf8');
+      expect(src).toMatch(/translate|offset|cellX|cellY|col|row/i);
+    }
+  });
+
+  it('source uses ctx.translate or per-card x/y offset, not fixed (0,0) for every card', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/services/png-export.ts', 'utf8');
+    // renderCard called in a loop must pass a varying position — not just renderCard(ctx, card, scale)
+    // A fixed (0,0) call site would look like: renderCard(ctx, card, scale) with no offset param
+    expect(src).toMatch(/translate\s*\(|cellX|offsetX|col\s*\*|x\s*=\s*.*col/i);
+  });
+});

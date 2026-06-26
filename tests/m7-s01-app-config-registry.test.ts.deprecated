@@ -1,0 +1,97 @@
+// @vitest-environment node
+// M7-S01: App-Konfiguration & Projekt-Registry
+// See: https://github.com/Djimon/WorldBrain/issues/134
+
+import { describe, expect, it } from 'vitest';
+
+async function getAppConfig() { return import('../src/services/app-config-service'); }
+
+describe('M7-S01 app-config & project-registry', () => {
+  describe('exports', () => {
+    it('exports readAppConfig', async () => {
+      const mod = await getAppConfig();
+      expect(typeof mod.readAppConfig).toBe('function');
+    });
+
+    it('exports writeAppConfig', async () => {
+      const mod = await getAppConfig();
+      expect(typeof mod.writeAppConfig).toBe('function');
+    });
+
+    it('exports registerProject', async () => {
+      const mod = await getAppConfig();
+      expect(typeof mod.registerProject).toBe('function');
+    });
+
+    it('exports unregisterProject', async () => {
+      const mod = await getAppConfig();
+      expect(typeof mod.unregisterProject).toBe('function');
+    });
+  });
+
+  describe('config schema', () => {
+    it('readAppConfig returns object with last_opened_project_id and projects fields', async () => {
+      const { readAppConfig } = await getAppConfig();
+      const config = readAppConfig('/nonexistent/path/app-config.json');
+      expect(config).toHaveProperty('last_opened_project_id');
+      expect(config).toHaveProperty('projects');
+      expect(Array.isArray(config.projects)).toBe(true);
+    });
+
+    it('readAppConfig returns empty config when file does not exist (no crash)', async () => {
+      const { readAppConfig } = await getAppConfig();
+      expect(() => readAppConfig('/nonexistent/path/app-config.json')).not.toThrow();
+    });
+
+    it('readAppConfig returns empty config when file is corrupt JSON (no crash)', async () => {
+      const { readAppConfig } = await getAppConfig();
+      const os = await import('os');
+      const path = await import('path');
+      const fs = await import('fs');
+      const tmp = path.join(os.tmpdir(), `app-config-corrupt-${Date.now()}.json`);
+      fs.writeFileSync(tmp, '{ not valid json %%%');
+      expect(() => readAppConfig(tmp)).not.toThrow();
+      fs.unlinkSync(tmp);
+    });
+  });
+
+  describe('project registration', () => {
+    it('registerProject adds entry to projects array', async () => {
+      const { registerProject, readAppConfig } = await getAppConfig();
+      const os = await import('os');
+      const path = await import('path');
+      const tmp = path.join(os.tmpdir(), `app-config-${Date.now()}.json`);
+      registerProject(tmp, { id: 'proj-1', title: 'Test Project', path: '/projects/test' });
+      const config = readAppConfig(tmp);
+      expect(config.projects.some((p: { id: string }) => p.id === 'proj-1')).toBe(true);
+      const fs = await import('fs');
+      fs.unlinkSync(tmp);
+    });
+
+    it('project entry has id, title, path fields', async () => {
+      const { registerProject, readAppConfig } = await getAppConfig();
+      const os = await import('os');
+      const path = await import('path');
+      const tmp = path.join(os.tmpdir(), `app-config-${Date.now()}.json`);
+      registerProject(tmp, { id: 'proj-2', title: 'My World', path: '/projects/my-world' });
+      const config = readAppConfig(tmp);
+      const entry = config.projects.find((p: { id: string }) => p.id === 'proj-2');
+      expect(entry).toMatchObject({ id: 'proj-2', title: 'My World', path: '/projects/my-world' });
+      const fs = await import('fs');
+      fs.unlinkSync(tmp);
+    });
+
+    it('unregisterProject removes the entry', async () => {
+      const { registerProject, unregisterProject, readAppConfig } = await getAppConfig();
+      const os = await import('os');
+      const path = await import('path');
+      const tmp = path.join(os.tmpdir(), `app-config-${Date.now()}.json`);
+      registerProject(tmp, { id: 'proj-del', title: 'To Delete', path: '/projects/del' });
+      unregisterProject(tmp, 'proj-del');
+      const config = readAppConfig(tmp);
+      expect(config.projects.some((p: { id: string }) => p.id === 'proj-del')).toBe(false);
+      const fs = await import('fs');
+      fs.unlinkSync(tmp);
+    });
+  });
+});

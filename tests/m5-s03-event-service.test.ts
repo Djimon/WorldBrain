@@ -165,3 +165,56 @@ describe('issue-105 listEvents SQL filter', () => {
   });
 });
 
+
+// Bug #127: updateEvent only patches title+type — all other AC fields silently ignored
+describe('issue #127: updateEvent patches all fields', () => {
+  it('updateEvent persists start_day changes', async () => {
+    const { createEvent, updateEvent, listEvents } = await getService();
+    const db = await openDb();
+    createEvent(db, { title: 'Siege', type: 'historical_event', start_day: 10, precision: 'day', visibility: 'public', participants: [], locations: [] });
+    const id = (listEvents(db, {}) as Array<{ id: string }>)[0].id;
+    updateEvent(db, id, { start_day: 99 });
+    const updated = (listEvents(db, {}) as Array<{ start_day: number }>)[0];
+    expect(updated.start_day).toBe(99);
+  });
+
+  it('updateEvent persists end_day changes', async () => {
+    const { createEvent, updateEvent, listEvents } = await getService();
+    const db = await openDb();
+    createEvent(db, { title: 'Siege', type: 'historical_event', start_day: 1, precision: 'day', visibility: 'public', participants: [], locations: [] });
+    const id = (listEvents(db, {}) as Array<{ id: string }>)[0].id;
+    updateEvent(db, id, { end_day: 5 });
+    const updated = (listEvents(db, {}) as Array<{ end_day: number | null }>)[0];
+    expect(updated.end_day).toBe(5);
+  });
+
+  it('updateEvent persists visibility changes', async () => {
+    const { createEvent, updateEvent, listEvents } = await getService();
+    const db = await openDb();
+    createEvent(db, { title: 'Secret Meeting', type: 'session_event', start_day: 1, precision: 'day', visibility: 'public', participants: [], locations: [] });
+    const id = (listEvents(db, {}) as Array<{ id: string }>)[0].id;
+    updateEvent(db, id, { visibility: 'gm_only' });
+    const updated = (listEvents(db, {}) as Array<{ visibility: string }>)[0];
+    expect(updated.visibility).toBe('gm_only');
+  });
+
+  it('updateEvent persists participants changes', async () => {
+    const { createEvent, updateEvent, listEvents } = await getService();
+    const db = await openDb();
+    createEvent(db, { title: 'Council', type: 'session_event', start_day: 1, precision: 'day', visibility: 'public', participants: [], locations: [] });
+    const id = (listEvents(db, {}) as Array<{ id: string }>)[0].id;
+    updateEvent(db, id, { participants: ['char-ada', 'char-bram'] });
+    const updated = (listEvents(db, {}) as Array<{ participants: string[] }>)[0];
+    expect(updated.participants).toEqual(['char-ada', 'char-bram']);
+  });
+
+  it('updateEvent persists locations changes', async () => {
+    const { createEvent, updateEvent, listEvents } = await getService();
+    const db = await openDb();
+    createEvent(db, { title: 'Raid', type: 'session_event', start_day: 1, precision: 'day', visibility: 'public', participants: [], locations: [] });
+    const id = (listEvents(db, {}) as Array<{ id: string }>)[0].id;
+    updateEvent(db, id, { locations: ['loc-keep'] });
+    const updated = (listEvents(db, {}) as Array<{ locations: string[] }>)[0];
+    expect(updated.locations).toEqual(['loc-keep']);
+  });
+});

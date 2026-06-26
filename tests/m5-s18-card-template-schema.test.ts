@@ -142,3 +142,24 @@ describe('M5-S18 card template schema', () => {
     });
   });
 });
+
+// Bug #125: print_jobs table missing from applyCardSchema
+describe('issue #125: print_jobs table created by applyCardSchema', () => {
+  it('applyCardSchema creates a print_jobs table', async () => {
+    const { applyCardSchema } = await getSchema();
+    const db = openDb();
+    applyCardSchema(db);
+    expect(() =>
+      db.prepare('SELECT id, cards_json, cut_marks, backside, created_at FROM print_jobs LIMIT 0').all()
+    ).not.toThrow();
+  });
+
+  it('print_jobs table accepts an insert with required fields', async () => {
+    const { applyCardSchema } = await getSchema();
+    const db = openDb();
+    applyCardSchema(db);
+    expect(() =>
+      db.prepare(`INSERT INTO print_jobs (id, cards_json, cut_marks, created_at) VALUES ('pj-1', '[]', 1, '2026-06-25T00:00:00Z')`).run()
+    ).not.toThrow();
+  });
+});

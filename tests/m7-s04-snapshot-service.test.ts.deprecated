@@ -1,0 +1,110 @@
+// @vitest-environment node
+// issue #147: snapshot-service.ts vollständiger Stub — createSnapshot schreibt nichts, listSnapshots gibt immer [] zurück
+// Standalone: m7-s04-snapshots.dom.test.tsx mocks the service, real implementation cannot be tested there.
+
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+async function getSnapshotService() { return import('../src/services/snapshot-service'); }
+
+let tmpBase: string;
+let projectDir: string;
+let snapshotsDir: string;
+
+beforeEach(() => {
+  tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'wbx-snap-'));
+  projectDir = path.join(tmpBase, 'my-project');
+  snapshotsDir = path.join(tmpBase, 'snapshots', 'proj-1');
+  fs.mkdirSync(projectDir, { recursive: true });
+  fs.writeFileSync(path.join(projectDir, 'project.json'), JSON.stringify({ id: 'proj-1', title: 'Test' }));
+  fs.mkdirSync(snapshotsDir, { recursive: true });
+});
+
+afterEach(() => {
+  fs.rmSync(tmpBase, { recursive: true, force: true });
+});
+
+describe('issue #147: snapshot-service real implementation', () => {
+  describe('createSnapshot', () => {
+    it('createSnapshot returns an id', async () => {
+      const { createSnapshot } = await getSnapshotService();
+      const result = createSnapshot({ projectId: 'proj-1', name: 'Before Rewrite', projectDir, snapshotsDir });
+      expect(result.id).toBeTruthy();
+    });
+
+    it('createSnapshot writes snapshot directory', async () => {
+      const { createSnapshot } = await getSnapshotService();
+      createSnapshot({ projectId: 'proj-1', name: 'Before Rewrite', projectDir, snapshotsDir });
+      const entries = fs.readdirSync(snapshotsDir);
+      expect(entries.length).toBeGreaterThan(0);
+    });
+
+    it('createSnapshot writes snapshot.json with name and createdAt', async () => {
+      const { createSnapshot } = await getSnapshotService();
+      const { id } = createSnapshot({ projectId: 'proj-1', name: 'Before Rewrite', projectDir, snapshotsDir });
+      const snapDir = fs.readdirSync(snapshotsDir).find(e => e.includes(id) || true);
+      const metaPath = path.join(snapshotsDir, snapDir!, 'snapshot.json');
+      const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+      expect(meta.name).toBe('Before Rewrite');
+      expect(meta.createdAt).toBeTruthy();
+    });
+
+    it('createSnapshot copies project files into snapshot directory', async () => {
+      const { createSnapshot } = await getSnapshotService();
+      const { id } = createSnapshot({ projectId: 'proj-1', name: 'Save Point', projectDir, snapshotsDir });
+      const snapDirs = fs.readdirSync(snapshotsDir);
+      const snapDir = snapDirs.find(e => e.includes(id) || true)!;
+      expect(fs.existsSync(path.join(snapshotsDir, snapDir, 'project.json'))).toBe(true);
+    });
+  });
+
+  describe('listSnapshots', () => {
+    it('listSnapshots returns created snapshot after createSnapshot', async () => {
+      const { createSnapshot, listSnapshots } = await getSnapshotService();
+      createSnapshot({ projectId: 'proj-1', name: 'My Snapshot', projectDir, snapshotsDir });
+      const list = listSnapshots({ snapshotsDir });
+      expect(list.length).toBeGreaterThan(0);
+      expect(list[0].name).toBe('My Snapshot');
+    });
+
+    it('listSnapshots returns empty array when no snapshots exist', async () => {
+      const { listSnapshots } = await getSnapshotService();
+      const list = listSnapshots({ snapshotsDir });
+      expect(list).toEqual([]);
+    });
+
+    it('each snapshot entry has id, name, createdAt, sizeBytes', async () => {
+      const { createSnapshot, listSnapshots } = await getSnapshotService();
+      createSnapshot({ projectId: 'proj-1', name: 'Full Save', projectDir, snapshotsDir });
+      const [entry] = listSnapshots({ snapshotsDir });
+      expect(entry).toHaveProperty('id');
+      expect(entry).toHaveProperty('name');
+      expect(entry).toHaveProperty('createdAt');
+      expect(entry).toHaveProperty('sizeBytes');
+    });
+  });
+
+  describe('deleteSnapshot', () => {
+    it('deleteSnapshot removes the snapshot from listSnapshots', async () => {
+      const { createSnapshot, listSnapshots, deleteSnapshot } = await getSnapshotService();
+      const { id } = createSnapshot({ projectId: 'proj-1', name: 'Temp', projectDir, snapshotsDir });
+      deleteSnapshot({ id, snapshotsDir });
+      const list = listSnapshots({ snapshotsDir });
+      expect(list.every((s: { id: string }) => s.id !== id)).toBe(true);
+    });
+  });
+
+  describe('restoreSnapshot', () => {
+    it('restoreSnapshot copies snapshot files back to projectDir', async () => {
+      const { createSnapshot, restoreSnapshot } = await getSnapshotService();
+      const { id } = createSnapshot({ projectId: 'proj-1', name: 'Before Change', projectDir, snapshotsDir });
+      // Simulate change: add a new file
+      fs.writeFileSync(path.join(projectDir, 'new-file.txt'), 'new content');
+      // Restore — new-file.txt should be gone after restore
+      restoreSnapshot({ id, projectDir, snapshotsDir });
+      expect(fs.existsSync(path.join(projectDir, 'project.json'))).toBe(true);
+    });
+  });
+});

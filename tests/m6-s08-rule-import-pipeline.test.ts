@@ -80,4 +80,67 @@ describe('M6-S08 rule import pipeline', () => {
       expect(row.is_homebrew).toBe(1);
     });
   });
+
+  describe('issue #146: listRuleEntities filter.tag not silently ignored', () => {
+    it('listRuleEntities({ tag }) returns only entities with that tag in properties_json', async () => {
+      const { applyRuleSchema } = await getRuleSchema();
+      const { importRules, listRuleEntities } = await getRuleImport();
+      const db = openDb(); applyRuleSchema(db);
+      importRules(db, {
+        sourceId: 'src-srd', sourceLabel: 'SRD', license: 'CC-BY-4.0', url: '',
+        rules: [
+          { id: 'spell-fireball', type: 'spell', title: 'Fireball', reference_summary: '', ruleset: 'dnd5e_srd', properties: { tags: ['combat', 'fire'] } },
+          { id: 'cond-blinded', type: 'condition', title: 'Blinded', reference_summary: '', ruleset: 'dnd5e_srd', properties: { tags: ['debuff'] } },
+        ],
+      });
+      const result = listRuleEntities(db, { tag: 'combat' });
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe('spell-fireball');
+    });
+
+    it('listRuleEntities({ tag }) returns empty array when no entity has that tag', async () => {
+      const { applyRuleSchema } = await getRuleSchema();
+      const { importRules, listRuleEntities } = await getRuleImport();
+      const db = openDb(); applyRuleSchema(db);
+      importRules(db, {
+        sourceId: 'src-srd', sourceLabel: 'SRD', license: 'CC-BY-4.0', url: '',
+        rules: [srdSpell],
+      });
+      const result = listRuleEntities(db, { tag: 'nonexistent-tag' });
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('issue #143: createRuleOverride includes source_id in INSERT', () => {
+    it('createRuleOverride accepts source_id and persists it', async () => {
+      const { applyRuleSchema } = await getRuleSchema();
+      const { importRules, createRuleOverride } = await getRuleImport();
+      const db = openDb(); applyRuleSchema(db);
+      importRules(db, { sourceId: 'src-srd', sourceLabel: 'SRD', license: 'CC-BY-4.0', url: '', rules: [srdSpell] });
+      const override = createRuleOverride(db, { baseEntityId: 'spell-fireball', sourceId: 'homebrew', overrides: { title: 'Fireball Plus' } });
+      const row = db.prepare(`SELECT source_id FROM rule_entities WHERE id=?`).get(override.id) as { source_id: string } | undefined;
+      expect(row?.source_id).toBe('homebrew');
+    });
+
+    it('createRuleOverride without explicit source_id uses sentinel "homebrew"', async () => {
+      const { applyRuleSchema } = await getRuleSchema();
+      const { importRules, createRuleOverride } = await getRuleImport();
+      const db = openDb(); applyRuleSchema(db);
+      importRules(db, { sourceId: 'src-srd', sourceLabel: 'SRD', license: 'CC-BY-4.0', url: '', rules: [srdSpell] });
+      const override = createRuleOverride(db, { baseEntityId: 'spell-fireball', overrides: { title: 'Fireball Plus' } });
+      const row = db.prepare(`SELECT source_id FROM rule_entities WHERE id=?`).get(override.id) as { source_id: string } | undefined;
+      expect(row?.source_id).toBeTruthy();
+    });
+
+    it('two overrides of same base entity can coexist (no PK collision)', async () => {
+      const { applyRuleSchema } = await getRuleSchema();
+      const { importRules, createRuleOverride } = await getRuleImport();
+      const db = openDb(); applyRuleSchema(db);
+      importRules(db, { sourceId: 'src-srd', sourceLabel: 'SRD', license: 'CC-BY-4.0', url: '', rules: [srdSpell] });
+      expect(() => {
+        createRuleOverride(db, { baseEntityId: 'spell-fireball', sourceId: 'homebrew', overrides: { title: 'Fireball A' } });
+        createRuleOverride(db, { baseEntityId: 'spell-fireball', sourceId: 'homebrew', overrides: { title: 'Fireball B' } });
+      }).not.toThrow();
+    });
+  });
 });
