@@ -24,7 +24,7 @@ export function EntityPicker({ onSelect, typeFilter = null, database }: Props) {
 
   useEffect(() => {
     listEntitiesByType({ database, type: typeFilter ?? null })
-      .then(rows => setAll(rows as EntityListItem[]));
+      .then(rows => setAll(rows as EntityListItem[])).catch(console.error);
   }, [database, typeFilter]);
 
   const lower = query.toLowerCase();

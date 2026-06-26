@@ -28,7 +28,7 @@ function EntityTitle({ entityId, database }: { entityId: string; database: Datab
   useEffect(() => {
     getEffectiveEntity({ database, entityId }).then(r => {
       if (r.found) setTitle(r.entity.title);
-    });
+    }).catch(console.error);
   }, [database, entityId]);
   return <>{title}</>;
 }
@@ -42,7 +42,7 @@ export function RelationsTab({ entityId, database }: Props) {
   const [gmOnly, setGmOnly] = useState(false);
 
   useEffect(() => {
-    getRelations(db, entityId, { includeInactive: true }).then(setRelations);
+    getRelations(db, entityId, { includeInactive: true }).then(setRelations).catch(console.error);
   }, [entityId, database]);
 
   const active = relations.filter((r) => r.active === 1);
@@ -50,7 +50,7 @@ export function RelationsTab({ entityId, database }: Props) {
   const allTypes = getAllRelationTypes();
 
   function refresh() {
-    getRelations(db, entityId, { includeInactive: true }).then(setRelations);
+    getRelations(db, entityId, { includeInactive: true }).then(setRelations).catch(console.error);
   }
 
   async function handleDeactivate(relationId: string) {

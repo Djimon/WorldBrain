@@ -23,7 +23,7 @@ export function DmScreenSelector({ database, onSelectScreen }: DmScreenSelectorP
   const [newTitle, setNewTitle] = useState('');
 
   useEffect(() => {
-    listScreens(database).then(setScreens);
+    listScreens(database).then(setScreens).catch(console.error);
   }, [database]);
 
   async function handleCreate() {
@@ -70,10 +70,10 @@ function PanelContent({ panel, database }: { panel: DmPanel; database: DatabaseL
 
   useEffect(() => {
     if (panel.source === 'rule_table') {
-      listRuleEntities(database, { type: panel.config.tag as string }).then(setRules);
+      listRuleEntities(database, { type: panel.config.tag as string }).then(setRules).catch(console.error);
     } else if (panel.source === 'entity_type') {
       listEntitiesByType({ database, type: panel.config.entity_type as string })
-        .then(rows => setEntities(rows as EntityListItem[]));
+        .then(rows => setEntities(rows as EntityListItem[])).catch(console.error);
     }
   }, [panel, database]);
 
@@ -114,7 +114,7 @@ export function DmScreen({ screenId, database }: DmScreenProps) {
         setScreen(s);
         setPanels(s?.panels ?? []);
       }
-    });
+    }).catch(console.error);
   }, [database, screenId]);
 
   function handleRemovePanel(id: string) {

@@ -22,7 +22,7 @@ export function EntityTimeline({ entityId, entityType, database }: Props) {
 
   useEffect(() => {
     listEvents(database, isLocation ? { locationId: entityId } : { participantId: entityId })
-      .then(rows => setEvents(rows as EventItem[]));
+      .then(rows => setEvents(rows as EventItem[])).catch(console.error);
   }, [database, entityId, entityType]);
 
   return (
