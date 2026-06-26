@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+// @tauri-apps/plugin-fs
+import { readFileSync, writeFileSync } from './_fs';
 
 export interface ProjectEntry {
   id: string;

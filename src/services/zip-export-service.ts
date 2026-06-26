@@ -1,5 +1,6 @@
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+// @tauri-apps/plugin-fs
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from './_fs';
+import { join, relative } from './_path';
 import { createZip } from './_zip-utils';
 import { createSnapshot } from './snapshot-service';
 

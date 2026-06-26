@@ -25,5 +25,15 @@
   },
   "bundle": {
     "active": false
+  },
+  "plugins": {
+    "fs": {
+      "all": true
+    },
+    "sql": {},
+    "updater": {
+      "active": true,
+      "endpoints": ["https://releases.worldbuilderx.app/{{target}}/{{arch}}/{{current_version}}"]
+    }
   }
 }

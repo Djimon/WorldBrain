@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+// @tauri-apps/plugin-fs
+import { existsSync, mkdirSync, writeFileSync } from './_fs';
+import { join } from './_path';
 
 export interface ProjectMeta {
   id: string;
