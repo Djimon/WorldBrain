@@ -60,6 +60,6 @@ export async function exportProjectToZip(opts: {
   if (projectDir && (await exists(projectDir))) {
     const files = await collectFiles(projectDir, projectDir);
     const zipBuf = createZip(files);
-    await writeFile(opts.outputPath, zipBuf);
+    await writeFile(opts.outputPath, new Uint8Array(zipBuf));
   }
 }
