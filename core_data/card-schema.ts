@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import type { DatabaseLike } from '../src/services/entity-service';
 
 // --- Types ---
 
@@ -151,22 +152,24 @@ export function applyCardSchema(db: DatabaseSync): void {
       created_at  TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS print_jobs (
+      id         TEXT PRIMARY KEY NOT NULL,
+      cards_json TEXT NOT NULL DEFAULT '[]',
+      cut_marks  INTEGER NOT NULL DEFAULT 0,
+      backside   TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
 }
 
-export function seedBuiltInCardTemplates(db: DatabaseSync): void {
-  const stmt = db.prepare(`
-    INSERT OR IGNORE INTO card_templates (id, label, entity_types, size_mm, layout, style)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-
+export async function seedBuiltInCardTemplates(db: DatabaseLike): Promise<void> {
   for (const t of BUILT_IN_CARD_TEMPLATES) {
-    stmt.run(
-      t.id,
-      t.label,
-      JSON.stringify(t.entity_types),
-      JSON.stringify(t.size_mm),
-      JSON.stringify(t.layout),
-      JSON.stringify(t.style),
+    await db.execute(
+      `INSERT OR IGNORE INTO card_templates (id, label, entity_types, size_mm, layout, style)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [t.id, t.label, JSON.stringify(t.entity_types), JSON.stringify(t.size_mm), JSON.stringify(t.layout), JSON.stringify(t.style)],
     );
   }
 }

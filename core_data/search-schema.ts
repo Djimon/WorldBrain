@@ -1,7 +1,4 @@
-// @vitest-environment node
-import { DatabaseSync } from 'node:sqlite';
-
-type SearchDb = InstanceType<typeof DatabaseSync>;
+import type { DatabaseLike } from '../src/services/entity-service';
 
 export interface SearchEntry {
   entity_id: string;
@@ -14,12 +11,12 @@ export interface SearchEntry {
   properties_text: string;
 }
 
-export function applySearchSchema(db: SearchDb): void {
-  const existing = db
-    .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='entity_search'`)
-    .get();
-  if (!existing) {
-    db.exec(`
+export async function applySearchSchema(db: DatabaseLike): Promise<void> {
+  const existing = await db.select<{ name: string }>(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name='entity_search'`,
+  );
+  if (existing.length === 0) {
+    await db.execute(`
       CREATE VIRTUAL TABLE entity_search USING fts5(
         title,
         aliases,
@@ -34,41 +31,31 @@ export function applySearchSchema(db: SearchDb): void {
   }
 }
 
-export function indexEntity(db: SearchDb, entry: SearchEntry): void {
-  db.prepare(`DELETE FROM entity_search WHERE entity_id = ?`).run(entry.entity_id);
-  db.prepare(
+export async function indexEntity(db: DatabaseLike, entry: SearchEntry): Promise<void> {
+  await db.execute(`DELETE FROM entity_search WHERE entity_id = ?`, [entry.entity_id]);
+  await db.execute(
     `INSERT INTO entity_search(entity_id, entity_type, title, aliases, summary, body, tags, properties_text)
      VALUES (?,?,?,?,?,?,?,?)`,
-  ).run(
-    entry.entity_id,
-    entry.entity_type ?? '',
-    entry.title,
-    entry.aliases,
-    entry.summary,
-    entry.body,
-    entry.tags,
-    entry.properties_text,
+    [entry.entity_id, entry.entity_type ?? '', entry.title, entry.aliases, entry.summary, entry.body, entry.tags, entry.properties_text],
   );
 }
 
-export function removeEntityFromIndex(db: SearchDb, entityId: string): void {
-  db.prepare(`DELETE FROM entity_search WHERE entity_id = ?`).run(entityId);
+export async function removeEntityFromIndex(db: DatabaseLike, entityId: string): Promise<void> {
+  await db.execute(`DELETE FROM entity_search WHERE entity_id = ?`, [entityId]);
 }
 
-export function rebuildSearchIndex(db: SearchDb): void {
-  db.exec(`DELETE FROM entity_search`);
-  const entities = db
-    .prepare(
-      `SELECT id, title, aliases_json, summary, body_json, properties_json FROM base_entities`,
-    )
-    .all() as Array<{
+export async function rebuildSearchIndex(db: DatabaseLike): Promise<void> {
+  await db.execute(`DELETE FROM entity_search`);
+  const entities = await db.select<{
     id: string;
     title: string;
     aliases_json: string;
     summary: string;
     body_json: string;
     properties_json: string;
-  }>;
+  }>(
+    `SELECT id, title, aliases_json, summary, body_json, properties_json FROM base_entities`,
+  );
   for (const e of entities) {
     let aliases = '';
     try {
@@ -87,7 +74,7 @@ export function rebuildSearchIndex(db: SearchDb): void {
       throw new Error(`rebuildSearchIndex: malformed body_json for entity ${e.id}: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    indexEntity(db, {
+    await indexEntity(db, {
       entity_id: e.id,
       title: e.title ?? '',
       aliases,

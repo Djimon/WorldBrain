@@ -27,7 +27,7 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   applyHandoutSchema(db as unknown as Parameters<typeof applyHandoutSchema>[0]);
   applyMapSchema(db as unknown as Parameters<typeof applyMapSchema>[0]);
   applySavedViewsSchema(db as unknown as Parameters<typeof applySavedViewsSchema>[0]);
-  applySearchSchema(db as unknown as Parameters<typeof applySearchSchema>[0]);
+  await applySearchSchema(adapter);
   applySessionSchema(db as unknown as Parameters<typeof applySessionSchema>[0]);
   applyRelationsSchema(db as unknown as Parameters<typeof applyRelationsSchema>[0]);
   applyRuleSchema(adapter);

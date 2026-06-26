@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseLike } from '../src/services/entity-service';
 
 type MapDb = InstanceType<typeof DatabaseSync>;
 
@@ -31,10 +32,10 @@ export function applyMapSchema(db: MapDb): void {
   `);
 }
 
-export function getMarkersForMap(db: MapDb, mapId: string): Array<Record<string, unknown>> {
-  return db.prepare('SELECT * FROM map_markers WHERE map_id = ?').all(mapId) as Array<Record<string, unknown>>;
+export async function getMarkersForMap(db: DatabaseLike, mapId: string): Promise<Array<Record<string, unknown>>> {
+  return db.select<Record<string, unknown>>('SELECT * FROM map_markers WHERE map_id = ?', [mapId]);
 }
 
-export function getMarkersForEntity(db: MapDb, entityId: string): Array<Record<string, unknown>> {
-  return db.prepare('SELECT * FROM map_markers WHERE entity_id = ?').all(entityId) as Array<Record<string, unknown>>;
+export async function getMarkersForEntity(db: DatabaseLike, entityId: string): Promise<Array<Record<string, unknown>>> {
+  return db.select<Record<string, unknown>>('SELECT * FROM map_markers WHERE entity_id = ?', [entityId]);
 }
