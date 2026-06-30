@@ -459,6 +459,10 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [rulerP2, setRulerP2] = useState<RulerPoint | null>(null);
   const [lastMeasureTool, setLastMeasureTool] = useState<'measure' | 'radius'>('measure');
   const [measureFlyout, setMeasureFlyout] = useState(false);
+  const [activeCellStateId, setActiveCellStateId] = useState(1);
+  const [gridFlyout, setGridFlyout] = useState(false);
+  const [gridFlyoutPos, setGridFlyoutPos] = useState<{ top: number; left: number } | null>(null);
+  const gridBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!measureFlyout) return;
@@ -466,6 +470,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [measureFlyout]);
+
+  useEffect(() => {
+    if (!gridFlyout) return;
+    const close = () => setGridFlyout(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [gridFlyout]);
 
   const dragStart = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -678,7 +689,45 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         <div className="map-toolbar__group">
           <button className={`map-tool-btn${mode === 'navigate' ? ' active' : ''}`} onClick={() => setMode('navigate')} title="Navigieren">🗺</button>
           <button className={`map-tool-btn${mode === 'pin' ? ' active' : ''}`} onClick={() => setMode('pin')} title="Pin setzen">📍</button>
-          <button className={`map-tool-btn${mode === 'grid' ? ' active' : ''}`} onClick={() => setMode('grid')} title="Grid malen">⬜</button>
+          {/* Grid paint tool group — flyout with cell states */}
+          <div className="map-tool-group" style={{ position: 'relative' }}>
+            {(() => {
+              const activeState = gridSettings.cellStates.find((s) => s.id === activeCellStateId) ?? gridSettings.cellStates[0];
+              return (
+                <button
+                  ref={gridBtnRef}
+                  className={`map-tool-btn${mode === 'grid' ? ' active' : ''}`}
+                  title="Grid malen"
+                  onClick={() => {
+                    setMode((m) => m === 'grid' ? 'navigate' : 'grid');
+                    const rect = gridBtnRef.current?.getBoundingClientRect();
+                    if (rect) setGridFlyoutPos({ top: rect.top, left: rect.right + 4 });
+                    setGridFlyout((v) => !v);
+                  }}
+                >
+                  {activeState
+                    ? <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 2, background: activeState.color, border: '1px solid rgba(255,255,255,0.3)', verticalAlign: 'middle' }} />
+                    : '⬜'}
+                  <span className="map-tool-group__arrow">▸</span>
+                </button>
+              );
+            })()}
+            {gridFlyout && gridFlyoutPos && (
+              <div className="map-tool-flyout" style={{ top: gridFlyoutPos.top, left: gridFlyoutPos.left }} onMouseDown={(e) => e.stopPropagation()}>
+                {gridSettings.cellStates.map((st) => (
+                  <button key={st.id}
+                    className={`map-tool-flyout__item${activeCellStateId === st.id ? ' active' : ''}`}
+                    onClick={() => { setActiveCellStateId(st.id); setMode('grid'); setGridFlyout(false); }}
+                  >
+                    <span className="map-tool-flyout__icon">
+                      <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 2, background: st.color, border: '1px solid rgba(255,255,255,0.3)' }} />
+                    </span>
+                    <span className="map-tool-flyout__label">{st.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {/* Measure tool group — PS-style flyout */}
           <div className="map-tool-group" style={{ position: 'relative' }}>
             <button
@@ -752,6 +801,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               imgW={imgSize.w} imgH={imgSize.h}
               cells={cells}
               gridMode={mode === 'grid'}
+              activeCellStateId={activeCellStateId}
               sessionId={sessionId} mapId={mapId} database={database}
               onCellsChange={setCells}
               onCellContextMenu={handleCellContextMenu}

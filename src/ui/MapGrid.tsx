@@ -57,6 +57,7 @@ interface GridOverlayProps {
   imgH: number;
   cells: Map<string, number>;
   gridMode: boolean;
+  activeCellStateId: number;
   sessionId: string;
   mapId: string;
   database: DatabaseLike;
@@ -72,7 +73,7 @@ function hexPoints(cx: number, cy: number, r: number, flat: boolean): string {
 }
 
 export function GridOverlaySvg({
-  settings, imgW, imgH, cells, gridMode,
+  settings, imgW, imgH, cells, gridMode, activeCellStateId,
   sessionId, mapId, database, onCellsChange, onCellContextMenu,
 }: GridOverlayProps) {
   const { cellSize, type, lineColor, lineOpacity, lineWidth, lineDash, visible, cellStates } = settings;
@@ -99,7 +100,7 @@ export function GridOverlaySvg({
     if (key === lastPaintKey.current) return;
     lastPaintKey.current = key;
     const current = cells.get(key) ?? 0;
-    const next = stateOverride !== undefined ? stateOverride : (current === 0 ? 1 : 0);
+    const next = stateOverride !== undefined ? stateOverride : (current === activeCellStateId ? 0 : activeCellStateId);
     void setCellState(database, sessionId, mapId, key, next).then(() => {
       const m = new Map(cells);
       if (next === 0) m.delete(key); else m.set(key, next);
@@ -118,7 +119,7 @@ export function GridOverlaySvg({
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
     if (!gridMode || !isPainting.current) return;
     e.stopPropagation();
-    paintCell(e.currentTarget, e.clientX, e.clientY, 1);
+    paintCell(e.currentTarget, e.clientX, e.clientY, activeCellStateId);
   }
 
   function handleMouseUp(e: React.MouseEvent<SVGSVGElement>) {
