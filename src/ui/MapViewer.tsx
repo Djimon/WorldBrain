@@ -383,7 +383,7 @@ function RadiusOverlay({
   return (
     <svg style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible", zIndex: 8 }}>
       <circle cx={cx} cy={cy} r={r}
-        fill="none" stroke={rulerColor} strokeWidth={rulerWidth} strokeOpacity={rulerOpacity} strokeDasharray="6 3" />
+        fill={rulerColor} fillOpacity={rulerOpacity * 0.3} stroke={rulerColor} strokeWidth={rulerWidth} strokeOpacity={rulerOpacity} strokeDasharray="6 3" />
       <circle cx={cx} cy={cy} r={rulerWidth + 3} fill={rulerColor} fillOpacity={rulerOpacity} />
       <line x1={cx} y1={cy} x2={ex} y2={ey}
         stroke={rulerColor} strokeWidth={rulerWidth * 0.6} strokeOpacity={rulerOpacity * 0.6} strokeDasharray="4 4" />
