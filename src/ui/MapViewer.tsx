@@ -7,6 +7,17 @@ import { getActivatedCells, clearAllCells, setCellState } from '../services/sess
 import { listEntitiesByType } from '../services/entity-service';
 import { GridOverlaySvg, GridControlsPanel, CellContextMenu, DEFAULT_GRID_SETTINGS } from './MapGrid';
 import type { GridSettings } from './MapGrid';
+import { listVars } from '../services/session-variable-service';
+import type { VarRow } from '../services/session-variable-service';
+import { ConditionBuilder } from './ConditionBuilder';
+import type { VarDef } from './ConditionBuilder';
+
+const VISIBILITY_OPTIONS: { key: string; label: string }[] = [
+  { key: 'public', label: 'Öffentlich' },
+  { key: 'gm_only', label: 'Nur DM' },
+  { key: 'player_known', label: 'Spieler (wenn Entity bekannt)' },
+  { key: 'hidden_until_condition', label: 'Bedingung…' },
+];
 
 type Mode = 'navigate' | 'pin' | 'move-pin' | 'grid' | 'measure' | 'radius';
 
@@ -20,8 +31,8 @@ interface Props {
   onNavigateToEntity?: (entityId: string) => void;
 }
 
-function parsePinGeometry(json: string): { x: number; y: number; notes?: string } {
-  try { return JSON.parse(json) as { x: number; y: number; notes?: string }; } catch { return { x: 0, y: 0 }; }
+function parsePinGeometry(json: string): { x: number; y: number; notes?: string; condition?: unknown } {
+  try { return JSON.parse(json) as { x: number; y: number; notes?: string; condition?: unknown }; } catch { return { x: 0, y: 0 }; }
 }
 
 const PIN_ICONS = [
@@ -454,6 +465,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [showEntityPicker, setShowEntityPicker] = useState(false);
   const [editGroup, setEditGroup] = useState('');
   const [editIcon, setEditIcon] = useState<PinIconKey>('pin');
+  const [editVisibility, setEditVisibility] = useState('public');
+  const [editCondition, setEditCondition] = useState<unknown>(null);
+  const [sessionVarsRaw, setSessionVarsRaw] = useState<VarRow[]>([]);
   const [entities, setEntities] = useState<{ id: string; type: string; title: string }[]>([]);
   const [pinTreeCollapsed, setPinTreeCollapsed] = useState(false);
   const [pinTreeWidth, setPinTreeWidth] = useState(220);
@@ -525,6 +539,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     loadGridSettings(database, mapId).then((saved) => {
       if (saved) setGridSettings((prev) => ({ ...prev, ...saved } as GridSettings));
     }).catch(console.error);
+    listVars(database, sessionId).then(setSessionVarsRaw).catch(console.error);
   }, [database, mapId, sessionId]);
 
   useEffect(() => {
@@ -649,6 +664,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       setEditIcon((s.icon as PinIconKey) ?? 'pin');
       setEditEntityIds(Array.isArray(s.extra_entity_ids) ? s.extra_entity_ids : []);
     } catch { setEditIcon('pin'); setEditEntityIds([]); }
+    try { setEditVisibility(JSON.parse(m.visibility_json) as string); } catch { setEditVisibility('public'); }
+    setEditCondition(geo.condition ?? null);
   }
 
   async function savePin() {
@@ -657,8 +674,12 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     await updateMarker(database, editingPin.id, {
       label_text: editLabel,
       entity_id: editEntityId || null,
-      geometry_json: JSON.stringify({ ...geo, notes: editNotes }),
+      geometry_json: JSON.stringify({
+        ...geo, notes: editNotes,
+        condition: editVisibility === 'hidden_until_condition' ? editCondition : undefined,
+      }),
       style_json: JSON.stringify({ icon: editIcon, extra_entity_ids: editEntityIds }),
+      visibility_json: JSON.stringify(editVisibility),
     });
     setEditingPin(null);
     reloadMarkers();
@@ -718,6 +739,10 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const allGroups = [...new Set(markers.map((m) => m.group_name ?? '').filter(Boolean))].sort();
 
   const pinPx = PIN_SIZE_PX[gridSettings.pinSize] ?? 26;
+  const VALID_VAR_TYPES = new Set(['boolean', 'number', 'string', 'enum']);
+  const sessionVarDefs: VarDef[] = sessionVarsRaw
+    .filter((v) => VALID_VAR_TYPES.has(v.type))
+    .map((v) => ({ id: v.id, label: v.label, type: v.type as VarDef['type'] }));
   const cursor = mode === 'pin' ? 'crosshair' : mode === 'grid' ? 'cell' : (mode === 'measure' || mode === 'radius') ? 'crosshair' : dragging ? 'grabbing' : 'grab';
 
   if (!imgSrc) return <div className="map-empty">Kein Kartenbild — Karte importieren um zu beginnen.</div>;
@@ -861,6 +886,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             const geo = parsePinGeometry(m.geometry_json);
             const isSelected = selectedPinId === m.id;
             const isMoving = movingPinId === m.id;
+            let visScope = 'public';
+            try { visScope = JSON.parse(m.visibility_json) as string; } catch { /* default public */ }
             return (
               <div key={m.id}
                 className={`map-pin${isSelected ? ' map-pin--selected' : ''}${isMoving ? ' map-pin--moving' : ''}`}
@@ -883,6 +910,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                 }}
               >
                 <span className="map-pin__icon">{getPinEmoji(m.style_json)}</span>
+                {visScope === 'gm_only' && <span className="map-pin__vis-badge" title="Nur DM">🔒</span>}
+                {visScope === 'hidden_until_condition' && <span className="map-pin__vis-badge" title="Bedingung">⏳</span>}
+                {visScope === 'player_known' && <span className="map-pin__vis-badge" title="Spieler (wenn bekannt)">👁</span>}
                 {m.label_text && <span className="map-pin__label">{m.label_text}</span>}
                 {isSelected && (
                   <button className="map-pin__move-btn" title="Pin verschieben"
@@ -1002,6 +1032,15 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             <input className="map-pin-editor__name-input" value={editLabel} onChange={(e) => setEditLabel(e.target.value)} />
             <label className="map-pin-editor__label">Notizen</label>
             <textarea className="map-pin-editor__textarea" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+            <label className="map-pin-editor__label">Sichtbarkeit</label>
+            <select className="map-pin-editor__name-input" value={editVisibility}
+              onChange={(e) => setEditVisibility(e.target.value)}>
+              {VISIBILITY_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+            </select>
+            {editVisibility === 'hidden_until_condition' && (
+              <ConditionBuilder variables={sessionVarDefs} initialCondition={editCondition}
+                onChange={setEditCondition} />
+            )}
             <label className="map-pin-editor__label">Entity-Links</label>
             <div className="pin-entity-links">
               {/* primary entity */}

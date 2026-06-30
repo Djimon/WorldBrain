@@ -38,6 +38,7 @@ export async function updateMarker(db: DatabaseLike, id: string, patch: Partial<
   if (patch.geometry_json !== undefined) { fields.push('geometry_json = ?'); values.push(patch.geometry_json); }
   if (patch.group_name !== undefined) { fields.push('group_name = ?'); values.push(patch.group_name); }
   if (patch.style_json !== undefined) { fields.push('style_json = ?'); values.push(patch.style_json); }
+  if (patch.visibility_json !== undefined) { fields.push('visibility_json = ?'); values.push(patch.visibility_json); }
   if (!fields.length) return;
   values.push(id);
   await db.execute(`UPDATE map_markers SET ${fields.join(', ')} WHERE id = ?`, values);

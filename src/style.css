@@ -1181,6 +1181,18 @@ input {
 }
 .map-pin__move-btn:hover { background: var(--color-accent); color: #fff; }
 
+.map-pin__vis-badge {
+  position: absolute;
+  top: -4px;
+  left: -8px;
+  font-size: 10px;
+  line-height: 1;
+  background: var(--color-surface);
+  border-radius: 50%;
+  padding: 1px;
+  z-index: 6;
+}
+
 /* ── Pin tree sidebar ── */
 .map-pin-tree {
   width: 100%;
