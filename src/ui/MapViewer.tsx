@@ -95,15 +95,6 @@ function buildTree(markers: MarkerRow[]): { root: TreeNode[]; ungrouped: MarkerR
   return { root, ungrouped };
 }
 
-interface PinTreeProps {
-  markers: MarkerRow[];
-  editingId: string | null;
-  onSelect: (m: MarkerRow, e: React.MouseEvent) => void;
-  onClose: () => void;
-  entities: { id: string; title: string }[];
-  onGroupRename: (groupOld: string, groupNew: string) => void;
-}
-
 function FolderNode({
   node, depth, collapsed, onToggle, editingId, onSelect, entities,
   renamingPath, renameVal, onRenameVal, onRenameCommit, onRenameStart, onRenameCancel,
@@ -210,14 +201,16 @@ interface PinTreeProps {
   markers: MarkerRow[];
   editingId: string | null;
   onSelect: (m: MarkerRow, e: React.MouseEvent) => void;
-  onClose: () => void;
+  panelCollapsed: boolean;
+  onTogglePanel: () => void;
   entities: { id: string; title: string }[];
   onGroupRename: (groupOld: string, groupNew: string) => void;
   onPinMove: (markerId: string, newGroup: string) => void;
   onCreateFolder: (name: string) => void;
+  onResizeStart: (e: React.MouseEvent) => void;
 }
 
-function PinTree({ markers, editingId, onSelect, onClose, entities, onGroupRename, onPinMove, onCreateFolder }: PinTreeProps) {
+function PinTree({ markers, editingId, onSelect, panelCollapsed, onTogglePanel, entities, onGroupRename, onPinMove, onCreateFolder, onResizeStart }: PinTreeProps) {
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
@@ -266,13 +259,25 @@ function PinTree({ markers, editingId, onSelect, onClose, entities, onGroupRenam
     setDragOverPath('');
   }
 
+  if (panelCollapsed) {
+    return (
+      <div className="map-pin-tree map-pin-tree--collapsed">
+        <div className="map-pin-tree__resize-handle" onMouseDown={onResizeStart} />
+        <button className="map-pin-tree__collapse-btn" onClick={onTogglePanel} title="Pin-Liste aufklappen">
+          <span className="map-pin-tree__collapsed-label">PINS</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="map-pin-tree">
+      <div className="map-pin-tree__resize-handle" onMouseDown={onResizeStart} />
       <div className="map-pin-editor__header">
         <span>Pins ({markers.length})</span>
         <button className="map-pin-tree__new-folder-btn" title="Neuer Ordner"
           onClick={() => setNewFolderInput(true)}>📁+</button>
-        <button onClick={onClose}>✕</button>
+        <button onClick={onTogglePanel} title="Einklappen">◀</button>
       </div>
 
       {newFolderInput && (
@@ -408,7 +413,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [editGroup, setEditGroup] = useState('');
   const [editIcon, setEditIcon] = useState<PinIconKey>('pin');
   const [entities, setEntities] = useState<{ id: string; type: string; title: string }[]>([]);
-  const [showPinTree, setShowPinTree] = useState(false);
+  const [pinTreeCollapsed, setPinTreeCollapsed] = useState(false);
+  const [pinTreeWidth, setPinTreeWidth] = useState(220);
   const [cellMenu, setCellMenu] = useState<{ x: number; y: number; cellKey: string } | null>(null);
   const [rulerP1, setRulerP1] = useState<RulerPoint | null>(null);
   const [rulerP2, setRulerP2] = useState<RulerPoint | null>(null);
@@ -416,6 +422,24 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const dragStart = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pinResizeStartX = useRef<number | null>(null);
+  const pinResizeStartW = useRef<number>(220);
+
+  function handlePinResizeStart(e: React.MouseEvent) {
+    e.preventDefault();
+    pinResizeStartX.current = e.clientX;
+    pinResizeStartW.current = pinTreeWidth;
+    const onMove = (ev: MouseEvent) => {
+      const delta = pinResizeStartX.current! - ev.clientX;
+      setPinTreeWidth(Math.max(140, Math.min(500, pinResizeStartW.current + delta)));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
 
   function reloadMarkers() {
     getMarkersForMap(database, mapId).then(setMarkers).catch(console.error);
@@ -617,9 +641,6 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           >&#x2B55;</button>
         </div>
         <div className="map-toolbar__group">
-          <button className={`map-tool-btn${showPinTree ? ' active' : ''}`} onClick={() => setShowPinTree((v) => !v)} title="Pin-Liste">🗂</button>
-        </div>
-        <div className="map-toolbar__group">
           <GridControlsPanel
             settings={gridSettings}
             onChange={updateGridSettings}
@@ -720,13 +741,14 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         {mode === 'radius' && rulerP1 && !rulerP2 && <div className="map-viewer__hint">Radius ziehen…</div>}
       </div>
 
-      {/* Pin tree */}
-      {showPinTree && (
+      {/* Pin tree — always visible, resizable */}
+      <div style={{ width: pinTreeCollapsed ? 32 : pinTreeWidth, flexShrink: 0, position: 'relative' }}>
         <PinTree
           markers={markers}
           editingId={editingPin?.id ?? null}
           onSelect={openPinEditor}
-          onClose={() => setShowPinTree(false)}
+          panelCollapsed={pinTreeCollapsed}
+          onTogglePanel={() => setPinTreeCollapsed((v) => !v)}
           entities={entities}
           onGroupRename={handleGroupRename}
           onPinMove={(markerId, newGroup) => {
@@ -741,8 +763,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               visibility_json: '"public"', style_json: '{}',
             }).then(reloadMarkers);
           }}
+          onResizeStart={handlePinResizeStart}
         />
-      )}
+      </div>
 
       {/* Pin editor */}
       {editingPin && (
