@@ -21,11 +21,11 @@ export async function getMarkersForMap(db: DatabaseLike, mapId: string): Promise
 export async function createMarker(db: DatabaseLike, data: Omit<MarkerRow, 'id'>): Promise<{ id: string }> {
   const id = 'mk_' + crypto.randomUUID();
   await db.execute(
-    `INSERT INTO map_markers (id, map_id, entity_id, kind, geometry_json, label_text, elevation_value, elevation_unit, visibility_json, group_name)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO map_markers (id, map_id, entity_id, kind, geometry_json, label_text, elevation_value, elevation_unit, visibility_json, style_json, group_name)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, data.map_id, data.entity_id ?? null, data.kind, data.geometry_json,
      data.label_text ?? null, data.elevation_value ?? null, data.elevation_unit ?? null, data.visibility_json,
-     data.group_name ?? ''],
+     data.style_json ?? '{}', data.group_name ?? ''],
   );
   return { id };
 }

@@ -8,7 +8,7 @@ import { listEntitiesByType } from '../services/entity-service';
 import { GridOverlaySvg, GridControlsPanel, CellContextMenu, DEFAULT_GRID_SETTINGS } from './MapGrid';
 import type { GridSettings } from './MapGrid';
 
-type Mode = 'navigate' | 'pin' | 'grid' | 'measure';
+type Mode = 'navigate' | 'pin' | 'grid' | 'measure' | 'radius';
 
 const PIN_SIZE_PX: Record<string, number> = { S: 18, M: 26, L: 38 };
 
@@ -70,6 +70,11 @@ function buildTree(markers: MarkerRow[]): { root: TreeNode[]; ungrouped: MarkerR
   }
 
   for (const m of markers) {
+    if (m.kind === 'folder-anchor') {
+      // ensures the folder node exists without adding a visible pin
+      getNode((m.group_name ?? '').trim() || (m.label_text ?? ''));
+      continue;
+    }
     const g = (m.group_name ?? '').trim();
     if (!g) { ungrouped.push(m); continue; }
     getNode(g).pins.push(m);
@@ -209,16 +214,16 @@ interface PinTreeProps {
   entities: { id: string; title: string }[];
   onGroupRename: (groupOld: string, groupNew: string) => void;
   onPinMove: (markerId: string, newGroup: string) => void;
+  onCreateFolder: (name: string) => void;
 }
 
-function PinTree({ markers, editingId, onSelect, onClose, entities, onGroupRename, onPinMove }: PinTreeProps) {
+function PinTree({ markers, editingId, onSelect, onClose, entities, onGroupRename, onPinMove, onCreateFolder }: PinTreeProps) {
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
   const [newFolderInput, setNewFolderInput] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-  const [extraFolders, setExtraFolders] = useState<string[]>([]);
   const [dragPayload, setDragPayload] = useState<DragPayload | null>(null);
   const [dragOverPath, setDragOverPath] = useState('');
 
@@ -227,14 +232,8 @@ function PinTree({ markers, editingId, onSelect, onClose, entities, onGroupRenam
     ? markers.filter((m) => (m.label_text ?? '').toLowerCase().includes(q) || (m.group_name ?? '').toLowerCase().includes(q))
     : markers;
 
-  // merge extra (empty) folders into the tree by injecting fake pins
-  const augmented = [...filtered];
-  const { root, ungrouped } = buildTree(augmented);
-  // add extra empty folders to root if not already present
-  const extraRoots = extraFolders
-    .filter((f) => !root.find((n) => n.path === f))
-    .map((f): TreeNode => ({ path: f, name: f.split('/').pop()!, children: [], pins: [] }));
-  const allRoot = [...root, ...extraRoots].sort((a, b) => a.name.localeCompare(b.name));
+  const { root, ungrouped } = buildTree(filtered);
+  const allRoot = root;
 
   function toggleCollapse(path: string) {
     setCollapsed((prev) => { const n = new Set(prev); if (n.has(path)) n.delete(path); else n.add(path); return n; });
@@ -247,7 +246,7 @@ function PinTree({ markers, editingId, onSelect, onClose, entities, onGroupRenam
 
   function createFolder() {
     const name = newFolderName.trim();
-    if (name) setExtraFolders((prev) => [...prev, name]);
+    if (name) onCreateFolder(name);
     setNewFolderName('');
     setNewFolderInput(false);
   }
@@ -358,7 +357,36 @@ function RulerOverlay({
   );
 }
 
-// â”€â”€ MapViewer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function RadiusOverlay({
+  center, edge, scale, offset, cellSize, measureValue, measureUnit, rulerColor, rulerOpacity, rulerWidth,
+}: {
+  center: RulerPoint; edge: RulerPoint | null;
+  scale: number; offset: { x: number; y: number };
+  cellSize: number; measureValue: number; measureUnit: string;
+  rulerColor: string; rulerOpacity: number; rulerWidth: number;
+}) {
+  if (!edge) return null;
+  const cx = center.x * scale + offset.x;
+  const cy = center.y * scale + offset.y;
+  const ex = edge.x * scale + offset.x;
+  const ey = edge.y * scale + offset.y;
+  const r = Math.sqrt((ex - cx) ** 2 + (ey - cy) ** 2);
+  const pixelDist = Math.sqrt((edge.x - center.x) ** 2 + (edge.y - center.y) ** 2);
+  const realDist = (pixelDist / cellSize) * measureValue;
+  const label = `r = ${realDist.toFixed(2)} ${measureUnit}`;
+  const labelW = label.length * 7 + 16;
+  return (
+    <svg style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible", zIndex: 8 }}>
+      <circle cx={cx} cy={cy} r={r}
+        fill="none" stroke={rulerColor} strokeWidth={rulerWidth} strokeOpacity={rulerOpacity} strokeDasharray="6 3" />
+      <circle cx={cx} cy={cy} r={rulerWidth + 3} fill={rulerColor} fillOpacity={rulerOpacity} />
+      <line x1={cx} y1={cy} x2={ex} y2={ey}
+        stroke={rulerColor} strokeWidth={rulerWidth * 0.6} strokeOpacity={rulerOpacity * 0.6} strokeDasharray="4 4" />
+      <rect x={cx - labelW / 2} y={cy - r - 22} width={labelW} height={20} rx={4} fill="rgba(0,0,0,0.75)" />
+      <text x={cx} y={cy - r - 6} textAnchor="middle" fill={rulerColor} fillOpacity={rulerOpacity} fontSize={12} fontFamily="monospace">{label}</text>
+    </svg>
+  );
+}
 
 export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity }: Props) {
   const [imgSrc, setImgSrc] = useState<string | null>(null);
@@ -444,7 +472,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     if (dragging && dragStart.current) {
       setOffset({ x: dragStart.current.ox + (e.clientX - dragStart.current.mx), y: dragStart.current.oy + (e.clientY - dragStart.current.my) });
     }
-    if (mode === 'measure' && rulerP1) {
+    if ((mode === 'measure' || mode === 'radius') && rulerP1) {
       setRulerP2(toMapCoords(e.clientX, e.clientY));
     }
     if (showCoordinates && containerRef.current) {
@@ -471,12 +499,12 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       return;
     }
 
-    if (mode === 'measure') {
+    if (mode === 'measure' || mode === 'radius') {
       if (!rulerP1) {
         setRulerP1(pos);
         setRulerP2(null);
       } else {
-        setRulerP2(pos); // keep showing result, click again to reset
+        setRulerP2(pos);
         setRulerP1(null);
       }
     }
@@ -519,14 +547,24 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
 
   async function handleGroupRename(groupOld: string, groupNew: string) {
     if (!groupNew || groupNew === groupOld) return;
-    // rename exact matches AND child paths (prefix rename)
+    // rename group_name on all markers (pins + folder-anchors) with exact or child path match
     const toRename = markers.filter((m) => {
       const g = m.group_name ?? '';
       return g === groupOld || g.startsWith(groupOld + '/');
     });
-    await Promise.all(toRename.map((m) =>
-      updateMarker(database, m.id, { group_name: (m.group_name ?? '').replace(groupOld, groupNew) }),
-    ));
+    // also rename folder-anchor whose label_text matches (top-level anchor path)
+    const anchorRename = markers.filter((m) =>
+      m.kind === 'folder-anchor' && (m.label_text === groupOld || (m.label_text ?? '').startsWith(groupOld + '/'))
+    );
+    const all = [...new Set([...toRename, ...anchorRename])];
+    await Promise.all(all.map((m) => {
+      const newGroup = (m.group_name ?? '').replace(groupOld, groupNew);
+      const newLabel = m.kind === 'folder-anchor' ? (m.label_text ?? '').replace(groupOld, groupNew) : m.label_text ?? '';
+      return updateMarker(database, m.id, {
+        group_name: newGroup,
+        ...(m.kind === 'folder-anchor' ? { label_text: newLabel } : {}),
+      });
+    }));
     reloadMarkers();
   }
 
@@ -555,7 +593,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const allGroups = [...new Set(markers.map((m) => m.group_name ?? '').filter(Boolean))].sort();
 
   const pinPx = PIN_SIZE_PX[gridSettings.pinSize] ?? 26;
-  const cursor = mode === 'pin' ? 'crosshair' : mode === 'grid' ? 'cell' : mode === 'measure' ? 'crosshair' : dragging ? 'grabbing' : 'grab';
+  const cursor = mode === 'pin' ? 'crosshair' : mode === 'grid' ? 'cell' : (mode === 'measure' || mode === 'radius') ? 'crosshair' : dragging ? 'grabbing' : 'grab';
 
   if (!imgSrc) return <div className="map-empty">Kein Kartenbild â€” Karte importieren um zu beginnen.</div>;
 
@@ -572,6 +610,11 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             onClick={() => { setMode((m) => m === 'measure' ? 'navigate' : 'measure'); setRulerP1(null); setRulerP2(null); }}
             title={`Lineal (1 KÃ¤stchen = ${gridSettings.measureValue} ${gridSettings.measureUnit})`}
           >ðŸ“</button>
+          <button
+            className={`map-tool-btn${mode === 'radius' ? ' active' : ''}`}
+            onClick={() => { setMode((m) => m === 'radius' ? 'navigate' : 'radius'); setRulerP1(null); setRulerP2(null); }}
+            title={`Radius (1 Kästchen = ${gridSettings.measureValue} ${gridSettings.measureUnit})`}
+          >&#x2B55;</button>
         </div>
         <div className="map-toolbar__group">
           <button className={`map-tool-btn${showPinTree ? ' active' : ''}`} onClick={() => setShowPinTree((v) => !v)} title="Pin-Liste">ðŸ—‚</button>
@@ -654,11 +697,27 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           />
         )}
 
+        {/* Radius SVG overlay */}
+        {mode === 'radius' && rulerP1 && (
+          <RadiusOverlay
+            center={rulerP1} edge={rulerP2}
+            scale={scale} offset={offset}
+            cellSize={gridSettings.cellSize}
+            measureValue={gridSettings.measureValue}
+            measureUnit={gridSettings.measureUnit}
+            rulerColor={gridSettings.rulerColor}
+            rulerOpacity={gridSettings.rulerOpacity}
+            rulerWidth={gridSettings.rulerWidth}
+          />
+        )}
+
         {showCoordinates && coords && <div className="map-viewer__coords">{coords.x} Ã— {coords.y}</div>}
         {mode === 'pin' && <div className="map-viewer__hint">Klick auf Karte â†’ Pin setzen</div>}
         {mode === 'grid' && <div className="map-viewer__hint">Linksklick/halten: malen Â· Rechtsklick: Zustand Â· {cells.size} Zellen</div>}
         {mode === 'measure' && !rulerP1 && <div className="map-viewer__hint">Startpunkt klickenâ€¦</div>}
         {mode === 'measure' && rulerP1 && !rulerP2 && <div className="map-viewer__hint">Endpunkt klickenâ€¦</div>}
+        {mode === 'radius' && !rulerP1 && <div className="map-viewer__hint">Mittelpunkt klicken…</div>}
+        {mode === 'radius' && rulerP1 && !rulerP2 && <div className="map-viewer__hint">Radius ziehen…</div>}
       </div>
 
       {/* Pin tree */}
@@ -672,6 +731,15 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           onGroupRename={handleGroupRename}
           onPinMove={(markerId, newGroup) => {
             void updateMarker(database, markerId, { group_name: newGroup }).then(reloadMarkers);
+          }}
+          onCreateFolder={(name) => {
+            void createMarker(database, {
+              map_id: mapId, kind: 'folder-anchor', label_text: name,
+              group_name: name, entity_id: null,
+              geometry_json: '{"virtual":true}',
+              elevation_value: null, elevation_unit: null,
+              visibility_json: '"public"', style_json: '{}',
+            }).then(reloadMarkers);
           }}
         />
       )}
