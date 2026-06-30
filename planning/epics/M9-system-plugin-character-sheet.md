@@ -12,10 +12,14 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 2. **Plugin liefert Schemas, nicht Inhalte:** Das System-Plugin definiert die Struktur (wie sieht ein Monster aus, wie ein Spell, wie ein Character Sheet). Homebrew-Inhalte bringt der DM selbst mit — sie werden in diese Schemas eingegossen.
 3. **Kein System-Wechsel innerhalb einer Session:** System ist bei Session-Erstellung gewählt und fest. Wechsel = neue Session.
 4. **D&D 5e Beispiel-Plugin:** Liefert vollständige Schemas (Stat Block, Spell, Character Sheet, Feat, Item, Species) + minimale SRD-Beispieleinträge als Proof-of-Concept. Kein proprietärer WotC-Inhalt.
-5. **Berechnungen:** System-Plugin kann Formel-Felder definieren (z.B. `ac_total = 10 + dex_modifier`). Der Core wertet diese aus — Plugin definiert die Formel, Core führt sie aus.
+5. **Berechnungen:** System-Plugin kann Formel-Felder definieren (z.B. `ac_total = 10 + dex_modifier`). Der Core wertet diese aus — Plugin definiert die Formel, Core führt sie aus. **Die Rechen-Engine existiert bereits in Teilen:** `src/services/condition-engine.ts` ist ein AST-Evaluator ohne `eval` (Variablen-Auflösung, Vergleiche, Bool-Logik, `+`/`-`/`*`/`/`). M9-S02 erweitert diese Engine, baut keinen neuen Parser.
 6. **Stat Block Typen:** Zwei Typen: `player_character` (vollständige Progression, Ressourcen-Tracking) und `creature` (fixes Level/Stats, vorbereitet, 90% einmalig). Beide aus System-Plugin-Schema.
 7. **Freie Felder:** Jeder Stat Block hat opt-in Freitext-Sektionen (`traits`, `actions`, `special`, `lair_actions`, `description`) — so kann beliebiges Homebrew rein ohne Schema-Erweiterung.
 8. **Dice-Ausdrücke in Schemas:** HP-Felder wie `23d12+151` sind Würfelausdrücke, keine festen Zahlen. Der Core erkennt dice-Notation in Schema-Feldern und macht sie im Play-Modus klickbar (→ M8-S11).
+9. **Drei Feld-Kategorien:** Jedes System-Schema-Feld ist entweder **base** (bei Erstellung gesetzt, z.B. `str = 16`), **session-state** (im Spiel veränderlich, z.B. `current_hp`, `slots_used`) oder **derived** (Formel über base + session-state, z.B. `str_mod`, `ac_total`). Derived wird on-read berechnet, nie persistiert.
+10. **Verankerung:** Formel-/Schema-**Definition** lebt im Plugin-File (versioniert, mit dem System ausgeliefert). Nur **Werte** (base + session-state) liegen in der DB. So bleibt das System ein swappbares Plugin.
+11. **Session-scoped State:** Session-veränderliche Felder (`current_hp`, verbrauchte Ressourcen) sind pro Session gespeichert — derselbe Charakter hat in zwei Sessions unabhängigen Zustand. Koppelt an M8-S01 (#152 Session-Schema) und Cross-Session World State (#156). Datenmodell dort mitdenken.
+12. **Formel-Verkettung ist Pflicht:** Ein computed field darf andere computed fields referenzieren (`ac_total` → `dex_mod` → `dex`). Die Engine löst Abhängigkeiten in topologischer Reihenfolge auf und erkennt Zyklen (Fehler statt Endlosschleife). Reine Einzelformel-Auswertung reicht nicht — jeder will früher oder später Verkettung abbilden.
 
 ## Out of Scope
 
@@ -48,10 +52,12 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 **AC:**
 - Schema-Felder können `"computed": true` und `"formula": "10 + floor((dex - 10) / 2)"` deklarieren
 - Unterstützte Operationen: `+`, `-`, `*`, `/`, `floor()`, `ceil()`, `max()`, `min()`
-- Formel referenziert andere Felder des gleichen Entity-Objekts per Feldname
+- Formel referenziert andere Felder des gleichen Entity-Objekts per Feldname — inkl. **base**, **session-state** und anderer **derived** Felder
+- **Verkettung:** Ein computed field darf andere computed fields referenzieren (`ac_total` → `dex_mod` → `dex`). Auflösung in topologischer Reihenfolge; Auswertung pro Read genau einmal je Feld
+- **Zyklenerkennung:** Eine zirkuläre Abhängigkeit (`a → b → a`) wird erkannt und als Fehler gemeldet (kein Stack-Overflow / keine Endlosschleife); betroffene Felder zeigen `—`
 - Computed fields sind im UI read-only (angezeigt, nicht editierbar)
-- Formel-Fehler (Division durch 0, unbekanntes Feld): zeigt `—` statt Crash
-- Keine `eval()`-Nutzung — eigener Formel-Parser
+- Formel-Fehler (Division durch 0, unbekanntes Feld, Zyklus): zeigt `—` statt Crash
+- Keine `eval()`-Nutzung. **Erweitert die bestehende Engine `src/services/condition-engine.ts`** (AST-Evaluator ohne `eval`) statt einen neuen Parser zu bauen — ergänzt fehlende numerische Operationen (`floor`/`ceil`/`max`/`min`), einen numerischen Auswertungs-Einstieg (heute liefert `evaluate()` nur Boolean) und Selbst-Referenz auf Entity-Felder
 - All user-supplied strings HTML-escaped before interpolation in exported HTML; CSP meta tag present in output
 
 ---
