@@ -418,6 +418,15 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [cellMenu, setCellMenu] = useState<{ x: number; y: number; cellKey: string } | null>(null);
   const [rulerP1, setRulerP1] = useState<RulerPoint | null>(null);
   const [rulerP2, setRulerP2] = useState<RulerPoint | null>(null);
+  const [lastMeasureTool, setLastMeasureTool] = useState<'measure' | 'radius'>('measure');
+  const [measureFlyout, setMeasureFlyout] = useState(false);
+
+  useEffect(() => {
+    if (!measureFlyout) return;
+    const close = () => setMeasureFlyout(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [measureFlyout]);
 
   const dragStart = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -629,16 +638,43 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           <button className={`map-tool-btn${mode === 'navigate' ? ' active' : ''}`} onClick={() => setMode('navigate')} title="Navigieren">🗺</button>
           <button className={`map-tool-btn${mode === 'pin' ? ' active' : ''}`} onClick={() => setMode('pin')} title="Pin setzen">📍</button>
           <button className={`map-tool-btn${mode === 'grid' ? ' active' : ''}`} onClick={() => setMode('grid')} title="Grid malen">⬜</button>
-          <button
-            className={`map-tool-btn${mode === 'measure' ? ' active' : ''}`}
-            onClick={() => { setMode((m) => m === 'measure' ? 'navigate' : 'measure'); setRulerP1(null); setRulerP2(null); }}
-            title={`Lineal (1 Kästchen = ${gridSettings.measureValue} ${gridSettings.measureUnit})`}
-          >📏</button>
-          <button
-            className={`map-tool-btn${mode === 'radius' ? ' active' : ''}`}
-            onClick={() => { setMode((m) => m === 'radius' ? 'navigate' : 'radius'); setRulerP1(null); setRulerP2(null); }}
-            title={`Radius (1 Kästchen = ${gridSettings.measureValue} ${gridSettings.measureUnit})`}
-          >&#x2B55;</button>
+          {/* Measure tool group — PS-style flyout */}
+          <div className="map-tool-group" style={{ position: 'relative' }}>
+            <button
+              className={`map-tool-btn${(mode === 'measure' || mode === 'radius') ? ' active' : ''}`}
+              title={lastMeasureTool === 'measure'
+                ? `Lineal (1 Kästchen = ${gridSettings.measureValue} ${gridSettings.measureUnit})`
+                : `Radius (1 Kästchen = ${gridSettings.measureValue} ${gridSettings.measureUnit})`}
+              onClick={() => {
+                if (mode === lastMeasureTool) {
+                  setMode('navigate');
+                } else {
+                  setMode(lastMeasureTool);
+                  setRulerP1(null); setRulerP2(null);
+                }
+                setMeasureFlyout(false);
+              }}
+            >
+              {lastMeasureTool === 'measure' ? '📏' : '⭕'}
+              <span className="map-tool-group__arrow" onClick={(e) => { e.stopPropagation(); setMeasureFlyout((v) => !v); }}>▸</span>
+            </button>
+            {measureFlyout && (
+              <div className="map-tool-flyout">
+                {([
+                  { key: 'measure' as const, icon: '📏', label: 'Lineal' },
+                  { key: 'radius'  as const, icon: '⭕', label: 'Radius' },
+                ] as const).map((t) => (
+                  <button key={t.key}
+                    className={`map-tool-flyout__item${mode === t.key ? ' active' : ''}`}
+                    onClick={() => { setMode(t.key); setLastMeasureTool(t.key); setRulerP1(null); setRulerP2(null); setMeasureFlyout(false); }}
+                  >
+                    <span className="map-tool-flyout__icon">{t.icon}</span>
+                    <span className="map-tool-flyout__label">{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="map-toolbar__group">
           <GridControlsPanel
