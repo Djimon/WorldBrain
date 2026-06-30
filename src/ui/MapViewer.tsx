@@ -656,7 +656,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               <span className="map-tool-group__arrow">▸</span>
             </button>
             {measureFlyout && flyoutPos && (
-              <div className="map-tool-flyout" style={{ top: flyoutPos.top, left: flyoutPos.left }}>
+              <div className="map-tool-flyout" style={{ top: flyoutPos.top, left: flyoutPos.left }} onMouseDown={(e) => e.stopPropagation()}>
                 {([
                   { key: 'measure' as const, icon: '📏', label: 'Lineal' },
                   { key: 'radius'  as const, icon: '⭕', label: 'Radius' },
