@@ -94,7 +94,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
     load();
   }
 
-  if (loading) return <div className="entity-detail__loading">Ladeâ€¦</div>;
+  if (loading) return <div className="entity-detail__loading">Lade…</div>;
   if (!result) return <div className="entity-detail__error">Fehler beim Laden.</div>;
   if (!result.found) return <div className="entity-detail__error">Entity nicht gefunden.</div>;
 
@@ -104,7 +104,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
   const tabs: TabDefinition[] = [
     {
       id: 'overview',
-      label: 'Ãœbersicht',
+      label: 'Übersicht',
       render: () => editing ? (
         <div className="entity-detail__edit-form">
           <div className="entity-detail__field">

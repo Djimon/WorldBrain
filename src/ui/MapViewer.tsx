@@ -25,13 +25,13 @@ function parsePinGeometry(json: string): { x: number; y: number; notes?: string 
 }
 
 const PIN_ICONS = [
-  { key: 'pin',         emoji: 'ðŸ“', label: 'Pin' },
-  { key: 'danger',      emoji: 'â˜ ï¸', label: 'Gefahr' },
-  { key: 'treasure',    emoji: 'ðŸ’°', label: 'Schatz' },
-  { key: 'note',        emoji: 'ðŸ“', label: 'Notiz' },
-  { key: 'question',    emoji: 'â“', label: 'Frage' },
-  { key: 'exclamation', emoji: 'â—', label: 'Wichtig' },
-  { key: 'combat',      emoji: 'âš”ï¸', label: 'Kampf' },
+  { key: 'pin',         emoji: '📍', label: 'Pin' },
+  { key: 'danger',      emoji: '☠️', label: 'Gefahr' },
+  { key: 'treasure',    emoji: '💰', label: 'Schatz' },
+  { key: 'note',        emoji: '📝', label: 'Notiz' },
+  { key: 'question',    emoji: '❓', label: 'Frage' },
+  { key: 'exclamation', emoji: '❗', label: 'Wichtig' },
+  { key: 'combat',      emoji: '⚔️', label: 'Kampf' },
 ] as const;
 
 type PinIconKey = typeof PIN_ICONS[number]['key'];
@@ -39,14 +39,14 @@ type PinIconKey = typeof PIN_ICONS[number]['key'];
 function getPinEmoji(styleJson: string): string {
   try {
     const s = JSON.parse(styleJson) as { icon?: string };
-    return PIN_ICONS.find((i) => i.key === s.icon)?.emoji ?? 'ðŸ“';
-  } catch { return 'ðŸ“'; }
+    return PIN_ICONS.find((i) => i.key === s.icon)?.emoji ?? '📍';
+  } catch { return '📍'; }
 }
 
-// â”€â”€ Pin Tree (nested folders via "/" in group_name) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Pin Tree (nested folders via "/" in group_name) ──────────────────────────
 
 interface TreeNode {
-  path: string;          // full path, e.g. "StÃ¤dte/HauptstÃ¤dte"
+  path: string;          // full path, e.g. "Städte/Hauptstädte"
   name: string;          // last segment
   children: TreeNode[];
   pins: MarkerRow[];
@@ -142,7 +142,7 @@ function FolderNode({
         onDragLeave={() => onDragOver('')}
         onDrop={(e) => { e.preventDefault(); e.stopPropagation(); if (!isDropForbidden) onDrop(node.path); }}
       >
-        <span className="map-pin-tree__group-arrow">{isOpen ? 'â–¼' : 'â–¶'}</span>
+        <span className="map-pin-tree__group-arrow">{isOpen ? '▼' : '▶'}</span>
         {renamingPath === node.path ? (
           <input className="map-pin-tree__rename-input" value={renameVal} autoFocus
             onChange={(e) => onRenameVal(e.target.value)}
@@ -152,7 +152,7 @@ function FolderNode({
         ) : (
           <span className="map-pin-tree__group-name"
             onDoubleClick={(e) => { e.stopPropagation(); onRenameStart(node.path); }}>
-            ðŸ“ {node.name}
+            📁 {node.name}
           </span>
         )}
         <span className="map-pin-tree__group-count">{pinCount}</span>
@@ -271,24 +271,24 @@ function PinTree({ markers, editingId, onSelect, onClose, entities, onGroupRenam
       <div className="map-pin-editor__header">
         <span>Pins ({markers.length})</span>
         <button className="map-pin-tree__new-folder-btn" title="Neuer Ordner"
-          onClick={() => setNewFolderInput(true)}>ðŸ“+</button>
-        <button onClick={onClose}>âœ•</button>
+          onClick={() => setNewFolderInput(true)}>📁+</button>
+        <button onClick={onClose}>✕</button>
       </div>
 
       {newFolderInput && (
         <div className="map-pin-tree__new-folder-row">
-          <input className="map-pin-tree__rename-input" autoFocus placeholder="Ordnernameâ€¦"
+          <input className="map-pin-tree__rename-input" autoFocus placeholder="Ordnername…"
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') createFolder(); if (e.key === 'Escape') setNewFolderInput(false); }}
           />
-          <button onClick={createFolder} style={{ fontSize: '0.75rem' }}>âœ“</button>
-          <button onClick={() => setNewFolderInput(false)} style={{ fontSize: '0.75rem' }}>âœ•</button>
+          <button onClick={createFolder} style={{ fontSize: '0.75rem' }}>✓</button>
+          <button onClick={() => setNewFolderInput(false)} style={{ fontSize: '0.75rem' }}>✕</button>
         </div>
       )}
 
       <div className="map-pin-tree__search-wrap">
-        <input className="map-pin-tree__search" placeholder="Suchenâ€¦" value={search}
+        <input className="map-pin-tree__search" placeholder="Suchen…" value={search}
           onChange={(e) => setSearch(e.target.value)} />
       </div>
 
@@ -321,7 +321,7 @@ function PinTree({ markers, editingId, onSelect, onClose, entities, onGroupRenam
   );
 }
 
-// â”€â”€ Ruler overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Ruler overlay ─────────────────────────────────────────────────────────────
 
 interface RulerPoint { x: number; y: number }
 
@@ -595,21 +595,21 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const pinPx = PIN_SIZE_PX[gridSettings.pinSize] ?? 26;
   const cursor = mode === 'pin' ? 'crosshair' : mode === 'grid' ? 'cell' : (mode === 'measure' || mode === 'radius') ? 'crosshair' : dragging ? 'grabbing' : 'grab';
 
-  if (!imgSrc) return <div className="map-empty">Kein Kartenbild â€” Karte importieren um zu beginnen.</div>;
+  if (!imgSrc) return <div className="map-empty">Kein Kartenbild — Karte importieren um zu beginnen.</div>;
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* Left toolbar */}
       <div className="map-toolbar">
         <div className="map-toolbar__group">
-          <button className={`map-tool-btn${mode === 'navigate' ? ' active' : ''}`} onClick={() => setMode('navigate')} title="Navigieren">ðŸ–</button>
-          <button className={`map-tool-btn${mode === 'pin' ? ' active' : ''}`} onClick={() => setMode('pin')} title="Pin setzen">ðŸ“</button>
-          <button className={`map-tool-btn${mode === 'grid' ? ' active' : ''}`} onClick={() => setMode('grid')} title="Grid malen">â¬œ</button>
+          <button className={`map-tool-btn${mode === 'navigate' ? ' active' : ''}`} onClick={() => setMode('navigate')} title="Navigieren">🗺</button>
+          <button className={`map-tool-btn${mode === 'pin' ? ' active' : ''}`} onClick={() => setMode('pin')} title="Pin setzen">📍</button>
+          <button className={`map-tool-btn${mode === 'grid' ? ' active' : ''}`} onClick={() => setMode('grid')} title="Grid malen">⬜</button>
           <button
             className={`map-tool-btn${mode === 'measure' ? ' active' : ''}`}
             onClick={() => { setMode((m) => m === 'measure' ? 'navigate' : 'measure'); setRulerP1(null); setRulerP2(null); }}
-            title={`Lineal (1 KÃ¤stchen = ${gridSettings.measureValue} ${gridSettings.measureUnit})`}
-          >ðŸ“</button>
+            title={`Lineal (1 Kästchen = ${gridSettings.measureValue} ${gridSettings.measureUnit})`}
+          >📏</button>
           <button
             className={`map-tool-btn${mode === 'radius' ? ' active' : ''}`}
             onClick={() => { setMode((m) => m === 'radius' ? 'navigate' : 'radius'); setRulerP1(null); setRulerP2(null); }}
@@ -617,7 +617,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           >&#x2B55;</button>
         </div>
         <div className="map-toolbar__group">
-          <button className={`map-tool-btn${showPinTree ? ' active' : ''}`} onClick={() => setShowPinTree((v) => !v)} title="Pin-Liste">ðŸ—‚</button>
+          <button className={`map-tool-btn${showPinTree ? ' active' : ''}`} onClick={() => setShowPinTree((v) => !v)} title="Pin-Liste">🗂</button>
         </div>
         <div className="map-toolbar__group">
           <GridControlsPanel
@@ -642,11 +642,11 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         onWheel={handleWheel}
         onClick={handleMapClick}
       >
-        {/* Zoom controls â€” top right overlay */}
+        {/* Zoom controls — top right overlay */}
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4, zIndex: 10 }}>
-          <button className="map-tool-btn" onClick={() => setScale((s) => Math.min(10, s * 1.25))} title="Zoom +">ï¼‹</button>
-          <button className="map-tool-btn" onClick={() => setScale((s) => Math.max(0.1, s * 0.8))} title="Zoom âˆ’">ï¼</button>
-          <button className="map-tool-btn" onClick={resetView} title="Reset">âŒ‚</button>
+          <button className="map-tool-btn" onClick={() => setScale((s) => Math.min(10, s * 1.25))} title="Zoom +">＋</button>
+          <button className="map-tool-btn" onClick={() => setScale((s) => Math.max(0.1, s * 0.8))} title="Zoom −">-</button>
+          <button className="map-tool-btn" onClick={resetView} title="Reset">⌂</button>
         </div>
 
         <div style={{ position: 'absolute', top: 0, left: 0, transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin: '0 0' }}>
@@ -683,7 +683,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           })}
         </div>
 
-        {/* Ruler SVG overlay â€” outside transform, uses screen coords */}
+        {/* Ruler SVG overlay — outside transform, uses screen coords */}
         {mode === 'measure' && rulerP1 && (
           <RulerOverlay
             p1={rulerP1} p2={rulerP2}
@@ -711,11 +711,11 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           />
         )}
 
-        {showCoordinates && coords && <div className="map-viewer__coords">{coords.x} Ã— {coords.y}</div>}
-        {mode === 'pin' && <div className="map-viewer__hint">Klick auf Karte â†’ Pin setzen</div>}
-        {mode === 'grid' && <div className="map-viewer__hint">Linksklick/halten: malen Â· Rechtsklick: Zustand Â· {cells.size} Zellen</div>}
-        {mode === 'measure' && !rulerP1 && <div className="map-viewer__hint">Startpunkt klickenâ€¦</div>}
-        {mode === 'measure' && rulerP1 && !rulerP2 && <div className="map-viewer__hint">Endpunkt klickenâ€¦</div>}
+        {showCoordinates && coords && <div className="map-viewer__coords">{coords.x} × {coords.y}</div>}
+        {mode === 'pin' && <div className="map-viewer__hint">Klick auf Karte → Pin setzen</div>}
+        {mode === 'grid' && <div className="map-viewer__hint">Linksklick/halten: malen · Rechtsklick: Zustand · {cells.size} Zellen</div>}
+        {mode === 'measure' && !rulerP1 && <div className="map-viewer__hint">Startpunkt klicken…</div>}
+        {mode === 'measure' && rulerP1 && !rulerP2 && <div className="map-viewer__hint">Endpunkt klicken…</div>}
         {mode === 'radius' && !rulerP1 && <div className="map-viewer__hint">Mittelpunkt klicken…</div>}
         {mode === 'radius' && rulerP1 && !rulerP2 && <div className="map-viewer__hint">Radius ziehen…</div>}
       </div>
@@ -749,7 +749,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         <div className="map-pin-editor">
           <div className="map-pin-editor__header">
             <span>Pin bearbeiten</span>
-            <button onClick={() => setEditingPin(null)}>âœ•</button>
+            <button onClick={() => setEditingPin(null)}>✕</button>
           </div>
           <div className="map-pin-editor__body">
             <div className="pin-icon-picker">
@@ -775,8 +775,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                   <div className="pin-entity-chip">
                     <span className="pin-entity-chip__type">{en.type}</span>
                     <span className="pin-entity-chip__name">{en.title}</span>
-                    <button className="pin-entity-chip__nav" title="Ã–ffnen" onClick={() => { onNavigateToEntity?.(en.id); setEditingPin(null); }}>â†’</button>
-                    <button className="pin-entity-chip__del" title="Entfernen" onClick={() => setEditEntityId('')}>Ã—</button>
+                    <button className="pin-entity-chip__nav" title="Öffnen" onClick={() => { onNavigateToEntity?.(en.id); setEditingPin(null); }}>→</button>
+                    <button className="pin-entity-chip__del" title="Entfernen" onClick={() => setEditEntityId('')}>×</button>
                   </div>
                 ) : null;
               })()}
@@ -788,8 +788,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                   <div key={eid} className="pin-entity-chip">
                     <span className="pin-entity-chip__type">{en.type}</span>
                     <span className="pin-entity-chip__name">{en.title}</span>
-                    <button className="pin-entity-chip__nav" title="Ã–ffnen" onClick={() => { onNavigateToEntity?.(eid); setEditingPin(null); }}>â†’</button>
-                    <button className="pin-entity-chip__del" title="Entfernen" onClick={() => setEditEntityIds((prev) => prev.filter((x) => x !== eid))}>Ã—</button>
+                    <button className="pin-entity-chip__nav" title="Öffnen" onClick={() => { onNavigateToEntity?.(eid); setEditingPin(null); }}>→</button>
+                    <button className="pin-entity-chip__del" title="Entfernen" onClick={() => setEditEntityIds((prev) => prev.filter((x) => x !== eid))}>×</button>
                   </div>
                 );
               })}
@@ -805,7 +805,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                     }}
                     onBlur={() => setShowEntityPicker(false)}
                     defaultValue="">
-                    <option value="" disabled>â€” Entity auswÃ¤hlen â€”</option>
+                    <option value="" disabled>— Entity auswählen —</option>
                     {entities
                       .filter((en) => en.id !== editEntityId && !editEntityIds.includes(en.id))
                       .map((en) => <option key={en.id} value={en.id}>{en.title} ({en.type})</option>)}
@@ -818,12 +818,12 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           </div>
           <div className="map-pin-editor__footer">
             <button className="btn btn--primary" onClick={() => void savePin()}>Speichern</button>
-            <button className="btn" style={{ color: 'var(--color-status-failure)' }} onClick={() => void deletePin(editingPin.id)}>LÃ¶schen</button>
+            <button className="btn" style={{ color: 'var(--color-status-failure)' }} onClick={() => void deletePin(editingPin.id)}>Löschen</button>
           </div>
         </div>
       )}
 
-      {/* Cell context menu â€” outside transform */}
+      {/* Cell context menu — outside transform */}
       {cellMenu && (
         <CellContextMenu
           x={cellMenu.x} y={cellMenu.y}

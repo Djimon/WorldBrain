@@ -72,7 +72,7 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
             <input
               autoFocus
               className="emd__create-input"
-              placeholder={`Name der ${initialType ?? 'Entity'}â€¦`}
+              placeholder={`Name der ${initialType ?? 'Entity'}…`}
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               onKeyDown={(e) => {
@@ -112,7 +112,7 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
       <div className="emd__detail">
         {selectedId
           ? <EntityDetailView entityId={selectedId} database={database} onNavigateToEntity={handleSelect} />
-          : <div className="emd__detail-empty">Entity auswÃ¤hlen oder neu erstellen</div>
+          : <div className="emd__detail-empty">Entity auswählen oder neu erstellen</div>
         }
       </div>
     </div>
