@@ -705,15 +705,25 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                     setGridFlyout((v) => !v);
                   }}
                 >
-                  {activeState
-                    ? <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 2, background: activeState.color, border: '1px solid rgba(255,255,255,0.3)', verticalAlign: 'middle' }} />
-                    : '⬜'}
+                  {activeCellStateId === 0
+                    ? '🧹'
+                    : activeState
+                      ? <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 2, background: activeState.color, border: '1px solid rgba(255,255,255,0.3)', verticalAlign: 'middle' }} />
+                      : '⬜'}
                   <span className="map-tool-group__arrow">▸</span>
                 </button>
               );
             })()}
             {gridFlyout && gridFlyoutPos && (
               <div className="map-tool-flyout" style={{ top: gridFlyoutPos.top, left: gridFlyoutPos.left }} onMouseDown={(e) => e.stopPropagation()}>
+                <button
+                  className={`map-tool-flyout__item${activeCellStateId === 0 ? ' active' : ''}`}
+                  onClick={() => { setActiveCellStateId(0); setMode('grid'); setGridFlyout(false); }}
+                >
+                  <span className="map-tool-flyout__icon">🧹</span>
+                  <span className="map-tool-flyout__label">Radiergummi</span>
+                </button>
+                <div style={{ borderTop: '1px solid var(--color-border)', margin: '3px 0' }} />
                 {gridSettings.cellStates.map((st) => (
                   <button key={st.id}
                     className={`map-tool-flyout__item${activeCellStateId === st.id ? ' active' : ''}`}
