@@ -1,16 +1,13 @@
+import { marked } from 'marked';
+
 /** Strip markdown syntax for plain-text previews (list items, search results, etc.) */
 export function stripMarkdown(text: string): string {
-  return text
-    .replace(/^#{1,6}\s+/gm, '')       // headings
-    .replace(/\*\*(.+?)\*\*/g, '$1')   // bold
-    .replace(/\*(.+?)\*/g, '$1')       // italic
-    .replace(/__(.+?)__/g, '$1')       // bold alt
-    .replace(/_(.+?)_/g, '$1')         // italic alt
-    .replace(/~~(.+?)~~/g, '$1')       // strikethrough
-    .replace(/`(.+?)`/g, '$1')         // inline code
-    .replace(/^\s*[-*+]\s+/gm, '')     // unordered list markers
-    .replace(/^\s*\d+\.\s+/gm, '')     // ordered list markers
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links
-    .replace(/\n+/g, ' ')              // newlines → space
+  const html = marked.parse(text, { async: false }) as string;
+  return html
+    .replace(/<[^>]+>/g, ' ')   // strip all HTML tags
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/(?:^|\s)#{2,6}(?=\s|$)/g, ' ') // stray hash-runs left from malformed/inline headings
+    .replace(/\s+/g, ' ')
     .trim();
 }
