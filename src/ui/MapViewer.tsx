@@ -15,7 +15,7 @@ import type { VarDef } from './ConditionBuilder';
 const VISIBILITY_OPTIONS: { key: string; label: string }[] = [
   { key: 'public', label: 'Öffentlich' },
   { key: 'gm_only', label: 'Nur DM' },
-  { key: 'player_known', label: 'Spieler (wenn Entity bekannt)' },
+  { key: 'player_known', label: 'Für den Spieler (wenn Entity bekannt)' },
   { key: 'hidden_until_condition', label: 'Bedingung…' },
 ];
 
@@ -912,7 +912,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                 <span className="map-pin__icon">{getPinEmoji(m.style_json)}</span>
                 {visScope === 'gm_only' && <span className="map-pin__vis-badge" title="Nur DM">🔒</span>}
                 {visScope === 'hidden_until_condition' && <span className="map-pin__vis-badge" title="Bedingung">⏳</span>}
-                {visScope === 'player_known' && <span className="map-pin__vis-badge" title="Spieler (wenn bekannt)">👁</span>}
+                {visScope === 'player_known' && <span className="map-pin__vis-badge" title="Für den Spieler (wenn bekannt)">👁</span>}
                 {m.label_text && <span className="map-pin__label">{m.label_text}</span>}
                 {isSelected && (
                   <button className="map-pin__move-btn" title="Pin verschieben"
