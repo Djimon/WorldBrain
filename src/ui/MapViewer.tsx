@@ -8,7 +8,7 @@ import { listEntitiesByType } from '../services/entity-service';
 import { GridOverlaySvg, GridControlsPanel, CellContextMenu, DEFAULT_GRID_SETTINGS } from './MapGrid';
 import type { GridSettings } from './MapGrid';
 
-type Mode = 'navigate' | 'pin' | 'grid' | 'measure' | 'radius';
+type Mode = 'navigate' | 'pin' | 'move-pin' | 'grid' | 'measure' | 'radius';
 
 const PIN_SIZE_PX: Record<string, number> = { S: 18, M: 26, L: 38 };
 
@@ -444,6 +444,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [mode, setMode] = useState<Mode>('navigate');
   const [coords, setCoords] = useState<{ x: number; y: number } | null>(null);
   const [editingPin, setEditingPin] = useState<MarkerRow | null>(null);
+  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
+  const [movingPinId, setMovingPinId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editEntityId, setEditEntityId] = useState('');
@@ -524,6 +526,19 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     }).catch(console.error);
   }, [database, mapId, sessionId]);
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && mode === 'move-pin') {
+        setMovingPinId(null);
+        setSelectedPinId(null);
+        setMode('navigate');
+      }
+      if (e.key === 'Escape') setSelectedPinId(null);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mode]);
+
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1.15 : 0.87;
@@ -571,6 +586,22 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   async function handleMapClick(e: React.MouseEvent) {
     if (!containerRef.current) return;
     const pos = toMapCoords(e.clientX, e.clientY);
+    if (mode === 'navigate') { setSelectedPinId(null); }
+
+    if (mode === 'move-pin' && movingPinId) {
+      const pin = markers.find((m) => m.id === movingPinId);
+      if (pin) {
+        const geo = parsePinGeometry(pin.geometry_json);
+        await updateMarker(database, movingPinId, {
+          geometry_json: JSON.stringify({ ...geo, x: Math.round(pos.x), y: Math.round(pos.y) }),
+        });
+        reloadMarkers();
+      }
+      setMovingPinId(null);
+      setSelectedPinId(null);
+      setMode('navigate');
+      return;
+    }
 
     if (mode === 'pin') {
       await createMarker(database, {
@@ -598,6 +629,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   function openPinEditor(m: MarkerRow, e: React.MouseEvent) {
     e.stopPropagation();
     if (mode === 'grid') return;
+    if (mode === 'move-pin') return; // move-pin handled by map click
     const geo = parsePinGeometry(m.geometry_json);
     setEditingPin(m);
     setEditLabel(m.label_text ?? '');
@@ -819,18 +851,41 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           )}
           {markers.map((m) => {
             const geo = parsePinGeometry(m.geometry_json);
+            const isSelected = selectedPinId === m.id;
+            const isMoving = movingPinId === m.id;
             return (
-              <div key={m.id} className="map-pin"
+              <div key={m.id}
+                className={`map-pin${isSelected ? ' map-pin--selected' : ''}${isMoving ? ' map-pin--moving' : ''}`}
                 style={{
                   left: geo.x, top: geo.y,
                   fontSize: pinPx,
                   transform: `scale(${1 / scale}) translate(-50%, -100%)`,
                   transformOrigin: '50% 100%',
                 }}
-                onClick={(e) => openPinEditor(m, e)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (mode === 'grid' || mode === 'move-pin') return;
+                  if (isSelected) {
+                    setSelectedPinId(null);
+                    openPinEditor(m, e);
+                  } else {
+                    setSelectedPinId(m.id);
+                    setEditingPin(null);
+                  }
+                }}
               >
                 <span className="map-pin__icon">{getPinEmoji(m.style_json)}</span>
                 {m.label_text && <span className="map-pin__label">{m.label_text}</span>}
+                {isSelected && (
+                  <button className="map-pin__move-btn" title="Pin verschieben"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMovingPinId(m.id);
+                      setMode('move-pin');
+                    }}>
+                    ✥
+                  </button>
+                )}
               </div>
             );
           })}
@@ -866,6 +921,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
 
         {showCoordinates && coords && <div className="map-viewer__coords">{coords.x} × {coords.y}</div>}
         {mode === 'pin' && <div className="map-viewer__hint">Klick auf Karte → Pin setzen</div>}
+        {mode === 'move-pin' && <div className="map-viewer__hint">Klick auf Karte → Pin hierhin verschieben · ESC abbrechen</div>}
         {mode === 'grid' && <div className="map-viewer__hint">Linksklick/halten: malen · Rechtsklick: Zustand · {cells.size} Zellen</div>}
         {mode === 'measure' && !rulerP1 && <div className="map-viewer__hint">Startpunkt klicken…</div>}
         {mode === 'measure' && rulerP1 && !rulerP2 && <div className="map-viewer__hint">Endpunkt klicken…</div>}
