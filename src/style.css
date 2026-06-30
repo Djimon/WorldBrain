@@ -1029,7 +1029,7 @@ input {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #1a1a1a;
+  background: var(--color-background);
   user-select: none;
 }
 
@@ -1133,7 +1133,7 @@ input {
 .map-pin-tree {
   width: 100%;
   height: 100%;
-  background: #1a1f2b;
+  background: var(--color-surface);
   border-left: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
@@ -1195,7 +1195,7 @@ input {
   top: calc(100% + 4px);
   left: 0;
   min-width: 220px;
-  background: #1e2530;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-panel);
@@ -1518,7 +1518,7 @@ input {
 
 .grid-controls-panel {
   width: 300px;
-  background: #1e2530;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-panel);
@@ -1677,7 +1677,7 @@ input {
 /* ── Map Context Menu ─────────────────────────────────── */
 
 .map-context-menu {
-  background: #1e2530;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-panel);

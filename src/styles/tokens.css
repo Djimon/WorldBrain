@@ -1,36 +1,47 @@
 :root {
-  --color-text: #1d2530;
-  --color-text-muted: #5d6876;
-  --color-accent: #2f6f91;
-  --color-accent-strong: #174f6d;
-  --color-surface: #ffffff;
-  --color-surface-alt: #eef2f5;
-  --color-background: #dfe6ec;
-  --color-border: #b9c4cf;
-  --color-status-success: #1d7a48;
-  --color-status-warning: #9a6400;
-  --color-status-failure: #b23939;
-  --color-status-muted: #697584;
+  /* Light mode — Bastion foundation */
+  --color-text:           #1f2326;
+  --color-text-muted:     #5b6169;
+  --color-accent:         #7b1d1d;
+  --color-accent-strong:  #5f1515;
+  --color-accent-soft:    #ffecec;
+  --color-surface:        #ffffff;
+  --color-surface-alt:    #f7f8fa;
+  --color-surface-hover:  #f0f1f3;
+  --color-surface-active: #fdeaea;
+  --color-background:     #f2f3f5;
+  --color-border:         #d5d8dd;
+  --color-status-success: #3c6f55;
+  --color-status-warning: #a06b1f;
+  --color-status-failure: #9f3a2e;
+  --color-status-muted:   #6a6f75;
+
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
   --space-4: 1rem;
   --radius-sm: 4px;
   --radius-md: 6px;
-  --shadow-panel: 0 12px 28px rgba(27, 37, 48, 0.12);
+  --shadow-panel: 0 12px 28px rgba(15, 18, 22, 0.12);
 }
 
 [data-theme='dark'] {
-  --color-text: #eef3f7;
-  --color-text-muted: #aab7c2;
-  --color-accent: #6bb0d1;
-  --color-accent-strong: #9bd0e6;
-  --color-surface: #151b22;
-  --color-surface-alt: #202832;
-  --color-background: #0f141a;
-  --color-border: #33404e;
-  --color-status-success: #6bc28f;
-  --color-status-warning: #d8a441;
-  --color-status-failure: #df7777;
-  --color-status-muted: #8e9baa;
+  /* Dark mode — Bastion warm-dark */
+  --color-text:           #e7e2d8;
+  --color-text-muted:     #a9b2ba;
+  --color-accent:         #c04b4b;
+  --color-accent-strong:  #e06b6b;
+  --color-accent-soft:    #2b1b1b;
+  --color-surface:        #1f2428;
+  --color-surface-alt:    #232a30;
+  --color-surface-hover:  #293036;
+  --color-surface-active: #2b1b1b;
+  --color-background:     #15181b;
+  --color-border:         #2f363d;
+  --color-status-success: #4c9a73;
+  --color-status-warning: #c28a3a;
+  --color-status-failure: #e06b6b;
+  --color-status-muted:   #9aa3ab;
+
+  --shadow-panel: 0 12px 28px rgba(0, 0, 0, 0.45);
 }
