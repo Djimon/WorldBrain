@@ -1,4 +1,5 @@
 import type { Block } from '../blocks/block-registry';
+import { stripMarkdown } from '../utils/markdown';
 
 interface Entity {
   id: string;
@@ -41,7 +42,7 @@ export function EntityReadingView({ entity, onEditToggle, onBack }: Props) {
         <button onClick={onBack} aria-label="Back">Back</button>
       )}
       <button onClick={onEditToggle}>Edit</button>
-      {entity.summary && <p>{entity.summary}</p>}
+      {entity.summary && <p>{stripMarkdown(entity.summary)}</p>}
       <article>
         {blocks.map((block, i) => renderBlock(block, i))}
       </article>

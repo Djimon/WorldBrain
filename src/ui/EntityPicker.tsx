@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { stripMarkdown } from '../utils/markdown';
 import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
 
@@ -75,7 +76,7 @@ export function EntityPicker({ onSelect, typeFilter = null, database }: Props) {
             <span>{entity.title}</span>
             <span style={{ marginLeft: 8, fontSize: '0.8em', opacity: 0.7 }}>{entity.type}</span>
             {entity.summary && (
-              <span style={{ marginLeft: 8, fontSize: '0.8em' }}>{entity.summary}</span>
+              <span style={{ marginLeft: 8, fontSize: '0.8em' }}>{stripMarkdown(entity.summary)}</span>
             )}
           </li>
         ))}

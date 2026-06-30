@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { stripMarkdown } from '../utils/markdown';
 import { searchEntities, getSearchFacets } from '../services/search-service';
 import type { SearchResult, SearchFacets } from '../services/search-service';
 import type { DatabaseLike } from '../services/entity-service';
@@ -92,7 +93,7 @@ export function GlobalSearch({ onNavigate, database }: Props) {
           >
             <span className="gsearch__result-title">{r.title}</span>
             <span className="gsearch__result-type">{r.entityType}</span>
-            {r.summary && <span className="gsearch__result-summary">{r.summary}</span>}
+            {r.summary && <span className="gsearch__result-summary">{stripMarkdown(r.summary)}</span>}
           </li>
         ))}
       </ul>
