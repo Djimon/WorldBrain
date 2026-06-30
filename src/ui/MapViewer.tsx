@@ -446,6 +446,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [editingPin, setEditingPin] = useState<MarkerRow | null>(null);
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
   const [movingPinId, setMovingPinId] = useState<string | null>(null);
+  const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
   const [editLabel, setEditLabel] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editEntityId, setEditEntityId] = useState('');
@@ -539,6 +540,10 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [mode]);
 
+  useEffect(() => {
+    if (mode !== 'pin' && mode !== 'move-pin') setGhostPos(null);
+  }, [mode]);
+
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1.15 : 0.87;
@@ -574,6 +579,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     }
     if ((mode === 'measure' || mode === 'radius') && rulerP1) {
       setRulerP2(toMapCoords(e.clientX, e.clientY));
+    }
+    if (mode === 'pin' || mode === 'move-pin') {
+      setGhostPos(toMapCoords(e.clientX, e.clientY));
     }
     if (showCoordinates && containerRef.current) {
       const { x, y } = toMapCoords(e.clientX, e.clientY);
@@ -889,6 +897,23 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               </div>
             );
           })}
+
+          {ghostPos && (mode === 'pin' || (mode === 'move-pin' && movingPinId)) && (
+            <div className="map-pin map-pin--ghost"
+              style={{
+                left: ghostPos.x, top: ghostPos.y,
+                fontSize: pinPx,
+                transform: `scale(${1 / scale}) translate(-50%, -100%)`,
+                transformOrigin: '50% 100%',
+              }}
+            >
+              <span className="map-pin__icon">
+                {mode === 'move-pin'
+                  ? getPinEmoji(markers.find((m) => m.id === movingPinId)?.style_json ?? '{}')
+                  : '📍'}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Ruler SVG overlay — outside transform, uses screen coords */}

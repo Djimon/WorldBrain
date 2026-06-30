@@ -1156,7 +1156,9 @@ input {
 .map-pin--selected .map-pin__icon { filter: drop-shadow(0 0 4px var(--color-accent-strong)); }
 .map-pin--selected .map-pin__label { background: var(--color-accent); }
 
-.map-pin--moving { opacity: 0.5; pointer-events: none; }
+.map-pin--moving { opacity: 0.25; pointer-events: none; }
+
+.map-pin--ghost { opacity: 0.6; pointer-events: none; z-index: 6; }
 
 .map-pin__move-btn {
   position: absolute;
