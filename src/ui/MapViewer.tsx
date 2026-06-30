@@ -136,7 +136,7 @@ function FolderNode({
         className={`map-pin-tree__group-header${isDropTarget && !isDropForbidden ? ' drop-target' : ''}`}
         style={{ paddingLeft: 12 + indent, cursor: 'grab', opacity: draggingFolder === node.path ? 0.4 : 1 }}
         draggable
-        onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.stopPropagation(); onDragStart({ kind: 'folder', path: node.path }); }}
+        onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', node.path); e.stopPropagation(); onDragStart({ kind: 'folder', path: node.path }); }}
         onClick={() => onToggle(node.path)}
         onDragOver={(e) => { e.preventDefault(); if (!isDropForbidden) onDragOver(node.path); }}
         onDragLeave={() => onDragOver('')}
@@ -193,7 +193,7 @@ function PinRow({ m, indent, editingId, onSelect, entities, onDragStart }: {
       className={`map-pin-tree__item${editingId === m.id ? ' active' : ''}`}
       style={{ paddingLeft: 12 + indent, cursor: 'grab' }}
       draggable
-      onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart(m.id); }}
+      onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', m.id); onDragStart(m.id); }}
       onClick={(e) => onSelect(m, e as unknown as React.MouseEvent)}
       onKeyDown={(e) => { if (e.key === 'Enter') onSelect(m, e as unknown as React.MouseEvent); }}
     >
