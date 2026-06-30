@@ -152,7 +152,7 @@ function FolderNode({
         ) : (
           <span className="map-pin-tree__group-name"
             onDoubleClick={(e) => { e.stopPropagation(); onRenameStart(node.path); }}>
-            📁 {node.name}
+            📁 {node.name}
           </span>
         )}
         <span className="map-pin-tree__group-count">{pinCount}</span>
@@ -602,8 +602,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       {/* Left toolbar */}
       <div className="map-toolbar">
         <div className="map-toolbar__group">
-          <button className={`map-tool-btn${mode === 'navigate' ? ' active' : ''}`} onClick={() => setMode('navigate')} title="Navigieren">🗺</button>
-          <button className={`map-tool-btn${mode === 'pin' ? ' active' : ''}`} onClick={() => setMode('pin')} title="Pin setzen">📍</button>
+          <button className={`map-tool-btn${mode === 'navigate' ? ' active' : ''}`} onClick={() => setMode('navigate')} title="Navigieren">🗺</button>
+          <button className={`map-tool-btn${mode === 'pin' ? ' active' : ''}`} onClick={() => setMode('pin')} title="Pin setzen">📍</button>
           <button className={`map-tool-btn${mode === 'grid' ? ' active' : ''}`} onClick={() => setMode('grid')} title="Grid malen">⬜</button>
           <button
             className={`map-tool-btn${mode === 'measure' ? ' active' : ''}`}
