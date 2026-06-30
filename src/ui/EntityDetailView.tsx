@@ -225,7 +225,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
               onClick={() => setEditing(false)}>Abbrechen</button>
           </>
         ) : (
-          <button className="entity-detail__edit-btn" onClick={startEdit} title="Bearbeiten">âœï¸</button>
+          <button className="entity-detail__edit-btn" onClick={startEdit} title="Bearbeiten">✏️</button>
         )}
       </div>
       <div className="entity-detail__tabs" role="tablist">
