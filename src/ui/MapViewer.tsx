@@ -431,6 +431,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const dragStart = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const measureBtnRef = useRef<HTMLButtonElement>(null);
+  const [flyoutPos, setFlyoutPos] = useState<{ top: number; left: number } | null>(null);
   const pinResizeStartX = useRef<number | null>(null);
   const pinResizeStartW = useRef<number>(220);
 
@@ -641,25 +643,20 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           {/* Measure tool group — PS-style flyout */}
           <div className="map-tool-group" style={{ position: 'relative' }}>
             <button
+              ref={measureBtnRef}
               className={`map-tool-btn${(mode === 'measure' || mode === 'radius') ? ' active' : ''}`}
-              title={lastMeasureTool === 'measure'
-                ? `Lineal (1 Kästchen = ${gridSettings.measureValue} ${gridSettings.measureUnit})`
-                : `Radius (1 Kästchen = ${gridSettings.measureValue} ${gridSettings.measureUnit})`}
+              title="Messwerkzeuge"
               onClick={() => {
-                if (mode === lastMeasureTool) {
-                  setMode('navigate');
-                } else {
-                  setMode(lastMeasureTool);
-                  setRulerP1(null); setRulerP2(null);
-                }
-                setMeasureFlyout(false);
+                const rect = measureBtnRef.current?.getBoundingClientRect();
+                if (rect) setFlyoutPos({ top: rect.top, left: rect.right + 4 });
+                setMeasureFlyout((v) => !v);
               }}
             >
               {lastMeasureTool === 'measure' ? '📏' : '⭕'}
-              <span className="map-tool-group__arrow" onClick={(e) => { e.stopPropagation(); setMeasureFlyout((v) => !v); }}>▸</span>
+              <span className="map-tool-group__arrow">▸</span>
             </button>
-            {measureFlyout && (
-              <div className="map-tool-flyout">
+            {measureFlyout && flyoutPos && (
+              <div className="map-tool-flyout" style={{ top: flyoutPos.top, left: flyoutPos.left }}>
                 {([
                   { key: 'measure' as const, icon: '📏', label: 'Lineal' },
                   { key: 'radius'  as const, icon: '⭕', label: 'Radius' },
