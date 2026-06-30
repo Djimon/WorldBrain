@@ -98,7 +98,7 @@ function buildTree(markers: MarkerRow[]): { root: TreeNode[]; ungrouped: MarkerR
 function FolderNode({
   node, depth, collapsed, onToggle, editingId, onSelect, entities,
   renamingPath, renameVal, onRenameVal, onRenameCommit, onRenameStart, onRenameCancel,
-  dragOverPath, onDragOver, onDrop, onDragStart, draggingFolder,
+  dropHighlight, dragSourcePath, onPointerDown,
 }: {
   node: TreeNode; depth: number;
   collapsed: Set<string>; onToggle: (p: string) => void;
@@ -107,31 +107,22 @@ function FolderNode({
   renamingPath: string | null; renameVal: string;
   onRenameVal: (v: string) => void; onRenameCommit: () => void;
   onRenameStart: (p: string) => void; onRenameCancel: () => void;
-  dragOverPath: string;
-  onDragOver: (path: string) => void;
-  onDrop: (targetPath: string) => void;
-  onDragStart: (payload: DragPayload) => void;
-  draggingFolder: string | null;
+  dropHighlight: boolean;
+  dragSourcePath: string | null;
+  onPointerDown: (payload: DragPayload, label: string, e: React.PointerEvent) => void;
 }) {
   const isOpen = !collapsed.has(node.path);
   const indent = depth * 14;
   const pinCount = node.pins.length + node.children.reduce((s, c) => s + c.pins.length, 0);
-  const isDropTarget = dragOverPath === node.path;
-  // can't drop a folder into itself or its own descendants
-  const isDropForbidden = draggingFolder !== null &&
-    (node.path === draggingFolder || node.path.startsWith(draggingFolder + '/'));
 
   return (
     <div>
       <div
-        className={`map-pin-tree__group-header${isDropTarget && !isDropForbidden ? ' drop-target' : ''}`}
-        style={{ paddingLeft: 12 + indent, cursor: 'grab', opacity: draggingFolder === node.path ? 0.4 : 1 }}
-        draggable
-        onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', node.path); e.stopPropagation(); onDragStart({ kind: 'folder', path: node.path }); }}
+        className={`map-pin-tree__group-header${dropHighlight ? ' drop-target' : ''}`}
+        style={{ paddingLeft: 12 + indent, cursor: 'grab', opacity: dragSourcePath === node.path ? 0.35 : 1 }}
+        data-drop-path={node.path}
         onClick={() => onToggle(node.path)}
-        onDragOver={(e) => { e.preventDefault(); if (!isDropForbidden) onDragOver(node.path); }}
-        onDragLeave={() => onDragOver('')}
-        onDrop={(e) => { e.preventDefault(); e.stopPropagation(); if (!isDropForbidden) onDrop(node.path); }}
+        onPointerDown={(e) => { e.stopPropagation(); onPointerDown({ kind: 'folder', path: node.path }, node.name, e); }}
       >
         <span className="map-pin-tree__group-arrow">{isOpen ? '▼' : '▶'}</span>
         {renamingPath === node.path ? (
@@ -157,12 +148,12 @@ function FolderNode({
               renamingPath={renamingPath} renameVal={renameVal}
               onRenameVal={onRenameVal} onRenameCommit={onRenameCommit}
               onRenameStart={onRenameStart} onRenameCancel={onRenameCancel}
-              dragOverPath={dragOverPath} onDragOver={onDragOver} onDrop={onDrop}
-              onDragStart={onDragStart} draggingFolder={draggingFolder} />
+              dropHighlight={dropHighlight} dragSourcePath={dragSourcePath}
+              onPointerDown={onPointerDown} />
           ))}
           {node.pins.map((m) => (
             <PinRow key={m.id} m={m} indent={indent + 14} editingId={editingId} onSelect={onSelect} entities={entities}
-              onDragStart={(id) => onDragStart({ kind: 'pin', id })} />
+              onPointerDown={onPointerDown} />
           ))}
         </>
       )}
@@ -170,11 +161,11 @@ function FolderNode({
   );
 }
 
-function PinRow({ m, indent, editingId, onSelect, entities, onDragStart }: {
+function PinRow({ m, indent, editingId, onSelect, entities, onPointerDown }: {
   m: MarkerRow; indent: number; editingId: string | null;
   onSelect: (m: MarkerRow, e: React.MouseEvent) => void;
   entities: { id: string; title: string }[];
-  onDragStart: (id: string) => void;
+  onPointerDown: (payload: DragPayload, label: string, e: React.PointerEvent) => void;
 }) {
   const linked = entities.find((e) => e.id === m.entity_id);
   return (
@@ -182,11 +173,10 @@ function PinRow({ m, indent, editingId, onSelect, entities, onDragStart }: {
       role="button"
       tabIndex={0}
       className={`map-pin-tree__item${editingId === m.id ? ' active' : ''}`}
-      style={{ paddingLeft: 12 + indent, cursor: 'grab' }}
-      draggable
-      onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', m.id); onDragStart(m.id); }}
+      style={{ paddingLeft: 12 + indent, cursor: 'grab', userSelect: 'none' }}
       onClick={(e) => onSelect(m, e as unknown as React.MouseEvent)}
       onKeyDown={(e) => { if (e.key === 'Enter') onSelect(m, e as unknown as React.MouseEvent); }}
+      onPointerDown={(e) => onPointerDown({ kind: 'pin', id: m.id }, m.label_text ?? '(kein Name)', e)}
     >
       <span style={{ marginRight: 6 }}>{getPinEmoji(m.style_json)}</span>
       <span className="map-pin-tree__label">{m.label_text || '(kein Name)'}</span>
@@ -210,6 +200,14 @@ interface PinTreeProps {
   onResizeStart: (e: React.MouseEvent) => void;
 }
 
+type PointerDrag = {
+  payload: DragPayload;
+  label: string;
+  ghostX: number;
+  ghostY: number;
+  dropPath: string | null; // null = no valid target, '' = root, 'a/b' = folder
+};
+
 function PinTree({ markers, editingId, onSelect, panelCollapsed, onTogglePanel, entities, onGroupRename, onPinMove, onCreateFolder, onResizeStart }: PinTreeProps) {
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -217,8 +215,8 @@ function PinTree({ markers, editingId, onSelect, panelCollapsed, onTogglePanel, 
   const [renameVal, setRenameVal] = useState('');
   const [newFolderInput, setNewFolderInput] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-  const [dragPayload, setDragPayload] = useState<DragPayload | null>(null);
-  const [dragOverPath, setDragOverPath] = useState('');
+  const [drag, setDrag] = useState<PointerDrag | null>(null);
+  const dragRef = useRef<PointerDrag | null>(null);
 
   const q = search.toLowerCase();
   const filtered = q
@@ -244,19 +242,50 @@ function PinTree({ markers, editingId, onSelect, panelCollapsed, onTogglePanel, 
     setNewFolderInput(false);
   }
 
-  function handleDrop(targetPath: string) {
-    if (!dragPayload) { setDragOverPath(''); return; }
-    if (dragPayload.kind === 'pin') {
-      onPinMove(dragPayload.id, targetPath);
-    } else {
-      // folder drop: move folder into targetPath
-      const folderPath = dragPayload.path;
-      const folderName = folderPath.split('/').pop()!;
-      const newPath = targetPath ? `${targetPath}/${folderName}` : folderName;
-      if (newPath !== folderPath) onGroupRename(folderPath, newPath);
+  function startDrag(payload: DragPayload, label: string, e: React.PointerEvent) {
+    e.preventDefault();
+    const d: PointerDrag = { payload, label, ghostX: e.clientX, ghostY: e.clientY, dropPath: null };
+    setDrag(d);
+    dragRef.current = d;
+
+    function onMove(ev: PointerEvent) {
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const dropEl = (el as HTMLElement | null)?.closest('[data-drop-path]') as HTMLElement | null;
+      let dropPath: string | null = null;
+      if (dropEl) {
+        const p = dropEl.getAttribute('data-drop-path') ?? '';
+        const cur = dragRef.current;
+        if (cur?.payload.kind === 'folder') {
+          const src = cur.payload.path;
+          if (p !== src && !p.startsWith(src + '/')) dropPath = p;
+        } else {
+          dropPath = p;
+        }
+      }
+      const updated: PointerDrag = { ...dragRef.current!, ghostX: ev.clientX, ghostY: ev.clientY, dropPath };
+      dragRef.current = updated;
+      setDrag({ ...updated });
     }
-    setDragPayload(null);
-    setDragOverPath('');
+
+    function onUp() {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      const cur = dragRef.current;
+      if (cur && cur.dropPath !== null) {
+        if (cur.payload.kind === 'pin') {
+          onPinMove(cur.payload.id, cur.dropPath);
+        } else {
+          const folderName = cur.payload.path.split('/').pop()!;
+          const newPath = cur.dropPath ? `${cur.dropPath}/${folderName}` : folderName;
+          if (newPath !== cur.payload.path) onGroupRename(cur.payload.path, newPath);
+        }
+      }
+      setDrag(null);
+      dragRef.current = null;
+    }
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
   }
 
   if (panelCollapsed) {
@@ -297,17 +326,13 @@ function PinTree({ markers, editingId, onSelect, panelCollapsed, onTogglePanel, 
           onChange={(e) => setSearch(e.target.value)} />
       </div>
 
-      <div className="map-pin-tree__list"
-        onDragOver={(e) => { e.preventDefault(); setDragOverPath('__root'); }}
-        onDragLeave={() => setDragOverPath('')}
-        onDrop={(e) => { e.preventDefault(); if (dragOverPath === '__root') handleDrop(''); }}
-      >
+      <div className="map-pin-tree__list" data-drop-path="">
         {allRoot.length === 0 && ungrouped.length === 0 && (
           <div className="map-pin-tree__empty">Keine Pins. Pins auf der Karte setzen und hier per Drag in Ordner sortieren.</div>
         )}
         {ungrouped.map((m) => (
           <PinRow key={m.id} m={m} indent={0} editingId={editingId} onSelect={onSelect} entities={entities}
-            onDragStart={(id) => setDragPayload({ kind: 'pin', id })} />
+            onPointerDown={startDrag} />
         ))}
         {allRoot.map((node) => (
           <FolderNode key={node.path} node={node} depth={0}
@@ -317,11 +342,25 @@ function PinTree({ markers, editingId, onSelect, panelCollapsed, onTogglePanel, 
             onRenameVal={setRenameVal} onRenameCommit={commitRename}
             onRenameStart={(p) => { setRenamingPath(p); setRenameVal(p); }}
             onRenameCancel={() => setRenamingPath(null)}
-            dragOverPath={dragOverPath} onDragOver={setDragOverPath} onDrop={handleDrop}
-            onDragStart={setDragPayload}
-            draggingFolder={dragPayload?.kind === 'folder' ? dragPayload.path : null} />
+            dropHighlight={drag?.dropPath === node.path}
+            dragSourcePath={drag?.payload.kind === 'folder' ? drag.payload.path : null}
+            onPointerDown={startDrag} />
         ))}
       </div>
+
+      {/* Drag ghost */}
+      {drag && (
+        <div style={{
+          position: 'fixed', left: drag.ghostX + 14, top: drag.ghostY - 10,
+          background: 'var(--color-surface)',
+          border: `1px solid ${drag.dropPath !== null ? 'var(--color-accent)' : 'var(--color-border)'}`,
+          borderRadius: 4, padding: '3px 10px', fontSize: '0.82rem',
+          color: 'var(--color-text)', opacity: 0.92, pointerEvents: 'none',
+          zIndex: 9999, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+        }}>
+          {drag.label}
+        </div>
+      )}
     </div>
   );
 }
