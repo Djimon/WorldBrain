@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo, useTransition } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { getActivatedCells, setCellState, clearAllCells } from '../services/session-grid-service';
@@ -66,11 +66,27 @@ interface GridOverlayProps {
   onCellContextMenu: (cellKey: string, screenX: number, screenY: number) => void;
 }
 
-function hexPoints(cx: number, cy: number, r: number, flat: boolean): string {
-  return Array.from({ length: 6 }, (_, i) => {
+function hexSubPath(cx: number, cy: number, r: number, flat: boolean): string {
+  const pts = Array.from({ length: 6 }, (_, i) => {
     const a = (Math.PI / 3) * i + (flat ? 0 : Math.PI / 6);
-    return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
-  }).join(' ');
+    return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
+  });
+  return `M ${pts[0]} L ${pts[1]} L ${pts[2]} L ${pts[3]} L ${pts[4]} L ${pts[5]} Z`;
+}
+
+function buildHexPathData(imgW: number, imgH: number, cellSize: number, flat: boolean): string {
+  const r = cellSize / 2;
+  const cols = Math.ceil(imgW / (cellSize * 0.75)) + 2;
+  const rows = Math.ceil(imgH / (cellSize * 0.866)) + 2;
+  const parts: string[] = [];
+  for (let col = 0; col < cols; col++) {
+    for (let row = 0; row < rows; row++) {
+      const cx = flat ? col * cellSize * 0.75 : col * cellSize + (row % 2) * cellSize * 0.5;
+      const cy = flat ? row * cellSize * 0.866 + (col % 2) * cellSize * 0.433 : row * cellSize * 0.866;
+      parts.push(hexSubPath(cx, cy, r, flat));
+    }
+  }
+  return parts.join(' ');
 }
 
 export function GridOverlaySvg({
@@ -143,20 +159,10 @@ export function GridOverlaySvg({
     for (let y = 0; y <= imgH; y += cellSize) lines.push(<line key={`h${y}`} x1={0} y1={y} x2={imgW} y2={y} />);
   }
 
-  const hexPolys: React.ReactNode[] = [];
-  if (visible && (type === 'hex-flat' || type === 'hex-pointy')) {
-    const flat = type === 'hex-flat';
-    const r = cellSize / 2;
-    const cols = Math.ceil(imgW / (cellSize * 0.75)) + 2;
-    const rows = Math.ceil(imgH / (cellSize * 0.866)) + 2;
-    for (let col = 0; col < cols; col++) {
-      for (let row = 0; row < rows; row++) {
-        const cx = flat ? col * cellSize * 0.75 : col * cellSize + (row % 2) * cellSize * 0.5;
-        const cy = flat ? row * cellSize * 0.866 + (col % 2) * cellSize * 0.433 : row * cellSize * 0.866;
-        hexPolys.push(<polygon key={`h${col}:${row}`} points={hexPoints(cx, cy, r, flat)} />);
-      }
-    }
-  }
+  const hexPathD = useMemo(() => {
+    if (!visible || (type !== 'hex-flat' && type !== 'hex-pointy')) return null;
+    return buildHexPathData(imgW, imgH, cellSize, type === 'hex-flat');
+  }, [visible, type, cellSize, imgW, imgH]);
 
   const activeCellRects: React.ReactNode[] = [];
   cells.forEach((stateId, key) => {
@@ -185,7 +191,7 @@ export function GridOverlaySvg({
     >
       <g stroke={lineColor} strokeOpacity={lineOpacity} strokeWidth={lineWidth} fill="none" strokeDasharray={strokeDash}>
         {lines}
-        {hexPolys}
+        {hexPathD && <path d={hexPathD} />}
       </g>
       {activeCellRects}
     </svg>
@@ -213,6 +219,7 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
   const [open, setOpen] = useState(false);
   const [panelPos, setPanelPos] = useState({ top: 80, left: 120 });
   const btnRef = useRef<HTMLButtonElement>(null);
+  const [isGridChanging, startGridTransition] = useTransition();
 
   function toggleOpen() {
     if (!open && btnRef.current) {
@@ -224,6 +231,12 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
 
   function set<K extends keyof GridSettings>(key: K, val: GridSettings[K]) {
     onChange({ ...settings, [key]: val });
+  }
+
+  function setGridType(gridType: GridSettings['type']) {
+    startGridTransition(() => {
+      onChange({ ...settings, type: gridType });
+    });
   }
 
   return (
@@ -284,12 +297,13 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
 
           <div className="grid-controls-panel__row">
             <div className="grid-controls-panel__col">
-              <label>Grid Type</label>
+              <label>Grid Type{isGridChanging && ' …'}</label>
               <div className="grid-type-btns">
-                {(['square', 'hex-pointy', 'hex-flat'] as const).map((t) => (
-                  <button key={t} className={`grid-type-btn${settings.type === t ? ' active' : ''}`}
-                    onClick={() => set('type', t)} title={t}>
-                    {t === 'square' ? '⬜' : t === 'hex-pointy' ? '⬡' : '⬢'}
+                {(['square', 'hex-pointy', 'hex-flat'] as const).map((gt) => (
+                  <button key={gt}
+                    className={`grid-type-btn${settings.type === gt ? ' active' : ''}${isGridChanging ? ' pending' : ''}`}
+                    onClick={() => setGridType(gt)} title={gt} disabled={isGridChanging}>
+                    {gt === 'square' ? '⬜' : gt === 'hex-pointy' ? '⬡' : '⬢'}
                   </button>
                 ))}
               </div>
