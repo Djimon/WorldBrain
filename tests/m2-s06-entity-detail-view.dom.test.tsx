@@ -43,7 +43,7 @@ describe('M2-S06 EntityDetailView with tab system', () => {
     it('renders the Overview tab by default', async () => {
       render(<EntityDetailView entityId="character-ada" />);
 
-      await waitFor(() => expect(screen.getByRole('tab', { name: /overview/i })).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByRole('tab', { name: /übersicht/i })).toBeInTheDocument());
     });
 
     it('shows title and summary in the Overview tab', async () => {
@@ -109,7 +109,7 @@ describe('M2-S06 EntityDetailView with tab system', () => {
       render(<EntityDetailView entityId="character-ada" />);
 
       await waitFor(() => {
-        expect(screen.getByRole('tab', { name: /overview/i })).toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: /übersicht/i })).toBeInTheDocument();
         expect(screen.getByRole('tab', { name: /relations/i })).toBeInTheDocument();
       });
     });
@@ -131,7 +131,7 @@ describe('M2-S06 EntityDetailView with tab system', () => {
     it('registered tabs are external — no hard-coded tab list in the component', async () => {
       render(<EntityDetailView entityId="character-ada" />);
 
-      await waitFor(() => screen.getByRole('tab', { name: /overview/i }));
+      await waitFor(() => screen.getByRole('tab', { name: /übersicht/i }));
       const tabs = screen.queryAllByRole('tab');
       // Without registrations, only the Overview tab should exist
       expect(tabs).toHaveLength(1);
@@ -231,7 +231,7 @@ describe('issue-31 tab registry isolation', () => {
 
       render(<EntityDetailView entityId="character-ada" />);
 
-      await waitFor(() => screen.getByRole('tab', { name: /overview/i }));
+      await waitFor(() => screen.getByRole('tab', { name: /übersicht/i }));
       expect(screen.queryByRole('tab', { name: /notes/i })).not.toBeInTheDocument();
     });
 
@@ -244,7 +244,7 @@ describe('issue-31 tab registry isolation', () => {
       clearEntityTabs();
 
       render(<EntityDetailView entityId="character-ada" />);
-      await waitFor(() => screen.getAllByRole('tab', { name: /overview/i }));
+      await waitFor(() => screen.getAllByRole('tab', { name: /übersicht/i }));
 
       const allTabs = screen.getAllByRole('tab');
       const sharedTabs = allTabs.filter((t) => /shared/i.test(t.textContent ?? ''));
@@ -257,17 +257,17 @@ describe('issue-31 tab registry isolation', () => {
 
     it('tabs registered after mount do not retroactively affect already-mounted instances', async () => {
       render(<EntityDetailView entityId="character-ada" />);
-      await waitFor(() => screen.getByRole('tab', { name: /overview/i }));
+      await waitFor(() => screen.getByRole('tab', { name: /übersicht/i }));
 
       // Initially only Overview tab
       expect(screen.getAllByRole('tab')).toHaveLength(1);
 
       clearEntityTabs();
       render(<EntityDetailView entityId="character-ada" />);
-      await waitFor(() => screen.getAllByRole('tab', { name: /overview/i }));
+      await waitFor(() => screen.getAllByRole('tab', { name: /übersicht/i }));
 
       const tabs = screen.getAllByRole('tab');
-      expect(tabs.every((t) => /overview/i.test(t.textContent ?? ''))).toBe(true);
+      expect(tabs.every((t) => /übersicht/i.test(t.textContent ?? ''))).toBe(true);
     });
   });
 

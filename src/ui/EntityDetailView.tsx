@@ -8,14 +8,6 @@ import type { EntityMention } from './PropertiesForm';
 import { getSchemaForType } from '../data/entity-type-schemas';
 import { listEntitiesByType } from '../services/entity-service';
 
-async function findMentions(db: DatabaseLike, entityId: string): Promise<{ id: string; title: string; type: string }[]> {
-  const rows = await db.select<{ id: string; title: string; type: string }>(
-    `SELECT id, title, type FROM base_entities WHERE properties_json LIKE ? OR summary LIKE ?`,
-    [`%](${entityId})%`, `%](${entityId})%`],
-  );
-  return rows;
-}
-
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
 type TabDefinition = {
@@ -51,7 +43,6 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [allEntities, setAllEntities] = useState<EntityMention[]>([]);
-  const [mentions, setMentions] = useState<{ id: string; title: string; type: string }[]>([]);
   const [editTitle, setEditTitle] = useState('');
   const [editSummary, setEditSummary] = useState('');
   const [editProps, setEditProps] = useState<Record<string, unknown>>({});
@@ -69,9 +60,6 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
     if (database) {
       listEntitiesByType({ database: database as Parameters<typeof listEntitiesByType>[0]['database'], type: null })
         .then((rows) => setAllEntities(rows as EntityMention[]))
-        .catch(console.error);
-      findMentions(database as DatabaseLike, entityId)
-        .then(setMentions)
         .catch(console.error);
     }
   }, [database, entityId]);
@@ -97,8 +85,8 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
   }
 
   if (loading) return <div className="entity-detail__loading">Lade…</div>;
-  if (!result) return <div className="entity-detail__error">Fehler beim Laden.</div>;
-  if (!result.found) return <div className="entity-detail__error">Entity nicht gefunden.</div>;
+  if (!result) return <div className="entity-detail__error" role="alert">Fehler beim Laden.</div>;
+  if (!result.found) return <div className="entity-detail__error" role="alert">Entity nicht gefunden.</div>;
 
   const { entity } = result;
   const schema = getSchemaForType(entity.type);
@@ -177,29 +165,6 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
             <div className="entity-detail__field">
               <label className="entity-detail__field-label">Aliase</label>
               <div className="entity-detail__field-value">{entity.aliases.join(', ')}</div>
-            </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      id: 'mentions',
-      label: 'Mentions',
-      render: () => (
-        <div className="entity-detail__mentions">
-          {mentions.length === 0 ? (
-            <span className="entity-detail__prop-empty">Keine Verlinkungen gefunden.</span>
-          ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '4px 0' }}>
-              {mentions.map((m) => (
-                <span key={m.id} className="mention-chip"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => onNavigateToEntity?.(m.id)}
-                  title={`${m.type}: ${m.title}`}>
-                  <span style={{ fontSize: '0.7rem', opacity: 0.7, marginRight: 3 }}>{m.type}</span>
-                  {m.title}
-                </span>
-              ))}
             </div>
           )}
         </div>
