@@ -560,13 +560,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     if (mode !== 'pin' && mode !== 'move-pin') setGhostPos(null);
   }, [mode]);
 
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const handler = (e: WheelEvent) => {
-      e.preventDefault();
-      const factor = e.deltaY < 0 ? 1.15 : 0.87;
-      const rect = el.getBoundingClientRect();
+  // NOTE: onWheel as React synthetic handler works in Tauri (no outer scroll container).
+  // A web port would need addEventListener({ passive: false }) on containerRef instead.
+  function handleWheel(e: React.WheelEvent) {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.15 : 0.87;
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
       setScale((s) => {
@@ -577,10 +577,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         }));
         return ns;
       });
-    };
-    el.addEventListener('wheel', handler, { passive: false });
-    return () => el.removeEventListener('wheel', handler);
-  }, []); // containerRef and state setters are both stable refs
+    }
+  }
 
   function toMapCoords(clientX: number, clientY: number) {
     const rect = containerRef.current!.getBoundingClientRect();
@@ -857,6 +855,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       {/* Map canvas */}
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#111', cursor }}
         ref={containerRef}
+        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
