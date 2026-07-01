@@ -11,7 +11,7 @@ export interface CellState {
 
 export interface GridSettings {
   visible: boolean;
-  type: 'square' | 'hex-flat' | 'hex-pointy';
+  type: 'square' | 'hex-flat';
   cellSize: number;
   lineColor: string;
   lineOpacity: number;
@@ -189,7 +189,7 @@ export function GridOverlaySvg({
   }
 
   const hexPathD = useMemo(() => {
-    if (!visible || (type !== 'hex-flat' && type !== 'hex-pointy')) return null;
+    if (!visible || type !== 'hex-flat') return null;
     return buildHexPathData(imgW, imgH, cellSize, type === 'hex-flat');
   }, [visible, type, cellSize, imgW, imgH]);
 
@@ -348,11 +348,11 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
             <div className="grid-controls-panel__col">
               <label>Grid Type{isGridChanging && ' …'}</label>
               <div className="grid-type-btns">
-                {(['square', 'hex-pointy', 'hex-flat'] as const).map((gt) => (
+                {(['square', 'hex-flat'] as const).map((gt) => (
                   <button key={gt}
                     className={`grid-type-btn${settings.type === gt ? ' active' : ''}${isGridChanging ? ' pending' : ''}`}
                     onClick={() => setGridType(gt)} title={gt} disabled={isGridChanging}>
-                    {gt === 'square' ? '⬜' : gt === 'hex-pointy' ? '⬡' : '⬢'}
+                    {gt === 'square' ? '⬜' : '⬢'}
                   </button>
                 ))}
               </div>
