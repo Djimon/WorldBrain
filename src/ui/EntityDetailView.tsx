@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
-import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+import { renderMarkdown } from '../utils/markdown';
 import type { DatabaseLike } from '../services/entity-service';
 import { getEffectiveEntity } from '../services/entity-service';
 import { PropertiesForm, MentionText } from './PropertiesForm';
@@ -138,7 +139,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
             <div className="entity-detail__field">
               <label className="entity-detail__field-label">Zusammenfassung</label>
               <div className="entity-detail__summary entity-detail__summary--md"
-                dangerouslySetInnerHTML={{ __html: marked.parse(entity.summary) as string }} />
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(entity.summary)) }} />
             </div>
           )}
           {Object.keys(schema.properties).length > 0 && (

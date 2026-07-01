@@ -56,6 +56,40 @@ describe('M2-S06 EntityDetailView with tab system', () => {
     });
   });
 
+  describe('AP-004 regression: XSS in markdown summary', () => {
+    it('does not execute inline event handlers in entity.summary', async () => {
+      // Override mock for this test to inject a malicious summary
+      const { getEffectiveEntity } = await import('../src/services/entity-service');
+      (getEffectiveEntity as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        found: true,
+        entityId: 'xss-test',
+        entity: {
+          id: 'xss-test',
+          type: 'Character',
+          title: 'XSS Test',
+          summary: '<img src=x onerror="window.__xss_fired=true"> <script>window.__xss_fired=true</script>',
+          aliases: [],
+          properties: {},
+          body: { format: 'portable_blocks_v1', blocks: [] },
+          visibility: 'public',
+          created_at: '',
+          updated_at: '',
+        },
+        baseEntity: null,
+        overriddenFields: [],
+        orphanedOverrideCount: 0,
+      });
+
+      render(<EntityDetailView entityId="xss-test" />);
+      await waitFor(() => expect(screen.getByText('XSS Test')).toBeInTheDocument());
+
+      const summaryDiv = document.querySelector('.entity-detail__summary--md');
+      expect(summaryDiv?.innerHTML).not.toMatch(/onerror/i);
+      expect(summaryDiv?.innerHTML).not.toMatch(/<script/i);
+      expect((window as Record<string, unknown>).__xss_fired).toBeUndefined();
+    });
+  });
+
   describe('error case: missing entity', () => {
     it('shows a not-found message when the entity does not exist', async () => {
       render(<EntityDetailView entityId="does-not-exist" />);
