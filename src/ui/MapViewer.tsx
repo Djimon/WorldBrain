@@ -560,16 +560,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     if (mode !== 'pin' && mode !== 'move-pin') setGhostPos(null);
   }, [mode]);
 
-  // WEB-PORT NOTE: React 17+ registers onWheel as passive, so e.preventDefault() is a
-  // no-op in a browser with an outer scroll container — page and map scroll simultaneously.
-  // Fix for web: replace this handler with an imperative useEffect addEventListener on
-  // containerRef with { passive: false }. In Tauri WebView there is no outer scroll
-  // container, so the no-op is harmless and the simpler synthetic handler works fine.
-  function handleWheel(e: React.WheelEvent) {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.15 : 0.87;
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.15 : 0.87;
+      const rect = el.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
       setScale((s) => {
@@ -580,8 +577,10 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         }));
         return ns;
       });
-    }
-  }
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, []); // containerRef and state setters are both stable refs
 
   function toMapCoords(clientX: number, clientY: number) {
     const rect = containerRef.current!.getBoundingClientRect();
@@ -861,7 +860,6 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onWheel={handleWheel}
         onMouseLeave={handleMouseUp}
         onClick={handleMapClick}
       >
