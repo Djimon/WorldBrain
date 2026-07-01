@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 function getStoredTheme(): 'light' | 'dark' {
-  return (localStorage.getItem('theme') as 'light' | 'dark') ?? 'light';
+  return (localStorage.getItem('theme') as 'light' | 'dark') ?? 'dark';
 }
 
 function applyTheme(theme: 'light' | 'dark') {
