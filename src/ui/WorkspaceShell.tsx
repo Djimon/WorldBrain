@@ -208,7 +208,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
         return (
           <div className="workspace-area">
             <div className="workspace-area__sidebar">
-              <h3>Typ</h3>
+              <h3>{t('typeLabel', { ns: 'entity' })}</h3>
               <ul>
                 {allEntityTypes.map((t) => (
                   <li key={t}>

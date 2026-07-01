@@ -1,4 +1,5 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
 import { EntityDetailView } from './EntityDetailView';
@@ -25,10 +26,13 @@ async function createEntity(db: DatabaseLike, type: string, title: string): Prom
 }
 
 export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySelect, database }: Props) {
+  const { t } = useTranslation('entity');
   const [selectedId, setSelectedId] = useState<string | null>(selectedEntityId ?? null);
   const [entities, setEntities] = useState<EntityListItem[]>([]);
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+
+  const typeName = initialType ? t(`type.${initialType.toLowerCase()}`, { defaultValue: initialType }) : 'Entities';
 
   function reload() {
     if (!database) return;
@@ -58,13 +62,13 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
     <div className="emd">
       <div className="emd__list">
         <div className="emd__list-header">
-          <span className="emd__list-count">{entities.length} {initialType ?? 'Entities'}</span>
+          <span className="emd__list-count">{entities.length} {typeName}</span>
           <button
             className="emd__create-btn"
             onClick={() => setCreating(true)}
-            title={`Neue ${initialType ?? 'Entity'} erstellen`}
+            title={t('new')}
           >
-            + Neu
+            {t('new')}
           </button>
         </div>
 
@@ -73,7 +77,7 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
             <input
               autoFocus
               className="emd__create-input"
-              placeholder={`Name der ${initialType ?? 'Entity'}…`}
+              placeholder={t('namePlaceholder', { type: typeName })}
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               onKeyDown={(e) => {
@@ -81,16 +85,16 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
                 if (e.key === 'Escape') { setCreating(false); setNewTitle(''); }
               }}
             />
-            <button className="emd__create-confirm" onClick={() => void handleCreate()}>Erstellen</button>
-            <button className="emd__create-cancel" onClick={() => { setCreating(false); setNewTitle(''); }}>âœ•</button>
+            <button className="emd__create-confirm" onClick={() => void handleCreate()}>{t('create')}</button>
+            <button className="emd__create-cancel" onClick={() => { setCreating(false); setNewTitle(''); }}>✕</button>
           </div>
         )}
 
         {entities.length === 0 && !creating && (
           <div className="emd__empty">
-            <p>Keine {initialType ?? 'Entities'} vorhanden.</p>
+            <p>{t('noneFound', { type: typeName })}</p>
             <button className="btn btn--primary" onClick={() => setCreating(true)}>
-              Erste {initialType ?? 'Entity'} erstellen
+              {t('createFirst', { type: typeName })}
             </button>
           </div>
         )}
@@ -113,10 +117,9 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
       <div className="emd__detail">
         {selectedId
           ? <EntityDetailView entityId={selectedId} database={database} onNavigateToEntity={handleSelect} />
-          : <div className="emd__detail-empty">Entity auswählen oder neu erstellen</div>
+          : <div className="emd__detail-empty">{t('selectOrCreate')}</div>
         }
       </div>
     </div>
   );
 }
-
