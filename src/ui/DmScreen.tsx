@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { listScreens, getScreen, saveScreen } from '../services/dm-screen-service';
 import type { DmScreenRecord, DmPanel } from '../services/dm-screen-service';
 import { listRuleEntities } from '../services/rule-import-service';
@@ -18,6 +19,7 @@ interface DmScreenSelectorProps {
 }
 
 export function DmScreenSelector({ database, onSelectScreen }: DmScreenSelectorProps) {
+  const { t } = useTranslation('session');
   const [screens, setScreens] = useState<DmScreenRecord[]>([]);
   const [showNewInput, setShowNewInput] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -58,7 +60,7 @@ export function DmScreenSelector({ database, onSelectScreen }: DmScreenSelectorP
           <button onClick={() => setShowNewInput(false)}>Cancel</button>
         </div>
       ) : (
-        <button aria-label="New Screen" onClick={() => setShowNewInput(true)}>New Screen</button>
+        <button aria-label="New Screen" onClick={() => setShowNewInput(true)}>{t('snapshot.create')}</button>
       )}
     </div>
   );

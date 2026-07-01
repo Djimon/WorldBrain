@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { getEffectiveEntity } from '../services/entity-service';
 import { getRelations, addRelation, deactivateRelation, reactivateRelation, RelationRow } from '../services/relation-service';
@@ -34,6 +35,7 @@ function EntityTitle({ entityId, database }: { entityId: string; database: Datab
 }
 
 export function RelationsTab({ entityId, database }: Props) {
+  const { t } = useTranslation('entity');
   const db = database ?? EMPTY_DB;
 
   const [relations, setRelations] = useState<RelationRow[]>([]);
@@ -80,7 +82,7 @@ export function RelationsTab({ entityId, database }: Props) {
   return (
     <div>
       <section>
-        <h3>Active relations</h3>
+        <h3>{t('relations.active')}</h3>
         {active.map((rel) => {
           const label = getLabel(rel, entityId);
           const otherId = getOtherEntityId(rel, entityId);
@@ -100,7 +102,7 @@ export function RelationsTab({ entityId, database }: Props) {
 
       {inactive.length > 0 && (
         <section>
-          <h3>Inactive relations</h3>
+          <h3>{t('relations.inactive')}</h3>
           {inactive.map((rel) => {
             const label = getLabel(rel, entityId);
             const otherId = getOtherEntityId(rel, entityId);

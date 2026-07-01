@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { readAppConfig } from '../services/app-config-service';
 import type { AppConfig, ProjectEntry } from '../services/app-config-service';
 
@@ -12,6 +13,7 @@ interface WelcomeScreenProps {
 const EMPTY_CONFIG: AppConfig = { last_opened_project_id: null, projects: [] };
 
 export function WelcomeScreen({ configPath = 'app-config.json', onCreateProject, onImportZip, onOpenProject }: WelcomeScreenProps) {
+  const { t } = useTranslation('nav');
   const [config, setConfig] = useState<AppConfig>(EMPTY_CONFIG);
 
   useEffect(() => {
@@ -27,18 +29,18 @@ export function WelcomeScreen({ configPath = 'app-config.json', onCreateProject,
 
       {isStale && (
         <p role="status" style={{ color: 'var(--color-status-warning)' }}>
-          Das zuletzt geöffnete Projekt ist nicht mehr vorhanden.
+          {t('staleProject')}
         </p>
       )}
 
       <div className="welcome-screen__actions">
-        <button className="btn btn--primary" onClick={onCreateProject}>Neues Projekt erstellen</button>
-        <button className="btn" onClick={onImportZip}>ZIP importieren</button>
+        <button className="btn btn--primary" onClick={onCreateProject}>{t('createNewProject')}</button>
+        <button className="btn" onClick={onImportZip}>{t('importZip')}</button>
       </div>
 
       {projects.length > 0 && (
         <div className="welcome-screen__projects">
-          <h2>Zuletzt geöffnet</h2>
+          <h2>{t('recentlyOpened')}</h2>
           {projects.map((p: ProjectEntry) => (
             <button
               key={p.id}

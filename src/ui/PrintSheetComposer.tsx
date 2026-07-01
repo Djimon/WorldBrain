@@ -1,7 +1,18 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { listCardInstances, savePrintJob } from '../services/card-service';
 import type { CardInstanceRow } from '../services/card-service';
 import type { DatabaseLike } from '../services/entity-service';
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function buildPrintHtml(cardIds: string[]): string {
+  const csp = 'Content-Security-Policy';
+  const cards = cardIds.map((id) => `<div class="card">${escapeHtml(id)}</div>`).join('');
+  return `<!DOCTYPE html><html><head><meta http-equiv="${csp}" content="default-src 'none'"></head><body>${cards}</body></html>`;
+}
 
 const SLOTS_PER_SHEET = 9;
 
@@ -11,6 +22,7 @@ interface Props {
 }
 
 export function PrintSheetComposer({ database, initialCards = [] }: Props) {
+  const { t } = useTranslation('common');
   const [cards, setCards] = useState<string[]>(initialCards);
   const [cutMarks, setCutMarks] = useState(false);
   const [backside, setBackside] = useState('blank');
@@ -31,6 +43,7 @@ export function PrintSheetComposer({ database, initialCards = [] }: Props) {
 
   async function handleSave() {
     await savePrintJob(database, { cards, cutMarks, backside: backside === 'blank' ? null : backside });
+    void buildPrintHtml(cards);
   }
 
   const slots = Array.from({ length: SLOTS_PER_SHEET }, (_, i) => currentPageCards[i] ?? null);
@@ -87,8 +100,8 @@ export function PrintSheetComposer({ database, initialCards = [] }: Props) {
         <option value="category">Category pattern</option>
       </select>
 
-      <button onClick={handleAddCard}>Add Card</button>
-      <button onClick={() => void handleSave()}>Save Print Job</button>
+      <button onClick={handleAddCard}>{t('add')}</button>
+      <button onClick={() => void handleSave()}>{t('save')}</button>
     </div>
   );
 }

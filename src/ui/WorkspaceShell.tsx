@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useDatabase } from '../services/DatabaseContext';
 import { listEntityTypes } from '../services/plugin-entity-service';
 import { listMaps, importMapImage } from '../services/map-service';
@@ -61,17 +62,17 @@ interface Props {
   onProjectClose: () => void;
 }
 
-const AREAS: { id: Area; label: string; icon: string }[] = [
-  { id: 'entities', label: 'Entities',  icon: '🗂' },
-  { id: 'search',   label: 'Suche',     icon: '🔍' },
-  { id: 'maps',     label: 'Karten',    icon: '🗺' },
-  { id: 'calendar',  label: 'Kalender',  icon: '📅' },
-  { id: 'chronicle', label: 'Chronik',  icon: '📜' },
-  { id: 'cards',     label: 'Cards',    icon: '🃏' },
-  { id: 'plugins',  label: 'Plugins',   icon: '🔌' },
-  { id: 'rules',    label: 'Regeln',    icon: '📖' },
-  { id: 'session',  label: 'Session',   icon: '🎲' },
-  { id: 'project',  label: 'Projekt',   icon: '⚙' },
+const AREAS: { id: Area; icon: string }[] = [
+  { id: 'entities', icon: '🗂' },
+  { id: 'search',   icon: '🔍' },
+  { id: 'maps',     icon: '🗺' },
+  { id: 'calendar', icon: '📅' },
+  { id: 'chronicle',icon: '📜' },
+  { id: 'cards',    icon: '🃏' },
+  { id: 'plugins',  icon: '🔌' },
+  { id: 'rules',    icon: '📖' },
+  { id: 'session',  icon: '🎲' },
+  { id: 'project',  icon: '⚙' },
 ];
 
 const CORE_ENTITY_TYPES = [
@@ -80,6 +81,7 @@ const CORE_ENTITY_TYPES = [
 ];
 
 export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsDir, onProjectClose }: Props) {
+  const { t } = useTranslation('nav');
   const database = useDatabase();
   const [activeArea, setActiveArea] = useState<Area>('entities');
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
@@ -249,7 +251,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
         return (
           <div className="workspace-area" style={{ overflow: 'hidden' }}>
             <div className="workspace-area__sidebar">
-              <h3>Karten</h3>
+              <h3>{t('maps')}</h3>
               <button
                 className="emd__create-btn"
                 style={{ width: '100%', marginBottom: 'var(--space-2)' }}
@@ -277,7 +279,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
               </ul>
               {maps.length === 0 && (
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: 'var(--space-2)' }}>
-                  Noch keine Karten. PNG, JPG oder WebP importieren.
+                  {t('noMaps')}
                 </p>
               )}
             </div>
@@ -308,7 +310,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 <div style={{ padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                   <strong>{activeCalendar.title}</strong>
                   <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{activeCalendar.year_length_days} Tage/Jahr · {activeCalendar.months.length} Monate · {activeCalendar.week.length} Wochentage</span>
-                  <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setActiveCalendar(null)}>Kalender ändern</button>
+                  <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setActiveCalendar(null)}>{t('changeCalendar')}</button>
                 </div>
                 <div style={{ flex: 1, overflow: 'auto' }}>
                   <CalendarMonthView calendar={activeCalendar} database={database} />
@@ -411,7 +413,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 database={database}
               />
             ) : (
-              <p>Kein Kalender konfiguriert — SessionClock erst nach Kalender-Setup verfügbar.</p>
+              <p>{t('noCalendar')}</p>
             )}
           </div>
         );
@@ -436,19 +438,19 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     }
   }
 
-  const activeAreaLabel = AREAS.find((a) => a.id === activeArea)?.label ?? '';
+  const activeAreaLabel = t(activeArea);
 
   return (
     <div className="workspace-shell">
       <nav className="workspace-shell__sidebar" aria-label="Workspace navigation">
-        {AREAS.map(({ id, label, icon }) => (
+        {AREAS.map(({ id, icon }) => (
           <button
             key={id}
             data-area={id}
-            aria-label={label}
+            aria-label={t(id)}
             aria-pressed={activeArea === id}
             onClick={() => setActiveArea(id)}
-            title={label}
+            title={t(id)}
           >
             {icon}
           </button>
@@ -456,8 +458,8 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
         <div className="workspace-shell__sidebar-spacer" />
         <button
           className="workspace-shell__close-btn"
-          aria-label="Projekt schließen"
-          title="Projekt schließen"
+          aria-label={t('closeProject')}
+          title={t('closeProject')}
           onClick={onProjectClose}
         >
           ✕

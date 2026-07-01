@@ -1,0 +1,19 @@
+{
+  "save": "Speichern",
+  "cancel": "Abbrechen",
+  "edit": "Bearbeiten",
+  "delete": "Löschen",
+  "close": "Schließen",
+  "loading": "Lade…",
+  "error": "Fehler",
+  "add": "Hinzufügen",
+  "remove": "Entfernen",
+  "search": "Suchen",
+  "filter": "Filtern",
+  "back": "Zurück",
+  "create": "Erstellen",
+  "confirm": "Bestätigen",
+  "yes": "Ja",
+  "no": "Nein",
+  "all": "Alle"
+}

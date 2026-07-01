@@ -1,0 +1,17 @@
+{
+  "visibility": {
+    "public": "Public",
+    "gm_only": "GM only",
+    "player_known": "Player (if entity known)",
+    "condition": "Condition…"
+  },
+  "addMarker": "Add Marker",
+  "deleteMarker": "Delete",
+  "kindFilter": "Kind",
+  "all": "All",
+  "kinds": {
+    "pin": "Point",
+    "polygon": "Shape",
+    "label": "Caption"
+  }
+}

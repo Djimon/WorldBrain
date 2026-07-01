@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getMarkersForMap, createMarker, deleteMarker } from '../services/map-marker-service';
 import type { DatabaseLike } from '../services/entity-service';
 
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function MarkerPanel({ mapId, database, onNavigateToEntity }: Props) {
+  const { t } = useTranslation('map');
   const [kindFilter, setKindFilter] = useState('');
   const [markers, setMarkers] = useState<MarkerRow[]>([]);
 
@@ -59,14 +61,14 @@ export function MarkerPanel({ mapId, database, onNavigateToEntity }: Props) {
   return (
     <div>
       <div>
-        <label htmlFor="kind-filter">Kind</label>
+        <label htmlFor="kind-filter">{t('kindFilter')}</label>
         <select id="kind-filter" value={kindFilter} onChange={e => setKindFilter(e.target.value)}>
           <option value="">All</option>
           <option value="pin">Point</option>
           <option value="polygon">Shape</option>
           <option value="label">Caption</option>
         </select>
-        <button onClick={() => void handleAdd()}>Add Marker</button>
+        <button onClick={() => void handleAdd()}>{t('addMarker')}</button>
       </div>
       <ul>
         {filtered.map(m => (

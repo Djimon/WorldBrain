@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createCapture, listCaptures, updateCaptureStatus } from '../services/capture-service';
 import type { DatabaseLike } from '../services/entity-service';
 
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export function CaptureInbox({ sessionId, database }: Props) {
+  const { t } = useTranslation('session');
   const [captures, setCaptures] = useState<CaptureRow[]>([]);
   const [text, setText] = useState('');
   const [captureType, setCaptureType] = useState<string>('new_npc');
@@ -80,7 +82,7 @@ export function CaptureInbox({ sessionId, database }: Props) {
         <input
           type="text"
           aria-label="Quick capture note"
-          placeholder="Quick capture note…"
+          placeholder={t('quickCapture')}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -89,9 +91,9 @@ export function CaptureInbox({ sessionId, database }: Props) {
           role="searchbox"
           aria-label="Link entity"
           type="search"
-          placeholder="Link entity…"
+          placeholder={t('linkEntity')}
         />
-        <button onClick={() => void handleSubmit()}>Add capture</button>
+        <button onClick={() => void handleSubmit()}>{t('addCapture')}</button>
       </div>
       <div>
         {/* status options carry the label text — getByText finds needs_processing here (one match) */}

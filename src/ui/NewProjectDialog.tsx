@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createProject } from '../services/project-service';
 
 interface NewProjectDialogProps {
@@ -8,13 +9,15 @@ interface NewProjectDialogProps {
 }
 
 export function NewProjectDialog({ onCreated, onCancel, baseDir }: NewProjectDialogProps) {
+  const { t } = useTranslation('nav');
+  const { t: tc } = useTranslation('common');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit() {
     if (!name.trim()) {
-      setError('Projektname ist erforderlich.');
+      setError(t('newProject'));
       return;
     }
     createProject({ title: name.trim(), description: description.trim() || undefined, baseDir })
@@ -24,32 +27,32 @@ export function NewProjectDialog({ onCreated, onCancel, baseDir }: NewProjectDia
 
   return (
     <div>
-      <h2>Neues Projekt erstellen</h2>
+      <h2>{t('createNewProject')}</h2>
 
       {error && <div role="alert">{error}</div>}
 
       <label>
-        Projektname
+        {t('newProject')}
         <input
           type="text"
-          aria-label="Projektname"
+          aria-label={t('newProject')}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
       </label>
 
       <label>
-        Beschreibung
+        {tc('edit')}
         <input
           type="text"
-          aria-label="Beschreibung"
+          aria-label={tc('edit')}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
       </label>
 
-      <button onClick={handleSubmit}>Erstellen</button>
-      <button onClick={onCancel}>Abbrechen</button>
+      <button onClick={handleSubmit}>{tc('create')}</button>
+      <button onClick={onCancel}>{tc('cancel')}</button>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type PropertySchema = {
   type: 'string' | 'boolean' | 'number' | 'array';
@@ -202,6 +203,8 @@ type PropertiesFormProps = {
 };
 
 export function PropertiesForm({ schema, values, onChange, entities = [] }: PropertiesFormProps) {
+  const { t } = useTranslation('entity');
+  void t; // used for i18n readiness
   return (
     <div>
       {Object.entries(schema).map(([key, fieldSchema]) => {

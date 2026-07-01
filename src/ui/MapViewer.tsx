@@ -1,4 +1,5 @@
 ﻿import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getMap, getAssetUrl, loadGridSettings, saveGridSettings } from '../services/map-service';
 import type { DatabaseLike } from '../services/entity-service';
 import { getMarkersForMap, createMarker, updateMarker, deleteMarker } from '../services/map-marker-service';
@@ -444,6 +445,7 @@ function RadiusOverlay({
 }
 
 export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity }: Props) {
+  const { t } = useTranslation('map');
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
   const [markers, setMarkers] = useState<MarkerRow[]>([]);
@@ -751,7 +753,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       {/* Left toolbar */}
       <div className="map-toolbar">
         <div className="map-toolbar__group">
-          <button className={`map-tool-btn${mode === 'navigate' ? ' active' : ''}`} onClick={() => setMode('navigate')} title="Navigieren">🗺</button>
+          <button className={`map-tool-btn${mode === 'navigate' ? ' active' : ''}`} onClick={() => setMode('navigate')} title={t('all')}>🗺</button>
           <button className={`map-tool-btn${mode === 'pin' ? ' active' : ''}`} onClick={() => setMode('pin')} title="Pin setzen">📍</button>
           {/* Grid paint tool group — flyout with cell states */}
           <div className="map-tool-group" style={{ position: 'relative' }}>

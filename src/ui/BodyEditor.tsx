@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Node, mergeAttributes } from '@tiptap/core';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -70,6 +71,7 @@ type BodyEditorProps = {
 };
 
 export function BodyEditor({ initialBlocks, initialContent, onChange }: BodyEditorProps) {
+  const { t } = useTranslation('common');
   const doc = initialContent ?? initialBlocks ?? { format: 'portable_blocks_v1' as const, blocks: [] };
 
   const editor = useEditor({
@@ -83,7 +85,7 @@ export function BodyEditor({ initialBlocks, initialContent, onChange }: BodyEdit
 
   return (
     <div>
-      <div role="toolbar" aria-label="Formatting">
+      <div role="toolbar" aria-label={t('edit') + ' toolbar'}>
         <button
           type="button"
           aria-label="Bold"

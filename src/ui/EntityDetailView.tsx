@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import DOMPurify from 'dompurify';
 import { renderMarkdown } from '../utils/markdown';
 import type { DatabaseLike } from '../services/entity-service';
@@ -37,6 +38,7 @@ async function saveEntity(db: DatabaseLike, entityId: string, patch: {
 type EntityDetailViewProps = { entityId: string; database?: DatabaseLike; onNavigateToEntity?: (id: string) => void };
 
 export function EntityDetailView({ entityId, database, onNavigateToEntity }: EntityDetailViewProps) {
+  const { t } = useTranslation('entity');
   const [activeTab, setActiveTab] = useState('overview');
   const [extraTabs] = useState<TabDefinition[]>(() => [...registeredTabs]);
   const [result, setResult] = useState<EffectiveResult | null>(null);
@@ -84,9 +86,9 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
     load();
   }
 
-  if (loading) return <div className="entity-detail__loading">Lade…</div>;
-  if (!result) return <div className="entity-detail__error" role="alert">Fehler beim Laden.</div>;
-  if (!result.found) return <div className="entity-detail__error" role="alert">Entity nicht gefunden.</div>;
+  if (loading) return <div className="entity-detail__loading">{t('loading')}</div>;
+  if (!result) return <div className="entity-detail__error" role="alert">{t('loadingError')}</div>;
+  if (!result.found) return <div className="entity-detail__error" role="alert">{t('notFound', { id: entityId })}</div>;
 
   const { entity } = result;
   const schema = getSchemaForType(entity.type);
@@ -94,22 +96,22 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
   const tabs: TabDefinition[] = [
     {
       id: 'overview',
-      label: 'Übersicht',
+      label: t('tab.overview'),
       render: () => editing ? (
         <div className="entity-detail__edit-form">
           <div className="entity-detail__field">
-            <label className="entity-detail__field-label">Name</label>
+            <label className="entity-detail__field-label">{t('field.name')}</label>
             <input className="entity-detail__input" value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)} />
           </div>
           <div className="entity-detail__field">
-            <label className="entity-detail__field-label">Zusammenfassung</label>
+            <label className="entity-detail__field-label">{t('field.summary')}</label>
             <textarea className="entity-detail__textarea" value={editSummary} rows={3}
               onChange={(e) => setEditSummary(e.target.value)} />
           </div>
           {Object.keys(schema.properties).length > 0 && (
             <div className="entity-detail__field">
-              <label className="entity-detail__field-label">Eigenschaften</label>
+              <label className="entity-detail__field-label">{t('field.properties')}</label>
               <div className="entity-detail__props-form">
                 <PropertiesForm
                   schema={schema.properties}
@@ -125,14 +127,14 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
         <div className="entity-detail__overview">
           {entity.summary && (
             <div className="entity-detail__field">
-              <label className="entity-detail__field-label">Zusammenfassung</label>
+              <label className="entity-detail__field-label">{t('field.summary')}</label>
               <div className="entity-detail__summary entity-detail__summary--md"
                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(entity.summary)) }} />
             </div>
           )}
           {Object.keys(schema.properties).length > 0 && (
             <div className="entity-detail__field">
-              <label className="entity-detail__field-label">Eigenschaften</label>
+              <label className="entity-detail__field-label">{t('field.properties')}</label>
               <div className="entity-detail__properties">
                 {Object.entries(schema.properties).map(([key, fieldDef]) => {
                   const val = entity.properties[key];
@@ -156,14 +158,14 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
                     </div>
                   ))}
                 {Object.keys(entity.properties).length === 0 && (
-                  <span className="entity-detail__prop-empty">Noch keine Eigenschaften gesetzt.</span>
+                  <span className="entity-detail__prop-empty">{t('noProperties')}</span>
                 )}
               </div>
             </div>
           )}
           {entity.aliases.length > 0 && (
             <div className="entity-detail__field">
-              <label className="entity-detail__field-label">Aliase</label>
+              <label className="entity-detail__field-label">{t('field.aliases')}</label>
               <div className="entity-detail__field-value">{entity.aliases.join(', ')}</div>
             </div>
           )}
@@ -188,12 +190,12 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
         {editing ? (
           <>
             <button className="btn btn--primary" style={{ fontSize: '0.8rem', padding: '3px 10px' }}
-              onClick={() => void commitEdit()}>Speichern</button>
+              onClick={() => void commitEdit()}>{t('save')}</button>
             <button className="btn" style={{ fontSize: '0.8rem', padding: '3px 10px' }}
-              onClick={() => setEditing(false)}>Abbrechen</button>
+              onClick={() => setEditing(false)}>{t('cancel')}</button>
           </>
         ) : (
-          <button className="entity-detail__edit-btn" onClick={startEdit} title="Bearbeiten">✏️</button>
+          <button className="entity-detail__edit-btn" onClick={startEdit} title={t('edit')}>✏️</button>
         )}
       </div>
       <div className="entity-detail__tabs" role="tablist">

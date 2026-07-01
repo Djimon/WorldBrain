@@ -1,0 +1,17 @@
+{
+  "visibility": {
+    "public": "Öffentlich",
+    "gm_only": "Nur DM",
+    "player_known": "Für den Spieler (wenn Entity bekannt)",
+    "condition": "Bedingung…"
+  },
+  "addMarker": "Marker hinzufügen",
+  "deleteMarker": "Löschen",
+  "kindFilter": "Art",
+  "all": "Alle",
+  "kinds": {
+    "pin": "Punkt",
+    "polygon": "Form",
+    "label": "Beschriftung"
+  }
+}

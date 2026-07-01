@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { getActivatedCells, setCellState, clearAllCells } from '../services/session-grid-service';
 
@@ -208,6 +209,7 @@ const PRESETS = [
 ];
 
 export function GridControlsPanel({ settings, onChange, activeCellCount, onClear }: GridControlsProps) {
+  const { t } = useTranslation('map');
   const [open, setOpen] = useState(false);
   const [panelPos, setPanelPos] = useState({ top: 80, left: 120 });
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -385,7 +387,7 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
           <div className="grid-controls-panel__footer">
             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{activeCellCount} Zellen markiert</span>
             <button className="btn" style={{ fontSize: '0.75rem', color: 'var(--color-status-failure)' }} onClick={onClear}>
-              Alle leeren
+              {t('all')}
             </button>
           </div>
         </div>

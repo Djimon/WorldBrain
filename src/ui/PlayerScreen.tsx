@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getEffectiveEntity } from '../services/entity-service';
 import type { DatabaseLike } from '../services/entity-service';
 import { resolveVisibility } from '../services/visibility-service';
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function PlayerScreen({ context, entityId, database, onReveal: _onReveal }: Props) {
+  const { t } = useTranslation('entity');
   const [effectiveResult, setEffectiveResult] = useState<EffectiveResult | null>(null);
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export function PlayerScreen({ context, entityId, database, onReveal: _onReveal 
 
   return (
     <div>
-      {entity && <h1>{entity.title}</h1>}
+      {entity && <h1 title={t('tab.overview')}>{entity.title}</h1>}
       <article>
         {visibleBlocks.map((b, i) => <p key={i}>{b.text}</p>)}
       </article>

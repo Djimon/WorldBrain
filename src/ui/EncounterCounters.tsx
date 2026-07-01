@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createEvent } from '../services/event-service';
 import type { DatabaseLike } from '../services/entity-service';
 
@@ -17,6 +18,7 @@ interface Props {
 const SECONDS_PER_ROUND = 6;
 
 export function EncounterCounters({ sessionId: _sessionId, database, onEncounterEnd }: Props) {
+  const { t } = useTranslation('session');
   const [round, setRound] = useState(1);
   const [counters, setCounters] = useState<CustomCounter[]>([]);
   const [pendingLabel, setPendingLabel] = useState('');
@@ -74,7 +76,7 @@ export function EncounterCounters({ sessionId: _sessionId, database, onEncounter
       <div>
         <span>Round {round}</span>
         {round > 1 && <span> — Elapsed: {elapsedSeconds}s ({round * SECONDS_PER_ROUND}s total)</span>}
-        <button aria-label="Next Round" onClick={handleNextRound}>▶</button>
+        <button aria-label={t('nextRound')} onClick={handleNextRound}>▶</button>
       </div>
 
       <div>

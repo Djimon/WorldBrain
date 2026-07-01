@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { open } from '@tauri-apps/plugin-dialog';
 import { validateProjectZip, importProjectZip } from '../services/zip-import-service';
 import type { ZipValidationResult } from '../services/zip-import-service';
@@ -11,6 +12,7 @@ interface ZipImportDialogProps {
 }
 
 export function ZipImportDialog({ onImported, onCancel, zipPath: initialZipPath, existingProjectIds = [] }: ZipImportDialogProps) {
+  const { t } = useTranslation('nav');
   const [zipPath, setZipPath] = useState<string | undefined>(initialZipPath);
   const [validation, setValidation] = useState<ZipValidationResult | null>(null);
   const [conflictStrategy, setConflictStrategy] = useState<'overwrite' | 'keep-both' | null>(null);
@@ -43,7 +45,7 @@ export function ZipImportDialog({ onImported, onCancel, zipPath: initialZipPath,
       {error && <div role="alert">{error}</div>}
 
       {!zipPath && (
-        <button onClick={() => void handlePickFile()}>ZIP-Datei auswählen…</button>
+        <button onClick={() => void handlePickFile()}>{t('importZip')}</button>
       )}
 
       {zipPath && !validation && (

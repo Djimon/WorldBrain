@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { listSnapshots, createSnapshot, restoreSnapshot, deleteSnapshot } from '../services/snapshot-service';
 import type { SnapshotEntry } from '../services/snapshot-service';
 
@@ -15,6 +16,7 @@ type DialogState =
   | null;
 
 export function SnapshotManager({ projectId, onRestored, projectDir, snapshotsDir }: SnapshotManagerProps) {
+  const { t } = useTranslation('session');
   const [snapshots, setSnapshots] = useState<SnapshotEntry[]>([]);
   const [newName, setNewName] = useState('');
   const [dialog, setDialog] = useState<DialogState>(null);
@@ -69,7 +71,7 @@ export function SnapshotManager({ projectId, onRestored, projectDir, snapshotsDi
             onChange={(e) => setNewName(e.target.value)}
           />
         </label>
-        <button onClick={handleCreate}>Speichern</button>
+        <button onClick={handleCreate}>{t('snapshot.create')}</button>
       </div>
 
       <ul>

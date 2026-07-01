@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { formatAbsoluteDay } from '../services/calendar-service';
 import { listVars, setGlobalVar } from '../services/session-variable-service';
 import type { DatabaseLike } from '../services/entity-service';
@@ -28,6 +29,7 @@ interface Props {
 }
 
 export function SessionClock({ sessionId: _sessionId, calendar: _calendar, worldTimeStart, database, onWorldTimeChange }: Props) {
+  const { t } = useTranslation('session');
   const [worldTime, setWorldTime] = useState(worldTimeStart);
   const [vars, setVars] = useState<VarRow[]>([]);
 
@@ -59,7 +61,7 @@ export function SessionClock({ sessionId: _sessionId, calendar: _calendar, world
     <div>
       <div>
         <span>{formatAbsoluteDay(worldTime)}</span>
-        <button onClick={handleAdvance}>Advance Day Forward</button>
+        <button onClick={handleAdvance}>{t('nextRound')}</button>
       </div>
       <div>
         <h3>Global Counters</h3>

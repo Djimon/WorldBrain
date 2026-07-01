@@ -1,0 +1,21 @@
+{
+  "entities": "Entitäten",
+  "search": "Suche",
+  "maps": "Karten",
+  "calendar": "Kalender",
+  "chronicle": "Chronik",
+  "cards": "Karten",
+  "plugins": "Plugins",
+  "rules": "Regeln",
+  "session": "Session",
+  "project": "Projekt",
+  "recentlyOpened": "Zuletzt geöffnet",
+  "newProject": "Neues Projekt",
+  "createNewProject": "Neues Projekt erstellen",
+  "importZip": "ZIP importieren",
+  "staleProject": "Das zuletzt geöffnete Projekt ist nicht mehr vorhanden.",
+  "closeProject": "Projekt schließen",
+  "noMaps": "Noch keine Karten. PNG, JPG oder WebP importieren.",
+  "changeCalendar": "Kalender ändern",
+  "noCalendar": "Kein Kalender konfiguriert — SessionClock erst nach Kalender-Setup verfügbar."
+}

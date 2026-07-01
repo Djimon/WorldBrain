@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { saveCalendar } from '../services/calendar-service';
 import { CALENDAR_PRESETS } from '../../core_data/calendar-schema';
 import type { DatabaseLike } from '../services/entity-service';
@@ -11,7 +12,8 @@ interface Props {
 const DEFAULT_PRESET = CALENDAR_PRESETS[0];
 
 export function CalendarWizard({ onComplete, database }: Props) {
-  const [title, setTitle] = useState('Mein Kalender');
+  const { t } = useTranslation('nav');
+  const [title, setTitle] = useState(t('calendar'));
   const [preset, setPreset] = useState(DEFAULT_PRESET.id);
   const [months, setMonths] = useState(DEFAULT_PRESET.months.map((m) => ({ ...m })));
   const [week, setWeek] = useState([...DEFAULT_PRESET.week]);

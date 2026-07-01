@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface VarDef {
   id: string;
@@ -81,6 +82,7 @@ function previewNode(node: ConditionNode, vars: VarDef[]): string {
 }
 
 export function ConditionBuilder({ variables, onChange, initialCondition }: Props) {
+  const { t } = useTranslation('common');
   const [root, setRoot] = useState<ConditionNode>(() =>
     initialCondition ? parseInitial(initialCondition, variables) : { kind: 'simple', varId: variables[0]?.id ?? '', op: '==', value: '' },
   );
@@ -189,7 +191,7 @@ export function ConditionBuilder({ variables, onChange, initialCondition }: Prop
       )}
       <div aria-label="preview">{preview}</div>
       <div>
-        <button onClick={addGroup}>Add Group</button>
+        <button onClick={addGroup}>{t('add')} Group</button>
         <button onClick={() => setNotMode((n) => !n)}>NOT</button>
       </div>
     </div>

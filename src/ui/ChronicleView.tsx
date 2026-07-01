@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { listEvents } from '../services/event-service';
 import type { DatabaseLike } from '../services/entity-service';
 import { formatAbsoluteDay } from '../services/calendar-service';
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function ChronicleView({ database, onEventSelect }: Props) {
+  const { t } = useTranslation('nav');
   const [sortAsc, setSortAsc] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
   const [rawEvents, setRawEvents] = useState<EventItem[]>([]);
@@ -32,7 +34,7 @@ export function ChronicleView({ database, onEventSelect }: Props) {
   return (
     <div>
       <div>
-        <label htmlFor="type-filter">Event Type</label>
+        <label htmlFor="type-filter">{t('chronicle')}</label>
         <select
           id="type-filter"
           value={typeFilter}

@@ -1,0 +1,20 @@
+{
+  "quickCapture": "Quick capture note…",
+  "addCapture": "Add capture",
+  "filterStatus": "Filter by status",
+  "markProcessed": "Mark processed",
+  "linkEntity": "Link entity…",
+  "round": "Round",
+  "elapsedSeconds": "Elapsed seconds",
+  "endEncounter": "End Encounter",
+  "nextRound": "Next Round",
+  "allStatuses": "All",
+  "snapshot": {
+    "create": "Create snapshot",
+    "name": "Snapshot name",
+    "restore": "Restore",
+    "delete": "Delete",
+    "confirmRestore": "Restore this snapshot?",
+    "confirmDelete": "Delete this snapshot?"
+  }
+}

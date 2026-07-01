@@ -1,0 +1,20 @@
+{
+  "quickCapture": "Schnellnotiz…",
+  "addCapture": "Notiz hinzufügen",
+  "filterStatus": "Nach Status filtern",
+  "markProcessed": "Als bearbeitet markieren",
+  "linkEntity": "Entität verknüpfen…",
+  "round": "Runde",
+  "elapsedSeconds": "Vergangene Sekunden",
+  "endEncounter": "Begegnung beenden",
+  "nextRound": "Nächste Runde",
+  "allStatuses": "Alle",
+  "snapshot": {
+    "create": "Snapshot erstellen",
+    "name": "Snapshot-Name",
+    "restore": "Wiederherstellen",
+    "delete": "Löschen",
+    "confirmRestore": "Diesen Snapshot wiederherstellen?",
+    "confirmDelete": "Diesen Snapshot löschen?"
+  }
+}

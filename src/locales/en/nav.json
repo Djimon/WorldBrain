@@ -1,0 +1,21 @@
+{
+  "entities": "Entities",
+  "search": "Search",
+  "maps": "Maps",
+  "calendar": "Calendar",
+  "chronicle": "Chronicle",
+  "cards": "Cards",
+  "plugins": "Plugins",
+  "rules": "Rules",
+  "session": "Session",
+  "project": "Project",
+  "recentlyOpened": "Recently opened",
+  "newProject": "New project",
+  "createNewProject": "Create new project",
+  "importZip": "Import ZIP",
+  "staleProject": "The last opened project no longer exists.",
+  "closeProject": "Close project",
+  "noMaps": "No maps yet. Import a PNG, JPG or WebP.",
+  "changeCalendar": "Change calendar",
+  "noCalendar": "No calendar configured — SessionClock available after calendar setup."
+}
