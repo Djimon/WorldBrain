@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo, useTransition, memo } from 'react';
+import { useState, useCallback, useRef, useTransition, useEffect, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { getActivatedCells, setCellState, clearAllCells } from '../services/session-grid-service';
@@ -66,34 +66,54 @@ interface GridOverlayProps {
   onCellContextMenu: (cellKey: string, screenX: number, screenY: number) => void;
 }
 
-function hexSubPath(cx: number, cy: number, r: number, flat: boolean): string {
-  const pts = Array.from({ length: 6 }, (_, i) => {
-    const a = (Math.PI / 3) * i + (flat ? 0 : Math.PI / 6);
-    return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
-  });
-  return `M ${pts[0]} L ${pts[1]} L ${pts[2]} L ${pts[3]} L ${pts[4]} L ${pts[5]} Z`;
-}
-
-function buildHexPathData(imgW: number, imgH: number, cellSize: number, flat: boolean): string {
-  const r = cellSize / 2;
-  const cols = Math.ceil(imgW / (cellSize * 0.75)) + 2;
-  const rows = Math.ceil(imgH / (cellSize * 0.866)) + 2;
-  const parts: string[] = [];
-  for (let col = 0; col < cols; col++) {
-    for (let row = 0; row < rows; row++) {
-      const cx = flat ? col * cellSize * 0.75 : col * cellSize + (row % 2) * cellSize * 0.5;
-      const cy = flat ? row * cellSize * 0.866 + (col % 2) * cellSize * 0.433 : row * cellSize * 0.866;
-      parts.push(hexSubPath(cx, cy, r, flat));
-    }
-  }
-  return parts.join(' ');
-}
-
-// Isolated so React.memo can bail out on re-renders when d hasn't changed
-const HexPath = memo(function HexPath({ d, stroke, strokeOpacity, strokeWidth, strokeDasharray }: {
-  d: string; stroke: string; strokeOpacity: number; strokeWidth: number; strokeDasharray?: string;
+// Canvas layer: draws hex grid once into a bitmap — completely isolated from
+// ruler/paint re-renders. Only redraws when grid settings actually change.
+const HexGridCanvas = memo(function HexGridCanvas({ imgW, imgH, cellSize, lineColor, lineOpacity, lineWidth, lineDash }: {
+  imgW: number; imgH: number; cellSize: number;
+  lineColor: string; lineOpacity: number; lineWidth: number; lineDash: 'solid' | 'dashed' | 'dotted';
 }) {
-  return <path d={d} stroke={stroke} strokeOpacity={strokeOpacity} strokeWidth={strokeWidth} strokeDasharray={strokeDasharray} fill="none" />;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, imgW, imgH);
+    ctx.strokeStyle = lineColor;
+    ctx.globalAlpha = lineOpacity;
+    ctx.lineWidth = lineWidth;
+    ctx.setLineDash(
+      lineDash === 'dashed' ? [cellSize * 0.3, cellSize * 0.15]
+      : lineDash === 'dotted' ? [2, cellSize * 0.2]
+      : [],
+    );
+
+    const r = cellSize / 2;
+    const cols = Math.ceil(imgW / (cellSize * 0.75)) + 2;
+    const rows = Math.ceil(imgH / (cellSize * 0.866)) + 2;
+
+    ctx.beginPath();
+    for (let col = 0; col < cols; col++) {
+      for (let row = 0; row < rows; row++) {
+        const cx = col * cellSize * 0.75;
+        const cy = row * cellSize * 0.866 + (col % 2) * cellSize * 0.433;
+        for (let i = 0; i < 6; i++) {
+          const a = (Math.PI / 3) * i;
+          if (i === 0) ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+          else ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+        }
+        ctx.closePath();
+      }
+    }
+    ctx.stroke();
+  }, [imgW, imgH, cellSize, lineColor, lineOpacity, lineWidth, lineDash]);
+
+  return (
+    <canvas ref={canvasRef} width={imgW} height={imgH}
+      style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
+  );
 });
 
 export function GridOverlaySvg({
@@ -112,21 +132,16 @@ export function GridOverlaySvg({
     if (type === 'square') {
       return `${Math.floor(x / cellSize)}:${Math.floor(y / cellSize)}`;
     }
-    // Hex: find nearest hex center via candidate search
-    const flat = type === 'hex-flat';
-    const approxCol = flat
-      ? Math.round(x / (cellSize * 0.75))
-      : Math.round((x - (Math.round(y / (cellSize * 0.866)) % 2) * cellSize * 0.5) / cellSize);
-    const approxRow = flat
-      ? Math.round((y - (Math.round(x / (cellSize * 0.75)) % 2) * cellSize * 0.433) / (cellSize * 0.866))
-      : Math.round(y / (cellSize * 0.866));
+    // hex-flat: nearest center via 3×3 candidate search
+    const approxCol = Math.round(x / (cellSize * 0.75));
+    const approxRow = Math.round((y - (approxCol % 2) * cellSize * 0.433) / (cellSize * 0.866));
     let bestKey = `${approxCol}:${approxRow}`;
     let bestDist = Infinity;
     for (let dc = -1; dc <= 1; dc++) {
       for (let dr = -1; dr <= 1; dr++) {
         const c = approxCol + dc, r = approxRow + dr;
-        const cx = flat ? c * cellSize * 0.75 : c * cellSize + (r % 2) * cellSize * 0.5;
-        const cy = flat ? r * cellSize * 0.866 + (c % 2) * cellSize * 0.433 : r * cellSize * 0.866;
+        const cx = c * cellSize * 0.75;
+        const cy = r * cellSize * 0.866 + (c % 2) * cellSize * 0.433;
         const dist = (x - cx) ** 2 + (y - cy) ** 2;
         if (dist < bestDist) { bestDist = dist; bestKey = `${c}:${r}`; }
       }
@@ -188,18 +203,13 @@ export function GridOverlaySvg({
     for (let y = 0; y <= imgH; y += cellSize) lines.push(<line key={`h${y}`} x1={0} y1={y} x2={imgW} y2={y} />);
   }
 
-  const hexPathD = useMemo(() => {
-    if (!visible || type !== 'hex-flat') return null;
-    return buildHexPathData(imgW, imgH, cellSize, type === 'hex-flat');
-  }, [visible, type, cellSize, imgW, imgH]);
-
-  const activeCellRects: React.ReactNode[] = [];
+  const activeCellShapes: React.ReactNode[] = [];
   cells.forEach((stateId, key) => {
     const st = cellStates.find((s) => s.id === stateId);
     if (!st) return;
     const [col, row] = key.split(':').map(Number);
     if (type === 'square') {
-      activeCellRects.push(
+      activeCellShapes.push(
         <rect key={key}
           x={col * cellSize + 1} y={row * cellSize + 1}
           width={cellSize - 2} height={cellSize - 2}
@@ -208,15 +218,15 @@ export function GridOverlaySvg({
         />,
       );
     } else {
-      const flat = type === 'hex-flat';
-      const cx = flat ? col * cellSize * 0.75 : col * cellSize + (row % 2) * cellSize * 0.5;
-      const cy = flat ? row * cellSize * 0.866 + (col % 2) * cellSize * 0.433 : row * cellSize * 0.866;
+      // hex-flat active cell overlay
+      const cx = col * cellSize * 0.75;
+      const cy = row * cellSize * 0.866 + (col % 2) * cellSize * 0.433;
       const r = cellSize / 2 - 1;
       const pts = Array.from({ length: 6 }, (_, i) => {
-        const a = (Math.PI / 3) * i + (flat ? 0 : Math.PI / 6);
+        const a = (Math.PI / 3) * i;
         return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
       }).join(' ');
-      activeCellRects.push(
+      activeCellShapes.push(
         <polygon key={key} points={pts}
           fill={`${st.color}33`} stroke={st.color} strokeWidth={2}
           style={{ filter: `drop-shadow(0 0 5px ${st.color})` }}
@@ -225,25 +235,29 @@ export function GridOverlaySvg({
     }
   });
 
+  const svgStyle: React.CSSProperties = {
+    position: 'absolute', top: 0, left: 0, overflow: 'visible',
+    cursor: gridMode ? 'cell' : 'default',
+  };
+
   return (
-    <svg
-      style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', cursor: gridMode ? 'cell' : 'default' }}
-      width={imgW} height={imgH}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onContextMenu={handleContextMenu}
-    >
-      <g stroke={lineColor} strokeOpacity={lineOpacity} strokeWidth={lineWidth} fill="none" strokeDasharray={strokeDash}>
-        {lines}
-      </g>
-      {hexPathD && (
-        <HexPath d={hexPathD} stroke={lineColor} strokeOpacity={lineOpacity}
-          strokeWidth={lineWidth} strokeDasharray={strokeDash} />
+    <>
+      {visible && type === 'hex-flat' && (
+        <HexGridCanvas imgW={imgW} imgH={imgH} cellSize={cellSize}
+          lineColor={lineColor} lineOpacity={lineOpacity} lineWidth={lineWidth} lineDash={lineDash} />
       )}
-      {activeCellRects}
-    </svg>
+      <svg style={svgStyle} width={imgW} height={imgH}
+        onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onContextMenu={handleContextMenu}
+      >
+        {visible && type === 'square' && (
+          <g stroke={lineColor} strokeOpacity={lineOpacity} strokeWidth={lineWidth} fill="none" strokeDasharray={strokeDash}>
+            {lines}
+          </g>
+        )}
+        {activeCellShapes}
+      </svg>
+    </>
   );
 }
 
