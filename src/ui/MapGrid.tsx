@@ -66,10 +66,10 @@ interface GridOverlayProps {
   onCellContextMenu: (cellKey: string, screenX: number, screenY: number) => void;
 }
 
-// Canvas layer: draws hex grid once into a bitmap — completely isolated from
-// ruler/paint re-renders. Only redraws when grid settings actually change.
-const HexGridCanvas = memo(function HexGridCanvas({ imgW, imgH, cellSize, lineColor, lineOpacity, lineWidth, lineDash }: {
-  imgW: number; imgH: number; cellSize: number;
+// Static grid canvas — one bitmap for all grid types.
+// Redraws only when settings change; completely isolated from ruler/paint re-renders.
+const GridCanvas = memo(function GridCanvas({ imgW, imgH, cellSize, type, lineColor, lineOpacity, lineWidth, lineDash }: {
+  imgW: number; imgH: number; cellSize: number; type: 'square' | 'hex-flat';
   lineColor: string; lineOpacity: number; lineWidth: number; lineDash: 'solid' | 'dashed' | 'dotted';
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -90,25 +90,29 @@ const HexGridCanvas = memo(function HexGridCanvas({ imgW, imgH, cellSize, lineCo
       : [],
     );
 
-    const r = cellSize / 2;
-    const cols = Math.ceil(imgW / (cellSize * 0.75)) + 2;
-    const rows = Math.ceil(imgH / (cellSize * 0.866)) + 2;
-
     ctx.beginPath();
-    for (let col = 0; col < cols; col++) {
-      for (let row = 0; row < rows; row++) {
-        const cx = col * cellSize * 0.75;
-        const cy = row * cellSize * 0.866 + (col % 2) * cellSize * 0.433;
-        for (let i = 0; i < 6; i++) {
-          const a = (Math.PI / 3) * i;
-          if (i === 0) ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
-          else ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+    if (type === 'square') {
+      for (let x = 0; x <= imgW; x += cellSize) { ctx.moveTo(x, 0); ctx.lineTo(x, imgH); }
+      for (let y = 0; y <= imgH; y += cellSize) { ctx.moveTo(0, y); ctx.lineTo(imgW, y); }
+    } else {
+      const r = cellSize / 2;
+      const cols = Math.ceil(imgW / (cellSize * 0.75)) + 2;
+      const rows = Math.ceil(imgH / (cellSize * 0.866)) + 2;
+      for (let col = 0; col < cols; col++) {
+        for (let row = 0; row < rows; row++) {
+          const cx = col * cellSize * 0.75;
+          const cy = row * cellSize * 0.866 + (col % 2) * cellSize * 0.433;
+          for (let i = 0; i < 6; i++) {
+            const a = (Math.PI / 3) * i;
+            if (i === 0) ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+            else ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+          }
+          ctx.closePath();
         }
-        ctx.closePath();
       }
     }
     ctx.stroke();
-  }, [imgW, imgH, cellSize, lineColor, lineOpacity, lineWidth, lineDash]);
+  }, [imgW, imgH, cellSize, type, lineColor, lineOpacity, lineWidth, lineDash]);
 
   return (
     <canvas ref={canvasRef} width={imgW} height={imgH}
@@ -123,10 +127,6 @@ export function GridOverlaySvg({
   const { cellSize, type, lineColor, lineOpacity, lineWidth, lineDash, visible, cellStates } = settings;
   const isPainting = useRef(false);
   const lastPaintKey = useRef<string | null>(null);
-
-  const strokeDash = lineDash === 'dashed'
-    ? `${cellSize * 0.3},${cellSize * 0.15}`
-    : lineDash === 'dotted' ? `2,${cellSize * 0.2}` : undefined;
 
   function cellKeyFor(x: number, y: number): string {
     if (type === 'square') {
@@ -197,12 +197,6 @@ export function GridOverlaySvg({
 
   if (!visible && cells.size === 0) return null;
 
-  const lines: React.ReactNode[] = [];
-  if (visible && type === 'square') {
-    for (let x = 0; x <= imgW; x += cellSize) lines.push(<line key={`v${x}`} x1={x} y1={0} x2={x} y2={imgH} />);
-    for (let y = 0; y <= imgH; y += cellSize) lines.push(<line key={`h${y}`} x1={0} y1={y} x2={imgW} y2={y} />);
-  }
-
   const activeCellShapes: React.ReactNode[] = [];
   cells.forEach((stateId, key) => {
     const st = cellStates.find((s) => s.id === stateId);
@@ -242,19 +236,14 @@ export function GridOverlaySvg({
 
   return (
     <>
-      {visible && type === 'hex-flat' && (
-        <HexGridCanvas imgW={imgW} imgH={imgH} cellSize={cellSize}
+      {visible && (
+        <GridCanvas imgW={imgW} imgH={imgH} cellSize={cellSize} type={type}
           lineColor={lineColor} lineOpacity={lineOpacity} lineWidth={lineWidth} lineDash={lineDash} />
       )}
       <svg style={svgStyle} width={imgW} height={imgH}
         onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onContextMenu={handleContextMenu}
       >
-        {visible && type === 'square' && (
-          <g stroke={lineColor} strokeOpacity={lineOpacity} strokeWidth={lineWidth} fill="none" strokeDasharray={strokeDash}>
-            {lines}
-          </g>
-        )}
         {activeCellShapes}
       </svg>
     </>
