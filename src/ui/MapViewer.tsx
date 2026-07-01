@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect, useCallback } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getMap, getAssetUrl, loadGridSettings, saveGridSettings } from '../services/map-service';
 import type { DatabaseLike } from '../services/entity-service';
@@ -560,11 +560,15 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     if (mode !== 'pin' && mode !== 'move-pin') setGhostPos(null);
   }, [mode]);
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.15 : 0.87;
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
+  // Registered imperatively with { passive: false } so preventDefault() works.
+  // React's synthetic onWheel is passive since React 17 and cannot prevent scroll.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.15 : 0.87;
+      const rect = el.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
       setScale((s) => {
@@ -575,7 +579,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         }));
         return ns;
       });
-    }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
   function toMapCoords(clientX: number, clientY: number) {
@@ -857,7 +863,6 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
         onClick={handleMapClick}
       >
         {/* Zoom controls — top right overlay */}
@@ -873,7 +878,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           />
           {imgSize.w > 0 && gridSettings.visible && (
             <GridLayer
-              imgW={imgSize.w} imgH={imgSize.h} scale={scale}
+              imgW={imgSize.w} imgH={imgSize.h}
               cellSize={gridSettings.cellSize} type={gridSettings.type}
               lineColor={gridSettings.lineColor} lineOpacity={gridSettings.lineOpacity}
               lineWidth={gridSettings.lineWidth} lineDash={gridSettings.lineDash}

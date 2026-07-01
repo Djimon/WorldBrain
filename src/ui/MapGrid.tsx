@@ -50,26 +50,19 @@ export const DEFAULT_GRID_SETTINGS: GridSettings = {
   rulerWidth: 2,
 };
 
-// ── Layer 2: Grid ─────────────────────────────────────────────────────────────
-// Canvas only. No pointer events. Redraws only when grid settings or zoom change.
-
 // ── Layer 2: GRID ─────────────────────────────────────────────────────────────
-// Pure rendering. Canvas bitmap. Zero pointer events. Zero React re-render cost
-// from interactions. Redraws only when grid settings or zoom level change.
+// Pure rendering. Canvas bitmap. Zero pointer events.
+// Drawn at natural image resolution, ONCE per settings change.
+// Zoom is handled by the parent CSS transform — no redraw on scroll/zoom ever.
 
 export interface GridLayerProps {
-  imgW: number; imgH: number; scale: number;
+  imgW: number; imgH: number;
   cellSize: number; type: 'square' | 'hex-flat';
   lineColor: string; lineOpacity: number; lineWidth: number; lineDash: 'solid' | 'dashed' | 'dotted';
 }
 
-export const GridLayer = memo(function GridLayer({ imgW, imgH, scale, cellSize, type, lineColor, lineOpacity, lineWidth, lineDash }: GridLayerProps) {
+export const GridLayer = memo(function GridLayer({ imgW, imgH, cellSize, type, lineColor, lineOpacity, lineWidth, lineDash }: GridLayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  const snapScale = Math.round(scale * 100) / 100;
-  const drawW = Math.max(1, Math.ceil(imgW * snapScale));
-  const drawH = Math.max(1, Math.ceil(imgH * snapScale));
-  const s = cellSize * snapScale;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -77,28 +70,28 @@ export const GridLayer = memo(function GridLayer({ imgW, imgH, scale, cellSize, 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, drawW, drawH);
+    ctx.clearRect(0, 0, imgW, imgH);
     ctx.strokeStyle = lineColor;
     ctx.globalAlpha = lineOpacity;
     ctx.lineWidth = lineWidth;
     ctx.setLineDash(
-      lineDash === 'dashed' ? [s * 0.3, s * 0.15]
-      : lineDash === 'dotted' ? [2, s * 0.2]
+      lineDash === 'dashed' ? [cellSize * 0.3, cellSize * 0.15]
+      : lineDash === 'dotted' ? [2, cellSize * 0.2]
       : [],
     );
 
     let d = '';
     if (type === 'square') {
-      for (let x = 0; x <= drawW; x += s) d += `M${x},0L${x},${drawH}`;
-      for (let y = 0; y <= drawH; y += s) d += `M0,${y}L${drawW},${y}`;
+      for (let x = 0; x <= imgW; x += cellSize) d += `M${x},0L${x},${imgH}`;
+      for (let y = 0; y <= imgH; y += cellSize) d += `M0,${y}L${imgW},${y}`;
     } else {
-      const r = s / 2;
-      const cols = Math.ceil(drawW / (s * 0.75)) + 2;
-      const rows = Math.ceil(drawH / (s * 0.866)) + 2;
+      const r = cellSize / 2;
+      const cols = Math.ceil(imgW / (cellSize * 0.75)) + 2;
+      const rows = Math.ceil(imgH / (cellSize * 0.866)) + 2;
       for (let col = 0; col < cols; col++) {
         for (let row = 0; row < rows; row++) {
-          const cx = col * s * 0.75;
-          const cy = row * s * 0.866 + (col % 2) * s * 0.433;
+          const cx = col * cellSize * 0.75;
+          const cy = row * cellSize * 0.866 + (col % 2) * cellSize * 0.433;
           for (let i = 0; i < 6; i++) {
             const a = (Math.PI / 3) * i;
             d += i === 0 ? `M${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}` : `L${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
@@ -108,11 +101,11 @@ export const GridLayer = memo(function GridLayer({ imgW, imgH, scale, cellSize, 
       }
     }
     ctx.stroke(new Path2D(d));
-  }, [drawW, drawH, s, type, lineColor, lineOpacity, lineWidth, lineDash]);
+  }, [imgW, imgH, cellSize, type, lineColor, lineOpacity, lineWidth, lineDash]);
 
   return (
-    <canvas ref={canvasRef} width={drawW} height={drawH}
-      style={{ position: 'absolute', top: 0, left: 0, width: imgW, height: imgH, pointerEvents: 'none' }} />
+    <canvas ref={canvasRef} width={imgW} height={imgH}
+      style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
   );
 });
 
