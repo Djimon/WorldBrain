@@ -77,9 +77,11 @@ const GridCanvas = memo(function GridCanvas({ imgW, imgH, scale, cellSize, type,
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const drawW = Math.max(1, Math.ceil(imgW * scale));
-  const drawH = Math.max(1, Math.ceil(imgH * scale));
-  const s = cellSize * scale; // cell size in canvas pixels
+  // Round scale to 2dp so minor zoom deltas don't trigger redraws on every scroll event
+  const snapScale = Math.round(scale * 100) / 100;
+  const drawW = Math.max(1, Math.ceil(imgW * snapScale));
+  const drawH = Math.max(1, Math.ceil(imgH * snapScale));
+  const s = cellSize * snapScale; // cell size in canvas pixels
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -97,10 +99,13 @@ const GridCanvas = memo(function GridCanvas({ imgW, imgH, scale, cellSize, type,
       : [],
     );
 
-    ctx.beginPath();
+    // Build the entire path as an SVG path string, then hand it to Path2D.
+    // Path2D parses the string natively (C++), replacing thousands of individual
+    // JS→native bridge calls (moveTo/lineTo/closePath) with a single dispatch.
+    let d = '';
     if (type === 'square') {
-      for (let x = 0; x <= drawW; x += s) { ctx.moveTo(x, 0); ctx.lineTo(x, drawH); }
-      for (let y = 0; y <= drawH; y += s) { ctx.moveTo(0, y); ctx.lineTo(drawW, y); }
+      for (let x = 0; x <= drawW; x += s) d += `M${x},0L${x},${drawH}`;
+      for (let y = 0; y <= drawH; y += s) d += `M0,${y}L${drawW},${y}`;
     } else {
       const r = s / 2;
       const cols = Math.ceil(drawW / (s * 0.75)) + 2;
@@ -111,14 +116,15 @@ const GridCanvas = memo(function GridCanvas({ imgW, imgH, scale, cellSize, type,
           const cy = row * s * 0.866 + (col % 2) * s * 0.433;
           for (let i = 0; i < 6; i++) {
             const a = (Math.PI / 3) * i;
-            if (i === 0) ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
-            else ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+            const px = cx + r * Math.cos(a);
+            const py = cy + r * Math.sin(a);
+            d += i === 0 ? `M${px},${py}` : `L${px},${py}`;
           }
-          ctx.closePath();
+          d += 'Z';
         }
       }
     }
-    ctx.stroke();
+    ctx.stroke(new Path2D(d));
   }, [drawW, drawH, s, type, lineColor, lineOpacity, lineWidth, lineDash]);
 
   return (
