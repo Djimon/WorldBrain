@@ -560,6 +560,11 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     if (mode !== 'pin' && mode !== 'move-pin') setGhostPos(null);
   }, [mode]);
 
+  // WEB-PORT NOTE: React 17+ registers onWheel as passive, so e.preventDefault() is a
+  // no-op in a browser with an outer scroll container — page and map scroll simultaneously.
+  // Fix for web: replace this handler with an imperative useEffect addEventListener on
+  // containerRef with { passive: false }. In Tauri WebView there is no outer scroll
+  // container, so the no-op is harmless and the simpler synthetic handler works fine.
   function handleWheel(e: React.WheelEvent) {
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1.15 : 0.87;
