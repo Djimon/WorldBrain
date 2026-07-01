@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo, useTransition } from 'react';
+import { useState, useCallback, useRef, useMemo, useTransition, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { getActivatedCells, setCellState, clearAllCells } from '../services/session-grid-service';
@@ -89,6 +89,13 @@ function buildHexPathData(imgW: number, imgH: number, cellSize: number, flat: bo
   return parts.join(' ');
 }
 
+// Isolated so React.memo can bail out on re-renders when d hasn't changed
+const HexPath = memo(function HexPath({ d, stroke, strokeOpacity, strokeWidth, strokeDasharray }: {
+  d: string; stroke: string; strokeOpacity: number; strokeWidth: number; strokeDasharray?: string;
+}) {
+  return <path d={d} stroke={stroke} strokeOpacity={strokeOpacity} strokeWidth={strokeWidth} strokeDasharray={strokeDasharray} fill="none" />;
+});
+
 export function GridOverlaySvg({
   settings, imgW, imgH, cells, gridMode, activeCellStateId,
   sessionId, mapId, database, onCellsChange, onCellContextMenu,
@@ -102,7 +109,29 @@ export function GridOverlaySvg({
     : lineDash === 'dotted' ? `2,${cellSize * 0.2}` : undefined;
 
   function cellKeyFor(x: number, y: number): string {
-    return `${Math.floor(x / cellSize)}:${Math.floor(y / cellSize)}`;
+    if (type === 'square') {
+      return `${Math.floor(x / cellSize)}:${Math.floor(y / cellSize)}`;
+    }
+    // Hex: find nearest hex center via candidate search
+    const flat = type === 'hex-flat';
+    const approxCol = flat
+      ? Math.round(x / (cellSize * 0.75))
+      : Math.round((x - (Math.round(y / (cellSize * 0.866)) % 2) * cellSize * 0.5) / cellSize);
+    const approxRow = flat
+      ? Math.round((y - (Math.round(x / (cellSize * 0.75)) % 2) * cellSize * 0.433) / (cellSize * 0.866))
+      : Math.round(y / (cellSize * 0.866));
+    let bestKey = `${approxCol}:${approxRow}`;
+    let bestDist = Infinity;
+    for (let dc = -1; dc <= 1; dc++) {
+      for (let dr = -1; dr <= 1; dr++) {
+        const c = approxCol + dc, r = approxRow + dr;
+        const cx = flat ? c * cellSize * 0.75 : c * cellSize + (r % 2) * cellSize * 0.5;
+        const cy = flat ? r * cellSize * 0.866 + (c % 2) * cellSize * 0.433 : r * cellSize * 0.866;
+        const dist = (x - cx) ** 2 + (y - cy) ** 2;
+        if (dist < bestDist) { bestDist = dist; bestKey = `${c}:${r}`; }
+      }
+    }
+    return bestKey;
   }
 
   function clientToSvg(svgEl: SVGSVGElement, clientX: number, clientY: number) {
@@ -169,14 +198,31 @@ export function GridOverlaySvg({
     const st = cellStates.find((s) => s.id === stateId);
     if (!st) return;
     const [col, row] = key.split(':').map(Number);
-    activeCellRects.push(
-      <rect key={key}
-        x={col * cellSize + 1} y={row * cellSize + 1}
-        width={cellSize - 2} height={cellSize - 2}
-        fill={`${st.color}33`} stroke={st.color} strokeWidth={2}
-        style={{ filter: `drop-shadow(0 0 5px ${st.color})` }}
-      />,
-    );
+    if (type === 'square') {
+      activeCellRects.push(
+        <rect key={key}
+          x={col * cellSize + 1} y={row * cellSize + 1}
+          width={cellSize - 2} height={cellSize - 2}
+          fill={`${st.color}33`} stroke={st.color} strokeWidth={2}
+          style={{ filter: `drop-shadow(0 0 5px ${st.color})` }}
+        />,
+      );
+    } else {
+      const flat = type === 'hex-flat';
+      const cx = flat ? col * cellSize * 0.75 : col * cellSize + (row % 2) * cellSize * 0.5;
+      const cy = flat ? row * cellSize * 0.866 + (col % 2) * cellSize * 0.433 : row * cellSize * 0.866;
+      const r = cellSize / 2 - 1;
+      const pts = Array.from({ length: 6 }, (_, i) => {
+        const a = (Math.PI / 3) * i + (flat ? 0 : Math.PI / 6);
+        return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
+      }).join(' ');
+      activeCellRects.push(
+        <polygon key={key} points={pts}
+          fill={`${st.color}33`} stroke={st.color} strokeWidth={2}
+          style={{ filter: `drop-shadow(0 0 5px ${st.color})` }}
+        />,
+      );
+    }
   });
 
   return (
@@ -191,8 +237,11 @@ export function GridOverlaySvg({
     >
       <g stroke={lineColor} strokeOpacity={lineOpacity} strokeWidth={lineWidth} fill="none" strokeDasharray={strokeDash}>
         {lines}
-        {hexPathD && <path d={hexPathD} />}
       </g>
+      {hexPathD && (
+        <HexPath d={hexPathD} stroke={lineColor} strokeOpacity={lineOpacity}
+          strokeWidth={lineWidth} strokeDasharray={strokeDash} />
+      )}
       {activeCellRects}
     </svg>
   );
