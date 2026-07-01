@@ -34,6 +34,7 @@ import { UpdateNotification } from './UpdateNotification';
 import { MapViewer } from './MapViewer';
 import { MarkerPanel } from './MapMarkers';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { ThemeToggle } from './ThemeToggle';
 
 type Area =
   | 'entities'
@@ -472,6 +473,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
           <span className="workspace-shell__area-name">{activeAreaLabel}</span>
           <div className="workspace-shell__header-controls">
             <LanguageSwitcher />
+            <ThemeToggle />
           </div>
         </header>
         {renderArea()}
