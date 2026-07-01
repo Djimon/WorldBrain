@@ -6,7 +6,7 @@ import { getMarkersForMap, createMarker, updateMarker, deleteMarker } from '../s
 import type { MarkerRow } from '../services/map-marker-service';
 import { getActivatedCells, clearAllCells, setCellState } from '../services/session-grid-service';
 import { listEntitiesByType } from '../services/entity-service';
-import { GridOverlaySvg, GridControlsPanel, CellContextMenu, DEFAULT_GRID_SETTINGS } from './MapGrid';
+import { GridLayer, CellStateLayer, PaintInteractionLayer, GridControlsPanel, CellContextMenu, DEFAULT_GRID_SETTINGS } from './MapGrid';
 import type { GridSettings } from './MapGrid';
 import { listVars } from '../services/session-variable-service';
 import type { VarRow } from '../services/session-variable-service';
@@ -871,14 +871,28 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           <img src={imgSrc} alt="Karte" draggable={false} style={{ display: 'block', maxWidth: 'none' }}
             onLoad={(e) => { const i = e.currentTarget; setImgSize({ w: i.naturalWidth, h: i.naturalHeight }); }}
           />
+          {imgSize.w > 0 && gridSettings.visible && (
+            <GridLayer
+              imgW={imgSize.w} imgH={imgSize.h} scale={scale}
+              cellSize={gridSettings.cellSize} type={gridSettings.type}
+              lineColor={gridSettings.lineColor} lineOpacity={gridSettings.lineOpacity}
+              lineWidth={gridSettings.lineWidth} lineDash={gridSettings.lineDash}
+            />
+          )}
           {imgSize.w > 0 && (
-            <GridOverlaySvg
-              settings={gridSettings}
+            <CellStateLayer
               imgW={imgSize.w} imgH={imgSize.h}
-              scale={scale}
-              cells={cells}
-              gridMode={mode === 'grid'}
+              cellSize={gridSettings.cellSize} type={gridSettings.type}
+              cells={cells} cellStates={gridSettings.cellStates}
+            />
+          )}
+          {imgSize.w > 0 && (
+            <PaintInteractionLayer
+              imgW={imgSize.w} imgH={imgSize.h}
+              cellSize={gridSettings.cellSize} type={gridSettings.type}
+              active={mode === 'grid'}
               activeCellStateId={activeCellStateId}
+              cells={cells}
               sessionId={sessionId} mapId={mapId} database={database}
               onCellsChange={setCells}
               onCellContextMenu={handleCellContextMenu}

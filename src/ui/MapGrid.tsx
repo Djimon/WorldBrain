@@ -50,38 +50,26 @@ export const DEFAULT_GRID_SETTINGS: GridSettings = {
   rulerWidth: 2,
 };
 
-// ── Grid SVG Overlay ──────────────────────────────────────────────────────────
+// ── Layer 2: Grid ─────────────────────────────────────────────────────────────
+// Canvas only. No pointer events. Redraws only when grid settings or zoom change.
 
-interface GridOverlayProps {
-  settings: GridSettings;
-  imgW: number;
-  imgH: number;
-  scale: number;
-  cells: Map<string, number>;
-  gridMode: boolean;
-  activeCellStateId: number;
-  sessionId: string;
-  mapId: string;
-  database: DatabaseLike;
-  onCellsChange: (cells: Map<string, number>) => void;
-  onCellContextMenu: (cellKey: string, screenX: number, screenY: number) => void;
+// ── Layer 2: GRID ─────────────────────────────────────────────────────────────
+// Pure rendering. Canvas bitmap. Zero pointer events. Zero React re-render cost
+// from interactions. Redraws only when grid settings or zoom level change.
+
+export interface GridLayerProps {
+  imgW: number; imgH: number; scale: number;
+  cellSize: number; type: 'square' | 'hex-flat';
+  lineColor: string; lineOpacity: number; lineWidth: number; lineDash: 'solid' | 'dashed' | 'dotted';
 }
 
-// Static grid canvas — one bitmap for all grid types.
-// Drawn at viewport resolution (imgW*scale × imgH*scale), CSS-scaled back to imgW×imgH.
-// stroke() workload is proportional to screen pixels, not the source image megapixels.
-// Redraws only when settings or scale change; ruler/paint re-renders never touch it.
-const GridCanvas = memo(function GridCanvas({ imgW, imgH, scale, cellSize, type, lineColor, lineOpacity, lineWidth, lineDash }: {
-  imgW: number; imgH: number; scale: number; cellSize: number; type: 'square' | 'hex-flat';
-  lineColor: string; lineOpacity: number; lineWidth: number; lineDash: 'solid' | 'dashed' | 'dotted';
-}) {
+export const GridLayer = memo(function GridLayer({ imgW, imgH, scale, cellSize, type, lineColor, lineOpacity, lineWidth, lineDash }: GridLayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Round scale to 2dp so minor zoom deltas don't trigger redraws on every scroll event
   const snapScale = Math.round(scale * 100) / 100;
   const drawW = Math.max(1, Math.ceil(imgW * snapScale));
   const drawH = Math.max(1, Math.ceil(imgH * snapScale));
-  const s = cellSize * snapScale; // cell size in canvas pixels
+  const s = cellSize * snapScale;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -99,9 +87,6 @@ const GridCanvas = memo(function GridCanvas({ imgW, imgH, scale, cellSize, type,
       : [],
     );
 
-    // Build the entire path as an SVG path string, then hand it to Path2D.
-    // Path2D parses the string natively (C++), replacing thousands of individual
-    // JS→native bridge calls (moveTo/lineTo/closePath) with a single dispatch.
     let d = '';
     if (type === 'square') {
       for (let x = 0; x <= drawW; x += s) d += `M${x},0L${x},${drawH}`;
@@ -116,9 +101,7 @@ const GridCanvas = memo(function GridCanvas({ imgW, imgH, scale, cellSize, type,
           const cy = row * s * 0.866 + (col % 2) * s * 0.433;
           for (let i = 0; i < 6; i++) {
             const a = (Math.PI / 3) * i;
-            const px = cx + r * Math.cos(a);
-            const py = cy + r * Math.sin(a);
-            d += i === 0 ? `M${px},${py}` : `L${px},${py}`;
+            d += i === 0 ? `M${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}` : `L${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
           }
           d += 'Z';
         }
@@ -133,19 +116,80 @@ const GridCanvas = memo(function GridCanvas({ imgW, imgH, scale, cellSize, type,
   );
 });
 
-export function GridOverlaySvg({
-  settings, imgW, imgH, scale, cells, gridMode, activeCellStateId,
-  sessionId, mapId, database, onCellsChange, onCellContextMenu,
-}: GridOverlayProps) {
-  const { cellSize, type, lineColor, lineOpacity, lineWidth, lineDash, visible, cellStates } = settings;
+// ── Layer 3: CELL_STATE ────────────────────────────────────────────────────────
+// Pure rendering. SVG shapes for painted cells only. Zero pointer events.
+// Re-renders only when the cells map changes.
+
+export interface CellStateLayerProps {
+  imgW: number; imgH: number;
+  cellSize: number; type: 'square' | 'hex-flat';
+  cells: Map<string, number>;
+  cellStates: CellState[];
+}
+
+export const CellStateLayer = memo(function CellStateLayer({ imgW, imgH, cellSize, type, cells, cellStates }: CellStateLayerProps) {
+  if (cells.size === 0) return null;
+
+  const shapes: React.ReactNode[] = [];
+  cells.forEach((stateId, key) => {
+    const st = cellStates.find((s) => s.id === stateId);
+    if (!st) return;
+    const [col, row] = key.split(':').map(Number);
+    if (type === 'square') {
+      shapes.push(
+        <rect key={key}
+          x={col * cellSize + 1} y={row * cellSize + 1}
+          width={cellSize - 2} height={cellSize - 2}
+          fill={`${st.color}33`} stroke={st.color} strokeWidth={2}
+          style={{ filter: `drop-shadow(0 0 5px ${st.color})` }}
+        />,
+      );
+    } else {
+      const cx = col * cellSize * 0.75;
+      const cy = row * cellSize * 0.866 + (col % 2) * cellSize * 0.433;
+      const r = cellSize / 2 - 1;
+      const pts = Array.from({ length: 6 }, (_, i) => {
+        const a = (Math.PI / 3) * i;
+        return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
+      }).join(' ');
+      shapes.push(
+        <polygon key={key} points={pts}
+          fill={`${st.color}33`} stroke={st.color} strokeWidth={2}
+          style={{ filter: `drop-shadow(0 0 5px ${st.color})` }}
+        />,
+      );
+    }
+  });
+
+  return (
+    <svg style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none' }}
+      width={imgW} height={imgH}>
+      {shapes}
+    </svg>
+  );
+});
+
+// ── Layer 4: INTERACTIONS ──────────────────────────────────────────────────────
+// Transparent SVG that sits on top of all other layers. Handles only mouse events
+// for cell painting and context menu. No visual content whatsoever.
+
+export interface PaintInteractionLayerProps {
+  imgW: number; imgH: number;
+  cellSize: number; type: 'square' | 'hex-flat';
+  active: boolean;
+  activeCellStateId: number;
+  cells: Map<string, number>;
+  sessionId: string; mapId: string; database: DatabaseLike;
+  onCellsChange: (cells: Map<string, number>) => void;
+  onCellContextMenu: (cellKey: string, screenX: number, screenY: number) => void;
+}
+
+export function PaintInteractionLayer({ imgW, imgH, cellSize, type, active, activeCellStateId, cells, sessionId, mapId, database, onCellsChange, onCellContextMenu }: PaintInteractionLayerProps) {
   const isPainting = useRef(false);
   const lastPaintKey = useRef<string | null>(null);
 
   function cellKeyFor(x: number, y: number): string {
-    if (type === 'square') {
-      return `${Math.floor(x / cellSize)}:${Math.floor(y / cellSize)}`;
-    }
-    // hex-flat: nearest center via 3×3 candidate search
+    if (type === 'square') return `${Math.floor(x / cellSize)}:${Math.floor(y / cellSize)}`;
     const approxCol = Math.round(x / (cellSize * 0.75));
     const approxRow = Math.round((y - (approxCol % 2) * cellSize * 0.433) / (cellSize * 0.866));
     let bestKey = `${approxCol}:${approxRow}`;
@@ -183,7 +227,7 @@ export function GridOverlaySvg({
   }
 
   function handleMouseDown(e: React.MouseEvent<SVGSVGElement>) {
-    if (!gridMode || e.button !== 0) return;
+    if (!active || e.button !== 0) return;
     e.stopPropagation();
     isPainting.current = true;
     lastPaintKey.current = null;
@@ -191,7 +235,7 @@ export function GridOverlaySvg({
   }
 
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
-    if (!gridMode || !isPainting.current) return;
+    if (!active || !isPainting.current) return;
     e.stopPropagation();
     paintCell(e.currentTarget, e.clientX, e.clientY, activeCellStateId);
   }
@@ -201,65 +245,20 @@ export function GridOverlaySvg({
   }
 
   function handleContextMenu(e: React.MouseEvent<SVGSVGElement>) {
-    if (!gridMode) return;
+    if (!active) return;
     e.preventDefault();
     e.stopPropagation();
     const { x, y } = clientToSvg(e.currentTarget, e.clientX, e.clientY);
     onCellContextMenu(cellKeyFor(x, y), e.clientX, e.clientY);
   }
 
-  if (!visible && cells.size === 0) return null;
-
-  const activeCellShapes: React.ReactNode[] = [];
-  cells.forEach((stateId, key) => {
-    const st = cellStates.find((s) => s.id === stateId);
-    if (!st) return;
-    const [col, row] = key.split(':').map(Number);
-    if (type === 'square') {
-      activeCellShapes.push(
-        <rect key={key}
-          x={col * cellSize + 1} y={row * cellSize + 1}
-          width={cellSize - 2} height={cellSize - 2}
-          fill={`${st.color}33`} stroke={st.color} strokeWidth={2}
-          style={{ filter: `drop-shadow(0 0 5px ${st.color})` }}
-        />,
-      );
-    } else {
-      // hex-flat active cell overlay
-      const cx = col * cellSize * 0.75;
-      const cy = row * cellSize * 0.866 + (col % 2) * cellSize * 0.433;
-      const r = cellSize / 2 - 1;
-      const pts = Array.from({ length: 6 }, (_, i) => {
-        const a = (Math.PI / 3) * i;
-        return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
-      }).join(' ');
-      activeCellShapes.push(
-        <polygon key={key} points={pts}
-          fill={`${st.color}33`} stroke={st.color} strokeWidth={2}
-          style={{ filter: `drop-shadow(0 0 5px ${st.color})` }}
-        />,
-      );
-    }
-  });
-
-  const svgStyle: React.CSSProperties = {
-    position: 'absolute', top: 0, left: 0, overflow: 'visible',
-    cursor: gridMode ? 'cell' : 'default',
-  };
-
   return (
-    <>
-      {visible && (
-        <GridCanvas imgW={imgW} imgH={imgH} scale={scale} cellSize={cellSize} type={type}
-          lineColor={lineColor} lineOpacity={lineOpacity} lineWidth={lineWidth} lineDash={lineDash} />
-      )}
-      <svg style={svgStyle} width={imgW} height={imgH}
-        onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onContextMenu={handleContextMenu}
-      >
-        {activeCellShapes}
-      </svg>
-    </>
+    <svg
+      style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', cursor: active ? 'cell' : 'default' }}
+      width={imgW} height={imgH}
+      onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onContextMenu={handleContextMenu}
+    />
   );
 }
 
