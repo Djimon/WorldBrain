@@ -463,7 +463,6 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [editEntityId, setEditEntityId] = useState('');
   const [editEntityIds, setEditEntityIds] = useState<string[]>([]);
   const [showEntityPicker, setShowEntityPicker] = useState(false);
-  const [editGroup, setEditGroup] = useState('');
   const [editIcon, setEditIcon] = useState<PinIconKey>('pin');
   const [editVisibility, setEditVisibility] = useState('public');
   const [editCondition, setEditCondition] = useState<unknown>(null);
@@ -658,14 +657,16 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     setEditLabel(m.label_text ?? '');
     setEditNotes(geo.notes ?? '');
     setEditEntityId(m.entity_id ?? '');
-    setEditGroup(m.group_name ?? '');
     try {
       const s = JSON.parse(m.style_json) as { icon?: string; extra_entity_ids?: string[] };
       setEditIcon((s.icon as PinIconKey) ?? 'pin');
       setEditEntityIds(Array.isArray(s.extra_entity_ids) ? s.extra_entity_ids : []);
     } catch { setEditIcon('pin'); setEditEntityIds([]); }
-    try { setEditVisibility(JSON.parse(m.visibility_json) as string); } catch { setEditVisibility('public'); }
-    setEditCondition(geo.condition ?? null);
+    try {
+      const vis = JSON.parse(m.visibility_json);
+      if (typeof vis === 'string') { setEditVisibility(vis); setEditCondition(null); }
+      else { setEditVisibility((vis as { scope: string }).scope ?? 'public'); setEditCondition((vis as { condition?: unknown }).condition ?? null); }
+    } catch { setEditVisibility('public'); setEditCondition(null); }
   }
 
   async function savePin() {
@@ -674,12 +675,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     await updateMarker(database, editingPin.id, {
       label_text: editLabel,
       entity_id: editEntityId || null,
-      geometry_json: JSON.stringify({
-        ...geo, notes: editNotes,
-        condition: editVisibility === 'hidden_until_condition' ? editCondition : undefined,
-      }),
+      geometry_json: JSON.stringify({ ...geo, notes: editNotes }),
       style_json: JSON.stringify({ icon: editIcon, extra_entity_ids: editEntityIds }),
-      visibility_json: JSON.stringify(editVisibility),
+      visibility_json: JSON.stringify(
+        editVisibility === 'hidden_until_condition'
+          ? { scope: editVisibility, condition: editCondition }
+          : editVisibility
+      ),
     });
     setEditingPin(null);
     reloadMarkers();
@@ -734,9 +736,6 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     });
     setCellMenu(null);
   }
-
-  // unique group names for autocomplete
-  const allGroups = [...new Set(markers.map((m) => m.group_name ?? '').filter(Boolean))].sort();
 
   const pinPx = PIN_SIZE_PX[gridSettings.pinSize] ?? 26;
   const VALID_VAR_TYPES = new Set(['boolean', 'number', 'string', 'enum']);
