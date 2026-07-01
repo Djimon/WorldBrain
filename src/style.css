@@ -218,12 +218,32 @@ input {
 
 .workspace-shell__header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
   flex-shrink: 0;
+}
+
+.workspace-shell__header-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.language-switcher {
+  font-size: 0.8rem;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  cursor: pointer;
+}
+.language-switcher:hover {
+  border-color: var(--color-accent);
 }
 
 .workspace-shell__project-name {

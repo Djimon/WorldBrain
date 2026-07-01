@@ -33,6 +33,7 @@ import { SnapshotManager } from './SnapshotManager';
 import { UpdateNotification } from './UpdateNotification';
 import { MapViewer } from './MapViewer';
 import { MarkerPanel } from './MapMarkers';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 type Area =
   | 'entities'
@@ -469,6 +470,9 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
         <header className="workspace-shell__header">
           <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
           <span className="workspace-shell__area-name">{activeAreaLabel}</span>
+          <div className="workspace-shell__header-controls">
+            <LanguageSwitcher />
+          </div>
         </header>
         {renderArea()}
       </div>
