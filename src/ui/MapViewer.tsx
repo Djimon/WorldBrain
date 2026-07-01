@@ -560,15 +560,11 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     if (mode !== 'pin' && mode !== 'move-pin') setGhostPos(null);
   }, [mode]);
 
-  // Registered imperatively with { passive: false } so preventDefault() works.
-  // React's synthetic onWheel is passive since React 17 and cannot prevent scroll.
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const factor = e.deltaY < 0 ? 1.15 : 0.87;
-      const rect = el.getBoundingClientRect();
+  function handleWheel(e: React.WheelEvent) {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.15 : 0.87;
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
       setScale((s) => {
@@ -579,10 +575,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         }));
         return ns;
       });
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, []);
+    }
+  }
 
   function toMapCoords(clientX: number, clientY: number) {
     const rect = containerRef.current!.getBoundingClientRect();
@@ -862,6 +856,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onWheel={handleWheel}
         onMouseLeave={handleMouseUp}
         onClick={handleMapClick}
       >
