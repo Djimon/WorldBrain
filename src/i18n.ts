@@ -13,6 +13,8 @@ import deEntity from './locales/de/entity.json';
 import deMap from './locales/de/map.json';
 import deSession from './locales/de/session.json';
 
+const savedLang = typeof localStorage !== 'undefined' ? (localStorage.getItem('lang') ?? 'de') : 'de';
+
 void i18n.use(initReactI18next).init({
   resources: {
     en: {
@@ -30,7 +32,7 @@ void i18n.use(initReactI18next).init({
       session: deSession,
     },
   },
-  lng: 'en',
+  lng: savedLang,
   fallbackLng: 'en' as string,
   defaultNS: 'common',
   interpolation: { escapeValue: false },

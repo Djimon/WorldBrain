@@ -8,11 +8,16 @@ const LANGUAGES = [
 export function LanguageSwitcher() {
   const { i18n } = useTranslation();
 
+  function handleChange(lang: string) {
+    void i18n.changeLanguage(lang);
+    localStorage.setItem('lang', lang);
+  }
+
   return (
     <select
       className="language-switcher"
       value={i18n.language}
-      onChange={(e) => { void i18n.changeLanguage(e.target.value); }}
+      onChange={(e) => handleChange(e.target.value)}
       aria-label="Sprache / Language"
     >
       {LANGUAGES.map(({ code, label }) => (

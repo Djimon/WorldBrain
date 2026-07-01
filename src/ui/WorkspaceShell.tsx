@@ -210,10 +210,10 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
             <div className="workspace-area__sidebar">
               <h3>{t('typeLabel', { ns: 'entity' })}</h3>
               <ul>
-                {allEntityTypes.map((t) => (
-                  <li key={t}>
-                    <button aria-pressed={entityType === t} onClick={() => setEntityType(t)}>
-                      {t}
+                {allEntityTypes.map((typId) => (
+                  <li key={typId}>
+                    <button aria-pressed={entityType === typId} onClick={() => setEntityType(typId)}>
+                      {t(`type.${typId.toLowerCase()}`, { ns: 'entity', defaultValue: typId })}
                     </button>
                   </li>
                 ))}
