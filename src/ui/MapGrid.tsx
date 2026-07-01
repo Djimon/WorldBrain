@@ -56,6 +56,7 @@ interface GridOverlayProps {
   settings: GridSettings;
   imgW: number;
   imgH: number;
+  scale: number;
   cells: Map<string, number>;
   gridMode: boolean;
   activeCellStateId: number;
@@ -67,12 +68,18 @@ interface GridOverlayProps {
 }
 
 // Static grid canvas — one bitmap for all grid types.
-// Redraws only when settings change; completely isolated from ruler/paint re-renders.
-const GridCanvas = memo(function GridCanvas({ imgW, imgH, cellSize, type, lineColor, lineOpacity, lineWidth, lineDash }: {
-  imgW: number; imgH: number; cellSize: number; type: 'square' | 'hex-flat';
+// Drawn at viewport resolution (imgW*scale × imgH*scale), CSS-scaled back to imgW×imgH.
+// stroke() workload is proportional to screen pixels, not the source image megapixels.
+// Redraws only when settings or scale change; ruler/paint re-renders never touch it.
+const GridCanvas = memo(function GridCanvas({ imgW, imgH, scale, cellSize, type, lineColor, lineOpacity, lineWidth, lineDash }: {
+  imgW: number; imgH: number; scale: number; cellSize: number; type: 'square' | 'hex-flat';
   lineColor: string; lineOpacity: number; lineWidth: number; lineDash: 'solid' | 'dashed' | 'dotted';
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const drawW = Math.max(1, Math.ceil(imgW * scale));
+  const drawH = Math.max(1, Math.ceil(imgH * scale));
+  const s = cellSize * scale; // cell size in canvas pixels
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -80,28 +87,28 @@ const GridCanvas = memo(function GridCanvas({ imgW, imgH, cellSize, type, lineCo
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, imgW, imgH);
+    ctx.clearRect(0, 0, drawW, drawH);
     ctx.strokeStyle = lineColor;
     ctx.globalAlpha = lineOpacity;
     ctx.lineWidth = lineWidth;
     ctx.setLineDash(
-      lineDash === 'dashed' ? [cellSize * 0.3, cellSize * 0.15]
-      : lineDash === 'dotted' ? [2, cellSize * 0.2]
+      lineDash === 'dashed' ? [s * 0.3, s * 0.15]
+      : lineDash === 'dotted' ? [2, s * 0.2]
       : [],
     );
 
     ctx.beginPath();
     if (type === 'square') {
-      for (let x = 0; x <= imgW; x += cellSize) { ctx.moveTo(x, 0); ctx.lineTo(x, imgH); }
-      for (let y = 0; y <= imgH; y += cellSize) { ctx.moveTo(0, y); ctx.lineTo(imgW, y); }
+      for (let x = 0; x <= drawW; x += s) { ctx.moveTo(x, 0); ctx.lineTo(x, drawH); }
+      for (let y = 0; y <= drawH; y += s) { ctx.moveTo(0, y); ctx.lineTo(drawW, y); }
     } else {
-      const r = cellSize / 2;
-      const cols = Math.ceil(imgW / (cellSize * 0.75)) + 2;
-      const rows = Math.ceil(imgH / (cellSize * 0.866)) + 2;
+      const r = s / 2;
+      const cols = Math.ceil(drawW / (s * 0.75)) + 2;
+      const rows = Math.ceil(drawH / (s * 0.866)) + 2;
       for (let col = 0; col < cols; col++) {
         for (let row = 0; row < rows; row++) {
-          const cx = col * cellSize * 0.75;
-          const cy = row * cellSize * 0.866 + (col % 2) * cellSize * 0.433;
+          const cx = col * s * 0.75;
+          const cy = row * s * 0.866 + (col % 2) * s * 0.433;
           for (let i = 0; i < 6; i++) {
             const a = (Math.PI / 3) * i;
             if (i === 0) ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
@@ -112,16 +119,16 @@ const GridCanvas = memo(function GridCanvas({ imgW, imgH, cellSize, type, lineCo
       }
     }
     ctx.stroke();
-  }, [imgW, imgH, cellSize, type, lineColor, lineOpacity, lineWidth, lineDash]);
+  }, [drawW, drawH, s, type, lineColor, lineOpacity, lineWidth, lineDash]);
 
   return (
-    <canvas ref={canvasRef} width={imgW} height={imgH}
-      style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
+    <canvas ref={canvasRef} width={drawW} height={drawH}
+      style={{ position: 'absolute', top: 0, left: 0, width: imgW, height: imgH, pointerEvents: 'none' }} />
   );
 });
 
 export function GridOverlaySvg({
-  settings, imgW, imgH, cells, gridMode, activeCellStateId,
+  settings, imgW, imgH, scale, cells, gridMode, activeCellStateId,
   sessionId, mapId, database, onCellsChange, onCellContextMenu,
 }: GridOverlayProps) {
   const { cellSize, type, lineColor, lineOpacity, lineWidth, lineDash, visible, cellStates } = settings;
@@ -237,7 +244,7 @@ export function GridOverlaySvg({
   return (
     <>
       {visible && (
-        <GridCanvas imgW={imgW} imgH={imgH} cellSize={cellSize} type={type}
+        <GridCanvas imgW={imgW} imgH={imgH} scale={scale} cellSize={cellSize} type={type}
           lineColor={lineColor} lineOpacity={lineOpacity} lineWidth={lineWidth} lineDash={lineDash} />
       )}
       <svg style={svgStyle} width={imgW} height={imgH}

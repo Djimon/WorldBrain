@@ -875,6 +875,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             <GridOverlaySvg
               settings={gridSettings}
               imgW={imgSize.w} imgH={imgSize.h}
+              scale={scale}
               cells={cells}
               gridMode={mode === 'grid'}
               activeCellStateId={activeCellStateId}
