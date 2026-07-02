@@ -102,5 +102,19 @@ describe('M9-S02 formula engine', () => {
       const result = evaluateFormulaField(fieldDef, entity);
       expect(result).toBe(3);
     });
+
+    it('evaluateFormulaField returns null when computed is false, even with a formula (#218)', async () => {
+      const { evaluateFormulaField } = await getFormulaEngine();
+      const entity = { str: 16 };
+      const fieldDef = { computed: false, formula: 'str * 2' };
+      const result = evaluateFormulaField(fieldDef, entity);
+      expect(result).toBeNull();
+    });
+
+    it('evaluateFormulaField returns null when formula is absent', async () => {
+      const { evaluateFormulaField } = await getFormulaEngine();
+      const result = evaluateFormulaField({ computed: true }, { str: 10 });
+      expect(result).toBeNull();
+    });
   });
 });

@@ -81,6 +81,14 @@ describe('M9-S01 system plugin manifest extension', () => {
       expect(result.valid).toBe(false);
     });
 
+    it('mechanics.attributes must be non-empty — empty array is rejected (#217)', async () => {
+      const { validatePluginManifest } = await getPluginValidator();
+      const badPlugin = { ...VALID_SYSTEM_PLUGIN, mechanics: { ...VALID_SYSTEM_PLUGIN.mechanics, attributes: [] } };
+      const result = validatePluginManifest(badPlugin);
+      expect(result.valid).toBe(false);
+      expect(result.errors?.join(' ')).toMatch(/non-empty/i);
+    });
+
     it('mechanics must include resource_types', async () => {
       const { validatePluginManifest } = await getPluginValidator();
       const { resource_types: _r, ...mechanicsWithout } = VALID_SYSTEM_PLUGIN.mechanics;
