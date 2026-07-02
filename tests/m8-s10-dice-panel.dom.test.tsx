@@ -1,8 +1,9 @@
 // M8-S10: Würfelpanel
 // See: https://github.com/Djimon/WorldBrain/issues/162
 
+import { readFileSync } from 'node:fs';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { DicePanel } from '../src/ui/DicePanel';
 
@@ -114,16 +115,16 @@ describe('M8-S10 dice panel', () => {
   });
 
   describe('crypto random', () => {
-    it('DicePanel.tsx uses crypto.getRandomValues (not Math.random)', async () => {
-      const src = await import('fs').then(fs => fs.readFileSync('src/ui/DicePanel.tsx', 'utf-8'));
+    it('DicePanel.tsx uses crypto.getRandomValues (not Math.random)', () => {
+      const src = readFileSync('src/ui/DicePanel.tsx', 'utf-8');
       expect(src).not.toMatch(/Math\.random/);
       expect(src).toMatch(/crypto\.getRandomValues|getRandomValues/);
     });
   });
 
   describe('no prompt/alert/confirm', () => {
-    it('DicePanel.tsx does not use window.prompt, alert or confirm', async () => {
-      const src = await import('fs').then(fs => fs.readFileSync('src/ui/DicePanel.tsx', 'utf-8'));
+    it('DicePanel.tsx does not use window.prompt, alert or confirm', () => {
+      const src = readFileSync('src/ui/DicePanel.tsx', 'utf-8');
       expect(src).not.toMatch(/\bprompt\s*\(/);
       expect(src).not.toMatch(/\balert\s*\(/);
       expect(src).not.toMatch(/\bconfirm\s*\(/);
