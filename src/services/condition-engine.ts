@@ -51,9 +51,26 @@ function evalNode(node: unknown, ctx: EvalContext): unknown {
   if (op === '*') return (evalNode(args[0], ctx) as number) * (evalNode(args[1], ctx) as number);
   if (op === '/') return (evalNode(args[0], ctx) as number) / (evalNode(args[1], ctx) as number);
 
+  if (op === 'floor') return Math.floor(evalNode(args[0], ctx) as number);
+  if (op === 'ceil') return Math.ceil(evalNode(args[0], ctx) as number);
+  if (op === 'max') return Math.max(...args.map((a) => evalNode(a, ctx) as number));
+  if (op === 'min') return Math.min(...args.map((a) => evalNode(a, ctx) as number));
+
   return undefined;
 }
 
 export function evaluate(condition: unknown, ctx: EvalContext): boolean {
   return Boolean(evalNode(condition, ctx));
+}
+
+/**
+ * Numeric evaluation entry point (M9-S02). Evaluates an AST node to a finite
+ * number, or returns null for non-numeric / non-finite results (e.g. division
+ * by zero → Infinity, unknown field → undefined). Reuses the same AST evaluator
+ * as boolean conditions.
+ */
+export function evaluateNumber(node: unknown, ctx: EvalContext): number | null {
+  const result = evalNode(node, ctx);
+  if (typeof result !== 'number' || !Number.isFinite(result)) return null;
+  return result;
 }
