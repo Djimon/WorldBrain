@@ -1,12 +1,12 @@
 // M8-S05: Session-Log
 // See: https://github.com/Djimon/WorldBrain/issues/157
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/services/session-log-service', () => ({
-  listLogEntries: vi.fn(),
-  addLogEntry: vi.fn(),
+  listLogEntries: vi.fn(async () => []),
+  addLogEntry: vi.fn(async () => undefined),
 }));
 
 import { SessionLog } from '../src/ui/SessionLog';
@@ -39,54 +39,61 @@ const SAMPLE_ENTRIES = [
 
 describe('M8-S05 session log', () => {
   describe('log entry display', () => {
-    it('shows descriptions of all log entries', () => {
-      mockListLogEntries.mockReturnValue(SAMPLE_ENTRIES);
+    it('shows descriptions of all log entries', async () => {
+      mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
       render(<SessionLog sessionId="s1" />);
-      expect(screen.getByText(/Die Gruppe betritt die Taverne/i)).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByText(/Die Gruppe betritt die Taverne/i)).toBeInTheDocument());
       expect(screen.getByText(/Goblin besiegt/i)).toBeInTheDocument();
     });
 
-    it('shows world_datetime for each entry', () => {
-      mockListLogEntries.mockReturnValue(SAMPLE_ENTRIES);
+    it('shows world_datetime for each entry', async () => {
+      mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
       render(<SessionLog sessionId="s1" />);
-      expect(screen.getByText(/Jahr 1432.*Tag 1.*10:00|10:00/i)).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByText(/Jahr 1432.*Tag 1.*10:00|10:00/i)).toBeInTheDocument());
     });
 
-    it('shows round when round is not null', () => {
-      mockListLogEntries.mockReturnValue(SAMPLE_ENTRIES);
+    it('shows round when round is not null', async () => {
+      mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
       render(<SessionLog sessionId="s1" />);
-      expect(screen.getByText(/runde.*3|round.*3|3/i)).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByText(/runde.*3|round.*3|3/i)).toBeInTheDocument());
     });
 
-    it('shows empty state when no entries exist', () => {
-      mockListLogEntries.mockReturnValue([]);
+    it('shows empty state when no entries exist', async () => {
+      mockListLogEntries.mockResolvedValue([]);
       render(<SessionLog sessionId="s1" />);
-      expect(screen.getByText(/kein.*eintrag|no.*entr|leer/i)).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByText(/kein.*eintrag|no.*entr|leer/i)).toBeInTheDocument());
     });
   });
 
   describe('search and filter', () => {
-    it('renders a search input', () => {
-      mockListLogEntries.mockReturnValue(SAMPLE_ENTRIES);
+    it('renders a search input', async () => {
+      mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
       render(<SessionLog sessionId="s1" />);
-      expect(screen.getByRole('searchbox') || screen.getByPlaceholderText(/suche|search/i)).toBeInTheDocument();
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('searchbox') ?? screen.queryByPlaceholderText(/suche|search/i)
+        ).toBeInTheDocument()
+      );
     });
 
-    it('filtering by action_type shows filter control', () => {
-      mockListLogEntries.mockReturnValue(SAMPLE_ENTRIES);
+    it('filtering by action_type shows filter control', async () => {
+      mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
       render(<SessionLog sessionId="s1" />);
-      expect(
-        screen.getByRole('combobox', { name: /typ|type|aktion/i }) ||
-        screen.getByLabelText(/typ|type|aktion/i)
-      ).toBeInTheDocument();
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('combobox', { name: /typ|type|aktion/i }) ??
+          screen.queryByLabelText(/typ|type|aktion/i)
+        ).toBeInTheDocument()
+      );
     });
 
-    it('search for "Goblin" hides non-matching entry', () => {
-      mockListLogEntries.mockReturnValue(SAMPLE_ENTRIES);
+    it('search for "Goblin" hides non-matching entry', async () => {
+      mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
       render(<SessionLog sessionId="s1" />);
-      const search = screen.getByRole('searchbox') || screen.getByPlaceholderText(/suche|search/i);
+      await waitFor(() => expect(screen.getByText(/Die Gruppe betritt die Taverne/i)).toBeInTheDocument());
+      const search = screen.queryByRole('searchbox') ?? screen.getByPlaceholderText(/suche|search/i);
       fireEvent.change(search, { target: { value: 'Goblin' } });
-      expect(screen.queryByText(/Die Gruppe betritt/i)).not.toBeInTheDocument();
+      await waitFor(() => expect(screen.queryByText(/Die Gruppe betritt/i)).not.toBeInTheDocument());
       expect(screen.getByText(/Goblin besiegt/i)).toBeInTheDocument();
     });
   });
