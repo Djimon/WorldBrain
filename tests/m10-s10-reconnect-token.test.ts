@@ -1,6 +1,7 @@
 // M10-S10: Reconnect & Token-Persistenz (Tauri FS — client-side token storage)
 // See: https://github.com/Djimon/WorldBrain/issues/204
 
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
@@ -129,12 +130,12 @@ describe('M10-S10 reconnect & token persistence (Tauri FS)', () => {
 
   describe('security constraints', () => {
     it('player-token-service.ts never logs the token value', () => {
-      const src = require('fs').readFileSync('src/services/player-token-service.ts', 'utf-8');
+      const src = readFileSync('src/services/player-token-service.ts', 'utf-8');
       expect(src).not.toMatch(/console\.(log|info|warn|debug)\(.*token/i);
     });
 
     it('player-token-service.ts uses only Tauri plugin-fs (not node:fs)', () => {
-      const src = require('fs').readFileSync('src/services/player-token-service.ts', 'utf-8');
+      const src = readFileSync('src/services/player-token-service.ts', 'utf-8');
       expect(src).not.toMatch(/from ['"](?:node:)?fs['"]/);
     });
   });
