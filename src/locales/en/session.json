@@ -16,5 +16,31 @@
     "delete": "Delete",
     "confirmRestore": "Restore this snapshot?",
     "confirmDelete": "Delete this snapshot?"
+  },
+  "playMode": {
+    "switchToCreate": "Switch to Create mode",
+    "tools": "Tools",
+    "tabWhiteboard": "Whiteboard",
+    "tabMap": "Map",
+    "close": "close",
+    "widgetType": "Widget type",
+    "addWidget": "Add widget",
+    "remove": "remove",
+    "tool": {
+      "encounter": "Encounter list",
+      "character": "Character panel",
+      "entityNotes": "Entity notes",
+      "sessionLog": "Session log",
+      "calendar": "Calendar / Time",
+      "dice": "Dice panel",
+      "rules": "Rules (DM Screen)"
+    },
+    "widget": {
+      "counter": "Counter",
+      "variables": "Session variables",
+      "encounterInfo": "Active encounter info",
+      "note": "Note field",
+      "entityShortcut": "Entity shortcut"
+    }
   }
 }

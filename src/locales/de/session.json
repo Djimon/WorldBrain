@@ -16,5 +16,31 @@
     "delete": "Löschen",
     "confirmRestore": "Diesen Snapshot wiederherstellen?",
     "confirmDelete": "Diesen Snapshot löschen?"
+  },
+  "playMode": {
+    "switchToCreate": "Zu Create-Modus wechseln",
+    "tools": "Werkzeuge",
+    "tabWhiteboard": "Whiteboard",
+    "tabMap": "Karte",
+    "close": "schließen",
+    "widgetType": "Widget-Typ",
+    "addWidget": "Widget hinzufügen",
+    "remove": "entfernen",
+    "tool": {
+      "encounter": "Encounter-Liste",
+      "character": "Character-Panel",
+      "entityNotes": "Entity-Notizen",
+      "sessionLog": "Session-Log",
+      "calendar": "Kalender / Zeit",
+      "dice": "Würfelpanel",
+      "rules": "Regeln (DM Screen)"
+    },
+    "widget": {
+      "counter": "Counter",
+      "variables": "Session-Variablen",
+      "encounterInfo": "Aktive Encounter-Info",
+      "note": "Notizfeld",
+      "entityShortcut": "Entity-Schnellzugriff"
+    }
   }
 }
