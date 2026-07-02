@@ -135,7 +135,7 @@ describe('M8-S02 session list & management', () => {
       mockListSessions.mockResolvedValue([]);
       render(<SessionList projectId="proj-1" projectDir="/p" onResumeSession={vi.fn()} />);
       fireEvent.click(screen.getByRole('button', { name: /neue session/i }));
-      expect(screen.getByRole('combobox', { name: /system.plugin/i }) || screen.queryByLabelText(/system.plugin/i)).toBeTruthy();
+      expect(screen.queryByRole('combobox', { name: /system.plugin/i }) ?? screen.queryByLabelText(/system.plugin/i)).toBeTruthy();
     });
   });
 
@@ -143,15 +143,15 @@ describe('M8-S02 session list & management', () => {
     it('each session has an archive / archivieren button', async () => {
       mockListSessions.mockResolvedValue([SAMPLE_SESSIONS[0]]);
       render(<SessionList projectId="proj-1" projectDir="/p" onResumeSession={vi.fn()} />);
-      await waitFor(() => expect(screen.getByRole('button', { name: /archiv/i })).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByRole('button', { name: /^archivieren$/i })).toBeInTheDocument());
     });
 
     it('clicking archive calls archiveSession with session id', async () => {
       mockArchiveSession.mockClear();
       mockListSessions.mockResolvedValue([SAMPLE_SESSIONS[0]]);
       render(<SessionList projectId="proj-1" projectDir="/p" onResumeSession={vi.fn()} />);
-      await waitFor(() => expect(screen.getByRole('button', { name: /archiv/i })).toBeInTheDocument());
-      fireEvent.click(screen.getByRole('button', { name: /archiv/i }));
+      await waitFor(() => expect(screen.getByRole('button', { name: /^archivieren$/i })).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: /^archivieren$/i }));
       await waitFor(() => expect(mockArchiveSession).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 's1' })));
     });
   });

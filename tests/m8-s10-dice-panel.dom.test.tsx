@@ -26,7 +26,7 @@ describe('M8-S10 dice panel', () => {
 
     it('renders W10 button', () => {
       render(<DicePanel />);
-      expect(screen.getByRole('button', { name: /w10|d10/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^(w|d)10$/i })).toBeInTheDocument();
     });
 
     it('renders W12 button', () => {
@@ -41,7 +41,7 @@ describe('M8-S10 dice panel', () => {
 
     it('renders W100 button', () => {
       render(<DicePanel />);
-      expect(screen.getByRole('button', { name: /w100|d100/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^(w|d)100$/i })).toBeInTheDocument();
     });
   });
 

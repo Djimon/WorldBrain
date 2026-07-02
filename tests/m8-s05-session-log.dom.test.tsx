@@ -54,13 +54,13 @@ describe('M8-S05 session log', () => {
     it('shows world_datetime for each entry', async () => {
       mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
       render(<SessionLog database={mockDb as never} sessionId="s1" />);
-      await waitFor(() => expect(screen.getByText(/Jahr 1432.*Tag 1.*10:00|10:00/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Jahr 1432.*Tag 1.*10:00/i)).toBeInTheDocument());
     });
 
     it('shows round when round is not null', async () => {
       mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
       render(<SessionLog database={mockDb as never} sessionId="s1" />);
-      await waitFor(() => expect(screen.getByText(/runde.*3|round.*3|3/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/runde\s*3\b|\(3\)/i)).toBeInTheDocument());
     });
 
     it('shows empty state when no entries exist', async () => {
