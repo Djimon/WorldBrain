@@ -84,3 +84,28 @@ Implementation Agent: any instance is a blocker, not a style note.
 "I almost have it" is not grounds to continue. Reasoning for more than 3 lines about why a test is structurally unpassable = you already know the answer is `BLOCKED`.
 
 **AC fragment to copy:** "If test fails after one fix attempt, classify as BLOCKED/NEEDS_DECISION before attempting further changes."
+
+---
+
+## AP-008 — Unanchored RTL substring assertion (recurring since M8-S02/S05/S10)
+
+**Rule:** React Testing Library queries must be uniquely satisfiable. Anchor accessible-name / text regexes so they cannot match a sibling element:
+
+1. Anchor names with `^…$` whenever one expected label is a substring of another: `/^(w|d)10$/i` — never `/w10|d10/i` (matches `W100` too). Same for `Archivieren` vs `Archiv anzeigen` → `/^archivieren$/i`.
+2. No bare `|<digit>` or `|<generic-fragment>` catch-all in `getByText` (e.g. `/runde.*3|3/i`) — the fallback matches any element containing that fragment (dates, timestamps). Assert the concrete rendering: `/runde\s*3\b|\(3\)/i`.
+3. `getBy*` **throws** on zero/multiple; `queryBy*` returns null. `||` / `??` fallback chains must use `queryBy*` only — `getByRole(...) || queryByLabelText(...)` throws before the fallback runs.
+4. When multiple matches are legitimately expected, use `getAllBy*(...).toHaveLength(n)` or scope with `within(el)` — never a bare `getBy*`.
+
+**Why:** An unanchored substring regex that collides with a second rendered element makes the assertion throw "found multiple elements" — **unpassable regardless of a correct implementation**. This is a test defect owned by the TDD Agent (Test Conflict Stop Rule case 1 → `BLOCKED`); the implementor must not contort production code, and re-labeling the story `ready` without fixing the assertion produces label churn.
+
+**AC fragment:** "All RTL name/text queries anchored (`^…$`) where labels share a prefix; no bare `|<fragment>` catch-all; `||`/`??` fallbacks use `queryBy*`; multi-match uses `getAllBy*`/`within`."
+
+---
+
+## AP-008 — `if (prop)` as service call gate (recurring since M2)
+
+**Rule:** Service calls must not be gated on prop existence. Optional props are passed through; the service handles missing data.
+
+**Why:** In tests where a prop is optional but a mock is provided, the guard blocks the mock from being reached — assertions fail silently as if the service was never called.
+
+**AC fragment:** "No `if (database)` / `if (service)` guards before service calls; optional props are passed through unconditionally."

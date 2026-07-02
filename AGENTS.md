@@ -85,6 +85,12 @@ Bug tests for a Story belong in the **existing Story test file**, not a new `iss
 
 **UI Stories:** At least one `.dom.test.tsx` asserting every interactive element and event handler in AC exists in rendered output. Placeholder text where AC requires a form = test failure.
 
+**Async assertions:** Assertions depending on async state updates require `waitFor(...)`. Sync `expect(screen.getBy...)` directly after `render()` is only valid when the service is synchronous or not called at all.
+
+**vi.mock completeness:** `vi.mock` for a service module must cover all named exports of that module — not only the ones the primary test needs. Partial mocks cause failures in indirect imports.
+
+**Test strings = UI language:** Test assertions must match the current UI language exactly. On i18n migration, tests migrate with the UI strings.
+
 ### 3. Implementation Agent
 
 Read order — mandatory, in sequence:
@@ -94,6 +100,12 @@ Read order — mandatory, in sequence:
 4. `ANTI_PATTERNS.md` (any listed pattern is a blocker)
 
 AC in the Issue overrides test assumptions when they conflict — tests describe behavior, the Issue describes intent. Do not edit tests. Tests wrong → stop and report.
+
+**Diagnose from structure, not speculation:** Lifecycle/event/render problems → read the actual component hierarchy first. No diagnosis before the relevant file is open.
+
+**Perf changes need a baseline:** Before any performance commit: what was measured, with what tool, value before/after. No perf commits on suspicion.
+
+**Revert without root cause → `BLOCKED`:** If a regression is reverted without knowing why it broke, state that explicitly. Do not present a revert as a fix.
 
 ### 4. Review Agent
 
