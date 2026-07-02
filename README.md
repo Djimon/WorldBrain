@@ -49,9 +49,11 @@ flowchart LR
 | M5 | Maps & export | ✅ Done |
 | M6 | Plugins & rulesets | ✅ Done |
 | M7 | Packaging & operations | ✅ Done |
-| MI | UI Integration Sprint | 🔄 In progress |
-| M8 | Session play mode | ⏳ Planned |
-| M9 | System plugin & character sheet | ⏳ Planned |
+| MI | UI Integration Sprint | ✅ Done |
+| M8 | Session play mode | 🔄 In progress |
+| M9 | System plugin & character sheet | 🔄 In progress |
+| M10 | Multiplayer & player identity | ⏳ Planned |
+| M11 | Localization / i18n | ⏳ Planned |
 
 ## Development
 
