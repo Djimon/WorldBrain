@@ -14,6 +14,11 @@ import { listLogEntries } from '../src/services/session-log-service';
 
 const mockListLogEntries = listLogEntries as ReturnType<typeof vi.fn>;
 
+const mockDb = {
+  execute: vi.fn().mockResolvedValue(undefined),
+  select: vi.fn().mockResolvedValue([]),
+};
+
 const SAMPLE_ENTRIES = [
   {
     id: 'log-1',
@@ -41,26 +46,26 @@ describe('M8-S05 session log', () => {
   describe('log entry display', () => {
     it('shows descriptions of all log entries', async () => {
       mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
-      render(<SessionLog sessionId="s1" />);
+      render(<SessionLog database={mockDb as never} sessionId="s1" />);
       await waitFor(() => expect(screen.getByText(/Die Gruppe betritt die Taverne/i)).toBeInTheDocument());
       expect(screen.getByText(/Goblin besiegt/i)).toBeInTheDocument();
     });
 
     it('shows world_datetime for each entry', async () => {
       mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
-      render(<SessionLog sessionId="s1" />);
+      render(<SessionLog database={mockDb as never} sessionId="s1" />);
       await waitFor(() => expect(screen.getByText(/Jahr 1432.*Tag 1.*10:00|10:00/i)).toBeInTheDocument());
     });
 
     it('shows round when round is not null', async () => {
       mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
-      render(<SessionLog sessionId="s1" />);
+      render(<SessionLog database={mockDb as never} sessionId="s1" />);
       await waitFor(() => expect(screen.getByText(/runde.*3|round.*3|3/i)).toBeInTheDocument());
     });
 
     it('shows empty state when no entries exist', async () => {
       mockListLogEntries.mockResolvedValue([]);
-      render(<SessionLog sessionId="s1" />);
+      render(<SessionLog database={mockDb as never} sessionId="s1" />);
       await waitFor(() => expect(screen.getByText(/kein.*eintrag|no.*entr|leer/i)).toBeInTheDocument());
     });
   });
@@ -68,7 +73,7 @@ describe('M8-S05 session log', () => {
   describe('search and filter', () => {
     it('renders a search input', async () => {
       mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
-      render(<SessionLog sessionId="s1" />);
+      render(<SessionLog database={mockDb as never} sessionId="s1" />);
       await waitFor(() =>
         expect(
           screen.queryByRole('searchbox') ?? screen.queryByPlaceholderText(/suche|search/i)
@@ -78,7 +83,7 @@ describe('M8-S05 session log', () => {
 
     it('filtering by action_type shows filter control', async () => {
       mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
-      render(<SessionLog sessionId="s1" />);
+      render(<SessionLog database={mockDb as never} sessionId="s1" />);
       await waitFor(() =>
         expect(
           screen.queryByRole('combobox', { name: /typ|type|aktion/i }) ??
@@ -89,7 +94,7 @@ describe('M8-S05 session log', () => {
 
     it('search for "Goblin" hides non-matching entry', async () => {
       mockListLogEntries.mockResolvedValue(SAMPLE_ENTRIES);
-      render(<SessionLog sessionId="s1" />);
+      render(<SessionLog database={mockDb as never} sessionId="s1" />);
       await waitFor(() => expect(screen.getByText(/Die Gruppe betritt die Taverne/i)).toBeInTheDocument());
       const search = screen.queryByRole('searchbox') ?? screen.getByPlaceholderText(/suche|search/i);
       fireEvent.change(search, { target: { value: 'Goblin' } });
@@ -98,8 +103,15 @@ describe('M8-S05 session log', () => {
     });
   });
 
+  describe('database prop convention (AP-001)', () => {
+    it('accepts a DatabaseLike-shaped object without as-never cast', () => {
+      const db = { execute: vi.fn().mockResolvedValue(undefined), select: vi.fn().mockResolvedValue([]) };
+      expect(() => render(<SessionLog database={db} sessionId="s1" />)).not.toThrow();
+    });
+  });
+
   describe('log entry schema', () => {
-    it('session-log-service.ts exports addLogEntry with required fields', async () => {
+    it('session-log-service.ts exports addLogEntry', async () => {
       const { addLogEntry } = await import('../src/services/session-log-service');
       expect(typeof addLogEntry).toBe('function');
     });
