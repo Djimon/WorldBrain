@@ -42,5 +42,12 @@
       "note": "Note field",
       "entityShortcut": "Entity shortcut"
     }
+  },
+  "dice": {
+    "diePrefix": "D",
+    "expression": "Dice expression",
+    "roll": "Roll",
+    "history": "History",
+    "sum": "Sum"
   }
 }

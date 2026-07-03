@@ -42,5 +42,12 @@
       "note": "Notizfeld",
       "entityShortcut": "Entity-Schnellzugriff"
     }
+  },
+  "dice": {
+    "diePrefix": "W",
+    "expression": "Würfelausdruck",
+    "roll": "Würfeln",
+    "history": "Verlauf",
+    "sum": "Summe"
   }
 }
