@@ -36,3 +36,19 @@ CREATE TABLE IF NOT EXISTS campaign_notes (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+-- M10-S03: player identity & per-session membership
+CREATE TABLE IF NOT EXISTS players (
+  id TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS session_players (
+  session_id TEXT NOT NULL,
+  player_id TEXT NOT NULL,
+  token_hash TEXT NOT NULL,
+  invite_status TEXT NOT NULL DEFAULT 'pending',
+  joined_at TEXT,
+  PRIMARY KEY (session_id, player_id)
+);
