@@ -118,6 +118,7 @@ export function evaluateFormulaField(
   fieldDef: { computed?: boolean; formula?: string },
   entity: Record<string, number>,
 ): number | null {
-  if (!fieldDef.formula) return null;
+  // Only computed fields with a formula are evaluated (M9-S02 / #218).
+  if (!fieldDef.computed || !fieldDef.formula) return null;
   return evaluateFormula(fieldDef.formula, entity);
 }

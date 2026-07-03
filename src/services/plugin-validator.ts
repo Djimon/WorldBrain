@@ -39,7 +39,9 @@ export function validatePluginManifest(input: object): ManifestValidationResult 
     if (!mechanics || typeof mechanics !== 'object') {
       errors.push('System plugin requires a "mechanics" block');
     } else {
-      if (!Array.isArray(mechanics.attributes)) errors.push('mechanics.attributes must be a non-empty array');
+      if (!Array.isArray(mechanics.attributes) || mechanics.attributes.length === 0) {
+        errors.push('mechanics.attributes must be a non-empty array');
+      }
       if (!Array.isArray(mechanics.resource_types)) errors.push('mechanics.resource_types must be an array');
       if (!Array.isArray(mechanics.distance_units)) errors.push('mechanics.distance_units must be an array');
       if (!mechanics.challenge_metric) errors.push('mechanics.challenge_metric is required');
