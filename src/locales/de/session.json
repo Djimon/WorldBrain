@@ -60,5 +60,12 @@
     "empty": "Keine Sessions vorhanden",
     "resume": "Fortsetzen",
     "archive": "Archivieren"
+  },
+  "log": {
+    "search": "Suche",
+    "filterType": "Aktionstyp",
+    "allTypes": "Alle Typen",
+    "empty": "Der Log ist noch leer",
+    "round": "Runde"
   }
 }

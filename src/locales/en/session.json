@@ -60,5 +60,12 @@
     "empty": "No sessions yet",
     "resume": "Resume",
     "archive": "Archive"
+  },
+  "log": {
+    "search": "Search",
+    "filterType": "Action type",
+    "allTypes": "All types",
+    "empty": "The log is still empty",
+    "round": "Round"
   }
 }
