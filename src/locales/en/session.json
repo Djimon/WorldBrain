@@ -83,5 +83,13 @@
     "legendaryActions": "Legendary Actions",
     "lairActions": "Lair Actions",
     "special": "Special"
+  },
+  "character": {
+    "player": "Player",
+    "note": "Note",
+    "section": {
+      "attributes": "Attributes",
+      "resources": "Resources"
+    }
   }
 }

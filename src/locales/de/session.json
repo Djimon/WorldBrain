@@ -83,5 +83,13 @@
     "legendaryActions": "Legendäre Aktionen",
     "lairActions": "Hort-Aktionen",
     "special": "Besonderes"
+  },
+  "character": {
+    "player": "Spieler",
+    "note": "Freinotiz",
+    "section": {
+      "attributes": "Attribute",
+      "resources": "Ressourcen"
+    }
   }
 }
