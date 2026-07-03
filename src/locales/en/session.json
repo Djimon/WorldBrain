@@ -67,5 +67,21 @@
     "allTypes": "All types",
     "empty": "The log is still empty",
     "round": "Round"
+  },
+  "statBlock": {
+    "cr": "CR",
+    "xp": "XP",
+    "ac": "Armor Class",
+    "hp": "Hit Points",
+    "speed": "Speed",
+    "saves": "Saving Throws",
+    "skills": "Skills",
+    "senses": "Senses",
+    "currentHp": "Current HP",
+    "traits": "Traits",
+    "actions": "Actions",
+    "legendaryActions": "Legendary Actions",
+    "lairActions": "Lair Actions",
+    "special": "Special"
   }
 }

@@ -67,5 +67,21 @@
     "allTypes": "Alle Typen",
     "empty": "Der Log ist noch leer",
     "round": "Runde"
+  },
+  "statBlock": {
+    "cr": "HG",
+    "xp": "XP",
+    "ac": "Rüstungsklasse",
+    "hp": "Trefferpunkte",
+    "speed": "Bewegung",
+    "saves": "Rettungswürfe",
+    "skills": "Fertigkeiten",
+    "senses": "Sinne",
+    "currentHp": "Aktuelle HP",
+    "traits": "Merkmale",
+    "actions": "Aktionen",
+    "legendaryActions": "Legendäre Aktionen",
+    "lairActions": "Hort-Aktionen",
+    "special": "Besonderes"
   }
 }

@@ -41,7 +41,7 @@ describe('M9-S04 creature stat block', () => {
     it('shows AC', () => {
       render(<CreatureStatBlock creature={MOCK_CREATURE} inPlayMode={false} />);
       expect(screen.getByText(/15/)).toBeInTheDocument();
-      expect(screen.getByText(/AC|Rüstungsklasse/i)).toBeInTheDocument();
+      expect(screen.getByText(/\bAC\b|Rüstungsklasse/i)).toBeInTheDocument();
     });
 
     it('shows HP expression', () => {
