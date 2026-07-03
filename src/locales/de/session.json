@@ -49,5 +49,16 @@
     "roll": "Würfeln",
     "history": "Verlauf",
     "sum": "Summe"
+  },
+  "sessionList": {
+    "newSession": "Neue Session",
+    "showArchive": "Archiv anzeigen",
+    "title": "Titel",
+    "systemPlugin": "System-Plugin",
+    "noPlugin": "Kein System",
+    "create": "Erstellen",
+    "empty": "Keine Sessions vorhanden",
+    "resume": "Fortsetzen",
+    "archive": "Archivieren"
   }
 }

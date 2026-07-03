@@ -49,5 +49,16 @@
     "roll": "Roll",
     "history": "History",
     "sum": "Sum"
+  },
+  "sessionList": {
+    "newSession": "New session",
+    "showArchive": "Show archive",
+    "title": "Title",
+    "systemPlugin": "System plugin",
+    "noPlugin": "No system",
+    "create": "Create",
+    "empty": "No sessions yet",
+    "resume": "Resume",
+    "archive": "Archive"
   }
 }
