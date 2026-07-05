@@ -147,9 +147,42 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 - **SRD-Lizenz:** Inhalte aus SRD 5.1 unter **CC-BY-4.0**; fester Attribution-Wortlaut in `plugin.json` **und** sichtbar in der Plugin-Info-UI; nur SRD-Subset, kein PHB-only-Content
 - SRD-Beispieleinträge (Proof-of-Concept): Goblin (creature), Fireball (spell), Healing Potion (item), Alert (feat), 1 SRD-Species, + **1 vorgefertigter `player_character`**, der alle Feld-Kategorien ausübt (base + formula + lookup + session-state + Referenzen)
 
-**Rückwirkung auf Vorgänger-Stories** (aus dieser Spec abgeleitet):
-- #164 (Manifest): `db_prefix` Pflichtfeld, Referenz-Feld-Typen (`ref` / `ref[]` / eingebettete Instanz-Objekte), eager Voll-Loading der Schema-Dateien
-- #165 (Engine): zweiter derived-Typ `lookup` + Tabellen-Resolver (`tables/*.json`), Verkettung lookup→formula
+**Fundament-Voraussetzungen** (aus dieser Spec abgeleitet — als eigene Stories, da #164/#165 bereits closed sind; nicht wieder aufmachen):
+- **M9-S08 (#220):** Referenz-Feldtypen (`ref` / `ref[]` / eingebettete Instanz-Objekte) + Manifest-`db_prefix` + eager Voll-Loading der Schema-Dateien
+- **M9-S07 (#219):** zweiter derived-Typ `lookup` + Tabellen-Resolver (`tables/*.json`), Verkettung lookup→formula
+
+#169 ist durch S07 + S08 blockiert; danach reiner Konformanz-Durchstich (emergente Bugs → Follow-up-Fixes, vgl. #217/#218).
+
+---
+
+### M9-S07: lookup-Feldtyp & Tabellen-Resolver
+
+**Ziel:** Zweiter derived-Typ `lookup` neben `formula` — Tabellen als Plugin-Daten, aufgelöst von einem separaten Resolver. Erweitert `formula-engine.ts`; `condition-engine.ts` bleibt unangetastet (kein neuer Formel-Operator). Herleitung: M9-S06 (#169) + Decision 13.
+
+**AC:**
+- Schema-Feld kann `"computed": true` + `"lookup": { "table": "<name>", "key_field": "<feld>", "mode": "threshold" | "exact" }` deklarieren (alternativ zu `"formula"`)
+- Tabellen als Plugin-Daten in `tables/*.json`; Resolver lädt und indiziert per `key_field`
+- `mode: threshold` = größter Tabellen-Key ≤ Wert (`prof_by_level` `{1:2,5:3,9:4,13:5,17:6}` → level 4→2, 5→3); `mode: exact` = exakter Key-Treffer
+- Verkettung `lookup → formula`: ein `formula`-Feld darf ein `lookup`-Feld referenzieren (Topo-Auflösung Decision 12), Zyklen erkannt
+- Fehlerfall (Tabelle fehlt, Key nicht auflösbar): zeigt `—` statt Crash
+- Unit-Tests (`m9-s07-`): `prof_by_level` 4→+2 / 5→+3 / 17→+6; verkettetes `skill_mod`
+- `database` prop typed as `DatabaseLike`; keine `unknown`/`as never` Casts
+
+---
+
+### M9-S08: Referenz-Feldtypen & DB-Prefix-Loading
+
+**Ziel:** Referenz-Feldtypen im Schema + Manifest-`db_prefix` + eager Voll-Laden der Plugin-Schemas in einen eigenen DB-Bereich. Löst die tote Registry aktiv auf. Herleitung: M9-S06 (#169) + Decisions 14 + 17.
+
+**AC:**
+- Schema-Feld-Typen: `"type": "ref"` (1:1, `target` = Entity-Typ), `"type": "ref[]"` (many), eingebettetes Instanz-Objekt `{ ref, qty, equipped, … }` für Inventar-artige Referenzen
+- Referenz-Integrität: `ref`/`ref[]` verweist auf gültigen Entity-Typ (Plugin oder Core); ungültiges `target` → Validator-Fehler
+- Manifest: **`db_prefix` ist Pflichtfeld** für System-Plugins (z.B. `"dnd5e"`); Validator lehnt System-Plugin ohne `db_prefix` ab
+- Loader liest `entity_types/*.json` **real ein** und materialisiert **eager** in `<prefix>_*`-Tabellen; `registerPluginEntityType` wird tatsächlich aufgerufen
+- Prefix-Isolation: zwei Plugins mit verschiedenen Prefixes kollidieren nicht
+- Abgrenzung: Referenz-**Felder** (Spielerbogen) + Loading hier; Wissensgraph-Relations für Creatures (CR-Filter) separat (M2-Graph, #167/#169)
+- Unit-Tests (`m9-s08-`): Test-Plugin mit `db_prefix` + `ref`/`ref[]`/embedded lädt und materialisiert in Prefix-Tabellen
+- `database` prop typed as `DatabaseLike`; keine `unknown`/`as never` Casts
 
 ---
 
@@ -162,7 +195,9 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 | M9-S03 | #166 | Player Character Schema & UI |
 | M9-S04 | #167 | Creature / Enemy Stat Block Schema & UI |
 | M9-S05 | #168 | Spell / Item / Feat / Species Schemas |
-| M9-S06 | #169 | D&D 5e SRD Referenz-Plugin |
+| M9-S06 | #169 | D&D 5e SRD Referenz-Plugin (blockiert ← S07, S08) |
+| M9-S07 | #219 | lookup-Feldtyp & Tabellen-Resolver |
+| M9-S08 | #220 | Referenz-Feldtypen & DB-Prefix-Loading |
 
 ## Abhängigkeiten
 
@@ -171,3 +206,4 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 - M8-S01: `system_plugin_id` auf Session-Schema
 - M8-S08: Character-Panel Platzhalter
 - M8-S11: Dice-Link-Layer (Würfelausdrücke klickbar)
+- M9-S07 + M9-S08: Fundament-Voraussetzungen für M9-S06 (#169); bauen auf den closed #164/#165 auf, ohne sie wieder aufzumachen
