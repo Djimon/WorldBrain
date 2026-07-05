@@ -122,3 +122,40 @@ export function evaluateFormulaField(
   if (!fieldDef.computed || !fieldDef.formula) return null;
   return evaluateFormula(fieldDef.formula, entity);
 }
+
+// M9-S07: lookup derived-type — stub, implement in GREEN phase (#219)
+
+export interface LookupFieldDef {
+  computed?: boolean;
+  lookup?: { table: string; key_field: string; mode: 'threshold' | 'exact' };
+}
+
+export function resolveLookup(
+  _table: Record<string, number>,
+  _key: number,
+  _mode: 'threshold' | 'exact',
+): number | null {
+  throw new Error('not implemented');
+}
+
+export function evaluateLookupField(
+  _fieldDef: LookupFieldDef,
+  _entity: Record<string, number>,
+  _tables: Record<string, Record<string, number>>,
+): number | null {
+  throw new Error('not implemented');
+}
+
+export type ComputedFieldDef = {
+  computed?: boolean;
+  formula?: string;
+  lookup?: LookupFieldDef['lookup'];
+};
+
+export function resolveComputedFields(
+  _fields: Record<string, ComputedFieldDef>,
+  _entity: Record<string, number>,
+  _tables: Record<string, Record<string, number>>,
+): Record<string, number | null> {
+  throw new Error('not implemented');
+}
