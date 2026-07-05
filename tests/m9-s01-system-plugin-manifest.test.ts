@@ -12,6 +12,7 @@ const VALID_SYSTEM_PLUGIN = {
   name: 'D&D 5e SRD',
   version: '1.0.0',
   system: true,
+  db_prefix: 'dnd5e', // M9-S08 (#220): mandatory for system plugins
   mechanics: {
     attributes: ['str', 'dex', 'con', 'int', 'wis', 'cha'],
     resource_types: ['hp', 'spell_slots'],
