@@ -20,6 +20,11 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 10. **Verankerung:** Formel-/Schema-**Definition** lebt im Plugin-File (versioniert, mit dem System ausgeliefert). Nur **Werte** (base + session-state) liegen in der DB. So bleibt das System ein swappbares Plugin.
 11. **Session-scoped State:** Session-veränderliche Felder (`current_hp`, verbrauchte Ressourcen) sind pro Session gespeichert — derselbe Charakter hat in zwei Sessions unabhängigen Zustand. Koppelt an M8-S01 (#152 Session-Schema) und Cross-Session World State (#156). Datenmodell dort mitdenken.
 12. **Formel-Verkettung ist Pflicht:** Ein computed field darf andere computed fields referenzieren (`ac_total` → `dex_mod` → `dex`). Die Engine löst Abhängigkeiten in topologischer Reihenfolge auf und erkennt Zyklen (Fehler statt Endlosschleife). Reine Einzelformel-Auswertung reicht nicht — jeder will früher oder später Verkettung abbilden.
+13. **Zwei derived-Typen — `formula` und `lookup`:** Ein computed-Feld ist entweder `formula` (Arithmetik über `condition-engine.ts`) **oder** `lookup` (Wert aus einer Tabelle, indiziert per Schlüssel-Feld). Tabellen sind **deklarative Plugin-Daten** (`tables/*.json`), kein neuer Engine-Operator. Threshold-Systeme (D&D: Proficiency Bonus nach Level) → `lookup`; glatt skalierende Systeme → `formula`. Beides ist über Decision 12 verkettbar (`prof_bonus` via lookup → `skill_mod` via formula). Beispiel: `"prof_bonus": { "computed": true, "lookup": { "table": "prof_by_level", "key_field": "level" } }`.
+14. **Referenz-Modell nach Entity-Typ getrennt:** **Spielerbögen** existieren nur innerhalb der Session und nutzen einfache **Referenz-Felder** (`"known_spells": { "type": "ref[]", "target": "spell" }`, Inventar als eingebettete Objekte `{ref, qty, equipped}`, Feats, Species). **Creatures/NPCs** nutzen zusätzlich **Wissensgraph-Relations** zu Fähigkeiten/Spells, damit der DM nach Fähigkeit + CR filtern kann ("Monster mit Feuerball, CR 3–4"). Der Graph ist Backend-/Lore-Gerüst — nicht der Spielerbogen.
+15. **Aktiv-Zustands-Toggles (V1 manuell):** Bedingte Boni (Rage +2, Cover) hängen an session-state-Booleans, die der Spieler **selbst an/aus schaltet**; derived-Felder lesen sie über die and/or-Logik. Automatisches Berechnen von Dauer/Ende einer Wirkung ist **V2, out of scope**.
+16. **Dice-Felder — Ausdruck + Anzeige-Average:** HP/Damage-Felder speichern den Würfelausdruck (`23d12+151`, `8d6`). Der berechnete Durchschnitt ist eine **reine Anzeige-Hilfe** (Erwartungswert für den Spieler), kein Ersatz fürs echte Würfeln (M8-S11).
+17. **Voll-Loading in eigenen DB-Bereich:** Ein System-Plugin deklariert im Manifest ein **Pflicht-`db_prefix`** (z.B. `dnd5e`). Beim Laden werden die `entity_types/*.json` **real eingelesen und eager in `<prefix>_*`-Tabellen materialisiert** — kein Registry-Stub. (Löst die frühere "tote Loader"-Lücke, siehe [[project-system-plugin-substrate-gap]].)
 
 ## Out of Scope
 
@@ -108,18 +113,43 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 
 ---
 
-### M9-S06: D&D 5e SRD Beispiel-Plugin
+### M9-S06: D&D 5e SRD Referenz-Plugin
 
-**Ziel:** Ein vollständiges D&D 5e System-Plugin liefert alle Schemas und minimale SRD-Beispielinhalte als Proof-of-Concept.
+**Ziel:** Das **Referenz-/Konformanz-Plugin** — der erste vollständige Durchstich durch das gesamte M9-Substrat (Schema-Format, `formula`+`lookup`, Dice, session-state, Referenzen/Relations, i18n, DB-Prefix-Loading). **Fidelity-Ziel: Substrat-Beweis**, kein spielbar-vollständiger 5e-Bogen. Jede Lücke, die 5e hier aufreißt, ist eine Lücke in M9-S01/S02 — nicht in dieser Story.
 
-**AC:**
-- Plugin-Ordner: `plugins/dnd5e-srd/` mit `plugin.json`, `entity_types/`, `assets/`
-- `mechanics`: attributes `[str, dex, con, int, wis, cha]`, challenge_metric `cr`, distance_units `[ft, mile]`, resource_types `[hp, spell_slots_1–9, hit_dice]`
-- Vollständige Schemas für: `player_character`, `creature`, `spell`, `item`, `feat`, `species`
-- Computed fields: `str_modifier = floor((str - 10) / 2)` (und alle weiteren Ability Modifier)
-- SRD-Beispieleinträge (je 1–2 pro Typ): 1 Creature (Goblin), 1 Spell (Fireball), 1 Item (Healing Potion), 1 Feat (Alert) — nur SRD-lizenzierte Inhalte
-- Plugin lädt fehlerfrei durch den Plugin-Validator (M6-S06)
-- Kein proprietärer WotC-Inhalt
+**Plugin-Struktur:**
+- `plugins/dnd5e-srd/` mit `plugin.json`, `entity_types/*.json`, `tables/*.json`, `locales/{en,de}.json`, `assets/`
+- Manifest: `system: true`, **`db_prefix: "dnd5e"`** (Pflicht, Decision 17), `mechanics`-Block
+
+**mechanics:** attributes `[str,dex,con,int,wis,cha]`; challenge_metric `cr`; distance_units `[ft,mile]`; resource_types `[hp, spell_slots_1..9, hit_dice]`. Jedes Schema-Feld ist als **base / session-state / derived(formula|lookup)** markiert (Decision 9/13).
+
+**Tabellen (Decision 13, als Daten):** `tables/prof_by_level.json` (Threshold 1→+2 … 17→+6) beweist den `lookup`-Mechanismus. Ability-Modifier bleiben `formula` (`floor((x-10)/2)`). **Bewusst NICHT in V1:** klassenabhängige Spell-Slot-Progression — Slots sind session-state-Zähler (Max eingetragen, Verbrauch getrackt), keine Klassen-Tabelle.
+
+**`player_character` (Referenz-Felder, Decision 14):**
+- base: `species` (ref:species), `level`, `str/dex/con/int/wis/cha`, Skill-Proficiency-Booleans, `class` (V1 Freitext)
+- derived `lookup`: `prof_bonus` (Tabelle `prof_by_level`, key `level`)
+- derived `formula`: `str_mod`…`cha_mod`, `ac_total` (Beispiel `10 + dex_mod`), 18 Skill-Mods (`<ability>_mod + (proficient ? prof_bonus : 0)`, explizit ausgeschrieben — Decision-D), `passive_perception`
+- session-state: `current_hp`, `temp_hp`, `hit_dice_used`, `spell_slots_used_1..9`, `death_saves`, Aktiv-Toggles (z.B. `is_raging`, Decision 15)
+- Referenzen: `known_spells` (ref[]:spell), `inventory` (eingebettet `{ref:item, qty, equipped}`), `feats` (ref[]:feat)
+
+**`creature` (Graph-Relations, Decision 14):** Statblock-Felder (type, ac, hp als Dice, speed, ability scores, saves, skills, immunities/resistances, senses, languages, cr, xp) + Freitext-Sektionen (traits, actions, legendary/mythic/lair actions, special, description). Fähigkeiten/Spells als **Wissensgraph-Relation** → DM filtert nach Fähigkeit + CR. session-state: `current_hp` (session-scoped).
+
+**`spell` / `item` / `feat` / `species`:** Referenz-Ziele; Felder gem. M9-S05.
+
+**AC (Abnahme):**
+- Plugin lädt fehlerfrei durch Validator (M6-S06) inkl. `mechanics`-Check (#164); Daten **eager materialisiert in `dnd5e_*`-Tabellen** (Decision 17)
+- `prof_bonus` via `lookup` korrekt (Level 4→+2, 5→+3); Verkettung `skill_mod` nutzt lookup-basiertes `prof_bonus` (Decision 12/13)
+- Alle 6 Ability-Mod-Formeln korrekt; `ac_total`-Beispiel rechnet
+- Dice-Felder zeigen Ausdruck **+ Anzeige-Average**, klickbar (M8-S11, Decision 16)
+- session-state pro (session × character) isoliert (#152/#156, Decision 11)
+- `known_spells`/`inventory` als Referenz-Felder am PC; creature-Fähigkeiten als Graph-Relation nach CR filterbar
+- Plugin-Locales `en`/`de` greifen (Namespace `plugin:dnd5e`, M11-S06 #214); Fallback = plugin-kanonischer String
+- **SRD-Lizenz:** Inhalte aus SRD 5.1 unter **CC-BY-4.0**; fester Attribution-Wortlaut in `plugin.json` **und** sichtbar in der Plugin-Info-UI; nur SRD-Subset, kein PHB-only-Content
+- SRD-Beispieleinträge (Proof-of-Concept): Goblin (creature), Fireball (spell), Healing Potion (item), Alert (feat), 1 SRD-Species, + **1 vorgefertigter `player_character`**, der alle Feld-Kategorien ausübt (base + formula + lookup + session-state + Referenzen)
+
+**Rückwirkung auf Vorgänger-Stories** (aus dieser Spec abgeleitet):
+- #164 (Manifest): `db_prefix` Pflichtfeld, Referenz-Feld-Typen (`ref` / `ref[]` / eingebettete Instanz-Objekte), eager Voll-Loading der Schema-Dateien
+- #165 (Engine): zweiter derived-Typ `lookup` + Tabellen-Resolver (`tables/*.json`), Verkettung lookup→formula
 
 ---
 
@@ -132,7 +162,7 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 | M9-S03 | #166 | Player Character Schema & UI |
 | M9-S04 | #167 | Creature / Enemy Stat Block Schema & UI |
 | M9-S05 | #168 | Spell / Item / Feat / Species Schemas |
-| M9-S06 | #169 | D&D 5e SRD Beispiel-Plugin |
+| M9-S06 | #169 | D&D 5e SRD Referenz-Plugin |
 
 ## Abhängigkeiten
 
