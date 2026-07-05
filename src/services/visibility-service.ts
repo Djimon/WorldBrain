@@ -1,11 +1,15 @@
 import { evaluate } from './condition-engine';
+import type { DatabaseLike } from './entity-service';
 
 export interface VisibilityContext {
-  audience: 'gm' | 'player';
+  audience?: 'gm' | 'player';
   vars?: Record<string, unknown>;
   globals?: Record<string, unknown>;
   flags?: Record<string, unknown>;
   knownEntities?: Set<string>;
+  session_id?: string;
+  player_id?: string;
+  group_ids?: string[];
 }
 
 export interface VisibilityItem {
@@ -46,4 +50,39 @@ export function resolveVisibility(item: VisibilityItem, ctx: VisibilityContext):
   }
 
   return 'visible';
+}
+
+export type SessionVisibilityResult = 'gm_only' | 'visible';
+
+export async function resolveSessionVisibility(_args: {
+  database: DatabaseLike;
+  sessionId: string;
+  targetType: string;
+  targetId: string;
+  context: VisibilityContext;
+}): Promise<SessionVisibilityResult> {
+  throw new Error('not implemented');
+}
+
+export async function setVisibilityOverride(_args: {
+  database: DatabaseLike;
+  sessionId: string;
+  targetType: string;
+  targetId: string;
+  scope: 'player' | 'group';
+  playerId?: string;
+  groupId?: string;
+}): Promise<void> {
+  throw new Error('not implemented');
+}
+
+export async function clearVisibilityOverride(_args: {
+  database: DatabaseLike;
+  sessionId: string;
+  targetType: string;
+  targetId: string;
+  playerId?: string;
+  groupId?: string;
+}): Promise<void> {
+  throw new Error('not implemented');
 }

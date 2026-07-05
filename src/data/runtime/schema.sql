@@ -66,3 +66,13 @@ CREATE TABLE IF NOT EXISTS player_group_members (
   player_id TEXT NOT NULL,
   PRIMARY KEY (group_id, player_id)
 );
+
+-- M10-S07: per-player/group visibility overrides
+CREATE TABLE IF NOT EXISTS session_visibility_overrides (
+  session_id TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  scope TEXT NOT NULL,
+  player_id TEXT,
+  group_id TEXT
+);

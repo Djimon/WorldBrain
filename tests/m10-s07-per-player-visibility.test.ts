@@ -66,10 +66,10 @@ describe('M10-S07 per-player/group visibility schema & services', () => {
   });
 
   describe('default visibility', () => {
-    it('resolveVisibility returns gm_only when no overrides exist', async () => {
+    it('resolveSessionVisibility returns gm_only when no overrides exist', async () => {
       const { asyncDb } = createDb();
-      const { resolveVisibility } = await getVisibilityService();
-      const result = await resolveVisibility({
+      const { resolveSessionVisibility } = await getVisibilityService();
+      const result = await resolveSessionVisibility({
         database: asyncDb,
         sessionId: 'sess-1',
         targetType: 'entity',
@@ -83,10 +83,10 @@ describe('M10-S07 per-player/group visibility schema & services', () => {
   describe('player-level override', () => {
     it('player can see target when direct player override exists', async () => {
       const { db, asyncDb } = createDb();
-      const { resolveVisibility } = await getVisibilityService();
+      const { resolveSessionVisibility } = await getVisibilityService();
       db.exec(`INSERT INTO session_visibility_overrides (session_id, target_type, target_id, scope, player_id, group_id)
                VALUES ('sess-1', 'entity', 'ent-1', 'player', 'player-1', NULL)`);
-      const result = await resolveVisibility({
+      const result = await resolveSessionVisibility({
         database: asyncDb,
         sessionId: 'sess-1',
         targetType: 'entity',
@@ -98,10 +98,10 @@ describe('M10-S07 per-player/group visibility schema & services', () => {
 
     it('player cannot see target via other player override', async () => {
       const { db, asyncDb } = createDb();
-      const { resolveVisibility } = await getVisibilityService();
+      const { resolveSessionVisibility } = await getVisibilityService();
       db.exec(`INSERT INTO session_visibility_overrides (session_id, target_type, target_id, scope, player_id, group_id)
                VALUES ('sess-1', 'entity', 'ent-1', 'player', 'player-OTHER', NULL)`);
-      const result = await resolveVisibility({
+      const result = await resolveSessionVisibility({
         database: asyncDb,
         sessionId: 'sess-1',
         targetType: 'entity',
@@ -115,10 +115,10 @@ describe('M10-S07 per-player/group visibility schema & services', () => {
   describe('group-level override', () => {
     it('player can see target via group membership override', async () => {
       const { db, asyncDb } = createDb();
-      const { resolveVisibility } = await getVisibilityService();
+      const { resolveSessionVisibility } = await getVisibilityService();
       db.exec(`INSERT INTO session_visibility_overrides (session_id, target_type, target_id, scope, player_id, group_id)
                VALUES ('sess-1', 'entity', 'ent-1', 'group', NULL, 'group-1')`);
-      const result = await resolveVisibility({
+      const result = await resolveSessionVisibility({
         database: asyncDb,
         sessionId: 'sess-1',
         targetType: 'entity',
@@ -130,10 +130,10 @@ describe('M10-S07 per-player/group visibility schema & services', () => {
 
     it('player cannot see target via group they are not in', async () => {
       const { db, asyncDb } = createDb();
-      const { resolveVisibility } = await getVisibilityService();
+      const { resolveSessionVisibility } = await getVisibilityService();
       db.exec(`INSERT INTO session_visibility_overrides (session_id, target_type, target_id, scope, player_id, group_id)
                VALUES ('sess-1', 'entity', 'ent-1', 'group', NULL, 'group-OTHER')`);
-      const result = await resolveVisibility({
+      const result = await resolveSessionVisibility({
         database: asyncDb,
         sessionId: 'sess-1',
         targetType: 'entity',
