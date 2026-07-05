@@ -52,3 +52,17 @@ CREATE TABLE IF NOT EXISTS session_players (
   joined_at TEXT,
   PRIMARY KEY (session_id, player_id)
 );
+
+-- M10-S04: per-session player groups
+CREATE TABLE IF NOT EXISTS player_groups (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS player_group_members (
+  group_id TEXT NOT NULL,
+  player_id TEXT NOT NULL,
+  PRIMARY KEY (group_id, player_id)
+);
