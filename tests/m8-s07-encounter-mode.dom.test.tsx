@@ -79,7 +79,7 @@ describe('M8-S07 encounter mode', () => {
       fireEvent.click(screen.getByRole('button', { name: /encounter starten|start/i }));
       fireEvent.click(screen.getByRole('button', { name: /encounter beenden|end/i }));
       await waitFor(() =>
-        expect(mockAddLogEntry).toHaveBeenCalledWith(expect.objectContaining({ action_type: expect.stringMatching(/encounter|combat/i) }))
+        expect(mockAddLogEntry).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ action_type: expect.stringMatching(/encounter|combat/i) }))
       );
     });
 

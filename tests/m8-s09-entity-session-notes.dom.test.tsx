@@ -48,7 +48,7 @@ describe('M8-S09 entity session notes', () => {
       fireEvent.change(input, { target: { value: 'Merchant is hiding something' } });
       fireEvent.blur(input);
       // Session-scoped: log entry but base entity NOT updated with world_change
-      await waitFor(() => expect(mockAddLogEntry).toHaveBeenCalledWith(expect.objectContaining({ world_change: false })));
+      await waitFor(() => expect(mockAddLogEntry).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ world_change: false })));
     });
   });
 
@@ -66,7 +66,7 @@ describe('M8-S09 entity session notes', () => {
       const input = screen.getByRole('textbox', { name: /notiz|note/i });
       fireEvent.change(input, { target: { value: 'Now known to be a spy' } });
       fireEvent.click(screen.getByRole('button', { name: /welt.*übernehmen|world.*adopt|apply/i }));
-      await waitFor(() => expect(mockAddLogEntry).toHaveBeenCalledWith(expect.objectContaining({ world_change: true })));
+      await waitFor(() => expect(mockAddLogEntry).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ world_change: true })));
     });
 
     it('clicking "In Welt übernehmen" calls onApplyToWorld with entity id and note', async () => {
