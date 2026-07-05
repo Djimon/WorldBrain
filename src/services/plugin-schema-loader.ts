@@ -1,5 +1,13 @@
-// M9-S08: eager entity-type schema loader + db-prefix materialization — stub (#220)
+// M9-S08: eager entity-type schema loader + db-prefix materialization
+// (EPIC-014 decisions 14+17). Reads each entity_types/*.json listed in the
+// manifest, registers it in the entity-type registry, and eager-materializes
+// a dedicated `<db_prefix>_<entityTypeId>` table — resolving the previously
+// dead loader (registerPluginEntityType was declared but never called).
+import { readTextFile } from '@tauri-apps/plugin-fs';
+import { join } from '@tauri-apps/api/path';
 import type { DatabaseLike } from './entity-service';
+import { registerPluginEntityType } from './plugin-entity-service';
+import type { PluginEntityType } from './plugin-entity-service';
 
 interface PluginManifestForLoading {
   id: string;
@@ -7,10 +15,30 @@ interface PluginManifestForLoading {
   entity_types?: string[];
 }
 
-export async function loadPluginEntityTypes(_args: {
+export async function loadPluginEntityTypes(args: {
   database: DatabaseLike;
   pluginDir: string;
   manifest: PluginManifestForLoading;
 }): Promise<void> {
-  throw new Error('not implemented');
+  const { database, pluginDir, manifest } = args;
+  const prefix = manifest.db_prefix ?? manifest.id;
+
+  for (const typeId of manifest.entity_types ?? []) {
+    const path = await join(pluginDir, 'entity_types', `${typeId}.json`);
+    let entityType: PluginEntityType;
+    try {
+      // Missing/malformed entity-type file at a load boundary → skip it
+      // (AP-006 filesystem/JSON exception), rest of the plugin still loads.
+      const raw = await readTextFile(path);
+      entityType = JSON.parse(raw) as PluginEntityType;
+    } catch {
+      continue;
+    }
+
+    registerPluginEntityType(entityType, manifest.id);
+
+    await database.execute(
+      `CREATE TABLE IF NOT EXISTS ${prefix}_${typeId} (id TEXT PRIMARY KEY, data_json TEXT NOT NULL)`,
+    );
+  }
 }

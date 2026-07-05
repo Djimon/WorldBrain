@@ -17,6 +17,9 @@ export interface SystemPluginManifest {
   system?: boolean;
   mechanics?: PluginMechanics;
   entity_types?: unknown[];
+  // M9-S08: mandatory for system plugins — isolates eager-loaded entity-type
+  // tables per plugin (`<db_prefix>_*`, EPIC-014 decision 17).
+  db_prefix?: string;
   [key: string]: unknown;
 }
 
@@ -46,6 +49,7 @@ export function validatePluginManifest(input: object): ManifestValidationResult 
       if (!Array.isArray(mechanics.distance_units)) errors.push('mechanics.distance_units must be an array');
       if (!mechanics.challenge_metric) errors.push('mechanics.challenge_metric is required');
     }
+    if (!m.db_prefix) errors.push('System plugin requires a "db_prefix" field');
   }
 
   if (errors.length > 0) return { valid: false, errors };
