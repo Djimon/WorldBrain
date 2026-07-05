@@ -123,27 +123,53 @@ export function evaluateFormulaField(
   return evaluateFormula(fieldDef.formula, entity);
 }
 
-// M9-S07: lookup derived-type — stub, implement in GREEN phase (#219)
+// M9-S07: lookup derived-type (EPIC-014 decision 13) — a computed field is
+// either `formula` (arithmetic) or `lookup` (table lookup by key). Tables are
+// declarative plugin data, not a new engine operator.
 
 export interface LookupFieldDef {
   computed?: boolean;
   lookup?: { table: string; key_field: string; mode: 'threshold' | 'exact' };
 }
 
+/**
+ * Resolve a value from a table by numeric key. `exact` requires a matching
+ * key; `threshold` picks the largest table key ≤ the given key (e.g. D&D
+ * Proficiency Bonus by level). Empty table or no matching/qualifying key
+ * returns null — never throws.
+ */
 export function resolveLookup(
-  _table: Record<string, number>,
-  _key: number,
-  _mode: 'threshold' | 'exact',
+  table: Record<string, number>,
+  key: number,
+  mode: 'threshold' | 'exact',
 ): number | null {
-  throw new Error('not implemented');
+  const keys = Object.keys(table)
+    .map(Number)
+    .filter((k) => !Number.isNaN(k));
+  if (keys.length === 0) return null;
+
+  if (mode === 'exact') {
+    return keys.includes(key) ? table[String(key)] : null;
+  }
+
+  const candidates = keys.filter((k) => k <= key);
+  if (candidates.length === 0) return null;
+  const chosen = Math.max(...candidates);
+  return table[String(chosen)];
 }
 
 export function evaluateLookupField(
-  _fieldDef: LookupFieldDef,
-  _entity: Record<string, number>,
-  _tables: Record<string, Record<string, number>>,
+  fieldDef: LookupFieldDef,
+  entity: Record<string, number>,
+  tables: Record<string, Record<string, number>>,
 ): number | null {
-  throw new Error('not implemented');
+  if (!fieldDef.lookup) return null;
+  const { table: tableName, key_field, mode } = fieldDef.lookup;
+  const table = tables[tableName];
+  if (!table) return null;
+  const key = entity[key_field];
+  if (key === undefined) return null;
+  return resolveLookup(table, key, mode);
 }
 
 export type ComputedFieldDef = {
@@ -152,10 +178,99 @@ export type ComputedFieldDef = {
   lookup?: LookupFieldDef['lookup'];
 };
 
+// Collect `{ var: name }` references from a parsed formula AST.
+function collectFormulaRefs(node: unknown, out: Set<string>): void {
+  if (node === null || typeof node !== 'object' || Array.isArray(node)) return;
+  const obj = node as Record<string, unknown>;
+  const op = Object.keys(obj)[0];
+  const args = obj[op];
+  if (op === 'var') {
+    out.add(String(args));
+    return;
+  }
+  for (const arg of Array.isArray(args) ? args : [args]) {
+    collectFormulaRefs(arg, out);
+  }
+}
+
+function computedFieldDependencies(formula: string, knownFields: Set<string>): string[] {
+  let ast: unknown;
+  try {
+    ast = parseFormula(formula);
+  } catch {
+    return [];
+  }
+  const refs = new Set<string>();
+  collectFormulaRefs(ast, refs);
+  return [...refs].filter((name) => knownFields.has(name));
+}
+
+/**
+ * Resolve a set of computed fields (formula and/or lookup) against an entity
+ * and plugin tables. Formula fields may reference other computed fields
+ * (decision 12) — dependencies are resolved in topological order. A field
+ * involved in a circular dependency resolves to null instead of looping
+ * infinitely; it is never evaluated.
+ */
 export function resolveComputedFields(
-  _fields: Record<string, ComputedFieldDef>,
-  _entity: Record<string, number>,
-  _tables: Record<string, Record<string, number>>,
+  fields: Record<string, ComputedFieldDef>,
+  entity: Record<string, number>,
+  tables: Record<string, Record<string, number>>,
 ): Record<string, number | null> {
-  throw new Error('not implemented');
+  const fieldNames = new Set(Object.keys(fields));
+  const deps: Record<string, string[]> = {};
+  for (const [name, def] of Object.entries(fields)) {
+    deps[name] = def.formula ? computedFieldDependencies(def.formula, fieldNames) : [];
+  }
+
+  // Cycle detection via DFS with a recursion stack.
+  const state: Record<string, 'unvisited' | 'visiting' | 'done'> = {};
+  for (const name of fieldNames) state[name] = 'unvisited';
+  const inCycle = new Set<string>();
+
+  function detectCycles(name: string, stack: string[]): void {
+    if (state[name] === 'done') return;
+    if (state[name] === 'visiting') {
+      const cycleStart = stack.indexOf(name);
+      for (const cyclic of stack.slice(cycleStart)) inCycle.add(cyclic);
+      return;
+    }
+    state[name] = 'visiting';
+    stack.push(name);
+    for (const dep of deps[name] ?? []) detectCycles(dep, stack);
+    stack.pop();
+    state[name] = 'done';
+  }
+  for (const name of fieldNames) detectCycles(name, []);
+
+  // Topological order (postorder DFS), skipping cyclic fields entirely.
+  const order: string[] = [];
+  const ordered = new Set<string>();
+  function topoVisit(name: string): void {
+    if (ordered.has(name) || inCycle.has(name)) return;
+    ordered.add(name);
+    for (const dep of deps[name] ?? []) {
+      if (!inCycle.has(dep)) topoVisit(dep);
+    }
+    order.push(name);
+  }
+  for (const name of fieldNames) topoVisit(name);
+
+  const result: Record<string, number | null> = {};
+  for (const name of inCycle) result[name] = null;
+
+  const resolvedValues: Record<string, number> = {};
+  for (const name of order) {
+    const def = fields[name];
+    let value: number | null = null;
+    if (def.lookup) {
+      value = evaluateLookupField(def, entity, tables);
+    } else if (def.formula) {
+      value = evaluateFormula(def.formula, { ...entity, ...resolvedValues });
+    }
+    result[name] = value;
+    if (value !== null) resolvedValues[name] = value;
+  }
+
+  return result;
 }
