@@ -54,17 +54,37 @@ export function resolveVisibility(item: VisibilityItem, ctx: VisibilityContext):
 
 export type SessionVisibilityResult = 'gm_only' | 'visible';
 
-export async function resolveSessionVisibility(_args: {
+interface OverrideRow {
+  player_id: string | null;
+  group_id: string | null;
+}
+
+/**
+ * Session-scoped visibility: a target is visible to a player if an override
+ * grants it directly (player_id) or via one of the player's groups
+ * (group_id). Default without any override is gm_only (EPIC-016 M10-S07).
+ */
+export async function resolveSessionVisibility(args: {
   database: DatabaseLike;
   sessionId: string;
   targetType: string;
   targetId: string;
   context: VisibilityContext;
 }): Promise<SessionVisibilityResult> {
-  throw new Error('not implemented');
+  const rows = await args.database.select<OverrideRow>(
+    'SELECT player_id, group_id FROM session_visibility_overrides WHERE session_id = ? AND target_type = ? AND target_id = ?',
+    [args.sessionId, args.targetType, args.targetId],
+  );
+  const groupIds = new Set(args.context.group_ids ?? []);
+  const granted = rows.some(
+    (row) =>
+      (row.player_id != null && row.player_id === args.context.player_id) ||
+      (row.group_id != null && groupIds.has(row.group_id)),
+  );
+  return granted ? 'visible' : 'gm_only';
 }
 
-export async function setVisibilityOverride(_args: {
+export async function setVisibilityOverride(args: {
   database: DatabaseLike;
   sessionId: string;
   targetType: string;
@@ -73,10 +93,13 @@ export async function setVisibilityOverride(_args: {
   playerId?: string;
   groupId?: string;
 }): Promise<void> {
-  throw new Error('not implemented');
+  await args.database.execute(
+    'INSERT INTO session_visibility_overrides (session_id, target_type, target_id, scope, player_id, group_id) VALUES (?, ?, ?, ?, ?, ?)',
+    [args.sessionId, args.targetType, args.targetId, args.scope, args.playerId ?? null, args.groupId ?? null],
+  );
 }
 
-export async function clearVisibilityOverride(_args: {
+export async function clearVisibilityOverride(args: {
   database: DatabaseLike;
   sessionId: string;
   targetType: string;
@@ -84,5 +107,8 @@ export async function clearVisibilityOverride(_args: {
   playerId?: string;
   groupId?: string;
 }): Promise<void> {
-  throw new Error('not implemented');
+  await args.database.execute(
+    'DELETE FROM session_visibility_overrides WHERE session_id = ? AND target_type = ? AND target_id = ? AND (player_id = ? OR group_id = ?)',
+    [args.sessionId, args.targetType, args.targetId, args.playerId ?? null, args.groupId ?? null],
+  );
 }
