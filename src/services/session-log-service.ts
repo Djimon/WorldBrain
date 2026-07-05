@@ -13,6 +13,9 @@ export interface LogEntry {
   action_type: string;
   description: string;
   entity_id: string | null;
+  // M8-S09: marks a session-scoped change as adopted into the base world
+  // (see world-state-service isEntityChangeVisible, EPIC-013 M8-S04).
+  world_change?: boolean;
 }
 
 interface LogPayload {
@@ -20,6 +23,7 @@ interface LogPayload {
   round?: number | null;
   description?: string;
   entity_id?: string | null;
+  world_change?: boolean;
 }
 
 function parsePayload(raw: unknown): LogPayload {
@@ -47,6 +51,7 @@ export async function listLogEntries(db: DatabaseLike, opts: { sessionId: string
       action_type: String(row.action_type),
       description: String(payload.description ?? ''),
       entity_id: payload.entity_id ?? null,
+      world_change: payload.world_change ?? false,
     };
   });
 }
@@ -58,6 +63,7 @@ export async function addLogEntry(db: DatabaseLike, entry: Omit<LogEntry, 'id'>)
     round: entry.round,
     description: entry.description,
     entity_id: entry.entity_id,
+    world_change: entry.world_change,
   };
   await db.execute(
     'INSERT INTO session_log (id, session_id, action_type, payload_json, created_at) VALUES (?, ?, ?, ?, ?)',

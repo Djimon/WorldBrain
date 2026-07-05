@@ -1,4 +1,6 @@
-// M8-S09: EntitySessionNotes — stub, implement in GREEN phase
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { addLogEntry } from '../services/session-log-service';
 import type { DatabaseLike } from '../services/entity-service';
 
 interface Entity {
@@ -7,11 +9,63 @@ interface Entity {
   type: string;
 }
 
-export function EntitySessionNotes(_props: {
+interface EntitySessionNotesProps {
   database: DatabaseLike;
   entity: Entity;
   sessionId: string;
   onApplyToWorld?: (args: { entityId: string; note: string }) => void;
-}) {
-  return <div>EntitySessionNotes not implemented</div>;
+}
+
+export function EntitySessionNotes({ database, entity, sessionId, onApplyToWorld }: EntitySessionNotesProps) {
+  const { t } = useTranslation('session');
+  const [expanded, setExpanded] = useState(false);
+  const [note, setNote] = useState('');
+
+  function logChange(worldChange: boolean): void {
+    void addLogEntry(database, {
+      session_id: sessionId,
+      real_timestamp: new Date().toISOString(),
+      world_datetime: '',
+      round: null,
+      action_type: 'session_note',
+      description: note,
+      entity_id: entity.id,
+      world_change: worldChange,
+    });
+  }
+
+  function handleNoteBlur(): void {
+    if (!note) return;
+    logChange(false);
+  }
+
+  function handleApplyToWorld(): void {
+    logChange(true);
+    onApplyToWorld?.({ entityId: entity.id, note });
+  }
+
+  return (
+    <div className="entity-session-notes">
+      <button className="entity-session-notes__toggle" onClick={() => setExpanded((v) => !v)}>
+        {t('entityNotes.title', 'Session Notes')}
+      </button>
+
+      {expanded && (
+        <div className="entity-session-notes__body">
+          <label>
+            {t('entityNotes.noteLabel', 'Notiz')}
+            <textarea
+              aria-label={t('entityNotes.noteLabel', 'Notiz')}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              onBlur={handleNoteBlur}
+            />
+          </label>
+          <button className="btn" onClick={handleApplyToWorld}>
+            {t('entityNotes.applyToWorld', 'In Welt übernehmen')}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
