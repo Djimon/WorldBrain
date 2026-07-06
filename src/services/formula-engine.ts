@@ -172,6 +172,35 @@ export function evaluateLookupField(
   return resolveLookup(table, key, mode);
 }
 
+// M9-S10: two-key lookup (EPIC-014 decision 19) — stub, implement in GREEN
+// phase (#223). 1D key_field/mode API above is untouched and stays fully
+// compatible.
+
+export interface LookupFieldDef2D {
+  computed?: boolean;
+  lookup?: {
+    table: string;
+    key_fields: [string, string];
+    modes: ['threshold' | 'exact', 'threshold' | 'exact'];
+  };
+}
+
+export function resolveLookup2D(
+  _table: Record<string, Record<string, number>>,
+  _keys: [string | number, string | number],
+  _modes: ['threshold' | 'exact', 'threshold' | 'exact'],
+): number | null {
+  throw new Error('not implemented');
+}
+
+export function evaluateLookupField2D(
+  _fieldDef: LookupFieldDef2D,
+  _entity: Record<string, number | string>,
+  _tables: Record<string, Record<string, Record<string, number>>>,
+): number | null {
+  throw new Error('not implemented');
+}
+
 export type ComputedFieldDef = {
   computed?: boolean;
   formula?: string;
