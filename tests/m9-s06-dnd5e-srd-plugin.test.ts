@@ -14,18 +14,34 @@ import { describe, expect, it } from 'vitest';
 const PLUGIN_DIR = path.join('plugins', 'dnd5e-srd');
 const MANIFEST_PATH = path.join(PLUGIN_DIR, 'plugin.json');
 
+interface FieldDef {
+  id: string;
+  computed?: boolean;
+  formula?: string;
+  lookup?: unknown;
+  type?: string;
+  target?: string;
+  instance?: Record<string, string>;
+}
+
 function readManifest(): Record<string, unknown> {
   if (!fs.existsSync(MANIFEST_PATH)) return {};
   return JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8'));
 }
 
-function readEntityType(id: string): { fields?: { id: string; computed?: boolean; formula?: string; lookup?: unknown; type?: string; target?: string }[] } {
+function readEntityType(id: string): { fields?: FieldDef[] } {
   const p = path.join(PLUGIN_DIR, 'entity_types', `${id}.json`);
   if (!fs.existsSync(p)) return {};
   return JSON.parse(fs.readFileSync(p, 'utf-8'));
 }
 
 function readTable(name: string): Record<string, number> {
+  const p = path.join(PLUGIN_DIR, 'tables', `${name}.json`);
+  if (!fs.existsSync(p)) return {};
+  return JSON.parse(fs.readFileSync(p, 'utf-8'));
+}
+
+function readTable2D(name: string): Record<string, Record<string, number>> {
   const p = path.join(PLUGIN_DIR, 'tables', `${name}.json`);
   if (!fs.existsSync(p)) return {};
   return JSON.parse(fs.readFileSync(p, 'utf-8'));
@@ -43,7 +59,7 @@ function readAllExampleContent(): string {
     .toLowerCase();
 }
 
-describe('M9-S06 D&D 5e SRD reference plugin', () => {
+describe('M9-S06 D&D 5e SRD reference plugin (playable character sheet)', () => {
   describe('plugin directory structure', () => {
     it('plugins/dnd5e-srd/ directory exists', () => {
       expect(fs.existsSync(PLUGIN_DIR)).toBe(true);
@@ -136,6 +152,21 @@ describe('M9-S06 D&D 5e SRD reference plugin', () => {
     );
   });
 
+  describe('player_character base fields', () => {
+    it('has a "class" base field (V1 freetext)', () => {
+      const schema = readEntityType('player_character');
+      const field = schema.fields?.find((f) => f.id === 'class');
+      expect(field).toBeDefined();
+      expect(field?.computed).not.toBe(true);
+    });
+
+    it('has a "level" base field', () => {
+      const schema = readEntityType('player_character');
+      const field = schema.fields?.find((f) => f.id === 'level');
+      expect(field).toBeDefined();
+    });
+  });
+
   describe('computed ability modifiers (all 6, formula derived-type)', () => {
     it.each(['str', 'dex', 'con', 'int', 'wis', 'cha'])('%s_mod is a computed formula field', (ability) => {
       const schema = readEntityType('player_character');
@@ -143,22 +174,42 @@ describe('M9-S06 D&D 5e SRD reference plugin', () => {
       expect(field?.computed).toBe(true);
       expect(field?.formula).toBe(`floor((${ability} - 10) / 2)`);
     });
+  });
 
-    it('ac_total computes 10 + dex_mod', async () => {
+  describe('ac_total: conditional unarmored vs armor (M9-S09)', () => {
+    it('ac_total field uses an if() conditional formula', () => {
+      const schema = readEntityType('player_character');
+      const field = schema.fields?.find((f) => f.id === 'ac_total');
+      expect(field?.computed).toBe(true);
+      expect(field?.formula).toMatch(/^if\(/);
+    });
+
+    it('unarmored: ac_total = 10 + dex_mod', async () => {
       const { resolveComputedFields } = await import('../src/services/formula-engine');
       const schema = readEntityType('player_character');
       const acField = schema.fields?.find((f) => f.id === 'ac_total');
-      expect(acField?.computed).toBe(true);
       const fields: Record<string, { computed?: boolean; formula?: string }> = {
         dex_mod: { computed: true, formula: 'floor((dex - 10) / 2)' },
         ac_total: { computed: true, formula: acField?.formula },
       };
-      const result = resolveComputedFields(fields, { dex: 14 }, {});
+      const result = resolveComputedFields(fields, { dex: 14, is_unarmored: 1, armor_ac: 15 }, {});
       expect(result.ac_total).toBe(12);
+    });
+
+    it('armored: ac_total = armor_ac', async () => {
+      const { resolveComputedFields } = await import('../src/services/formula-engine');
+      const schema = readEntityType('player_character');
+      const acField = schema.fields?.find((f) => f.id === 'ac_total');
+      const fields: Record<string, { computed?: boolean; formula?: string }> = {
+        dex_mod: { computed: true, formula: 'floor((dex - 10) / 2)' },
+        ac_total: { computed: true, formula: acField?.formula },
+      };
+      const result = resolveComputedFields(fields, { dex: 14, is_unarmored: 0, armor_ac: 15 }, {});
+      expect(result.ac_total).toBe(15);
     });
   });
 
-  describe('lookup derived-type: prof_bonus (#219)', () => {
+  describe('lookup derived-type: prof_bonus, 1D (#219)', () => {
     it('tables/prof_by_level.json resolves threshold levels correctly', async () => {
       const { resolveLookup } = await import('../src/services/formula-engine');
       const table = readTable('prof_by_level');
@@ -175,19 +226,87 @@ describe('M9-S06 D&D 5e SRD reference plugin', () => {
       expect(lookup?.key_field).toBe('level');
       expect(lookup?.mode).toBe('threshold');
     });
+  });
 
-    it('chained skill_mod uses lookup-based prof_bonus (Decision 12/13)', async () => {
+  describe('proficiency-gated skill mods & saves (explicit, 0/1-flag multiplication)', () => {
+    it('at least one skill_mod field is gated by a proficient_<skill> flag × prof_bonus', () => {
+      const schema = readEntityType('player_character');
+      const skillField = schema.fields?.find(
+        (f) => /_mod$/.test(f.id) && !['str_mod', 'dex_mod', 'con_mod', 'int_mod', 'wis_mod', 'cha_mod'].includes(f.id),
+      );
+      expect(skillField).toBeDefined();
+      expect(skillField?.formula).toMatch(/proficient_\w+\s*\*\s*prof_bonus/);
+    });
+
+    it('non-proficient skill_mod resolves to plain ability_mod (gate multiplies to 0)', async () => {
       const { resolveComputedFields } = await import('../src/services/formula-engine');
       const schema = readEntityType('player_character');
-      const skillField = schema.fields?.find((f) => /_mod$/.test(f.id) && f.id !== 'str_mod' && f.formula?.includes('prof_bonus'));
-      expect(skillField).toBeDefined();
-      const fields: Record<string, { computed?: boolean; formula?: string; lookup?: { table: string; key_field: string; mode: 'threshold' | 'exact' } }> = {
-        dex_mod: { computed: true, formula: 'floor((dex - 10) / 2)' },
-        prof_bonus: { computed: true, lookup: { table: 'prof_by_level', key_field: 'level', mode: 'threshold' } },
+      const skillField = schema.fields?.find((f) => /_mod$/.test(f.id) && f.formula?.includes('proficient_'));
+      const abilityRef = skillField!.formula!.match(/(\w+)_mod/)![1];
+      const fields: Record<string, { computed?: boolean; formula?: string }> = {
+        [`${abilityRef}_mod`]: { computed: true, formula: `floor((${abilityRef} - 10) / 2)` },
+        prof_bonus: { computed: true, formula: '3' },
         [skillField!.id]: { computed: true, formula: skillField!.formula },
       };
-      const result = resolveComputedFields(fields, { dex: 14, level: 5 }, { prof_by_level: readTable('prof_by_level') });
-      expect(result[skillField!.id]).not.toBeNull();
+      const entity: Record<string, number> = { [abilityRef]: 14 };
+      entity[`proficient_${skillField!.id.replace(/_mod$/, '')}`] = 0;
+      const result = resolveComputedFields(fields, entity, {});
+      expect(result[skillField!.id]).toBe(2); // just dex_mod-equivalent, no prof_bonus added
+    });
+
+    it('proficient skill_mod adds prof_bonus once', async () => {
+      const { resolveComputedFields } = await import('../src/services/formula-engine');
+      const schema = readEntityType('player_character');
+      const skillField = schema.fields?.find((f) => /_mod$/.test(f.id) && f.formula?.includes('proficient_'));
+      const abilityRef = skillField!.formula!.match(/(\w+)_mod/)![1];
+      const fields: Record<string, { computed?: boolean; formula?: string }> = {
+        [`${abilityRef}_mod`]: { computed: true, formula: `floor((${abilityRef} - 10) / 2)` },
+        prof_bonus: { computed: true, formula: '3' },
+        [skillField!.id]: { computed: true, formula: skillField!.formula },
+      };
+      const entity: Record<string, number> = { [abilityRef]: 14 };
+      entity[`proficient_${skillField!.id.replace(/_mod$/, '')}`] = 1;
+      const result = resolveComputedFields(fields, entity, {});
+      expect(result[skillField!.id]).toBe(5); // dex_mod(2) + prof_bonus(3)
+    });
+
+    it('at least one saving throw is gated by save_prof_<ability>', () => {
+      const schema = readEntityType('player_character');
+      const saveField = schema.fields?.find((f) => /_save$/.test(f.id));
+      expect(saveField).toBeDefined();
+      expect(saveField?.formula).toMatch(/save_prof_\w+\s*\*\s*prof_bonus/);
+    });
+  });
+
+  describe('2D lookup: spell slots by class × level (#223)', () => {
+    it('spell_slots_1_max is a 2D lookup field (class × level)', () => {
+      const schema = readEntityType('player_character');
+      const field = schema.fields?.find((f) => f.id === 'spell_slots_1_max');
+      const lookup = field?.lookup as { table?: string; key_fields?: string[]; modes?: string[] } | undefined;
+      expect(lookup?.key_fields).toEqual(['class', 'level']);
+    });
+
+    it('tables/spell_slots_1.json resolves wizard level-5 slot count', async () => {
+      const { evaluateLookupField2D } = await import('../src/services/formula-engine');
+      const schema = readEntityType('player_character');
+      const field = schema.fields?.find((f) => f.id === 'spell_slots_1_max');
+      const lookup = field?.lookup as { table: string; key_fields: [string, string]; modes: ['threshold' | 'exact', 'threshold' | 'exact'] };
+      const result = evaluateLookupField2D(
+        { computed: true, lookup },
+        { class: 'wizard', level: 5 },
+        { [lookup.table]: readTable2D(lookup.table) },
+      );
+      expect(result).not.toBeNull();
+    });
+  });
+
+  describe('level-driven re-derivation (Decision 20)', () => {
+    it('changing level re-derives prof_bonus — no hardcoded constant', async () => {
+      const { resolveLookup } = await import('../src/services/formula-engine');
+      const table = readTable('prof_by_level');
+      const atLevel4 = resolveLookup(table, 4, 'threshold');
+      const atLevel5 = resolveLookup(table, 5, 'threshold');
+      expect(atLevel4).not.toBe(atLevel5);
     });
   });
 
@@ -211,9 +330,8 @@ describe('M9-S06 D&D 5e SRD reference plugin', () => {
       const field = schema.fields?.find((f) => f.id === 'inventory');
       expect(field?.type).toBe('ref[]');
       expect(field?.target).toBe('item');
-      const instance = (field as { instance?: Record<string, string> } | undefined)?.instance;
-      expect(instance).toHaveProperty('qty');
-      expect(instance).toHaveProperty('equipped');
+      expect(field?.instance).toHaveProperty('qty');
+      expect(field?.instance).toHaveProperty('equipped');
     });
 
     it('reference fields pass validateEntityTypeRefs against known entity types', async () => {
@@ -290,7 +408,7 @@ describe('M9-S06 D&D 5e SRD reference plugin', () => {
       expect(hasSpeciesExample).toBe(true);
     });
 
-    it('contains one prefabricated player_character exercising base + formula + lookup + session-state + references', () => {
+    it('contains one prefabricated, playable player_character exercising base + formula + lookup + 2D-lookup + conditional + session-state + references', () => {
       const examplesDir = path.join(PLUGIN_DIR, 'examples');
       const hasPcExample = fs.existsSync(examplesDir)
         && (fs.readdirSync(examplesDir, { recursive: true }) as string[]).some((f) => /player.?character/i.test(f));
