@@ -1,0 +1,33 @@
+{
+  "id": "creature",
+  "label": "Creature",
+  "fields": [
+    { "id": "name", "type": "string" },
+    { "id": "type", "type": "string" },
+    { "id": "ac", "type": "number" },
+    { "id": "hp", "type": "dice" },
+    { "id": "speed", "type": "string" },
+    { "id": "str", "type": "number" },
+    { "id": "dex", "type": "number" },
+    { "id": "con", "type": "number" },
+    { "id": "int", "type": "number" },
+    { "id": "wis", "type": "number" },
+    { "id": "cha", "type": "number" },
+    { "id": "saving_throws", "type": "string[]" },
+    { "id": "skills", "type": "string[]" },
+    { "id": "immunities", "type": "string[]" },
+    { "id": "resistances", "type": "string[]" },
+    { "id": "senses", "type": "string" },
+    { "id": "languages", "type": "string[]" },
+    { "id": "cr", "type": "string" },
+    { "id": "xp", "type": "number" },
+    { "id": "traits", "type": "text" },
+    { "id": "actions", "type": "text" },
+    { "id": "legendary_actions", "type": "text" },
+    { "id": "mythic_actions", "type": "text" },
+    { "id": "lair_actions", "type": "text" },
+    { "id": "special", "type": "text" },
+    { "id": "description", "type": "text" },
+    { "id": "current_hp", "type": "number", "session_state": true }
+  ]
+}

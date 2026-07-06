@@ -1,0 +1,17 @@
+{
+  "entity.player_character": "Player Character",
+  "entity.creature": "Creature",
+  "entity.spell": "Spell",
+  "entity.item": "Item",
+  "entity.feat": "Feat",
+  "entity.species": "Species",
+  "field.level": "Level",
+  "field.class": "Class",
+  "field.prof_bonus": "Proficiency Bonus",
+  "field.ac_total": "Armor Class",
+  "field.passive_perception": "Passive Perception",
+  "field.current_hp": "Current HP",
+  "field.known_spells": "Known Spells",
+  "field.inventory": "Inventory",
+  "field.feats": "Feats"
+}

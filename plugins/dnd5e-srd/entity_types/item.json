@@ -1,0 +1,13 @@
+{
+  "id": "item",
+  "label": "Item",
+  "fields": [
+    { "id": "name", "type": "string" },
+    { "id": "item_type", "type": "string" },
+    { "id": "rarity", "type": "string" },
+    { "id": "weight", "type": "number" },
+    { "id": "value", "type": "string" },
+    { "id": "description", "type": "text" },
+    { "id": "special_abilities", "type": "text" }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "type": "spell",
+  "id": "fireball",
+  "name": "Fireball",
+  "level": 3,
+  "school": "Evocation",
+  "casting_time": "1 action",
+  "range": "150 feet",
+  "components": ["V", "S", "M"],
+  "duration": "Instantaneous",
+  "description": "A bright streak flashes from your pointing finger to a point you choose within range and then blossoms with a low roar into an explosion of flame. Each creature in a 20-foot-radius sphere centered on that point must make a Dexterity saving throw, taking 8d6 fire damage on a failed save, or half as much on a successful one.",
+  "damage_expression": "8d6"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "feat",
+  "label": "Feat",
+  "fields": [
+    { "id": "name", "type": "string" },
+    { "id": "prerequisite", "type": "string" },
+    { "id": "description", "type": "text" },
+    { "id": "mechanical_effect", "type": "text" }
+  ]
+}

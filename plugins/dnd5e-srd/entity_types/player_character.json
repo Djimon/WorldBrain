@@ -1,0 +1,147 @@
+{
+  "id": "player_character",
+  "label": "Player Character",
+  "fields": [
+    { "id": "name", "type": "string" },
+    { "id": "player_name", "type": "string" },
+    { "id": "species", "type": "ref", "target": "species" },
+    { "id": "class", "type": "string" },
+    { "id": "level", "type": "number" },
+
+    { "id": "str", "type": "number" },
+    { "id": "dex", "type": "number" },
+    { "id": "con", "type": "number" },
+    { "id": "int", "type": "number" },
+    { "id": "wis", "type": "number" },
+    { "id": "cha", "type": "number" },
+
+    { "id": "str_mod", "computed": true, "formula": "floor((str - 10) / 2)" },
+    { "id": "dex_mod", "computed": true, "formula": "floor((dex - 10) / 2)" },
+    { "id": "con_mod", "computed": true, "formula": "floor((con - 10) / 2)" },
+    { "id": "int_mod", "computed": true, "formula": "floor((int - 10) / 2)" },
+    { "id": "wis_mod", "computed": true, "formula": "floor((wis - 10) / 2)" },
+    { "id": "cha_mod", "computed": true, "formula": "floor((cha - 10) / 2)" },
+
+    { "id": "prof_bonus", "computed": true, "lookup": { "table": "prof_by_level", "key_field": "level", "mode": "threshold" } },
+
+    { "id": "is_unarmored", "type": "number" },
+    { "id": "armor_ac", "type": "number" },
+    { "id": "ac_total", "computed": true, "formula": "if(is_unarmored, 10 + dex_mod, armor_ac)" },
+
+    { "id": "save_prof_str", "type": "number" },
+    { "id": "save_prof_dex", "type": "number" },
+    { "id": "save_prof_con", "type": "number" },
+    { "id": "save_prof_int", "type": "number" },
+    { "id": "save_prof_wis", "type": "number" },
+    { "id": "save_prof_cha", "type": "number" },
+    { "id": "str_save", "computed": true, "formula": "str_mod + save_prof_str * prof_bonus" },
+    { "id": "dex_save", "computed": true, "formula": "dex_mod + save_prof_dex * prof_bonus" },
+    { "id": "con_save", "computed": true, "formula": "con_mod + save_prof_con * prof_bonus" },
+    { "id": "int_save", "computed": true, "formula": "int_mod + save_prof_int * prof_bonus" },
+    { "id": "wis_save", "computed": true, "formula": "wis_mod + save_prof_wis * prof_bonus" },
+    { "id": "cha_save", "computed": true, "formula": "cha_mod + save_prof_cha * prof_bonus" },
+
+    { "id": "proficient_acrobatics", "type": "number" },
+    { "id": "expertise_acrobatics", "type": "number" },
+    { "id": "acrobatics_mod", "computed": true, "formula": "dex_mod + proficient_acrobatics * prof_bonus + if(expertise_acrobatics, prof_bonus, 0)" },
+
+    { "id": "proficient_animal_handling", "type": "number" },
+    { "id": "expertise_animal_handling", "type": "number" },
+    { "id": "animal_handling_mod", "computed": true, "formula": "wis_mod + proficient_animal_handling * prof_bonus + if(expertise_animal_handling, prof_bonus, 0)" },
+
+    { "id": "proficient_arcana", "type": "number" },
+    { "id": "expertise_arcana", "type": "number" },
+    { "id": "arcana_mod", "computed": true, "formula": "int_mod + proficient_arcana * prof_bonus + if(expertise_arcana, prof_bonus, 0)" },
+
+    { "id": "proficient_athletics", "type": "number" },
+    { "id": "expertise_athletics", "type": "number" },
+    { "id": "athletics_mod", "computed": true, "formula": "str_mod + proficient_athletics * prof_bonus + if(expertise_athletics, prof_bonus, 0)" },
+
+    { "id": "proficient_deception", "type": "number" },
+    { "id": "expertise_deception", "type": "number" },
+    { "id": "deception_mod", "computed": true, "formula": "cha_mod + proficient_deception * prof_bonus + if(expertise_deception, prof_bonus, 0)" },
+
+    { "id": "proficient_history", "type": "number" },
+    { "id": "expertise_history", "type": "number" },
+    { "id": "history_mod", "computed": true, "formula": "int_mod + proficient_history * prof_bonus + if(expertise_history, prof_bonus, 0)" },
+
+    { "id": "proficient_insight", "type": "number" },
+    { "id": "expertise_insight", "type": "number" },
+    { "id": "insight_mod", "computed": true, "formula": "wis_mod + proficient_insight * prof_bonus + if(expertise_insight, prof_bonus, 0)" },
+
+    { "id": "proficient_intimidation", "type": "number" },
+    { "id": "expertise_intimidation", "type": "number" },
+    { "id": "intimidation_mod", "computed": true, "formula": "cha_mod + proficient_intimidation * prof_bonus + if(expertise_intimidation, prof_bonus, 0)" },
+
+    { "id": "proficient_investigation", "type": "number" },
+    { "id": "expertise_investigation", "type": "number" },
+    { "id": "investigation_mod", "computed": true, "formula": "int_mod + proficient_investigation * prof_bonus + if(expertise_investigation, prof_bonus, 0)" },
+
+    { "id": "proficient_medicine", "type": "number" },
+    { "id": "expertise_medicine", "type": "number" },
+    { "id": "medicine_mod", "computed": true, "formula": "wis_mod + proficient_medicine * prof_bonus + if(expertise_medicine, prof_bonus, 0)" },
+
+    { "id": "proficient_nature", "type": "number" },
+    { "id": "expertise_nature", "type": "number" },
+    { "id": "nature_mod", "computed": true, "formula": "int_mod + proficient_nature * prof_bonus + if(expertise_nature, prof_bonus, 0)" },
+
+    { "id": "proficient_perception", "type": "number" },
+    { "id": "expertise_perception", "type": "number" },
+    { "id": "perception_mod", "computed": true, "formula": "wis_mod + proficient_perception * prof_bonus + if(expertise_perception, prof_bonus, 0)" },
+
+    { "id": "proficient_performance", "type": "number" },
+    { "id": "expertise_performance", "type": "number" },
+    { "id": "performance_mod", "computed": true, "formula": "cha_mod + proficient_performance * prof_bonus + if(expertise_performance, prof_bonus, 0)" },
+
+    { "id": "proficient_persuasion", "type": "number" },
+    { "id": "expertise_persuasion", "type": "number" },
+    { "id": "persuasion_mod", "computed": true, "formula": "cha_mod + proficient_persuasion * prof_bonus + if(expertise_persuasion, prof_bonus, 0)" },
+
+    { "id": "proficient_religion", "type": "number" },
+    { "id": "expertise_religion", "type": "number" },
+    { "id": "religion_mod", "computed": true, "formula": "int_mod + proficient_religion * prof_bonus + if(expertise_religion, prof_bonus, 0)" },
+
+    { "id": "proficient_sleight_of_hand", "type": "number" },
+    { "id": "expertise_sleight_of_hand", "type": "number" },
+    { "id": "sleight_of_hand_mod", "computed": true, "formula": "dex_mod + proficient_sleight_of_hand * prof_bonus + if(expertise_sleight_of_hand, prof_bonus, 0)" },
+
+    { "id": "proficient_stealth", "type": "number" },
+    { "id": "expertise_stealth", "type": "number" },
+    { "id": "stealth_mod", "computed": true, "formula": "dex_mod + proficient_stealth * prof_bonus + if(expertise_stealth, prof_bonus, 0)" },
+
+    { "id": "proficient_survival", "type": "number" },
+    { "id": "expertise_survival", "type": "number" },
+    { "id": "survival_mod", "computed": true, "formula": "wis_mod + proficient_survival * prof_bonus + if(expertise_survival, prof_bonus, 0)" },
+
+    { "id": "passive_perception", "computed": true, "formula": "10 + perception_mod" },
+
+    { "id": "spell_slots_1_max", "computed": true, "lookup": { "table": "spell_slots_1", "key_fields": ["class", "level"], "modes": ["exact", "threshold"] } },
+    { "id": "spell_slots_2_max", "computed": true, "lookup": { "table": "spell_slots_2", "key_fields": ["class", "level"], "modes": ["exact", "threshold"] } },
+    { "id": "spell_slots_3_max", "computed": true, "lookup": { "table": "spell_slots_3", "key_fields": ["class", "level"], "modes": ["exact", "threshold"] } },
+    { "id": "spell_slots_4_max", "computed": true, "lookup": { "table": "spell_slots_4", "key_fields": ["class", "level"], "modes": ["exact", "threshold"] } },
+    { "id": "spell_slots_5_max", "computed": true, "lookup": { "table": "spell_slots_5", "key_fields": ["class", "level"], "modes": ["exact", "threshold"] } },
+    { "id": "spell_slots_6_max", "computed": true, "lookup": { "table": "spell_slots_6", "key_fields": ["class", "level"], "modes": ["exact", "threshold"] } },
+    { "id": "spell_slots_7_max", "computed": true, "lookup": { "table": "spell_slots_7", "key_fields": ["class", "level"], "modes": ["exact", "threshold"] } },
+    { "id": "spell_slots_8_max", "computed": true, "lookup": { "table": "spell_slots_8", "key_fields": ["class", "level"], "modes": ["exact", "threshold"] } },
+    { "id": "spell_slots_9_max", "computed": true, "lookup": { "table": "spell_slots_9", "key_fields": ["class", "level"], "modes": ["exact", "threshold"] } },
+
+    { "id": "current_hp", "type": "number", "session_state": true },
+    { "id": "temp_hp", "type": "number", "session_state": true },
+    { "id": "hit_dice_used", "type": "number", "session_state": true },
+    { "id": "spell_slots_used_1", "type": "number", "session_state": true },
+    { "id": "spell_slots_used_2", "type": "number", "session_state": true },
+    { "id": "spell_slots_used_3", "type": "number", "session_state": true },
+    { "id": "spell_slots_used_4", "type": "number", "session_state": true },
+    { "id": "spell_slots_used_5", "type": "number", "session_state": true },
+    { "id": "spell_slots_used_6", "type": "number", "session_state": true },
+    { "id": "spell_slots_used_7", "type": "number", "session_state": true },
+    { "id": "spell_slots_used_8", "type": "number", "session_state": true },
+    { "id": "spell_slots_used_9", "type": "number", "session_state": true },
+    { "id": "death_saves", "type": "string", "session_state": true },
+    { "id": "is_raging", "type": "number", "session_state": true },
+
+    { "id": "known_spells", "type": "ref[]", "target": "spell" },
+    { "id": "feats", "type": "ref[]", "target": "feat" },
+    { "id": "inventory", "type": "ref[]", "target": "item", "instance": { "qty": "number", "equipped": "boolean" } }
+  ]
+}

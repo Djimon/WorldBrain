@@ -1,0 +1,37 @@
+{
+  "type": "player_character",
+  "id": "aria-windrunner",
+  "name": "Aria Windrunner",
+  "player_name": "Max",
+  "species": "elf",
+  "class": "wizard",
+  "level": 5,
+
+  "str": 8, "dex": 16, "con": 12, "int": 17, "wis": 12, "cha": 10,
+
+  "is_unarmored": 1,
+  "armor_ac": 0,
+
+  "save_prof_str": 0, "save_prof_dex": 0, "save_prof_con": 0,
+  "save_prof_int": 1, "save_prof_wis": 1, "save_prof_cha": 0,
+
+  "proficient_arcana": 1, "expertise_arcana": 1,
+  "proficient_investigation": 1, "expertise_investigation": 0,
+  "proficient_history": 1, "expertise_history": 0,
+  "proficient_perception": 1, "expertise_perception": 0,
+
+  "current_hp": 27,
+  "temp_hp": 0,
+  "hit_dice_used": 0,
+  "spell_slots_used_1": 1,
+  "spell_slots_used_2": 0,
+  "spell_slots_used_3": 0,
+  "death_saves": "",
+  "is_raging": 0,
+
+  "known_spells": ["fireball"],
+  "feats": ["alert"],
+  "inventory": [
+    { "ref": "healing-potion", "qty": 2, "equipped": false }
+  ]
+}

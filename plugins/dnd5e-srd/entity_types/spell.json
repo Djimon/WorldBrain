@@ -1,0 +1,15 @@
+{
+  "id": "spell",
+  "label": "Spell",
+  "fields": [
+    { "id": "name", "type": "string" },
+    { "id": "level", "type": "number" },
+    { "id": "school", "type": "string" },
+    { "id": "casting_time", "type": "string" },
+    { "id": "range", "type": "string" },
+    { "id": "components", "type": "string[]" },
+    { "id": "duration", "type": "string" },
+    { "id": "description", "type": "text" },
+    { "id": "damage_expression", "type": "dice" }
+  ]
+}

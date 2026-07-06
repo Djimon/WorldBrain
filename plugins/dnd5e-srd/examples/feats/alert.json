@@ -1,0 +1,8 @@
+{
+  "type": "feat",
+  "id": "alert",
+  "name": "Alert",
+  "prerequisite": null,
+  "description": "Always on the lookout for danger, you gain the following benefits: you can't be surprised while you are conscious, you gain a +5 bonus to initiative, and other creatures don't gain advantage on attack rolls against you as a result of being unseen by you.",
+  "mechanical_effect": "+5 Initiative; cannot be surprised while conscious"
+}

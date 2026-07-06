@@ -1,0 +1,20 @@
+{
+  "type": "creature",
+  "name": "Goblin",
+  "creature_type": "humanoid (goblinoid)",
+  "ac": 15,
+  "hp": "2d6",
+  "speed": "30 ft.",
+  "str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8,
+  "saving_throws": [],
+  "skills": ["Stealth +6"],
+  "immunities": [],
+  "resistances": [],
+  "senses": "darkvision 60 ft., passive Perception 9",
+  "languages": ["Common", "Goblin"],
+  "cr": "1/4",
+  "xp": 50,
+  "traits": "Nimble Escape: The goblin can take the Disengage or Hide action as a bonus action on each of its turns.",
+  "actions": "Scimitar: Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage.",
+  "description": "Goblins are small, black-hearted humanoids that lair in caves, abandoned mines, despoiled dungeons, and other dismal settings."
+}

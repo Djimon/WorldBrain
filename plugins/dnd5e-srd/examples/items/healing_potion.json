@@ -1,0 +1,11 @@
+{
+  "type": "item",
+  "id": "healing-potion",
+  "name": "Healing Potion",
+  "item_type": "Potion",
+  "rarity": "Common",
+  "weight": 0.5,
+  "value": "50 gp",
+  "description": "You regain hit points when you drink this potion. The potion's red liquid glimmers when agitated. Restores 2d4+2 hit points.",
+  "special_abilities": ""
+}

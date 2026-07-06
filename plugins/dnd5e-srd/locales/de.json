@@ -1,0 +1,17 @@
+{
+  "entity.player_character": "Spielercharakter",
+  "entity.creature": "Kreatur",
+  "entity.spell": "Zauber",
+  "entity.item": "Gegenstand",
+  "entity.feat": "Talent",
+  "entity.species": "Spezies",
+  "field.level": "Stufe",
+  "field.class": "Klasse",
+  "field.prof_bonus": "Übungsbonus",
+  "field.ac_total": "Rüstungsklasse",
+  "field.passive_perception": "Passive Wahrnehmung",
+  "field.current_hp": "Aktuelle TP",
+  "field.known_spells": "Bekannte Zauber",
+  "field.inventory": "Inventar",
+  "field.feats": "Talente"
+}

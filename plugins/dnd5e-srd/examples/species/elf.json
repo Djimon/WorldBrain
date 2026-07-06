@@ -1,0 +1,8 @@
+{
+  "type": "species",
+  "id": "elf",
+  "name": "Elf",
+  "attribute_score_increases": { "dex": 2 },
+  "traits": ["Darkvision", "Fey Ancestry", "Trance", "Keen Senses"],
+  "subspecies": ["High Elf", "Wood Elf", "Dark Elf (Drow)"]
+}

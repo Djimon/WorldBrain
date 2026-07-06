@@ -1,0 +1,10 @@
+{
+  "id": "species",
+  "label": "Species",
+  "fields": [
+    { "id": "name", "type": "string" },
+    { "id": "attribute_score_increases", "type": "object" },
+    { "id": "traits", "type": "string[]" },
+    { "id": "subspecies", "type": "string[]" }
+  ]
+}
