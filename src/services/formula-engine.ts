@@ -5,12 +5,13 @@
 
 import { evaluateNumber } from './condition-engine';
 
-type TokenType = 'num' | 'ident' | 'op' | 'lparen' | 'rparen' | 'comma';
+type TokenType = 'num' | 'ident' | 'op' | 'lparen' | 'rparen' | 'comma' | 'cmp';
 interface Token {
   type: TokenType;
   value: string;
 }
 
+// M9-S09: comparison operators, longest-match first (==, !=, >=, <= before >, <).
 function tokenize(input: string): Token[] {
   const tokens: Token[] = [];
   let i = 0;
@@ -29,6 +30,12 @@ function tokenize(input: string): Token[] {
       tokens.push({ type: 'ident', value: id });
       continue;
     }
+    if (c === '=' && input[i + 1] === '=') { tokens.push({ type: 'cmp', value: '==' }); i += 2; continue; }
+    if (c === '!' && input[i + 1] === '=') { tokens.push({ type: 'cmp', value: '!=' }); i += 2; continue; }
+    if (c === '>' && input[i + 1] === '=') { tokens.push({ type: 'cmp', value: '>=' }); i += 2; continue; }
+    if (c === '<' && input[i + 1] === '=') { tokens.push({ type: 'cmp', value: '<=' }); i += 2; continue; }
+    if (c === '>') { tokens.push({ type: 'cmp', value: '>' }); i++; continue; }
+    if (c === '<') { tokens.push({ type: 'cmp', value: '<' }); i++; continue; }
     if (c === '+' || c === '-' || c === '*' || c === '/') { tokens.push({ type: 'op', value: c }); i++; continue; }
     if (c === '(') { tokens.push({ type: 'lparen', value: c }); i++; continue; }
     if (c === ')') { tokens.push({ type: 'rparen', value: c }); i++; continue; }
@@ -37,6 +44,9 @@ function tokenize(input: string): Token[] {
   }
   return tokens;
 }
+
+// Surface function names that map to a different condition-engine AST key.
+const FUNCTION_NAME_ALIASES: Record<string, string> = { not: '!' };
 
 // Recursive-descent parser → condition-engine AST nodes.
 function parseFormula(input: string): unknown {
@@ -48,6 +58,18 @@ function parseFormula(input: string): unknown {
     const t = next();
     if (!t || t.type !== type) throw new Error(`Expected ${type}`);
   };
+
+  // M9-S09: comparison binds looser than arithmetic — a single (non-chaining)
+  // comparison wraps a full +/- expression on each side.
+  function parseComparison(): unknown {
+    const left = parseExpr();
+    if (peek()?.type === 'cmp') {
+      const op = next()!.value;
+      const right = parseExpr();
+      return { [op]: [left, right] };
+    }
+    return left;
+  }
 
   function parseExpr(): unknown {
     let left = parseTerm();
@@ -73,25 +95,26 @@ function parseFormula(input: string): unknown {
     if (t.type === 'op' && t.value === '-') { next(); return { '-': [0, parseFactor()] }; }
     if (t.type === 'op' && t.value === '+') { next(); return parseFactor(); }
     if (t.type === 'num') { next(); return Number(t.value); }
-    if (t.type === 'lparen') { next(); const e = parseExpr(); expect('rparen'); return e; }
+    if (t.type === 'lparen') { next(); const e = parseComparison(); expect('rparen'); return e; }
     if (t.type === 'ident') {
       next();
       if (peek()?.type === 'lparen') {
         next();
         const args: unknown[] = [];
         if (peek()?.type !== 'rparen') {
-          args.push(parseExpr());
-          while (peek()?.type === 'comma') { next(); args.push(parseExpr()); }
+          args.push(parseComparison());
+          while (peek()?.type === 'comma') { next(); args.push(parseComparison()); }
         }
         expect('rparen');
-        return { [t.value]: args };
+        const key = FUNCTION_NAME_ALIASES[t.value] ?? t.value;
+        return { [key]: args };
       }
       return { var: t.value };
     }
     throw new Error(`Unexpected token: ${t.value}`);
   }
 
-  const result = parseExpr();
+  const result = parseComparison();
   if (pos !== tokens.length) throw new Error('Trailing tokens');
   return result;
 }
@@ -172,9 +195,9 @@ export function evaluateLookupField(
   return resolveLookup(table, key, mode);
 }
 
-// M9-S10: two-key lookup (EPIC-014 decision 19) — stub, implement in GREEN
-// phase (#223). 1D key_field/mode API above is untouched and stays fully
-// compatible.
+// M9-S10: two-key lookup (EPIC-014 decision 19) — e.g. spell slots by
+// class × level. The 1D key_field/mode API above is untouched and stays
+// fully compatible.
 
 export interface LookupFieldDef2D {
   computed?: boolean;
@@ -185,20 +208,52 @@ export interface LookupFieldDef2D {
   };
 }
 
+// Resolve a single dimension by mode: exact does a direct key lookup (works
+// for non-numeric keys like class names); threshold picks the largest
+// numeric key <= the given key. Returns null on no match — never throws.
+function lookupDimension<T>(
+  table: Record<string, T>,
+  key: number | string,
+  mode: 'threshold' | 'exact',
+): T | null {
+  if (mode === 'exact') {
+    return Object.prototype.hasOwnProperty.call(table, String(key)) ? table[String(key)] : null;
+  }
+  const numKey = Number(key);
+  if (Number.isNaN(numKey)) return null;
+  const numericKeys = Object.keys(table)
+    .map(Number)
+    .filter((k) => !Number.isNaN(k));
+  if (numericKeys.length === 0) return null;
+  const candidates = numericKeys.filter((k) => k <= numKey);
+  if (candidates.length === 0) return null;
+  const chosen = Math.max(...candidates);
+  return table[String(chosen)];
+}
+
 export function resolveLookup2D(
-  _table: Record<string, Record<string, number>>,
-  _keys: [string | number, string | number],
-  _modes: ['threshold' | 'exact', 'threshold' | 'exact'],
+  table: Record<string, Record<string, number>>,
+  keys: [string | number, string | number],
+  modes: ['threshold' | 'exact', 'threshold' | 'exact'],
 ): number | null {
-  throw new Error('not implemented');
+  const outer = lookupDimension(table, keys[0], modes[0]);
+  if (outer === null) return null;
+  return lookupDimension(outer, keys[1], modes[1]);
 }
 
 export function evaluateLookupField2D(
-  _fieldDef: LookupFieldDef2D,
-  _entity: Record<string, number | string>,
-  _tables: Record<string, Record<string, Record<string, number>>>,
+  fieldDef: LookupFieldDef2D,
+  entity: Record<string, number | string>,
+  tables: Record<string, Record<string, Record<string, number>>>,
 ): number | null {
-  throw new Error('not implemented');
+  if (!fieldDef.lookup) return null;
+  const { table: tableName, key_fields, modes } = fieldDef.lookup;
+  const table = tables[tableName];
+  if (!table) return null;
+  const keyA = entity[key_fields[0]];
+  const keyB = entity[key_fields[1]];
+  if (keyA === undefined || keyB === undefined) return null;
+  return resolveLookup2D(table, [keyA, keyB], modes);
 }
 
 export type ComputedFieldDef = {

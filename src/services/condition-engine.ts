@@ -46,6 +46,9 @@ function evalNode(node: unknown, ctx: EvalContext): unknown {
   if (op === 'or') return args.some((a) => Boolean(evalNode(a, ctx)));
   if (op === '!') return !Boolean(evalNode(args[0], ctx));
 
+  // M9-S09: conditional branch — surfaced in formulas as `if(cond, then, else)`.
+  if (op === 'if') return Boolean(evalNode(args[0], ctx)) ? evalNode(args[1], ctx) : evalNode(args[2], ctx);
+
   if (op === '+') return (evalNode(args[0], ctx) as number) + (evalNode(args[1], ctx) as number);
   if (op === '-') return (evalNode(args[0], ctx) as number) - (evalNode(args[1], ctx) as number);
   if (op === '*') return (evalNode(args[0], ctx) as number) * (evalNode(args[1], ctx) as number);
@@ -71,6 +74,9 @@ export function evaluate(condition: unknown, ctx: EvalContext): boolean {
  */
 export function evaluateNumber(node: unknown, ctx: EvalContext): number | null {
   const result = evalNode(node, ctx);
+  // M9-S09: comparisons/and/or/!/if evaluate to booleans — coerce for numeric
+  // consumers (true → 1, false → 0) rather than treating them as non-numeric.
+  if (typeof result === 'boolean') return result ? 1 : 0;
   if (typeof result !== 'number' || !Number.isFinite(result)) return null;
   return result;
 }
