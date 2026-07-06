@@ -25,6 +25,9 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 15. **Aktiv-Zustands-Toggles (V1 manuell):** Bedingte Boni (Rage +2, Cover) hängen an session-state-Booleans, die der Spieler **selbst an/aus schaltet**; derived-Felder lesen sie über die and/or-Logik. Automatisches Berechnen von Dauer/Ende einer Wirkung ist **V2, out of scope**.
 16. **Dice-Felder — Ausdruck + Anzeige-Average:** HP/Damage-Felder speichern den Würfelausdruck (`23d12+151`, `8d6`). Der berechnete Durchschnitt ist eine **reine Anzeige-Hilfe** (Erwartungswert für den Spieler), kein Ersatz fürs echte Würfeln (M8-S11).
 17. **Voll-Loading in eigenen DB-Bereich:** Ein System-Plugin deklariert im Manifest ein **Pflicht-`db_prefix`** (z.B. `dnd5e`). Beim Laden werden die `entity_types/*.json` **real eingelesen und eager in `<prefix>_*`-Tabellen materialisiert** — kein Registry-Stub. (Löst die frühere "tote Loader"-Lücke, siehe [[project-system-plugin-substrate-gap]].)
+18. **Fidelity-Ziel: spielbar-vollständiger 5e-Bogen** (korrigiert eine frühere, nicht bestätigte "Substrat-Beweis"-Fassung). Der Bogen wird am Tisch geführt: korrekte, abgeleitete Rechenwerte (Skills, Saves, AC, HP, Spell-Slots) + Session-Tracking. **Out (V1):** automatischer Character-Builder / Levelup-Wizard (siehe Decision 20 + Out-of-Scope).
+19. **Engine-Vollausbau ist Pflicht, nicht optional:** Zusätzlich zu `formula`+`lookup` (Decision 13) sind **Conditionals** (`if()`, Vergleiche, `and`/`or`/`not` im Formel-Parser — M9-S09) und **2D-Lookup** (Tabellen mit zwei Schlüsseln, Klasse × Level — M9-S10) Pflicht-Fundament. Idiome: Proficiency/Expertise/Saves via **0/1-Flag-Multiplikation** (`mod + proficient * prof_bonus`); echte Verzweigung (unarmored AC) via `if()`. **Nicht** per Term-Weglassen modellieren.
+20. **Level-up-Readiness (vordenken, nicht bauen):** Alle level-abhängigen Werte werden **level-getrieben abgeleitet** (`lookup`/`formula` über die base-Felder `level` und `class`) — nie handgetragene Konstanten. Dadurch re-derived ein Ändern von `level` **automatisch** alles (prof_bonus, Spell-Slots, …). V1 liefert **keine** Level-up-UI, aber der Kern ist so gebaut, dass ein späteres Level-up-Feature eine reine **UI/Flow-Schicht** ist (setzt `level`, wählt neue Features) — **kein Kern-Umbau**.
 
 ## Out of Scope
 
@@ -115,7 +118,7 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 
 ### M9-S06: D&D 5e SRD Referenz-Plugin
 
-**Ziel:** Das **Referenz-/Konformanz-Plugin** — der erste vollständige Durchstich durch das gesamte M9-Substrat (Schema-Format, `formula`+`lookup`, Dice, session-state, Referenzen/Relations, i18n, DB-Prefix-Loading). **Fidelity-Ziel: Substrat-Beweis**, kein spielbar-vollständiger 5e-Bogen. Jede Lücke, die 5e hier aufreißt, ist eine Lücke in M9-S01/S02 — nicht in dieser Story.
+**Ziel:** Ein **spielbar-vollständiger 5e-Charakterbogen** als erstes echtes System-Plugin — ein Bogen, den man am Tisch führt: korrekte Rechenwerte (Skills, Saves, AC, HP, Spell-Slots) + Session-Tracking. Zugleich der vollständige Durchstich durch das M9-Substrat (Schema-Format, `formula`+`lookup`+Conditionals+2D-Lookup, Dice, session-state, Referenzen/Relations, i18n, DB-Prefix-Loading). Builder/Levelup-Wizard bleibt V1-out (Decisions 18–20).
 
 **Plugin-Struktur:**
 - `plugins/dnd5e-srd/` mit `plugin.json`, `entity_types/*.json`, `tables/*.json`, `locales/{en,de}.json`, `assets/`
@@ -123,12 +126,14 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 
 **mechanics:** attributes `[str,dex,con,int,wis,cha]`; challenge_metric `cr`; distance_units `[ft,mile]`; resource_types `[hp, spell_slots_1..9, hit_dice]`. Jedes Schema-Feld ist als **base / session-state / derived(formula|lookup)** markiert (Decision 9/13).
 
-**Tabellen (Decision 13, als Daten):** `tables/prof_by_level.json` (Threshold 1→+2 … 17→+6) beweist den `lookup`-Mechanismus. Ability-Modifier bleiben `formula` (`floor((x-10)/2)`). **Bewusst NICHT in V1:** klassenabhängige Spell-Slot-Progression — Slots sind session-state-Zähler (Max eingetragen, Verbrauch getrackt), keine Klassen-Tabelle.
+**Tabellen (Decision 13, als Daten):** `tables/prof_by_level.json` (1D-Threshold 1→+2 … 17→+6). Ability-Modifier bleiben `formula` (`floor((x-10)/2)`). **Spell-Slot-Progression** über 2D-Lookup Klasse × Level (M9-S10), `tables/spell_slots_*.json` — Max wird abgeleitet, Verbrauch (`spell_slots_used_*`) ist session-state.
 
 **`player_character` (Referenz-Felder, Decision 14):**
 - base: `species` (ref:species), `level`, `str/dex/con/int/wis/cha`, Skill-Proficiency-Booleans, `class` (V1 Freitext)
 - derived `lookup`: `prof_bonus` (Tabelle `prof_by_level`, key `level`)
-- derived `formula`: `str_mod`…`cha_mod`, `ac_total` (Beispiel `10 + dex_mod`), 18 Skill-Mods (`<ability>_mod + (proficient ? prof_bonus : 0)`, explizit ausgeschrieben — Decision-D), `passive_perception`
+- derived `formula`: `str_mod`…`cha_mod`; **Skill-Mods proficiency-gated** über 0/1-Flag-Multiplikation `<ability>_mod + proficient * prof_bonus (+ expertise * prof_bonus)` (18 explizit ausgeschrieben); Saving Throws analog; `passive_perception`; `ac_total` via Conditional `if(is_unarmored, 10 + dex_mod, armor_ac)` (M9-S09)
+- derived `lookup` (2D, M9-S10): `spell_slots_1_max`…`spell_slots_9_max` über Klasse × Level
+- base: `proficient_<skill>` / `expertise_<skill>` als 0/1-Flags; `save_prof_<ability>` als 0/1
 - session-state: `current_hp`, `temp_hp`, `hit_dice_used`, `spell_slots_used_1..9`, `death_saves`, Aktiv-Toggles (z.B. `is_raging`, Decision 15)
 - Referenzen: `known_spells` (ref[]:spell), `inventory` (eingebettet `{ref:item, qty, equipped}`), `feats` (ref[]:feat)
 
@@ -148,10 +153,12 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 - SRD-Beispieleinträge (Proof-of-Concept): Goblin (creature), Fireball (spell), Healing Potion (item), Alert (feat), 1 SRD-Species, + **1 vorgefertigter `player_character`**, der alle Feld-Kategorien ausübt (base + formula + lookup + session-state + Referenzen)
 
 **Fundament-Voraussetzungen** (aus dieser Spec abgeleitet — als eigene Stories, da #164/#165 bereits closed sind; nicht wieder aufmachen):
-- **M9-S08 (#220):** Referenz-Feldtypen (`ref` / `ref[]` / eingebettete Instanz-Objekte) + Manifest-`db_prefix` + eager Voll-Loading der Schema-Dateien
 - **M9-S07 (#219):** zweiter derived-Typ `lookup` + Tabellen-Resolver (`tables/*.json`), Verkettung lookup→formula
+- **M9-S08 (#220):** Referenz-Feldtypen (`ref` / `ref[]` / eingebettete Instanz-Objekte) + Manifest-`db_prefix` + eager Voll-Loading
+- **M9-S09 (#222):** Conditionals im Formel-Parser (`if()`, Vergleiche, `and`/`or`/`not`) — für echte Verzweigung (unarmored AC)
+- **M9-S10 (#223):** 2D-Lookup (Klasse × Level) — für Spell-Slot-Progression
 
-#169 ist durch S07 + S08 blockiert; danach reiner Konformanz-Durchstich (emergente Bugs → Follow-up-Fixes, vgl. #217/#218).
+#169 ist durch S07–S10 blockiert; danach reiner Konformanz-Durchstich (emergente Bugs → Follow-up-Fixes, vgl. #217/#218).
 
 ---
 
@@ -186,6 +193,38 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 
 ---
 
+### M9-S09: Conditionals in der Formel-Engine
+
+**Ziel:** Vergleichs- und Bedingungs-Operatoren im Formel-**Parser**, für echte Verzweigung (unarmored AC vs. Rüstung, bedingte Boni). `condition-engine.ts` hat die Eval-Knoten bereits; der Parser in `formula-engine.ts` erzeugt sie noch nicht. Herleitung: Decision 19.
+
+**AC:**
+- Tokenizer/Parser erkennt Vergleiche `== != > >= < <=` mit korrekter Präzedenz (unter Arithmetik)
+- Bool-Verknüpfung `and` / `or` / `not`
+- Conditional `if(cond, then, else)` in Funktions-Syntax (passt zum vorhandenen Funktions-Aufruf-Parsing; bevorzugt vor `?:`)
+- Verdrahtet an die vorhandenen `condition-engine`-AST-Knoten — **kein** zweiter Evaluator, keine `eval()`
+- Boolean→Zahl-Coercion (`true`→1 / `false`→0)
+- Muss gehen: `if(is_unarmored, 10 + dex_mod, armor_ac)`, verschachteltes `if`
+- Fehlerfall → `—`, kein Crash
+- Unit-Tests (`m9-s09-`): Vergleich, `and`/`or`, verschachteltes `if`, Präzedenz
+- `database` prop typed as `DatabaseLike`; keine `unknown`/`as never` Casts
+
+---
+
+### M9-S10: 2D-Lookup (Tabellen mit zwei Schlüsseln)
+
+**Ziel:** Lookup-Tabellen mit zwei Schlüssel-Feldern (Klasse × Level) für Spell-Slot-Progression. Erweitert `resolveLookup`/`evaluateLookupField` (heute 1D). Herleitung: Decision 19.
+
+**AC:**
+- Lookup-Feld kann zwei Schlüssel deklarieren: `"lookup": { "table": "<name>", "key_fields": ["class", "level"], "modes": ["exact", "threshold"] }` (gemischt: `exact` auf Klasse, `threshold` auf Level)
+- Tabellen-Shape verschachtelt `table[keyA][keyB] = wert`; Threshold auf der numerischen Achse
+- 1D bleibt voll kompatibel (`key_field`/`mode` gilt weiter)
+- Anwendungsfall: `spell_slots_1_max`…`spell_slots_9_max` als je ein derived-Feld, 2D über Klasse × Level; Tabellen `tables/spell_slots_*.json`
+- Unbekannte Klasse / nicht auflösbarer Level / fehlende Tabelle → `—`
+- Unit-Tests (`m9-s10-`): Wizard L1 / L5 Slot-Counts; unbekannte Klasse → null; 1D-Regression grün
+- `database` prop typed as `DatabaseLike`; keine `unknown`/`as never` Casts
+
+---
+
 ## Story Tracking
 
 | Story | ID | Titel |
@@ -195,9 +234,11 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 | M9-S03 | #166 | Player Character Schema & UI |
 | M9-S04 | #167 | Creature / Enemy Stat Block Schema & UI |
 | M9-S05 | #168 | Spell / Item / Feat / Species Schemas |
-| M9-S06 | #169 | D&D 5e SRD Referenz-Plugin (blockiert ← S07, S08) |
+| M9-S06 | #169 | D&D 5e SRD Referenz-Plugin (blockiert ← S07–S10) |
 | M9-S07 | #219 | lookup-Feldtyp & Tabellen-Resolver |
 | M9-S08 | #220 | Referenz-Feldtypen & DB-Prefix-Loading |
+| M9-S09 | #222 | Conditionals in der Formel-Engine |
+| M9-S10 | #223 | 2D-Lookup (Tabellen mit zwei Schlüsseln) |
 
 ## Abhängigkeiten
 
@@ -206,4 +247,4 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 - M8-S01: `system_plugin_id` auf Session-Schema
 - M8-S08: Character-Panel Platzhalter
 - M8-S11: Dice-Link-Layer (Würfelausdrücke klickbar)
-- M9-S07 + M9-S08: Fundament-Voraussetzungen für M9-S06 (#169); bauen auf den closed #164/#165 auf, ohne sie wieder aufzumachen
+- M9-S07 + M9-S08 + M9-S09 + M9-S10: Fundament-Voraussetzungen für M9-S06 (#169); bauen auf den closed #164/#165 auf, ohne sie wieder aufzumachen
