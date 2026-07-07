@@ -1,5 +1,8 @@
 # EPIC-011: Rules Reference & SRD-Safe Rulesets
 
+> ⚠️ **In Überarbeitung — Konsolidierung M6 ↔ M9 (#225). Inhalt unten NICHT als finale Wahrheit nehmen.**
+> Kernkorrektur: Ein Spielsystem = **ein** Plugin, und das ist das **M9-Deliverable** (`dnd5e_srd`). M6 bleibt **systemagnostisches Framework** — die *Grammatik*: „welche Regeln/Mechaniken sind möglich, wie werden sie definiert". M6 liefert **kein** konkretes System mehr; das bestehende `plugins/dnd5e_srd/` war ein Kategorienfehler und wird aufgelöst. M6-Tests laufen künftig gegen ein **generisches Toy-Fixture**, nicht gegen D&D. Neue, sauber strukturierte Issues/Epics folgen nach der SRD-Grammatik-Vollständigkeitsprüfung.
+
 ## Goal
 
 Support rules reference and lightweight ruleset plugins while respecting licensing boundaries.

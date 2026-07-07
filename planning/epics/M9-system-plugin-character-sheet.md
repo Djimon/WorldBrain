@@ -1,5 +1,8 @@
 # EPIC-014: System Plugin & Character Sheet
 
+> ⚠️ **In Überarbeitung — Konsolidierung M6 ↔ M9 (#225). Teile unten werden großflächig geändert.**
+> Klarstellung: **M9 liefert das *eine* konkrete System-Plugin** (`dnd5e_srd`, snake_case) — echte Regeln (als Rule-Entities), Mechanik (Formeln/Lookup/2D/Conditionals), Schemas *wie* Spell/Item/NSC/Monster/Charakterbogen definiert werden, plus Beispiel-Entities. M6 ist nur die systemagnostische Grammatik. Das in der M9-S06-Spec verwendete `dnd5e-srd` (Bindestrich) + separates `db_prefix: "dnd5e"` war falsch und wird auf `dnd5e_srd` vereinheitlicht. Der Regel-Referenz-Inhalt des bisherigen M6-`dnd5e_srd` wandert **in dieses eine Plugin**. Neue, sauber strukturierte Issues/Epics folgen nach der SRD-Grammatik-Vollständigkeitsprüfung.
+
 ## Goal
 
 Ein Rollenspiel-System (D&D 5e, DSA, Daggerheart, ...) wird als Plugin definiert und liefert die
