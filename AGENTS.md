@@ -127,6 +127,8 @@ Creative-work signals: `ueberdenken`, `skizzieren`, `theoretisch`, `kaputt`, `ha
 
 Test files: `m<N>-s<N>-<slug>.test.ts`. Always milestone prefix (M0–M7). Never `e<N>-`.
 
+Plugin ids and directory names: `snake_case` with underscores (`dnd5e_srd`), never hyphens. A plugin's `plugin.json` `id`, its directory under `plugins/`, and any derived `db_prefix` use the same underscore form. Rules content and system mechanics for one game system belong in **one** plugin — never split into parallel plugins.
+
 ---
 
 ## Engineering & Code Rules
