@@ -167,7 +167,7 @@ Cross-Session-State (#156)).
 
 ## Abhängigkeiten
 
-- **M9-Decision 21 + M12-Decision 12** — jede Deklaration per stabiler ID adressierbar (harte Voraussetzung; muss in M9/M12-Stories mitgezogen werden).
+- **Stabile Deklarations-IDs** (harte Voraussetzung) — realisiert durch **M9-S11 (#244)** (Refactor der closed M9-Basis) und **M12-S01 (#226)** (Grammatik-Mandat, normativ für M12). Decisions: M9-D21 + M12-D12.
 - **M6 Plugin-Framework** — Overlay-Module sind Plugins (kein neuer Loader); koppelt an die #225-Konsolidierung (ein `dnd5e_srd`-Basissystem).
 - **M8-S01 (#152)** — Session hält die aktiven Overlays.
 - **M12** (Resolution-/Resource-Layer) — liefert die überschreibbaren Transitions/Bänder/Ressourcen; die spannendsten Hausregeln (Rest, Crit) sitzen dort.

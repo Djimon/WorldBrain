@@ -31,7 +31,7 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 18. **Fidelity-Ziel: spielbar-vollständiger 5e-Bogen** (korrigiert eine frühere, nicht bestätigte "Substrat-Beweis"-Fassung). Der Bogen wird am Tisch geführt: korrekte, abgeleitete Rechenwerte (Skills, Saves, AC, HP, Spell-Slots) + Session-Tracking. **Out (V1):** automatischer Character-Builder / Levelup-Wizard (siehe Decision 20 + Out-of-Scope).
 19. **Engine-Vollausbau ist Pflicht, nicht optional:** Zusätzlich zu `formula`+`lookup` (Decision 13) sind **Conditionals** (`if()`, Vergleiche, `and`/`or`/`not` im Formel-Parser — M9-S09) und **2D-Lookup** (Tabellen mit zwei Schlüsseln, Klasse × Level — M9-S10) Pflicht-Fundament. Idiome: Proficiency/Expertise/Saves via **0/1-Flag-Multiplikation** (`mod + proficient * prof_bonus`); echte Verzweigung (unarmored AC) via `if()`. **Nicht** per Term-Weglassen modellieren.
 20. **Level-up-Readiness (vordenken, nicht bauen):** Alle level-abhängigen Werte werden **level-getrieben abgeleitet** (`lookup`/`formula` über die base-Felder `level` und `class`) — nie handgetragene Konstanten. Dadurch re-derived ein Ändern von `level` **automatisch** alles (prof_bonus, Spell-Slots, …). V1 liefert **keine** Level-up-UI, aber der Kern ist so gebaut, dass ein späteres Level-up-Feature eine reine **UI/Flow-Schicht** ist (setzt `level`, wählt neue Features) — **kein Kern-Umbau**.
-21. **Jede Deklaration ist per stabiler ID adressierbar und überschreibbar.** Jedes Feld/Formel/Lookup/Tabelle trägt eine stabile ID (z.B. `formula:ac_total`, `table:prof_by_level`). Voraussetzung dafür, dass Hausregeln (EPIC-019 House-Rule Overlays) *einzelne* Regeln übersteuern können, ohne das Plugin zu forken. **Jetzt mitziehen — nachrüsten ist teuer.** Spiegelbild zu M12-Decision 12.
+21. **Jede Deklaration ist per stabiler ID adressierbar und überschreibbar.** Jedes Feld/Formel/Lookup/Tabelle trägt eine stabile ID (z.B. `formula:ac_total`, `table:prof_by_level`). Voraussetzung dafür, dass Hausregeln (EPIC-019 House-Rule Overlays) *einzelne* Regeln übersteuern können, ohne das Plugin zu forken. Spiegelbild zu M12-Decision 12. **Das M9-Fundament (#164/#165/#219/#220/#222/#223) ist bereits closed — die ID-/Registry-Schicht wird daher als eigener Refactor nachgezogen: M9-S11 (#244).**
 
 ## Out of Scope
 
@@ -229,6 +229,21 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 
 ---
 
+### M9-S11: Stabile Deklarations-IDs & Registry (Overlay-Voraussetzung)
+
+**Ziel:** Refactor der bereits gebauten M9-Deklarations-Ladung (aus den closed #219/#220/#222/#223), sodass **jede Deklaration unter einer stabilen ID registriert und adressierbar** ist — die Fläche, die der House-Rule-Overlay-Resolver (EPIC-019, #238) targetet. Realisiert Decision 21 als Nachzug, da das Fundament schon closed ist.
+
+**AC:**
+- Jede geladene Deklaration wird unter stabiler ID registriert: `field:<name>`, `formula:<name>`, `table:<name>`.
+- **Registry** erlaubt Abfrage/Adressierung per ID (Lookup + Auflisten aller IDs eines Plugins).
+- Doppelte/kollidierende IDs innerhalb eines Plugins → Validator-Fehler.
+- **Reiner Refactor + additiv:** bestehendes Verhalten (Formel/Lookup/2D/Loading) unverändert; nur die ID-/Registry-Schicht kommt hinzu.
+- IDs stabil über Reloads (deterministisch aus Name/Pfad).
+- Unit-Tests (`m9-s11-`): `formula:ac_total` / `table:prof_by_level` per ID auflösbar; Kollision → Fehler; bestehende M9-Tests bleiben grün.
+- `database` prop typed as `DatabaseLike`; keine `unknown`/`as never` Casts; keine `eval()`.
+
+---
+
 ## Story Tracking
 
 | Story | ID | Titel |
@@ -243,6 +258,7 @@ Strukturen. Das Plugin gibt die Form vor — Homebrew-Inhalte füllt der DM selb
 | M9-S08 | #220 | Referenz-Feldtypen & DB-Prefix-Loading |
 | M9-S09 | #222 | Conditionals in der Formel-Engine |
 | M9-S10 | #223 | 2D-Lookup (Tabellen mit zwei Schlüsseln) |
+| M9-S11 | #244 | Stabile Deklarations-IDs & Registry (Overlay-Voraussetzung) |
 
 ## Abhängigkeiten
 
