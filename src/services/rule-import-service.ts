@@ -53,8 +53,8 @@ export async function createHomebrewRule(
 ): Promise<{ id: string }> {
   const id = `rule-hb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   await db.execute(
-    `INSERT INTO rule_entities (id, type, ruleset, title, properties_json, reference_summary, is_homebrew)
-     VALUES (?, ?, ?, ?, ?, ?, 1)`,
+    `INSERT INTO rule_entities (id, type, ruleset, title, properties_json, reference_summary, is_homebrew, source_id)
+     VALUES (?, ?, ?, ?, ?, ?, 1, 'homebrew')`,
     [id, opts.type, opts.ruleset, opts.title, JSON.stringify(opts.properties ?? {}), opts.reference_summary ?? null],
   );
   return { id };
@@ -62,7 +62,7 @@ export async function createHomebrewRule(
 
 export async function createRuleOverride(
   db: DatabaseLike,
-  opts: { baseEntityId: string; overrides: Partial<RuleEntity> },
+  opts: { baseEntityId: string; sourceId?: string; overrides: Partial<RuleEntity> },
 ): Promise<{ id: string }> {
   const baseRows = await db.select<Record<string, unknown>>(
     `SELECT * FROM rule_entities WHERE id = ?`,
@@ -70,9 +70,12 @@ export async function createRuleOverride(
   );
   const base = baseRows[0];
   const id = `rule-override-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  // #246: source_id must reference a real rule_sources row (FK) — default to
+  // the canonical 'homebrew' source seeded by applyRuleSchema.
+  const sourceId = opts.sourceId ?? 'homebrew';
   await db.execute(
     `INSERT INTO rule_entities (id, type, ruleset, title, properties_json, reference_summary, is_homebrew, base_entity_id, source_id)
-     VALUES (?, ?, ?, ?, ?, ?, 1, ?, 'homebrew')`,
+     VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
     [
       id,
       opts.overrides.type ?? (base?.type as string) ?? 'unknown',
@@ -81,6 +84,7 @@ export async function createRuleOverride(
       JSON.stringify(opts.overrides.properties ?? JSON.parse((base?.properties_json as string) ?? '{}')),
       opts.overrides.reference_summary ?? (base?.reference_summary as string) ?? null,
       opts.baseEntityId,
+      sourceId,
     ],
   );
   return { id };

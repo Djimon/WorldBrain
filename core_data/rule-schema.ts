@@ -33,4 +33,12 @@ export async function applyRuleSchema(db: DatabaseLike): Promise<void> {
       FOREIGN KEY (source_id) REFERENCES rule_sources(id)
     )
   `);
+
+  // #246: canonical homebrew source — createHomebrewRule/createRuleOverride
+  // both attribute their rows to source_id='homebrew', which requires a
+  // matching rule_sources row to satisfy the FK above.
+  await db.execute(`
+    INSERT OR IGNORE INTO rule_sources (id, label, license, url, is_read_only)
+    VALUES ('homebrew', 'Homebrew', '', '', 0)
+  `);
 }
