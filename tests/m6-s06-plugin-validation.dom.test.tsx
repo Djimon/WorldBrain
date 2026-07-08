@@ -1,16 +1,17 @@
 // M6-S06: Plugin validation, conflicts & load reporting — plugin manager UI.
 // See: https://github.com/Djimon/WorldBrain/issues/96
 
+import { readFileSync } from 'node:fs';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/services/plugin-loader', () => ({
   scanPlugins: vi.fn(),
   getPluginRegistry: vi.fn(() => ({
-    'good-plugin': { manifest: { id: 'good-plugin', label: 'Good Plugin', version: '1.0.0', entity_types: ['Dragon'] }, status: 'loaded' },
-    'bad-plugin':  { manifest: { id: 'bad-plugin',  label: 'Bad Plugin',  version: '0.5.0', entity_types: [] }, status: 'failed', errors: ['Invalid manifest: missing compatibility field'] },
-    'conflict-plugin': { manifest: { id: 'conflict-plugin', label: 'Conflict Plugin', version: '2.0.0', entity_types: ['Dragon'] }, status: 'conflict', errors: ['Conflict: entity type "Dragon" already registered by good-plugin'] },
-    'outdated-plugin': { manifest: { id: 'outdated-plugin', label: 'Old Plugin', version: '0.1.0', entity_types: [] }, status: 'outdated' },
+    'good-plugin': { manifest: { id: 'good-plugin', name: 'Good Plugin', version: '1.0.0', entity_types: ['Dragon'] }, status: 'loaded' },
+    'bad-plugin':  { manifest: { id: 'bad-plugin',  name: 'Bad Plugin',  version: '0.5.0', entity_types: [] }, status: 'failed', errors: ['Invalid manifest: missing compatibility field'] },
+    'conflict-plugin': { manifest: { id: 'conflict-plugin', name: 'Conflict Plugin', version: '2.0.0', entity_types: ['Dragon'] }, status: 'conflict', errors: ['Conflict: entity type "Dragon" already registered by good-plugin'] },
+    'outdated-plugin': { manifest: { id: 'outdated-plugin', name: 'Old Plugin', version: '0.1.0', entity_types: [] }, status: 'outdated' },
   })),
 }));
 
@@ -83,6 +84,13 @@ describe('M6-S06 plugin validation & load reporting', () => {
     it('PluginManager renders even with failed plugins', () => {
       expect(() => render(<PluginManager />)).not.toThrow();
       expect(screen.getByText('Good Plugin')).toBeInTheDocument();
+    });
+  });
+
+  describe('#247: no legacy "label" fallback — canonical "name" field only', () => {
+    it('PluginManager.tsx does not reference manifest.label', () => {
+      const src = readFileSync('src/ui/PluginManager.tsx', 'utf-8');
+      expect(src).not.toMatch(/manifest\.label|\.label\s*\?\?/);
     });
   });
 });
