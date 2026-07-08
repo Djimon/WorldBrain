@@ -11,7 +11,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const PLUGIN_DIR = path.join('plugins', 'dnd5e-srd');
+const PLUGIN_DIR = path.join('plugins', 'dnd5e_srd');
 const MANIFEST_PATH = path.join(PLUGIN_DIR, 'plugin.json');
 
 interface FieldDef {
@@ -61,7 +61,7 @@ function readAllExampleContent(): string {
 
 describe('M9-S06 D&D 5e SRD reference plugin (playable character sheet)', () => {
   describe('plugin directory structure', () => {
-    it('plugins/dnd5e-srd/ directory exists', () => {
+    it('plugins/dnd5e_srd/ directory exists', () => {
       expect(fs.existsSync(PLUGIN_DIR)).toBe(true);
     });
 
@@ -366,7 +366,7 @@ describe('M9-S06 D&D 5e SRD reference plugin (playable character sheet)', () => 
       expect(Object.keys(en).length).toBeGreaterThan(0);
     });
 
-    it('registerPluginLocales + getPluginT resolve a translation under the plugin:dnd5e-srd namespace', async () => {
+    it('registerPluginLocales + getPluginT resolve a translation under the plugin:dnd5e_srd namespace', async () => {
       const { registerPluginLocales, getPluginT } = await import('../src/services/plugin-i18n-service');
       const manifest = readManifest();
       const enPath = path.join(PLUGIN_DIR, 'locales', 'en.json');
@@ -375,10 +375,10 @@ describe('M9-S06 D&D 5e SRD reference plugin (playable character sheet)', () => 
         en: fs.existsSync(enPath) ? JSON.parse(fs.readFileSync(enPath, 'utf-8')) : {},
         de: fs.existsSync(dePath) ? JSON.parse(fs.readFileSync(dePath, 'utf-8')) : {},
       };
-      await registerPluginLocales({ id: String(manifest.id ?? 'dnd5e-srd'), locales });
+      await registerPluginLocales({ id: String(manifest.id ?? 'dnd5e_srd'), locales });
       const firstKey = Object.keys(locales.en)[0];
       expect(firstKey).toBeDefined();
-      const t = getPluginT(String(manifest.id ?? 'dnd5e-srd'), 'en');
+      const t = getPluginT(String(manifest.id ?? 'dnd5e_srd'), 'en');
       expect(t(firstKey)).toBe(locales.en[firstKey]);
     });
   });

@@ -1,21 +1,37 @@
 {
   "id": "dnd5e_srd",
-  "label": "D&D 5e SRD",
+  "name": "D&D 5e SRD (Referenz-Plugin)",
   "version": "1.0.0",
+  "system": true,
+  "db_prefix": "dnd5e",
   "license": "CC-BY-4.0",
-  "compatibility": {
-    "app_schema": ">=1.0.0"
-  },
-  "entity_types": ["spell", "monster", "condition", "class_feature"],
-  "relation_types": [],
-  "card_templates": [],
-  "views": [],
-  "rules": [],
-  "assets": [],
+  "attribution": "This work includes material taken from the System Reference Document 5.1 (\"SRD 5.1\") by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.",
   "mechanics": {
     "attributes": ["str", "dex", "con", "int", "wis", "cha"],
-    "challenge_metric": "cr",
-    "distance_units": ["ft", "mile"]
+    "resource_types": [
+      "hp",
+      "spell_slots_1", "spell_slots_2", "spell_slots_3", "spell_slots_4", "spell_slots_5",
+      "spell_slots_6", "spell_slots_7", "spell_slots_8", "spell_slots_9",
+      "hit_dice"
+    ],
+    "distance_units": ["ft", "mile"],
+    "challenge_metric": "cr"
   },
-  "balance_rules": {}
+  "entity_types": ["player_character", "creature", "spell", "item", "feat", "species"],
+  "relation_types": [
+    {
+      "id": "creature_can_cast",
+      "relation_type": "can_cast",
+      "inverse_type": "castable_by",
+      "label": "can cast",
+      "inverse_label": "castable by"
+    },
+    {
+      "id": "creature_has_feature",
+      "relation_type": "has_feature",
+      "inverse_type": "feature_of",
+      "label": "has feature",
+      "inverse_label": "feature of"
+    }
+  ]
 }
