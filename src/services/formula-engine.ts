@@ -219,7 +219,9 @@ export interface LookupFieldDef2D {
 // Resolve a single dimension by mode: exact does a direct key lookup (works
 // for non-numeric keys like class names); threshold picks the largest
 // numeric key <= the given key. Returns null on no match — never throws.
-function lookupDimension<T>(
+// Exported (M12-S06) — the same generic threshold/exact key resolution
+// backs typed-lookup-resolver.ts's parameterized cell lookup.
+export function lookupDimension<T>(
   table: Record<string, T>,
   key: number | string,
   mode: 'threshold' | 'exact',
