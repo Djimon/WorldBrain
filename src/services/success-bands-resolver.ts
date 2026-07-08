@@ -1,7 +1,9 @@
-// M12-S02: Success-Bands / Degrees of Success — stub, implement in GREEN phase (#227)
+// M12-S02: Success-Bands / Degrees of Success (#227)
 // (EPIC-018 Decision 11 grammar: band "when" expressions are formulas over
 // the same evaluateFormula context as M12-S01, with `roll` + `target` (and
 // other entity fields) available — not a second evaluator.)
+
+import { evaluateFormula } from './formula-engine';
 
 export interface BandDescriptor {
   name: string;
@@ -14,10 +16,13 @@ export interface BandDescriptor {
  * is broken — never throws.
  */
 export function classifyBand(
-  _bands: BandDescriptor[],
-  _context: Record<string, number>,
+  bands: BandDescriptor[],
+  context: Record<string, number>,
 ): string | '—' {
-  throw new Error('not implemented');
+  for (const band of bands) {
+    if (evaluateFormula(band.when, context) === 1) return band.name;
+  }
+  return '—';
 }
 
 /**
@@ -25,9 +30,12 @@ export function classifyBand(
  * or worst..best, caller-defined order), clamped at both ends.
  */
 export function applyBandShift(
-  _orderedBands: string[],
-  _currentBand: string,
-  _shift: number,
+  orderedBands: string[],
+  currentBand: string,
+  shift: number,
 ): string {
-  throw new Error('not implemented');
+  const index = orderedBands.indexOf(currentBand);
+  if (index === -1) return currentBand;
+  const clamped = Math.min(Math.max(index + shift, 0), orderedBands.length - 1);
+  return orderedBands[clamped];
 }
