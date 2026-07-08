@@ -9,7 +9,7 @@
 // 'roll' added here (M12-S01); S02-S10 add their own kinds to this union as
 // they land, never a parallel registry.
 
-export type DeclarationKind = 'field' | 'formula' | 'table' | 'roll' | 'bands';
+export type DeclarationKind = 'field' | 'formula' | 'table' | 'roll' | 'bands' | 'resource';
 
 export function makeStableId(kind: DeclarationKind, name: string): string {
   if (name.includes(':')) {
