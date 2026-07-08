@@ -1,8 +1,10 @@
-// M12-S04: Reset- & Zustands-Übergangs-Phasen — stub, implement in GREEN
-// phase (#229). One core action per trigger (e.g. "Long Rest") runs all
-// matching transitions for a session-state field/resource atomically.
-// `apply_dice` classifies an already-delivered roll (Decision 2) — the
-// engine never rolls dice itself.
+// M12-S04: Reset- & Zustands-Übergangs-Phasen (#229)
+// One core action per trigger (e.g. "Long Rest") runs all matching
+// transitions for a session-state field/resource atomically. `apply_dice`
+// classifies an already-delivered roll (Decision 2) — the engine never
+// rolls dice itself.
+
+import { evaluateFormula } from './formula-engine';
 
 export type TransitionTrigger = 'short_rest' | 'long_rest' | 'session_start' | 'turn_end' | 'downtime';
 
@@ -20,15 +22,31 @@ export interface TransitionDescriptor {
 }
 
 /** Whether this transition descriptor fires for the given trigger. */
-export function appliesOnTrigger(_descriptor: TransitionDescriptor, _trigger: TransitionTrigger): boolean {
-  throw new Error('not implemented');
+export function appliesOnTrigger(descriptor: TransitionDescriptor, trigger: TransitionTrigger): boolean {
+  return descriptor.on === trigger;
 }
 
 /** Applies a single transition's action to the field's current value. */
 export function applyTransition(
-  _descriptor: TransitionDescriptor,
-  _currentValue: number,
-  _entity: Record<string, number>,
+  descriptor: TransitionDescriptor,
+  currentValue: number,
+  entity: Record<string, number>,
 ): number | null {
-  throw new Error('not implemented');
+  const { action } = descriptor;
+  switch (action.type) {
+    case 'reset':
+      return 0;
+    case 'refill_to_max':
+      return action.max;
+    case 'refill_to':
+      return evaluateFormula(action.formula, entity);
+    case 'decrement':
+      return Math.max(currentValue - (action.amount ?? 1), 0);
+    case 'set':
+      return evaluateFormula(action.formula, entity);
+    case 'apply_dice': {
+      if (action.condition && evaluateFormula(action.condition, entity) !== 1) return currentValue;
+      return currentValue + (action.deliveredRoll ?? 0);
+    }
+  }
 }
