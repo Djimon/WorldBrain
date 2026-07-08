@@ -136,6 +136,12 @@ describe('M9-S11 stable declaration IDs & registry', () => {
       const errors = validateNoDuplicateDeclarations(declarations);
       expect(errors).toEqual([]);
     });
+
+    it('#248: a name containing ":" is rejected via the same makeStableId guard as registerDeclaration (single source of ID format)', async () => {
+      const { validateNoDuplicateDeclarations } = await getRegistry();
+      const declarations = [{ kind: 'formula' as const, name: 'a:b' }];
+      expect(() => validateNoDuplicateDeclarations(declarations)).toThrow();
+    });
   });
 
   describe('regression: existing M9 declaration behavior unchanged (pure additive refactor)', () => {
