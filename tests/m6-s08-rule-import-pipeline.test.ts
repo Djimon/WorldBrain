@@ -88,6 +88,16 @@ describe('M6-S08 rule import pipeline', () => {
       expect(row.is_homebrew).toBe(1);
     });
 
+    it('#246: createHomebrewRule sets source_id="homebrew" (unified with createRuleOverride, not NULL)', async () => {
+      const { applyRuleSchema } = await getRuleSchema();
+      const { createHomebrewRule } = await getRuleImport();
+      const db = openDb(); const asyncDb = makeAsyncDb(db);
+      await applyRuleSchema(asyncDb);
+      const result = await createHomebrewRule(asyncDb, { type: 'spell', title: 'Custom Spell', ruleset: 'homebrew', properties: {} });
+      const row = db.prepare(`SELECT source_id FROM rule_entities WHERE id=?`).get(result.id) as { source_id: string | null };
+      expect(row.source_id).toBe('homebrew');
+    });
+
     it('createRuleOverride creates entity with base_entity_id set', async () => {
       const { applyRuleSchema } = await getRuleSchema();
       const { importRules, createRuleOverride } = await getRuleImport();
@@ -130,6 +140,26 @@ describe('M6-S08 rule import pipeline', () => {
       });
       const result = await listRuleEntities(asyncDb, { tag: 'nonexistent-tag' });
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('issue #246: applyRuleSchema idempotently seeds canonical "homebrew" rule_sources row', () => {
+    it('rule_sources contains a row with id="homebrew" after applyRuleSchema', async () => {
+      const { applyRuleSchema } = await getRuleSchema();
+      const db = openDb(); const asyncDb = makeAsyncDb(db);
+      await applyRuleSchema(asyncDb);
+      const row = db.prepare(`SELECT id, is_read_only FROM rule_sources WHERE id='homebrew'`).get() as { id: string; is_read_only: number } | undefined;
+      expect(row?.id).toBe('homebrew');
+      expect(row?.is_read_only).toBe(0);
+    });
+
+    it('applying the schema twice does not duplicate or fail (idempotent seed)', async () => {
+      const { applyRuleSchema } = await getRuleSchema();
+      const db = openDb(); const asyncDb = makeAsyncDb(db);
+      await applyRuleSchema(asyncDb);
+      await expect(applyRuleSchema(asyncDb)).resolves.not.toThrow();
+      const rows = db.prepare(`SELECT id FROM rule_sources WHERE id='homebrew'`).all();
+      expect(rows.length).toBe(1);
     });
   });
 
