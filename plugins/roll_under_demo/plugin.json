@@ -1,0 +1,16 @@
+{
+  "id": "roll_under_demo",
+  "name": "Roll-Under Demo (Toy System)",
+  "version": "1.0.0",
+  "system": true,
+  "db_prefix": "rud",
+  "license": "CC0-1.0",
+  "attribution": "Original toy fixture — no proprietary content. Written to prove the M12 Resolution/Resource layer (EPIC-018) is not D&D-specific.",
+  "mechanics": {
+    "attributes": ["pow", "dex"],
+    "resource_types": ["sanity"],
+    "distance_units": ["ft"],
+    "challenge_metric": "difficulty"
+  },
+  "entity_types": ["character"]
+}

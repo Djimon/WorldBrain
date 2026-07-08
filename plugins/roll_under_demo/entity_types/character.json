@@ -1,0 +1,18 @@
+{
+  "id": "character",
+  "label": "Character",
+  "fields": [
+    { "id": "name", "type": "string" },
+    { "id": "pow", "type": "number" },
+    { "id": "dex", "type": "number" },
+    { "id": "dodge", "type": "number" },
+
+    { "id": "sanity", "type": "number", "session_state": true },
+    { "id": "sanity_max", "computed": true, "formula": "99 - mythos" },
+    { "id": "mythos", "type": "number" },
+
+    { "id": "temporary_insanity", "type": "number", "session_state": true },
+    { "id": "indefinite_insanity", "type": "number", "session_state": true },
+    { "id": "permanent_madness", "type": "number", "session_state": true }
+  ]
+}
