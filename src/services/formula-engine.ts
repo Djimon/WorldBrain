@@ -3,7 +3,7 @@
 // shared numeric evaluator — no dynamic code execution. Computed schema fields
 // reference other entity fields by name.
 
-import { evaluateNumber } from './condition-engine';
+import { evaluateNumber, SUPPORTED_FUNCTION_OPS } from './condition-engine';
 
 type TokenType = 'num' | 'ident' | 'op' | 'lparen' | 'rparen' | 'comma' | 'cmp';
 interface Token {
@@ -109,6 +109,12 @@ export function parseFormula(input: string): unknown {
         }
         expect('rparen');
         const key = FUNCTION_NAME_ALIASES[t.value] ?? t.value;
+        // #221: parser grammar must not exceed the evaluator's op-list — an
+        // unknown/typo'd function name is a parse-time error, not a silent
+        // undefined-evaluation.
+        if (!(SUPPORTED_FUNCTION_OPS as readonly string[]).includes(key)) {
+          throw new Error(`Unknown function: ${t.value}`);
+        }
         return { [key]: args };
       }
       return { var: t.value };

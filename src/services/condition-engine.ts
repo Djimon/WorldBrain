@@ -62,6 +62,13 @@ function evalNode(node: unknown, ctx: EvalContext): unknown {
   return undefined;
 }
 
+// M9-S02/#221: canonical function-style operators the evaluator implements —
+// single source of truth so the formula parser's `ident(args)` grammar can
+// never accept a function name the evaluator doesn't know. Comparison and
+// arithmetic infix operators (+, -, ==, etc.) have their own dedicated
+// grammar rules, not generic function-call syntax, so they're excluded here.
+export const SUPPORTED_FUNCTION_OPS = ['floor', 'ceil', 'max', 'min', 'and', 'or', '!', 'if'] as const;
+
 export function evaluate(condition: unknown, ctx: EvalContext): boolean {
   return Boolean(evalNode(condition, ctx));
 }
