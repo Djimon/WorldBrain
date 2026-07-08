@@ -1,7 +1,9 @@
-// M13-S01: Override-Entry-Modell & stabile Ziel-IDs — stub, implement in
-// GREEN phase (#236). Foundation for the House-Rule Overlay layer
-// (EPIC-019 Decision 1). Target IDs resolve against the M9/M12 declaration
-// registry (plugin-declaration-registry.ts) — no parallel addressing scheme.
+// M13-S01: Override-Entry-Modell & stabile Ziel-IDs (#236)
+// Foundation for the House-Rule Overlay layer (EPIC-019 Decision 1). Target
+// IDs resolve against the M9/M12 declaration registry
+// (plugin-declaration-registry.ts) — no parallel addressing scheme.
+
+import { getDeclaration } from './plugin-declaration-registry';
 
 export type OverrideOp = 'replace' | 'patch' | 'add' | 'remove';
 
@@ -19,10 +21,18 @@ export interface OverrideEntry {
  * - `remove` returns undefined (declaration removed).
  */
 export function applyOverrideEntry(
-  _baseDeclaration: unknown,
-  _entry: OverrideEntry,
+  baseDeclaration: unknown,
+  entry: OverrideEntry,
 ): unknown {
-  throw new Error('not implemented');
+  switch (entry.op) {
+    case 'patch':
+      return { ...(baseDeclaration as Record<string, unknown> | undefined), ...(entry.value as Record<string, unknown>) };
+    case 'replace':
+    case 'add':
+      return entry.value;
+    case 'remove':
+      return undefined;
+  }
 }
 
 /**
@@ -32,8 +42,15 @@ export function applyOverrideEntry(
  * no-op on drift).
  */
 export function validateOverrideTargets(
-  _entries: OverrideEntry[],
-  _basePluginId: string,
+  entries: OverrideEntry[],
+  basePluginId: string,
 ): string[] {
-  throw new Error('not implemented');
+  const errors: string[] = [];
+  for (const entry of entries) {
+    if (entry.op === 'add') continue;
+    if (getDeclaration(basePluginId, entry.target) === undefined) {
+      errors.push(`Unknown override target: ${entry.target}`);
+    }
+  }
+  return errors;
 }
