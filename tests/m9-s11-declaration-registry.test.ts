@@ -9,7 +9,7 @@
 // a non-existent requirement (AGENTS.md: no extrapolation).
 
 import { readFileSync } from 'node:fs';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 async function getRegistry() { return import('../src/services/plugin-declaration-registry'); }
 
@@ -33,6 +33,11 @@ describe('M9-S11 stable declaration IDs & registry', () => {
     it('IDs are deterministic across repeated calls (stable over reloads)', async () => {
       const { makeStableId } = await getRegistry();
       expect(makeStableId('formula', 'ac_total')).toBe(makeStableId('formula', 'ac_total'));
+    });
+
+    it('a name containing ":" is rejected — would make "kind:name" ambiguously parseable', async () => {
+      const { makeStableId } = await getRegistry();
+      expect(() => makeStableId('formula', 'a:b')).toThrow();
     });
   });
 
@@ -60,6 +65,27 @@ describe('M9-S11 stable declaration IDs & registry', () => {
       const { getDeclaration } = await getRegistry();
       expect(() => getDeclaration('dnd5e_srd', 'formula:nonexistent')).not.toThrow();
       expect(getDeclaration('dnd5e_srd', 'formula:nonexistent')).toBeUndefined();
+    });
+
+    it('registering the same kind+name twice at register-time warns (does not silently succeed without signal)', async () => {
+      // Mirrors the existing registerPluginEntityType/registerPluginRelationType
+      // convention in plugin-entity-service.ts: warn + "second definition wins" —
+      // not a silent overwrite with zero signal.
+      const { registerDeclaration } = await getRegistry();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      registerDeclaration('dnd5e_srd', 'formula', 'ac_total', { formula: 'first' });
+      registerDeclaration('dnd5e_srd', 'formula', 'ac_total', { formula: 'second' });
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('register-time collision: second registration wins (consistent with getDeclaration read-after-write)', async () => {
+      const { registerDeclaration, getDeclaration } = await getRegistry();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      registerDeclaration('dnd5e_srd', 'formula', 'ac_total', { formula: 'first' });
+      registerDeclaration('dnd5e_srd', 'formula', 'ac_total', { formula: 'second' });
+      expect(getDeclaration('dnd5e_srd', 'formula:ac_total')).toEqual({ formula: 'second' });
+      warnSpy.mockRestore();
     });
   });
 
