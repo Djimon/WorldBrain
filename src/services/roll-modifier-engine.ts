@@ -1,6 +1,6 @@
-// M12-S05: Wurf-Modifikatoren — Advantage/Disadvantage & Bonus/Penalty —
-// stub, implement in GREEN phase (#230). The layer describes/classifies
-// ("roll 2, keep highest") — actual dice drawing stays external (M8-S11).
+// M12-S05: Wurf-Modifikatoren — Advantage/Disadvantage & Bonus/Penalty (#230)
+// The layer describes/classifies ("roll 2, keep highest") — actual dice
+// drawing stays external (M8-S11).
 
 export interface RollModifierDescriptor {
   kind: 'keep' | 'extra-die';
@@ -22,11 +22,29 @@ export interface NetRollModifier {
  * cancel out (D&D advantage+disadvantage → normal; CoC bonus/penalty dice
  * net to whichever side has more).
  */
-export function resolveNetModifier(_modifiers: RollModifierDescriptor[]): NetRollModifier {
-  throw new Error('not implemented');
+export function resolveNetModifier(modifiers: RollModifierDescriptor[]): NetRollModifier {
+  const byKind = new Map<'keep' | 'extra-die', RollModifierDescriptor[]>();
+  for (const modifier of modifiers) {
+    const group = byKind.get(modifier.kind) ?? [];
+    group.push(modifier);
+    byKind.set(modifier.kind, group);
+  }
+
+  for (const [kind, group] of byKind) {
+    const bestCount = group.filter((m) => m.keep === 'best').length;
+    const worstCount = group.filter((m) => m.keep === 'worst').length;
+    const net = bestCount - worstCount;
+    if (net !== 0) {
+      return { kind, keep: net > 0 ? 'best' : 'worst', count: Math.abs(net) };
+    }
+  }
+
+  return { kind: 'normal', count: 0 };
 }
 
 /** Optional flat passive-score adjustment when a net modifier is active (D&D Passive ±5). */
-export function resolvePassiveAdjustment(_net: NetRollModifier, _flatAmount: number): number {
-  throw new Error('not implemented');
+export function resolvePassiveAdjustment(net: NetRollModifier, flatAmount: number): number {
+  if (net.keep === 'best') return flatAmount;
+  if (net.keep === 'worst') return -flatAmount;
+  return 0;
 }
