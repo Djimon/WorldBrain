@@ -1,30 +1,55 @@
-// M9-S11: stable declaration IDs & registry — stub, implement in GREEN phase (#244)
+// M9-S11: stable declaration IDs & registry (#244)
 // Overlay-resolver addressing surface (EPIC-019, #238) targets these IDs.
+// Pure additive refactor over the already-loaded M9 declarations (field/
+// formula/table) — no change to how they're evaluated (formula-engine.ts /
+// condition-engine.ts are untouched).
 
 export type DeclarationKind = 'field' | 'formula' | 'table';
 
 export function makeStableId(kind: DeclarationKind, name: string): string {
+  if (name.includes(':')) {
+    throw new Error(`Invalid declaration name (contains ":"): ${name}`);
+  }
   return `${kind}:${name}`;
 }
 
-export function registerDeclaration(_pluginId: string, _kind: DeclarationKind, _name: string, _value: unknown): void {
-  throw new Error('not implemented');
+const _registry: Record<string, Record<string, unknown>> = {};
+
+export function registerDeclaration(pluginId: string, kind: DeclarationKind, name: string, value: unknown): void {
+  const stableId = makeStableId(kind, name);
+  const plugin = (_registry[pluginId] ??= {});
+  if (Object.prototype.hasOwnProperty.call(plugin, stableId)) {
+    // Mirrors registerPluginEntityType/registerPluginRelationType in
+    // plugin-entity-service.ts: warn + "second definition wins" — not a
+    // silent overwrite with zero signal.
+    console.warn(`Plugin declaration conflict: "${stableId}" already registered for "${pluginId}". Second definition wins.`);
+  }
+  plugin[stableId] = value;
 }
 
-export function getDeclaration(_pluginId: string, _stableId: string): unknown {
-  throw new Error('not implemented');
+export function getDeclaration(pluginId: string, stableId: string): unknown {
+  return _registry[pluginId]?.[stableId];
 }
 
-export function listDeclarationIds(_pluginId: string): string[] {
-  throw new Error('not implemented');
+export function listDeclarationIds(pluginId: string): string[] {
+  return Object.keys(_registry[pluginId] ?? {});
 }
 
-export function clearRegistry(_pluginId: string): void {
-  throw new Error('not implemented');
+export function clearRegistry(pluginId: string): void {
+  delete _registry[pluginId];
 }
 
 export function validateNoDuplicateDeclarations(
-  _declarations: { kind: DeclarationKind; name: string }[],
+  declarations: { kind: DeclarationKind; name: string }[],
 ): string[] {
-  throw new Error('not implemented');
+  const errors: string[] = [];
+  const seen = new Set<string>();
+  for (const { kind, name } of declarations) {
+    const stableId = `${kind}:${name}`;
+    if (seen.has(stableId)) {
+      errors.push(`Duplicate declaration: ${stableId}`);
+    }
+    seen.add(stableId);
+  }
+  return errors;
 }
