@@ -3,8 +3,13 @@
 // Pure additive refactor over the already-loaded M9 declarations (field/
 // formula/table) — no change to how they're evaluated (formula-engine.ts /
 // condition-engine.ts are untouched).
+//
+// M12-Decision 12 (#226): the same scheme covers the Resolution/Resource
+// layer's descriptors (roll, bands, resource, transition, hook, modifier) —
+// 'roll' added here (M12-S01); S02-S10 add their own kinds to this union as
+// they land, never a parallel registry.
 
-export type DeclarationKind = 'field' | 'formula' | 'table';
+export type DeclarationKind = 'field' | 'formula' | 'table' | 'roll';
 
 export function makeStableId(kind: DeclarationKind, name: string): string {
   if (name.includes(':')) {
