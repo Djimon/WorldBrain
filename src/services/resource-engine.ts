@@ -1,7 +1,9 @@
-// M12-S03: Resource-Primitiv (Cap, Seed, Schwellen-Flags) — stub, implement
-// in GREEN phase (#228). seedFrom/max are formulas evaluated via the M9
-// engine (evaluateFormula) — not a second evaluator. Triggers are formulas
-// over value/delta_single/delta_session/session_start.
+// M12-S03: Resource-Primitiv (Cap, Seed, Schwellen-Flags) (#228)
+// seedFrom/max are formulas evaluated via the M9 engine (evaluateFormula) —
+// not a second evaluator. Triggers are formulas over
+// value/delta_single/delta_session/session_start.
+
+import { evaluateFormula } from './formula-engine';
 
 export interface ResourceTriggerDescriptor {
   when: string;
@@ -28,18 +30,18 @@ export interface ResourceChangeResult {
 
 /** Initializes a session-state resource value from `seedFrom` at creation time. */
 export function seedResource(
-  _descriptor: ResourceDescriptor,
-  _entity: Record<string, number>,
+  descriptor: ResourceDescriptor,
+  entity: Record<string, number>,
 ): number | null {
-  throw new Error('not implemented');
+  return evaluateFormula(descriptor.seedFrom, entity);
 }
 
 /** Resolves the current cap (`max` formula), clamping the mutable value. */
 export function resolveResourceCap(
-  _descriptor: ResourceDescriptor,
-  _entity: Record<string, number>,
+  descriptor: ResourceDescriptor,
+  entity: Record<string, number>,
 ): number | null {
-  throw new Error('not implemented');
+  return evaluateFormula(descriptor.max, entity);
 }
 
 /**
@@ -48,10 +50,31 @@ export function resolveResourceCap(
  * returning the new value plus any newly-set flag names.
  */
 export function applyResourceChange(
-  _descriptor: ResourceDescriptor,
-  _entity: Record<string, number>,
-  _current: ResourceState,
-  _delta: number,
+  descriptor: ResourceDescriptor,
+  entity: Record<string, number>,
+  current: ResourceState,
+  delta: number,
 ): ResourceChangeResult {
-  throw new Error('not implemented');
+  const min = descriptor.min ?? 0;
+  const cap = resolveResourceCap(descriptor, entity);
+
+  let value = current.value + delta;
+  value = Math.max(value, min);
+  if (cap !== null) value = Math.min(value, cap);
+
+  const deltaSession = current.deltaSession + delta;
+  const triggerContext: Record<string, number> = {
+    ...entity,
+    value,
+    delta_single: delta,
+    delta_session: deltaSession,
+    session_start: current.sessionStart,
+  };
+
+  const flags: string[] = [];
+  for (const trigger of descriptor.triggers ?? []) {
+    if (evaluateFormula(trigger.when, triggerContext) === 1) flags.push(trigger.set_flag);
+  }
+
+  return { value, flags };
 }
