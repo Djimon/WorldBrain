@@ -12,7 +12,7 @@ import type { PluginEntityType } from './plugin-entity-service';
 interface PluginManifestForLoading {
   id: string;
   db_prefix?: string;
-  entity_types?: string[];
+  entity_types?: unknown[];
 }
 
 export async function loadPluginEntityTypes(args: {

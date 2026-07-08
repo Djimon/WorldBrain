@@ -1,35 +1,51 @@
 // @vitest-environment node
 // M6-S01: Plugin manifest & loader — scan folder, parse plugin.json, populate registry.
 // See: https://github.com/Djimon/WorldBrain/issues/91
+//
+// #225: scanPlugins moved to the async Tauri-fs interface (MI-S00 migration) —
+// this test now mocks @tauri-apps/plugin-fs / @tauri-apps/api/path instead of
+// writing to a real temp directory, matching the established pattern used by
+// the M7 Tauri-migrated test suites (e.g. m7-s01-app-config-tauri.test.ts).
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@tauri-apps/plugin-fs', () => ({
+  readDir: vi.fn(),
+  readTextFile: vi.fn(),
+}));
+
+vi.mock('@tauri-apps/api/path', () => ({
+  join: (...parts: string[]) => Promise.resolve(parts.join('/')),
+}));
+
+import * as tauriFs from '@tauri-apps/plugin-fs';
+
+const mockReadDir = tauriFs.readDir as ReturnType<typeof vi.fn>;
+const mockReadTextFile = tauriFs.readTextFile as ReturnType<typeof vi.fn>;
 
 async function getPluginLoader() { return import('../src/services/plugin-loader'); }
 
-const tmpDirs: string[] = [];
-function makePluginDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'wbx-plugins-'));
-  tmpDirs.push(dir);
-  return dir;
-}
-
-function writePlugin(pluginDir: string, id: string, manifest: object) {
-  const dir = join(pluginDir, id);
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, 'plugin.json'), JSON.stringify(manifest));
-}
+const PLUGIN_DIR = '/plugins';
 
 const validManifest = {
-  id: 'test-plugin', label: 'Test Plugin', version: '1.0.0',
-  compatibility: { app_schema: '>=1.0.0' },
+  id: 'test-plugin', name: 'Test Plugin', version: '1.0.0',
   entity_types: [], relation_types: [], card_templates: [], views: [], rules: [], assets: [],
 };
 
+// Registers a folder's plugin.json content for the mocked readTextFile.
+function mockPluginFiles(files: Record<string, object | string>) {
+  mockReadTextFile.mockImplementation((path: string) => {
+    for (const [folder, content] of Object.entries(files)) {
+      if (path === `${PLUGIN_DIR}/${folder}/plugin.json`) {
+        return Promise.resolve(typeof content === 'string' ? content : JSON.stringify(content));
+      }
+    }
+    return Promise.reject(new Error(`ENOENT: ${path}`));
+  });
+}
+
 afterEach(() => {
-  while (tmpDirs.length) rmSync(tmpDirs.pop()!, { recursive: true, force: true });
+  vi.clearAllMocks();
 });
 
 describe('M6-S01 plugin manifest & loader', () => {
@@ -41,47 +57,50 @@ describe('M6-S01 plugin manifest & loader', () => {
 
     it('loads valid plugin from plugin folder', async () => {
       const { scanPlugins } = await getPluginLoader();
-      const dir = makePluginDir();
-      writePlugin(dir, 'test-plugin', validManifest);
-      const registry = scanPlugins(dir);
+      mockReadDir.mockResolvedValue([{ name: 'test-plugin', isDirectory: true }]);
+      mockPluginFiles({ 'test-plugin': validManifest });
+      const registry = await scanPlugins(PLUGIN_DIR);
       expect(registry['test-plugin']).toBeDefined();
-      expect(registry['test-plugin'].manifest.label).toBe('Test Plugin');
+      expect(registry['test-plugin'].manifest.name).toBe('Test Plugin');
     });
 
     it('load status is "loaded" for valid plugin', async () => {
       const { scanPlugins } = await getPluginLoader();
-      const dir = makePluginDir();
-      writePlugin(dir, 'test-plugin', validManifest);
-      const registry = scanPlugins(dir);
+      mockReadDir.mockResolvedValue([{ name: 'test-plugin', isDirectory: true }]);
+      mockPluginFiles({ 'test-plugin': validManifest });
+      const registry = await scanPlugins(PLUGIN_DIR);
       expect(registry['test-plugin'].status).toBe('loaded');
     });
 
     it('load order is alphabetical by folder name', async () => {
       const { scanPlugins } = await getPluginLoader();
-      const dir = makePluginDir();
-      writePlugin(dir, 'b-plugin', { ...validManifest, id: 'b-plugin' });
-      writePlugin(dir, 'a-plugin', { ...validManifest, id: 'a-plugin' });
-      const registry = scanPlugins(dir);
+      mockReadDir.mockResolvedValue([
+        { name: 'b-plugin', isDirectory: true },
+        { name: 'a-plugin', isDirectory: true },
+      ]);
+      mockPluginFiles({
+        'b-plugin': { ...validManifest, id: 'b-plugin' },
+        'a-plugin': { ...validManifest, id: 'a-plugin' },
+      });
+      const registry = await scanPlugins(PLUGIN_DIR);
       const ids = Object.keys(registry);
       expect(ids.indexOf('a-plugin')).toBeLessThan(ids.indexOf('b-plugin'));
     });
 
     it('invalid plugin.json results in failed status, not crash', async () => {
       const { scanPlugins } = await getPluginLoader();
-      const dir = makePluginDir();
-      const badDir = join(dir, 'bad-plugin');
-      mkdirSync(badDir);
-      writeFileSync(join(badDir, 'plugin.json'), '{ NOT VALID JSON }');
-      expect(() => scanPlugins(dir)).not.toThrow();
-      const registry = scanPlugins(dir);
+      mockReadDir.mockResolvedValue([{ name: 'bad-plugin', isDirectory: true }]);
+      mockPluginFiles({ 'bad-plugin': '{ NOT VALID JSON }' });
+      await expect(scanPlugins(PLUGIN_DIR)).resolves.toBeDefined();
+      const registry = await scanPlugins(PLUGIN_DIR);
       expect(registry['bad-plugin']?.status).toBe('failed');
     });
 
     it('unknown fields in plugin.json are preserved, not errors', async () => {
       const { scanPlugins } = await getPluginLoader();
-      const dir = makePluginDir();
-      writePlugin(dir, 'future-plugin', { ...validManifest, id: 'future-plugin', future_field: 'value' });
-      const registry = scanPlugins(dir);
+      mockReadDir.mockResolvedValue([{ name: 'future-plugin', isDirectory: true }]);
+      mockPluginFiles({ 'future-plugin': { ...validManifest, id: 'future-plugin', future_field: 'value' } });
+      const registry = await scanPlugins(PLUGIN_DIR);
       expect(registry['future-plugin'].status).toBe('loaded');
     });
   });
@@ -89,18 +108,18 @@ describe('M6-S01 plugin manifest & loader', () => {
   describe('registry queries', () => {
     it('getPlugin(id) returns the plugin manifest', async () => {
       const { scanPlugins, getPlugin } = await getPluginLoader();
-      const dir = makePluginDir();
-      writePlugin(dir, 'test-plugin', validManifest);
-      scanPlugins(dir);
+      mockReadDir.mockResolvedValue([{ name: 'test-plugin', isDirectory: true }]);
+      mockPluginFiles({ 'test-plugin': validManifest });
+      await scanPlugins(PLUGIN_DIR);
       const plugin = getPlugin('test-plugin');
-      expect(plugin?.manifest.label).toBe('Test Plugin');
+      expect(plugin?.manifest.name).toBe('Test Plugin');
     });
 
     it('getPluginsByResource returns plugins contributing a resource type', async () => {
       const { scanPlugins, getPluginsByResource } = await getPluginLoader();
-      const dir = makePluginDir();
-      writePlugin(dir, 'test-plugin', { ...validManifest, entity_types: ['Dragon'] });
-      scanPlugins(dir);
+      mockReadDir.mockResolvedValue([{ name: 'test-plugin', isDirectory: true }]);
+      mockPluginFiles({ 'test-plugin': { ...validManifest, entity_types: ['Dragon'] } });
+      await scanPlugins(PLUGIN_DIR);
       const plugins = getPluginsByResource('entity_types');
       expect(plugins.some((p: { manifest: { id: string } }) => p.manifest.id === 'test-plugin')).toBe(true);
     });

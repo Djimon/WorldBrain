@@ -6,6 +6,7 @@ import { readAppConfig, registerProject } from './services/app-config-service';
 import type { ProjectEntry } from './services/app-config-service';
 import { openProjectDb } from './services/db-init';
 import { scanPlugins } from './services/plugin-loader';
+import { loadPluginEntityTypes } from './services/plugin-schema-loader';
 import { DatabaseProvider } from './services/DatabaseContext';
 import { WelcomeScreen } from './ui/WelcomeScreen';
 import { NewProjectDialog } from './ui/NewProjectDialog';
@@ -27,7 +28,17 @@ type AppMode =
 async function initWorkspace(projectEntry: ProjectEntry): Promise<AppMode & { kind: 'workspace' }> {
   const dbPath = await join(projectEntry.path, 'world.db');
   const db = await openProjectDb(dbPath);
-  await scanPlugins(await join(projectEntry.path, 'plugins'));
+  const pluginsDir = await join(projectEntry.path, 'plugins');
+  const registry = await scanPlugins(pluginsDir);
+  // #225: loadPluginEntityTypes (M9-S08) was previously never called from
+  // production code — a system plugin's entity_types/tables never actually
+  // materialized outside of tests. Wire it in for every loaded system plugin.
+  for (const [folder, entry] of Object.entries(registry)) {
+    if (entry.status === 'loaded' && entry.manifest.system === true) {
+      const pluginDir = await join(pluginsDir, folder);
+      await loadPluginEntityTypes({ database: db, pluginDir, manifest: entry.manifest });
+    }
+  }
   return { kind: 'workspace', projectId: projectEntry.id, projectTitle: projectEntry.title, projectDir: projectEntry.path, db };
 }
 

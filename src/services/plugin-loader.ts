@@ -1,19 +1,13 @@
 import { readDir, readTextFile } from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
+import type { SystemPluginManifest } from './plugin-validator';
 
-export interface PluginManifest {
-  id: string;
-  label: string;
-  version: string;
-  compatibility?: { app_schema?: string };
-  entity_types?: string[];
-  relation_types?: string[];
-  card_templates?: string[];
-  views?: string[];
-  rules?: string[];
-  assets?: string[];
-  [key: string]: unknown;
-}
+// #225: single canonical manifest shape (plugin-validator.ts) — the M6-era
+// `label`/`compatibility`-based PluginManifest interface and its own
+// validatePluginManifest (never called by any production code or test; the
+// real validation path is plugin-validator.ts) have been retired in favor of
+// this one, to stop the two manifest schemas drifting apart.
+export type PluginManifest = SystemPluginManifest;
 
 export interface PluginRegistryEntry {
   manifest: PluginManifest;
@@ -22,16 +16,6 @@ export interface PluginRegistryEntry {
 }
 
 let _registry: Record<string, PluginRegistryEntry> = {};
-
-export function validatePluginManifest(manifest: object): { errors: string[] } {
-  const m = manifest as Record<string, unknown>;
-  const errors: string[] = [];
-  if (!m.id) errors.push('Missing required field: id');
-  if (!m.label) errors.push('Missing required field: label');
-  if (!m.version) errors.push('Missing required field: version');
-  if (!m.compatibility) errors.push('Missing required field: compatibility');
-  return { errors };
-}
 
 export async function scanPlugins(pluginDir: string): Promise<Record<string, PluginRegistryEntry>> {
   _registry = {};
@@ -55,7 +39,7 @@ export async function scanPlugins(pluginDir: string): Promise<Record<string, Plu
     } catch {
       // AP-006: plugin.json missing or malformed — mark as failed, continue loading others
       _registry[folder] = {
-        manifest: { id: folder, label: folder, version: '0.0.0' },
+        manifest: { id: folder, name: folder, version: '0.0.0' },
         status: 'failed',
         errors: ['Failed to parse plugin.json'],
       };
