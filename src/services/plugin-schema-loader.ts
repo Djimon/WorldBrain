@@ -15,6 +15,13 @@ interface PluginManifestForLoading {
   entity_types?: unknown[];
 }
 
+// #224: db_prefix and entity_type ids are plugin-authored and get
+// interpolated directly into CREATE TABLE DDL. SQLite has no bind-parameter
+// support for identifiers (only values), so a strict charset whitelist is
+// the only valid defense against a malicious/malformed manifest injecting
+// arbitrary SQL via the table name.
+const SAFE_IDENTIFIER = /^[a-z][a-z0-9_]*$/;
+
 export async function loadPluginEntityTypes(args: {
   database: DatabaseLike;
   pluginDir: string;
@@ -22,8 +29,14 @@ export async function loadPluginEntityTypes(args: {
 }): Promise<void> {
   const { database, pluginDir, manifest } = args;
   const prefix = manifest.db_prefix ?? manifest.id;
+  if (!SAFE_IDENTIFIER.test(String(prefix))) {
+    throw new Error(`Invalid db_prefix: ${String(prefix)}`);
+  }
 
   for (const typeId of manifest.entity_types ?? []) {
+    // Malicious/malformed entity-type id → skip it, same as a missing file
+    // below; the rest of the plugin's entity types still load.
+    if (!SAFE_IDENTIFIER.test(String(typeId))) continue;
     const path = await join(pluginDir, 'entity_types', `${typeId}.json`);
     let entityType: PluginEntityType;
     try {
