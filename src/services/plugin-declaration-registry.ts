@@ -50,7 +50,9 @@ export function validateNoDuplicateDeclarations(
   const errors: string[] = [];
   const seen = new Set<string>();
   for (const { kind, name } of declarations) {
-    const stableId = `${kind}:${name}`;
+    // #248: reuse makeStableId — single source for the id format/guard,
+    // instead of duplicating the "kind:name" template (and its ":" guard).
+    const stableId = makeStableId(kind, name);
     if (seen.has(stableId)) {
       errors.push(`Duplicate declaration: ${stableId}`);
     }

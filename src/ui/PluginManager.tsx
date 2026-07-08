@@ -10,7 +10,7 @@ export function PluginManager() {
       <ul>
         {entries.map((entry) => (
           <li key={entry.manifest.id}>
-            <strong>{String(entry.manifest.label ?? entry.manifest.name ?? '')}</strong>
+            <strong>{entry.manifest.name}</strong>
             {' '}
             <span data-testid={`status-${entry.manifest.id}`} data-status={entry.status}>[{entry.status}]</span>
             {' '}
