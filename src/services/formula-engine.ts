@@ -48,8 +48,10 @@ function tokenize(input: string): Token[] {
 // Surface function names that map to a different condition-engine AST key.
 const FUNCTION_NAME_ALIASES: Record<string, string> = { not: '!' };
 
-// Recursive-descent parser → condition-engine AST nodes.
-function parseFormula(input: string): unknown {
+// Recursive-descent parser → condition-engine AST nodes. Exported (in addition
+// to evaluateFormula) so callers/tests can distinguish a parse-time rejection
+// from a silent undefined-evaluation (#221).
+export function parseFormula(input: string): unknown {
   const tokens = tokenize(input);
   let pos = 0;
   const peek = (): Token | undefined => tokens[pos];

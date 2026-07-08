@@ -173,6 +173,49 @@ describe('M9-S08 reference field types & db-prefix loading', () => {
     });
   });
 
+  describe('security: db_prefix/entity_type identifier validation before SQL interpolation (#224)', () => {
+    it('malicious db_prefix does not reach database.execute as injected DDL', async () => {
+      mockReadDir.mockResolvedValue([{ name: 'player_character.json', isDirectory: false }]);
+      mockReadTextFile.mockResolvedValue(JSON.stringify({ id: 'player_character', label: 'Player Character', schema: {} }));
+      const { loadPluginEntityTypes } = await getSchemaLoader();
+      const database = makeMockDb();
+      const maliciousPrefix = 'x (id TEXT); DROP TABLE entities; --';
+      await loadPluginEntityTypes({
+        database, pluginDir: '/plugins/evil',
+        manifest: { id: 'evil', db_prefix: maliciousPrefix, entity_types: ['player_character'] },
+      }).catch(() => { /* rejecting the whole load is an acceptable safe outcome */ });
+      const calls = database.execute.mock.calls as [string, unknown[]?][];
+      expect(calls.some(([sql]) => /drop table/i.test(sql))).toBe(false);
+    });
+
+    it('malicious entity_type id does not reach database.execute as injected DDL', async () => {
+      const maliciousTypeId = 'x (id TEXT); DROP TABLE entities; --';
+      mockReadDir.mockResolvedValue([{ name: `${maliciousTypeId}.json`, isDirectory: false }]);
+      mockReadTextFile.mockResolvedValue(JSON.stringify({ id: maliciousTypeId, label: 'Evil', schema: {} }));
+      const { loadPluginEntityTypes } = await getSchemaLoader();
+      const database = makeMockDb();
+      await loadPluginEntityTypes({
+        database, pluginDir: '/plugins/dnd5e-srd',
+        manifest: { id: 'dnd5e-srd', db_prefix: 'dnd5e', entity_types: [maliciousTypeId] },
+      }).catch(() => { /* rejecting the whole load is an acceptable safe outcome */ });
+      const calls = database.execute.mock.calls as [string, unknown[]?][];
+      expect(calls.some(([sql]) => /drop table/i.test(sql))).toBe(false);
+    });
+
+    it('valid identifiers (^[a-z][a-z0-9_]*$) still materialize normally', async () => {
+      mockReadDir.mockResolvedValue([{ name: 'player_character.json', isDirectory: false }]);
+      mockReadTextFile.mockResolvedValue(JSON.stringify({ id: 'player_character', label: 'Player Character', schema: {} }));
+      const { loadPluginEntityTypes } = await getSchemaLoader();
+      const database = makeMockDb();
+      await loadPluginEntityTypes({
+        database, pluginDir: '/plugins/dnd5e-srd',
+        manifest: { id: 'dnd5e-srd', db_prefix: 'dnd5e', entity_types: ['player_character'] },
+      });
+      const calls = database.execute.mock.calls as [string, unknown[]?][];
+      expect(calls.some(([sql]) => /dnd5e_player_character/i.test(sql))).toBe(true);
+    });
+  });
+
   describe('database prop convention (AP-001)', () => {
     it('loadPluginEntityTypes accepts a DatabaseLike-shaped object without as-never cast', async () => {
       mockReadDir.mockResolvedValue([]);

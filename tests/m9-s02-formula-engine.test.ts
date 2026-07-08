@@ -2,6 +2,7 @@
 // M9-S02: Formel-Engine für System-Felder
 // See: https://github.com/Djimon/WorldBrain/issues/165
 
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 async function getFormulaEngine() { return import('../src/services/formula-engine'); }
@@ -88,9 +89,38 @@ describe('M9-S02 formula engine', () => {
   });
 
   describe('no eval()', () => {
-    it('formula-engine.ts does not use eval()', async () => {
-      const src = await import('fs').then(fs => fs.readFileSync('src/services/formula-engine.ts', 'utf-8'));
+    it('formula-engine.ts does not use eval()', () => {
+      const src = readFileSync('src/services/formula-engine.ts', 'utf-8');
       expect(src).not.toMatch(/\beval\s*\(/);
+    });
+  });
+
+  describe('function name whitelist (#221 — parser grammar must not exceed evaluator ops)', () => {
+    it('unknown function name "sqrt(4)" is rejected by the parser itself (parse-error path)', async () => {
+      const { parseFormula } = await getFormulaEngine();
+      // Must throw at parse time — not silently produce an AST node that
+      // evaluates to undefined later (the pre-#221 behavior).
+      expect(() => parseFormula('sqrt(4)')).toThrow();
+    });
+
+    it('typo\'d function name "maxx(1,2)" is rejected by the parser itself', async () => {
+      const { parseFormula } = await getFormulaEngine();
+      expect(() => parseFormula('maxx(1, 2)')).toThrow();
+    });
+
+    it('evaluateFormula surfaces the parse rejection as null, not a throw', async () => {
+      const { evaluateFormula } = await getFormulaEngine();
+      expect(() => evaluateFormula('sqrt(4)', {})).not.toThrow();
+      expect(evaluateFormula('sqrt(4)', {})).toBeNull();
+    });
+
+    it('existing supported functions remain green: floor/ceil/max/min', async () => {
+      const { evaluateFormula, parseFormula } = await getFormulaEngine();
+      expect(() => parseFormula('floor(3.7)')).not.toThrow();
+      expect(evaluateFormula('floor(3.7)', {})).toBe(3);
+      expect(evaluateFormula('ceil(3.2)', {})).toBe(4);
+      expect(evaluateFormula('max(1, 2)', {})).toBe(2);
+      expect(evaluateFormula('min(1, 2)', {})).toBe(1);
     });
   });
 
