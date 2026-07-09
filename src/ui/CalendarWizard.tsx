@@ -64,6 +64,9 @@ export function CalendarWizard({ onComplete, database }: Props) {
   }
 
   const totalDays = months.reduce((s, m) => s + m.days, 0);
+  const weekLen = week.length || 1;
+  const fullWeeks = Math.floor(totalDays / weekLen);
+  const remDays = totalDays % weekLen;
 
   return (
     <div className="cal-form">
@@ -72,6 +75,19 @@ export function CalendarWizard({ onComplete, database }: Props) {
         <button className="btn btn--primary" onClick={() => void handleSave()} disabled={saving}>
           {saving ? 'Speichern…' : 'Kalender speichern'}
         </button>
+      </div>
+
+      {/* Live-Summe: aktualisiert sich bei jeder Monats-/Wochentag-Änderung */}
+      <div className="cal-form__summary">
+        <span className="cal-form__summary-item"><strong>{totalDays}</strong> Tage/Jahr</span>
+        <span className="cal-form__summary-sep">·</span>
+        <span className="cal-form__summary-item">
+          <strong>{fullWeeks}</strong> Wochen{remDays > 0 ? ` + ${remDays} ${remDays === 1 ? 'Tag' : 'Tage'}` : ''}
+        </span>
+        <span className="cal-form__summary-sep">·</span>
+        <span className="cal-form__summary-item">{months.length} Monate</span>
+        <span className="cal-form__summary-sep">·</span>
+        <span className="cal-form__summary-item">{week.length} Tage/Woche</span>
       </div>
 
       <div className="cal-form__body">
