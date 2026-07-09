@@ -18,7 +18,12 @@ type TabDefinition = {
 };
 
 const registeredTabs: TabDefinition[] = [];
-export function registerEntityTab(tab: TabDefinition) { registeredTabs.push(tab); }
+export function registerEntityTab(tab: TabDefinition) {
+  // Idempotent by id — re-registration (HMR, double import) replaces rather
+  // than appends, so tabs never duplicate.
+  const i = registeredTabs.findIndex((t) => t.id === tab.id);
+  if (i !== -1) registeredTabs[i] = tab; else registeredTabs.push(tab);
+}
 export function clearEntityTabs() { registeredTabs.splice(0); }
 
 async function saveEntity(db: DatabaseLike, entityId: string, patch: {

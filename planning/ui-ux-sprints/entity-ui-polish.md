@@ -9,3 +9,4 @@ Vorgeschichte: Karten-Sprint abgeschlossen. Jetzt Entity-Seiten.
 | # | Änderung | Entscheidung / Warum | Dateien |
 |---|----------|----------------------|---------|
 | 1 | Neuer Tab **„Verlinkungen"** (Backlinks) auf der Entity-Seite | Wunsch: sehen, welche Entities *diese* via `@Name` erwähnen, klickbar dahin springen. Reverse-Lookup über `@[Name](id)` in summary + properties_json; präzise per `parseMentions` verifiziert (LIKE nur Vorfilter). `onNavigate` durch die Tab-Render-Signatur gereicht (registrierte Tabs konnten vorher nicht navigieren). | `src/ui/BacklinksTab.tsx` (neu), `src/ui/EntityDetailView.tsx`, `src/tab-wiring.tsx`, `src/style.css` |
+| 2 | Fix: `registerEntityTab` idempotent nach `id` | Bug aus #1 sichtbar: „Relations" doppelt. Ursache: Registrierung pushte ohne Dedup → HMR/Re-Import akkumulierte. Jetzt ersetzt gleiche `id` statt anzuhängen. | `src/ui/EntityDetailView.tsx` |
