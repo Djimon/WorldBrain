@@ -149,3 +149,15 @@ Plugin ids and directory names: `snake_case` with underscores (`dnd5e_srd`), nev
 - No Markdown Story jungle
 
 ---
+
+## UI/UX Sprint Mode
+
+A separate, lightweight mode for polishing user-feeling — **not** the Epic Workflow.
+
+- One agent is **reviewer and implementer at once**. Tight loops: user tests live, says "X fehlt" / "Icon ändern" → implement immediately, no ceremony.
+- **Scope: UI/UX only.** Never touch the base (services, schema, data model, engines). Only presentation and interaction.
+- **No TDD, no Epics, no Stories** required.
+- Still required: **clean commits per change**, and a **running change/decision log** (like an Epic's issue list — one line per change/decision with rationale) kept in `planning/ui-ux-sprints/<name>.md`.
+- **Push at the end of the sprint**, bundled — not per change.
+
+---

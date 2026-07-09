@@ -14,7 +14,7 @@ type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 type TabDefinition = {
   id: string;
   label: string;
-  render: (props: { entityId: string; database?: DatabaseLike }) => React.ReactNode;
+  render: (props: { entityId: string; database?: DatabaseLike; onNavigate?: (id: string) => void }) => React.ReactNode;
 };
 
 const registeredTabs: TabDefinition[] = [];
@@ -208,7 +208,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
         ))}
       </div>
       <div className="entity-detail__body" role="tabpanel">
-        {activeTabDef?.render({ entityId, database })}
+        {activeTabDef?.render({ entityId, database, onNavigate: onNavigateToEntity })}
       </div>
     </div>
   );
