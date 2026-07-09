@@ -91,8 +91,8 @@ describe('M12-S10 conformance proof (2 structurally different systems)', () => {
     it('bonus/penalty dice modifiers resolve alongside the roll-under check (S05)', async () => {
       const { resolveNetModifier } = await import('../src/services/roll-modifier-engine');
       const bonusDie = { kind: 'extra-die' as const, of: 1, pool: 'tens' as const, keep: 'best' as const, stacking: 'cancel-pairwise' as const };
-      const net = resolveNetModifier([bonusDie]);
-      expect(net.kind).toBe('extra-die');
+      const nets = resolveNetModifier([bonusDie]);
+      expect(nets[0]?.kind).toBe('extra-die');
     });
   });
 });

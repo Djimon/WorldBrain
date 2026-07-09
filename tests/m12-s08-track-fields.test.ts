@@ -70,6 +70,28 @@ describe('M12-S08 track fields (marked slot arrays)', () => {
     });
   });
 
+  describe('bug #250: on_last_mark must edge-trigger, not re-fire on an already-full track', () => {
+    it('marking 5→6 (crossing the cap) fires on_last_mark', async () => {
+      const { markTrack } = await getTrackEngine();
+      const result = markTrack(DAGGERHEART_HP_TRACK, 5, 1, {});
+      expect(result.marked).toBe(6);
+      expect(result.flags).toContain('hp_track_last_mark');
+    });
+
+    it('marking an already-full track (6→6) does not re-fire on_last_mark', async () => {
+      const { markTrack } = await getTrackEngine();
+      const result = markTrack(DAGGERHEART_HP_TRACK, 6, 1, {});
+      expect(result.marked).toBe(6);
+      expect(result.flags).not.toContain('hp_track_last_mark');
+    });
+
+    it('on_full still fires on an already-full track (level-triggered)', async () => {
+      const { markTrack } = await getTrackEngine();
+      const result = markTrack(DAGGERHEART_HP_TRACK, 6, 1, {});
+      expect(result.flags).toContain('hp_track_full');
+    });
+  });
+
   describe('clearTrack', () => {
     it('clears marks down to a minimum of 0', async () => {
       const { clearTrack } = await getTrackEngine();

@@ -22,62 +22,77 @@ describe('M12-S05 roll modifiers (advantage/disadvantage, bonus/penalty dice)', 
   describe('D&D Advantage = keep of:2 keep:best', () => {
     it('a single advantage resolves to keep-best', async () => {
       const { resolveNetModifier } = await getRollModifierEngine();
-      const net = resolveNetModifier([ADVANTAGE]);
-      expect(net.kind).toBe('keep');
-      expect(net.keep).toBe('best');
+      const nets = resolveNetModifier([ADVANTAGE]);
+      expect(nets).toEqual([{ kind: 'keep', keep: 'best', count: 1 }]);
     });
   });
 
   describe('CoC Bonus die = extra-die pool:tens keep:best', () => {
     it('a single bonus die resolves to extra-die keep-best', async () => {
       const { resolveNetModifier } = await getRollModifierEngine();
-      const net = resolveNetModifier([BONUS_DIE]);
-      expect(net.kind).toBe('extra-die');
-      expect(net.keep).toBe('best');
+      const nets = resolveNetModifier([BONUS_DIE]);
+      expect(nets).toEqual([{ kind: 'extra-die', keep: 'best', count: 1 }]);
     });
   });
 
   describe('pairwise cancel (AC unit test)', () => {
-    it('advantage + disadvantage → normal', async () => {
+    it('advantage + disadvantage → normal (empty result)', async () => {
       const { resolveNetModifier } = await getRollModifierEngine();
-      const net = resolveNetModifier([ADVANTAGE, DISADVANTAGE]);
-      expect(net.kind).toBe('normal');
+      const nets = resolveNetModifier([ADVANTAGE, DISADVANTAGE]);
+      expect(nets).toEqual([]);
     });
 
     it('two penalty dice + one bonus die → net one penalty', async () => {
       const { resolveNetModifier } = await getRollModifierEngine();
-      const net = resolveNetModifier([PENALTY_DIE, PENALTY_DIE, BONUS_DIE]);
-      expect(net.kind).toBe('extra-die');
-      expect(net.keep).toBe('worst');
-      expect(net.count).toBe(1);
+      const nets = resolveNetModifier([PENALTY_DIE, PENALTY_DIE, BONUS_DIE]);
+      expect(nets).toEqual([{ kind: 'extra-die', keep: 'worst', count: 1 }]);
     });
   });
 
   describe('no stacking beyond cancel (equal counts fully cancel)', () => {
-    it('two advantages + two disadvantages → normal', async () => {
+    it('two advantages + two disadvantages → normal (empty result)', async () => {
       const { resolveNetModifier } = await getRollModifierEngine();
-      const net = resolveNetModifier([ADVANTAGE, ADVANTAGE, DISADVANTAGE, DISADVANTAGE]);
-      expect(net.kind).toBe('normal');
+      const nets = resolveNetModifier([ADVANTAGE, ADVANTAGE, DISADVANTAGE, DISADVANTAGE]);
+      expect(nets).toEqual([]);
+    });
+  });
+
+  describe('bug #249: two different kinds with net≠0 must both be returned, order-independent', () => {
+    it('advantage (keep) + bonus die (extra-die) → both returned', async () => {
+      const { resolveNetModifier } = await getRollModifierEngine();
+      const nets = resolveNetModifier([ADVANTAGE, BONUS_DIE]);
+      expect(nets).toContainEqual({ kind: 'keep', keep: 'best', count: 1 });
+      expect(nets).toContainEqual({ kind: 'extra-die', keep: 'best', count: 1 });
+      expect(nets).toHaveLength(2);
+    });
+
+    it('reversed input order produces the same set of results', async () => {
+      const { resolveNetModifier } = await getRollModifierEngine();
+      const forward = resolveNetModifier([ADVANTAGE, BONUS_DIE]);
+      const reversed = resolveNetModifier([BONUS_DIE, ADVANTAGE]);
+      expect(new Set(forward.map((n) => JSON.stringify(n)))).toEqual(
+        new Set(reversed.map((n) => JSON.stringify(n))),
+      );
     });
   });
 
   describe('passive ± adjustment', () => {
     it('advantage → passive +5', async () => {
       const { resolveNetModifier, resolvePassiveAdjustment } = await getRollModifierEngine();
-      const net = resolveNetModifier([ADVANTAGE]);
-      expect(resolvePassiveAdjustment(net, 5)).toBe(5);
+      const nets = resolveNetModifier([ADVANTAGE]);
+      expect(resolvePassiveAdjustment(nets, 5)).toBe(5);
     });
 
     it('disadvantage → passive -5', async () => {
       const { resolveNetModifier, resolvePassiveAdjustment } = await getRollModifierEngine();
-      const net = resolveNetModifier([DISADVANTAGE]);
-      expect(resolvePassiveAdjustment(net, 5)).toBe(-5);
+      const nets = resolveNetModifier([DISADVANTAGE]);
+      expect(resolvePassiveAdjustment(nets, 5)).toBe(-5);
     });
 
     it('normal (no net modifier) → passive adjustment 0', async () => {
       const { resolveNetModifier, resolvePassiveAdjustment } = await getRollModifierEngine();
-      const net = resolveNetModifier([ADVANTAGE, DISADVANTAGE]);
-      expect(resolvePassiveAdjustment(net, 5)).toBe(0);
+      const nets = resolveNetModifier([ADVANTAGE, DISADVANTAGE]);
+      expect(resolvePassiveAdjustment(nets, 5)).toBe(0);
     });
   });
 
