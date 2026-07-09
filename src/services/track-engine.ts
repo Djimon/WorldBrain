@@ -37,8 +37,12 @@ export function markTrack(
 
   const flags: string[] = [];
   if (cap !== null && marked >= cap) {
+    // #250: on_last_mark is an edge-triggered event — fires only on the
+    // transition into "full" (currentMarked < cap), never again while the
+    // track stays full. on_full is level-triggered — fires every call the
+    // track is full, by design.
+    if (currentMarked < cap && descriptor.on_last_mark) flags.push(descriptor.on_last_mark);
     if (descriptor.on_full) flags.push(descriptor.on_full);
-    if (descriptor.on_last_mark) flags.push(descriptor.on_last_mark);
   }
   return { marked, flags };
 }
