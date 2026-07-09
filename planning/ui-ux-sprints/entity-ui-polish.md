@@ -18,3 +18,4 @@ Vorgeschichte: Karten-Sprint abgeschlossen. Jetzt Entity-Seiten.
 | # | Änderung | Entscheidung / Warum | Dateien |
 |---|----------|----------------------|---------|
 | 5 | Fix: Kalender-Save warf `no column named updated_at` | `saveCalendar` schrieb `created_at, updated_at`, aber das `calendars`-Schema hat kein `updated_at` (und niemand liest es). Save warf → nichts persistiert → Edits beim Bereichswechsel weg. `updated_at` aus dem INSERT entfernt (kein Schema-Eingriff). | `src/services/calendar-service.ts` |
+| 6 | Monatsansicht: echtes Grid statt vertikalem Text-Stapel | `CalendarMonthView` hatte ARIA-Rollen aber kein Layout-CSS → Wochentage + Tage stapelten vertikal. CSS-Grid mit `--cal-cols` = Anzahl Wochentage (dynamisch, auch 8+); `role="row"` per `display:contents` in den Grid-Fluss gelegt (ARIA bleibt). Kacheln mit Hover, Event-Chips. | `src/ui/CalendarMonthView.tsx`, `src/style.css` |

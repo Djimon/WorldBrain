@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { CSSProperties } from 'react';
 import { listEvents } from '../services/event-service';
 import type { DatabaseLike } from '../services/entity-service';
 
@@ -56,18 +57,18 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
   const weekDays = calendar.week.length > 0 ? calendar.week : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   return (
-    <div>
-      <h2>{currentMonth.name}</h2>
-      <div>
-        <button aria-label="< previous" onClick={() => setMonthIndex(i => Math.max(0, i - 1))}>{'<'}</button>
-        <button aria-label="today" onClick={() => setMonthIndex(0)}>Today</button>
-        <button aria-label="next >" onClick={() => setMonthIndex(i => i + 1)}>{'>'}</button>
+    <div className="cal-month">
+      <div className="cal-month__bar">
+        <button className="cal-month__nav" aria-label="< previous" onClick={() => setMonthIndex(i => Math.max(0, i - 1))}>{'‹'}</button>
+        <button className="cal-month__nav" aria-label="today" onClick={() => setMonthIndex(0)}>Today</button>
+        <button className="cal-month__nav" aria-label="next >" onClick={() => setMonthIndex(i => i + 1)}>{'›'}</button>
+        <h2 className="cal-month__name">{currentMonth.name}</h2>
       </div>
-      <div role="grid">
-        <div role="row">
-          {weekDays.map(d => <div key={d} role="columnheader">{d}</div>)}
+      <div role="grid" className="cal-grid" style={{ '--cal-cols': weekDays.length } as CSSProperties}>
+        <div role="row" className="cal-grid__row">
+          {weekDays.map(d => <div key={d} role="columnheader" className="cal-grid__dow">{d}</div>)}
         </div>
-        <div role="row">
+        <div role="row" className="cal-grid__row">
           {Array.from({ length: currentMonth.days }, (_, i) => {
             const day = startDay + i;
             const dayEvents = eventsForDay(day);
@@ -75,11 +76,12 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
               <div
                 key={day}
                 role="gridcell"
+                className="cal-grid__day"
                 data-day={day}
                 onClick={() => onCreateEvent?.(day)}
               >
-                <span>{i + 1}</span>
-                {dayEvents.map(e => <div key={e.id}>{e.title}</div>)}
+                <span className="cal-grid__day-num">{i + 1}</span>
+                {dayEvents.map(e => <div key={e.id} className="cal-grid__event" title={e.title}>{e.title}</div>)}
               </div>
             );
           })}
