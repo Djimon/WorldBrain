@@ -95,6 +95,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   const [showCardCreation, setShowCardCreation] = useState(false);
   const [showPrintSheet, setShowPrintSheet] = useState(false);
   const [activeCalendar, setActiveCalendar] = useState<CalendarRow | null>(null);
+  const [editingCalendar, setEditingCalendar] = useState(false);
   const [evalResult, setEvalResult] = useState<string | null>(null);
   const [mapImporting, setMapImporting] = useState(false);
   const [savedViews, setSavedViews] = useState<SavedViewRow[]>([]);
@@ -312,10 +313,17 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
       case 'calendar':
         return (
           <div className="workspace-area" style={{ flexDirection: 'column', overflow: 'hidden' }}>
-            {!activeCalendar ? (
+            {(!activeCalendar || editingCalendar) ? (
               <CalendarWizard
                 database={database}
+                initial={activeCalendar ? {
+                  id: activeCalendar.id,
+                  title: activeCalendar.title,
+                  months: activeCalendar.months,
+                  week: activeCalendar.week,
+                } : undefined}
                 onComplete={(id) => {
+                  setEditingCalendar(false);
                   if (id) void loadCalendarById(id).then((cal) => { if (cal) setActiveCalendar(cal); }).catch(console.error);
                 }}
               />
@@ -324,7 +332,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 <div style={{ padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                   <strong>{activeCalendar.title}</strong>
                   <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{activeCalendar.year_length_days} Tage/Jahr · {activeCalendar.months.length} Monate · {activeCalendar.week.length} Wochentage</span>
-                  <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setActiveCalendar(null)}>{t('changeCalendar')}</button>
+                  <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setEditingCalendar(true)}>{t('changeCalendar')}</button>
                 </div>
                 <div style={{ flex: 1, overflow: 'auto' }}>
                   <CalendarMonthView calendar={activeCalendar} database={database} />

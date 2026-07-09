@@ -4,19 +4,30 @@ import { saveCalendar } from '../services/calendar-service';
 import { CALENDAR_PRESETS } from '../../core_data/calendar-schema';
 import type { DatabaseLike } from '../services/entity-service';
 
+interface CalendarInitial {
+  id?: string;
+  title: string;
+  months: { name: string; days: number }[];
+  week: string[];
+}
+
 interface Props {
   onComplete: (calendarId?: string) => void;
   database: DatabaseLike | undefined;
+  /** Existing calendar to edit; when absent the wizard starts from the default preset. */
+  initial?: CalendarInitial;
 }
 
 const DEFAULT_PRESET = CALENDAR_PRESETS[0];
 
-export function CalendarWizard({ onComplete, database }: Props) {
+export function CalendarWizard({ onComplete, database, initial }: Props) {
   const { t } = useTranslation('nav');
-  const [title, setTitle] = useState(t('calendar'));
+  const [title, setTitle] = useState(initial?.title ?? t('calendar'));
   const [preset, setPreset] = useState(DEFAULT_PRESET.id);
-  const [months, setMonths] = useState(DEFAULT_PRESET.months.map((m) => ({ ...m })));
-  const [week, setWeek] = useState([...DEFAULT_PRESET.week]);
+  const [months, setMonths] = useState(
+    initial?.months?.length ? initial.months.map((m) => ({ ...m })) : DEFAULT_PRESET.months.map((m) => ({ ...m })),
+  );
+  const [week, setWeek] = useState(initial?.week?.length ? [...initial.week] : [...DEFAULT_PRESET.week]);
   const [saving, setSaving] = useState(false);
 
   function applyPreset(id: string) {
@@ -56,7 +67,7 @@ export function CalendarWizard({ onComplete, database }: Props) {
     setSaving(true);
     try {
       const yearLengthDays = months.reduce((s, m) => s + m.days, 0);
-      const id = await saveCalendar(database, { title: title.trim(), yearLengthDays, months, week });
+      const id = await saveCalendar(database, { title: title.trim(), yearLengthDays, months, week }, initial?.id);
       onComplete(id);
     } finally {
       setSaving(false);

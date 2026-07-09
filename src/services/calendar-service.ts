@@ -7,8 +7,10 @@ export interface CalendarData {
   week: string[];
 }
 
-export async function saveCalendar(db: DatabaseLike, data: CalendarData): Promise<string> {
-  const id = `cal-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+export async function saveCalendar(db: DatabaseLike, data: CalendarData, existingId?: string): Promise<string> {
+  // Reuse the id when editing so the row is updated in place (INSERT OR
+  // REPLACE) instead of creating a duplicate calendar.
+  const id = existingId ?? `cal-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   const now = new Date().toISOString();
   await db.execute(
     `INSERT OR REPLACE INTO calendars (id, title, year_length_days, months_json, week_json, created_at)
