@@ -128,8 +128,13 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   const allEntityTypes = [...CORE_ENTITY_TYPES, ...pluginEntityTypes.filter((t) => !CORE_ENTITY_TYPES.includes(t))];
 
   function navigateToEntity(entityId: string) {
-    setSelectedEntityId(entityId);
+    // Navigate the whole path, not just the leaf detail view: switch the TYP
+    // list to the target's type, select it, and land in the entities area.
     setActiveArea('entities');
+    setSelectedEntityId(entityId);
+    database.select<{ type: string }>('SELECT type FROM base_entities WHERE id = ?', [entityId])
+      .then((rows) => { const type = rows[0]?.type; if (type) setEntityType(type); })
+      .catch(console.error);
   }
 
   async function loadCalendarById(id: string): Promise<CalendarRow | null> {
@@ -225,6 +230,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 initialType={entityType}
                 selectedEntityId={selectedEntityId}
                 onEntitySelect={setSelectedEntityId}
+                onNavigateToEntity={navigateToEntity}
               />
             </div>
           </div>

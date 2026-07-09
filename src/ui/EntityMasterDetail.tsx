@@ -11,6 +11,9 @@ interface Props {
   initialType: string | null;
   selectedEntityId?: string;
   onEntitySelect?: (entityId: string) => void;
+  /** Cross-type navigation (mentions/backlinks): bubbles up so the parent can
+   *  switch the TYP list too, not just swap the detail view. */
+  onNavigateToEntity?: (entityId: string) => void;
   database?: DatabaseLike;
 }
 
@@ -25,7 +28,7 @@ async function createEntity(db: DatabaseLike, type: string, title: string): Prom
   return id;
 }
 
-export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySelect, database }: Props) {
+export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySelect, onNavigateToEntity, database }: Props) {
   const { t } = useTranslation('entity');
   const [selectedId, setSelectedId] = useState<string | null>(selectedEntityId ?? null);
   const [entities, setEntities] = useState<EntityListItem[]>([]);
@@ -43,6 +46,12 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
     setSelectedId(null);
     reload();
   }, [database, initialType]);
+
+  // Keep the list selection in sync when the parent drives navigation
+  // (mention/backlink click switches type + id from outside).
+  useEffect(() => {
+    if (selectedEntityId) setSelectedId(selectedEntityId);
+  }, [selectedEntityId]);
 
   function handleSelect(id: string) {
     setSelectedId(id);
@@ -116,7 +125,7 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
 
       <div className="emd__detail">
         {selectedId
-          ? <EntityDetailView entityId={selectedId} database={database} onNavigateToEntity={handleSelect} />
+          ? <EntityDetailView entityId={selectedId} database={database} onNavigateToEntity={onNavigateToEntity ?? handleSelect} />
           : <div className="emd__detail-empty">{t('selectOrCreate')}</div>
         }
       </div>

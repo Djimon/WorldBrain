@@ -63,7 +63,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
   }
 
   useEffect(() => {
-    load(); setEditing(false);
+    load(); setEditing(false); setActiveTab('overview');
     if (database) {
       listEntitiesByType({ database: database as Parameters<typeof listEntitiesByType>[0]['database'], type: null })
         .then((rows) => setAllEntities(rows as EntityMention[]))
