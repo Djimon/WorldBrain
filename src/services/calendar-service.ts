@@ -11,9 +11,9 @@ export async function saveCalendar(db: DatabaseLike, data: CalendarData): Promis
   const id = `cal-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   const now = new Date().toISOString();
   await db.execute(
-    `INSERT OR REPLACE INTO calendars (id, title, year_length_days, months_json, week_json, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [id, data.title, data.yearLengthDays, JSON.stringify(data.months), JSON.stringify(data.week), now, now],
+    `INSERT OR REPLACE INTO calendars (id, title, year_length_days, months_json, week_json, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [id, data.title, data.yearLengthDays, JSON.stringify(data.months), JSON.stringify(data.week), now],
   );
   return id;
 }
