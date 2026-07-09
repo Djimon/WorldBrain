@@ -130,10 +130,16 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   function navigateToEntity(entityId: string) {
     // Navigate the whole path, not just the leaf detail view: switch the TYP
     // list to the target's type, select it, and land in the entities area.
+    // Type + id must be set in the SAME continuation (type first) so React
+    // batches them into one render — otherwise the type-change effect fires
+    // after the id and resets the selection to null.
     setActiveArea('entities');
-    setSelectedEntityId(entityId);
     database.select<{ type: string }>('SELECT type FROM base_entities WHERE id = ?', [entityId])
-      .then((rows) => { const type = rows[0]?.type; if (type) setEntityType(type); })
+      .then((rows) => {
+        const type = rows[0]?.type;
+        if (type) setEntityType(type);
+        setSelectedEntityId(entityId);
+      })
       .catch(console.error);
   }
 
