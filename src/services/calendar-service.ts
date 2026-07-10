@@ -20,8 +20,23 @@ export async function saveCalendar(db: DatabaseLike, data: CalendarData, existin
   return id;
 }
 
-export async function listCalendars(db: DatabaseLike): Promise<{ id: string; title: string }[]> {
-  return db.select<{ id: string; title: string }>('SELECT id, title FROM calendars ORDER BY created_at');
+export async function listCalendars(db: DatabaseLike): Promise<{ id: string; title: string; is_active: number }[]> {
+  return db.select<{ id: string; title: string; is_active: number }>(
+    'SELECT id, title, is_active FROM calendars ORDER BY created_at',
+  );
+}
+
+/** Marks one calendar as the active display calendar (project-wide, one at a
+ *  time). Events are unaffected — they stay pinned to the shared counter and
+ *  are re-projected by whichever calendar is active. */
+export async function setActiveCalendar(db: DatabaseLike, id: string): Promise<void> {
+  await db.execute('UPDATE calendars SET is_active = 0');
+  await db.execute('UPDATE calendars SET is_active = 1 WHERE id = ?', [id]);
+}
+
+export async function getActiveCalendarId(db: DatabaseLike): Promise<string | null> {
+  const rows = await db.select<{ id: string }>('SELECT id FROM calendars WHERE is_active = 1 LIMIT 1');
+  return rows[0]?.id ?? null;
 }
 
 export function importCalendarFromJson(json: string): unknown {

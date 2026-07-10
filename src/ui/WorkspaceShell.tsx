@@ -15,7 +15,7 @@ import { GlobalSearch } from './GlobalSearch';
 import { GlobalEntityGraph } from './GlobalEntityGraph';
 import { ChronicleView } from './ChronicleView';
 import { CalendarWizard } from './CalendarWizard';
-import { listCalendars } from '../services/calendar-service';
+import { listCalendars, setActiveCalendar as persistActiveCalendar } from '../services/calendar-service';
 import { CalendarMonthView } from './CalendarMonthView';
 import { EntityTimeline } from './EntityTimeline';
 import { CardList } from './CardList';
@@ -98,6 +98,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   const [showPrintSheet, setShowPrintSheet] = useState(false);
   const [activeCalendar, setActiveCalendar] = useState<CalendarRow | null>(null);
   const [editingCalendar, setEditingCalendar] = useState(false);
+  const [calendarList, setCalendarList] = useState<{ id: string; title: string; is_active: number }[]>([]);
   const [evalResult, setEvalResult] = useState<string | null>(null);
   const [mapImporting, setMapImporting] = useState(false);
   const [savedViews, setSavedViews] = useState<SavedViewRow[]>([]);
@@ -162,16 +163,27 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     };
   }
 
-  // Load the existing (most recent) calendar on mount so re-entering the area
-  // shows the saved calendar instead of a fresh wizard/preset.
+  // Load the active display calendar on mount (fallback: most recent) so
+  // re-entering the area shows the chosen calendar, not a fresh wizard.
   useEffect(() => {
     if (!database) return;
     listCalendars(database).then((cals) => {
+      setCalendarList(cals);
       if (cals.length === 0) return;
-      const latest = cals[cals.length - 1];
-      void loadCalendarById(latest.id).then((cal) => { if (cal) setActiveCalendar(cal); }).catch(console.error);
+      const activeId = cals.find((c) => c.is_active)?.id ?? cals[cals.length - 1].id;
+      void loadCalendarById(activeId).then((cal) => { if (cal) setActiveCalendar(cal); }).catch(console.error);
     }).catch(console.error);
   }, [database]);
+
+  function switchCalendar(id: string) {
+    if (!database || id === activeCalendar?.id) return;
+    void persistActiveCalendar(database, id)
+      .then(() => loadCalendarById(id))
+      .then((cal) => { if (cal) setActiveCalendar(cal); })
+      .then(() => listCalendars(database))
+      .then(setCalendarList)
+      .catch(console.error);
+  }
 
   async function handleMapImport() {
     const { open } = await import('@tauri-apps/plugin-dialog');
@@ -346,7 +358,18 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 <div style={{ padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                   <strong>{activeCalendar.title}</strong>
                   <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{activeCalendar.year_length_days} Tage/Jahr · {activeCalendar.months.length} Monate · {activeCalendar.week.length} Wochentage</span>
-                  <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setEditingCalendar(true)}>{t('changeCalendar')}</button>
+                  {calendarList.length > 1 && (
+                    <select
+                      className="cal-form__select"
+                      style={{ marginLeft: 'auto' }}
+                      aria-label="Kalender wählen"
+                      value={activeCalendar.id}
+                      onChange={(e) => switchCalendar(e.target.value)}
+                    >
+                      {calendarList.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                    </select>
+                  )}
+                  <button className="btn" style={calendarList.length > 1 ? undefined : { marginLeft: 'auto' }} onClick={() => setEditingCalendar(true)}>{t('changeCalendar')}</button>
                 </div>
                 <div style={{ flex: 1, overflow: 'auto' }}>
                   <CalendarMonthView calendar={activeCalendar} database={database} />
