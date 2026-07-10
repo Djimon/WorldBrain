@@ -15,6 +15,7 @@ import { GlobalSearch } from './GlobalSearch';
 import { GlobalEntityGraph } from './GlobalEntityGraph';
 import { ChronicleView } from './ChronicleView';
 import { CalendarWizard } from './CalendarWizard';
+import { listCalendars } from '../services/calendar-service';
 import { CalendarMonthView } from './CalendarMonthView';
 import { EntityTimeline } from './EntityTimeline';
 import { CardList } from './CardList';
@@ -158,6 +159,17 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
       week: JSON.parse(row.week_json ?? '[]') as string[],
     };
   }
+
+  // Load the existing (most recent) calendar on mount so re-entering the area
+  // shows the saved calendar instead of a fresh wizard/preset.
+  useEffect(() => {
+    if (!database) return;
+    listCalendars(database).then((cals) => {
+      if (cals.length === 0) return;
+      const latest = cals[cals.length - 1];
+      void loadCalendarById(latest.id).then((cal) => { if (cal) setActiveCalendar(cal); }).catch(console.error);
+    }).catch(console.error);
+  }, [database]);
 
   async function handleMapImport() {
     const { open } = await import('@tauri-apps/plugin-dialog');
