@@ -167,6 +167,24 @@ describe('M5-S01 calendar schema', () => {
     });
   });
 
+  describe('cross-calendar conversion (S5 #255)', () => {
+    it('one equivalence links two calendars and converts both directions', async () => {
+      const { convertDate, anchorForEquivalence } = await getCalendarSchema();
+      const A = { year_length_days: 360, months: [{ name: 'M', days: 360 }], epoch_anchor_day: 0 };
+      const B = { year_length_days: 365, months: [{ name: 'M', days: 365 }], epoch_anchor_day: 0 };
+      const dateA = { year: 400, month: 1, day: 1 };
+      const dateB = { year: 6542, month: 1, day: 5 };
+      const linkedB = { ...B, epoch_anchor_day: anchorForEquivalence(A, dateA, B, dateB) };
+      expect(convertDate(A, dateA, linkedB)).toEqual(dateB); // A → B
+      expect(convertDate(linkedB, dateB, A)).toEqual(dateA); // B → A (bidirectional)
+
+      // the constant offset holds for any other date, both ways
+      const other = { year: 401, month: 1, day: 1 };
+      const conv = convertDate(A, other, linkedB);
+      expect(convertDate(linkedB, conv, A)).toEqual(other);
+    });
+  });
+
   describe('idempotency', () => {
     it('schema creation is idempotent', async () => {
       const { applyCalendarSchema } = await getCalendarSchema();

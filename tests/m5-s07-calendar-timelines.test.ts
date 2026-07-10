@@ -4,7 +4,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
 import { applyCalendarSchema } from '../core_data/calendar-schema';
-import { saveCalendar, listCalendars, setActiveCalendar, getActiveCalendarId } from '../src/services/calendar-service';
+import { saveCalendar, listCalendars, setActiveCalendar, getActiveCalendarId, updateCalendarAnchor } from '../src/services/calendar-service';
 import { listEras, saveEra, deleteEra } from '../src/services/era-service';
 
 // Async DatabaseLike wrapper around the sync in-memory node:sqlite handle.
@@ -49,6 +49,19 @@ describe('S4 active display calendar', () => {
 
     const rows = await db.select<{ id: string; start_day: number }>('SELECT id, start_day FROM events');
     expect(rows).toEqual([{ id: 'e1', start_day: 42 }]); // untouched by calendar switching
+  });
+});
+
+describe('S5 cross-calendar link persistence', () => {
+  it('updateCalendarAnchor persists the epoch anchor (only that calendar)', async () => {
+    const db = makeDb();
+    const a = await saveCalendar(db, cal('A'));
+    const b = await saveCalendar(db, cal('B'));
+    await updateCalendarAnchor(db, b, -2243829);
+    const rowB = await db.select<{ epoch_anchor_day: number }>('SELECT epoch_anchor_day FROM calendars WHERE id = ?', [b]);
+    const rowA = await db.select<{ epoch_anchor_day: number }>('SELECT epoch_anchor_day FROM calendars WHERE id = ?', [a]);
+    expect(rowB[0].epoch_anchor_day).toBe(-2243829);
+    expect(rowA[0].epoch_anchor_day).toBe(0); // reference calendar untouched
   });
 });
 

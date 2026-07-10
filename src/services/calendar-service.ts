@@ -39,6 +39,12 @@ export async function getActiveCalendarId(db: DatabaseLike): Promise<string | nu
   return rows[0]?.id ?? null;
 }
 
+/** Persists a calendar's epoch anchor on the shared counter (cross-calendar
+ *  link calibration, S5). Only the linked calendar moves; the reference stays. */
+export async function updateCalendarAnchor(db: DatabaseLike, id: string, epochAnchorDay: number): Promise<void> {
+  await db.execute('UPDATE calendars SET epoch_anchor_day = ? WHERE id = ?', [epochAnchorDay, id]);
+}
+
 export function importCalendarFromJson(json: string): unknown {
   return JSON.parse(json);
 }

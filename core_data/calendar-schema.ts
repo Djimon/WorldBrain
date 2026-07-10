@@ -176,3 +176,24 @@ export function eraForYear(eras: Era[], globalYear: number): Era | null {
 export function eraRelativeYear(era: Era, globalYear: number): number {
   return globalYear - era.start_year + (era.year_number_at_start ?? 1);
 }
+
+// ── Cross-calendar conversion (M13 calendar-timelines S5) ────────────────────
+// Both calendars share the internal counter, so converting a date is just:
+// project it to the counter with the source calendar, then read it back with
+// the target calendar. Inherently bidirectional and n-way.
+export function convertDate(fromCalendar: CalendarShape, date: CalendarDate, toCalendar: CalendarShape): CalendarDate {
+  return counterToDate(toCalendar, dateToCounter(fromCalendar, date));
+}
+
+/**
+ * Given an equivalence the user entered ("refDate in refCalendar == targetDate
+ * in targetCalendar"), returns the epoch_anchor_day to store on targetCalendar
+ * so both dates land on the same counter day. The reference calendar is left
+ * untouched (its events keep their dates). Bidirectional falls out for free.
+ */
+export function anchorForEquivalence(
+  refCalendar: CalendarShape, refDate: CalendarDate,
+  targetCalendar: CalendarShape, targetDate: CalendarDate,
+): number {
+  return dateToCounter(refCalendar, refDate) - dateToDay(targetCalendar, targetDate);
+}

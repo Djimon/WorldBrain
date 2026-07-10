@@ -2117,3 +2117,42 @@ input {
 .cal-form__summary-sep {
   opacity: 0.4;
 }
+
+/* ── Cross-calendar link panel ────────────────────────────────────────────── */
+.cal-link {
+  margin-top: 16px;
+}
+
+.cal-link__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cal-link__cal {
+  font-weight: 600;
+}
+
+.cal-link__eq {
+  opacity: 0.6;
+}
+
+.cal-link__date {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.cal-link__date input {
+  width: 3.2rem;
+}
+
+.cal-link__preview,
+.cal-link__status {
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+.cal-link__status {
+  color: var(--color-accent);
+}

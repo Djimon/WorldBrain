@@ -17,6 +17,7 @@ import { ChronicleView } from './ChronicleView';
 import { CalendarWizard } from './CalendarWizard';
 import { listCalendars, setActiveCalendar as persistActiveCalendar } from '../services/calendar-service';
 import { CalendarMonthView } from './CalendarMonthView';
+import { CalendarLinkPanel } from './CalendarLinkPanel';
 import { EntityTimeline } from './EntityTimeline';
 import { CardList } from './CardList';
 import { CardCreationFlow } from './CardCreationFlow';
@@ -373,6 +374,15 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 </div>
                 <div style={{ flex: 1, overflow: 'auto' }}>
                   <CalendarMonthView calendar={activeCalendar} database={database} />
+                  {calendarList.length > 1 && (
+                    <CalendarLinkPanel
+                      database={database}
+                      active={activeCalendar}
+                      calendars={calendarList}
+                      loadCalendar={loadCalendarById}
+                      onLinked={() => { void listCalendars(database).then(setCalendarList).catch(console.error); }}
+                    />
+                  )}
                 </div>
               </div>
             )}
