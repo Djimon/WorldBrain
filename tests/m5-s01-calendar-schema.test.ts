@@ -85,6 +85,58 @@ describe('M5-S01 calendar schema', () => {
     });
   });
 
+  describe('projection: month derivation + signed counter (S1 #251)', () => {
+    it('calendars table has epoch_anchor_day column', async () => {
+      const { applyCalendarSchema } = await getCalendarSchema();
+      const db = openDb(); applyCalendarSchema(db);
+      const names = (db.prepare('PRAGMA table_info(calendars)').all() as Array<{ name: string }>).map(c => c.name);
+      expect(names).toContain('epoch_anchor_day');
+    });
+
+    it('derives month + day from months (fantasy 12x30)', async () => {
+      const { dayToDate, CALENDAR_PRESETS } = await getCalendarSchema();
+      const cal = CALENDAR_PRESETS[1]; // 360d, 12x30
+      expect(dayToDate(cal, 0)).toEqual({ year: 1, month: 1, day: 1 });
+      expect(dayToDate(cal, 30)).toEqual({ year: 1, month: 2, day: 1 });
+      expect(dayToDate(cal, 59)).toEqual({ year: 1, month: 2, day: 30 });
+      expect(dayToDate(cal, 360)).toEqual({ year: 2, month: 1, day: 1 });
+    });
+
+    it('derives month across irregular month lengths (earth-like)', async () => {
+      const { dayToDate, CALENDAR_PRESETS } = await getCalendarSchema();
+      const cal = CALENDAR_PRESETS[0]; // 365d, Jan31 Feb28 Mar31...
+      expect(dayToDate(cal, 31)).toEqual({ year: 1, month: 2, day: 1 });   // Feb 1
+      expect(dayToDate(cal, 58)).toEqual({ year: 1, month: 2, day: 28 });  // Feb 28
+      expect(dayToDate(cal, 59)).toEqual({ year: 1, month: 3, day: 1 });   // Mar 1
+    });
+
+    it('projects negative (pre-epoch) days into earlier years', async () => {
+      const { dayToDate, CALENDAR_PRESETS } = await getCalendarSchema();
+      const cal = CALENDAR_PRESETS[1];
+      expect(dayToDate(cal, -1)).toEqual({ year: 0, month: 12, day: 30 });
+      expect(dayToDate(cal, -360)).toEqual({ year: 0, month: 1, day: 1 });
+      expect(dayToDate(cal, -361)).toEqual({ year: -1, month: 12, day: 30 });
+    });
+
+    it('dayToDate/dateToDay round-trip for positive and negative days', async () => {
+      const { dayToDate, dateToDay, CALENDAR_PRESETS } = await getCalendarSchema();
+      const cal = CALENDAR_PRESETS[0];
+      for (const d of [-800, -365, -1, 0, 1, 59, 365, 1234]) {
+        expect(dateToDay(cal, dayToDate(cal, d))).toBe(d);
+      }
+    });
+
+    it('counterToDate applies epoch_anchor_day and round-trips (both directions)', async () => {
+      const { counterToDate, dateToCounter, CALENDAR_PRESETS } = await getCalendarSchema();
+      const cal = { ...CALENDAR_PRESETS[1], epoch_anchor_day: 100 };
+      expect(counterToDate(cal, 100)).toEqual({ year: 1, month: 1, day: 1 });
+      expect(counterToDate(cal, 99)).toEqual({ year: 0, month: 12, day: 30 });
+      for (const d of [-50, 0, 100, 500]) {
+        expect(dateToCounter(cal, counterToDate(cal, d))).toBe(d);
+      }
+    });
+  });
+
   describe('idempotency', () => {
     it('schema creation is idempotent', async () => {
       const { applyCalendarSchema } = await getCalendarSchema();

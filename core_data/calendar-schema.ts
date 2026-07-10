@@ -63,6 +63,7 @@ export function applyCalendarSchema(db: CalendarDb): void {
       epoch_label TEXT NOT NULL DEFAULT 'Year',
       months_json TEXT NOT NULL DEFAULT '[]',
       week_json TEXT NOT NULL DEFAULT '[]',
+      epoch_anchor_day INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
@@ -77,13 +78,71 @@ export function applyCalendarSchema(db: CalendarDb): void {
   `);
 }
 
-export function dayToDate(calendar: { year_length_days: number }, absoluteDay: number): CalendarDate {
-  const yl = calendar.year_length_days;
-  const year = Math.floor(absoluteDay / yl) + 1;
-  const day = (absoluteDay % yl) + 1;
-  return { year, month: 1, day };
+// A calendar is a PROJECTION over the shared internal absolute-day counter.
+// `epoch_anchor_day` = the counter day this calendar treats as its origin
+// (localDay 0 → year 1, month 1, day 1). The counter is a signed axis with no
+// floor: past days are negative. See planning/epics/calendar-timelines-eras.md.
+export interface CalendarShape {
+  year_length_days: number;
+  months?: Array<{ name: string; days: number }>;
+  epoch_anchor_day?: number;
 }
 
-export function dateToDay(calendar: { year_length_days: number }, date: CalendarDate): number {
-  return (date.year - 1) * calendar.year_length_days + (date.day - 1);
+/** JS `%` takes the sign of the dividend; we need a true floored modulo so
+ *  negative local days project correctly (day -1 → last day of previous year). */
+function floorMod(a: number, n: number): number {
+  return ((a % n) + n) % n;
+}
+
+function effectiveMonths(calendar: CalendarShape): Array<{ name: string; days: number }> {
+  if (calendar.months && calendar.months.length > 0) return calendar.months;
+  return [{ name: 'Year', days: calendar.year_length_days }];
+}
+
+// V1: every year has the same length (sum of months). Variable-length years
+// (leap years, alternating lengths) are intentionally NOT modelled yet — but
+// they stay a purely INTERNAL change to dayToDate/dateToDay (replace the
+// constant year * yearLength math with a per-year accumulation) behind the
+// same function signatures. No schema or caller change required. Do not bake
+// the constant-length assumption into callers.
+function yearLength(calendar: CalendarShape): number {
+  const months = effectiveMonths(calendar);
+  return months.reduce((sum, m) => sum + m.days, 0);
+}
+
+/** Project a calendar-local day (relative to the calendar's epoch, day 0 =
+ *  year 1 / month 1 / day 1) to {year, month, day}. Correct for negative days. */
+export function dayToDate(calendar: CalendarShape, localDay: number): CalendarDate {
+  const yl = yearLength(calendar);
+  if (yl <= 0) return { year: 1, month: 1, day: 1 };
+  const year = Math.floor(localDay / yl) + 1;
+  let dayOfYear = floorMod(localDay, yl);
+  const months = effectiveMonths(calendar);
+  for (let month = 1; month <= months.length; month++) {
+    const len = months[month - 1].days;
+    if (dayOfYear < len) return { year, month, day: dayOfYear + 1 };
+    dayOfYear -= len;
+  }
+  const last = months.length;
+  return { year, month: last, day: months[last - 1].days };
+}
+
+/** Inverse of dayToDate: {year, month, day} → calendar-local day. */
+export function dateToDay(calendar: CalendarShape, date: CalendarDate): number {
+  const yl = yearLength(calendar);
+  const months = effectiveMonths(calendar);
+  let dayOfYear = 0;
+  for (let i = 0; i < date.month - 1 && i < months.length; i++) dayOfYear += months[i].days;
+  dayOfYear += date.day - 1;
+  return (date.year - 1) * yl + dayOfYear;
+}
+
+/** Project a shared-counter day to this calendar's date (applies the anchor). */
+export function counterToDate(calendar: CalendarShape, counterDay: number): CalendarDate {
+  return dayToDate(calendar, counterDay - (calendar.epoch_anchor_day ?? 0));
+}
+
+/** Inverse: this calendar's date → shared-counter day. */
+export function dateToCounter(calendar: CalendarShape, date: CalendarDate): number {
+  return dateToDay(calendar, date) + (calendar.epoch_anchor_day ?? 0);
 }

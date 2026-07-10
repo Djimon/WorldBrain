@@ -65,6 +65,7 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   `);
 
   applyCalendarSchema(db);
+  await adapter.execute(`ALTER TABLE calendars ADD COLUMN epoch_anchor_day INTEGER NOT NULL DEFAULT 0`).catch(() => {});
   applyCardSchema(db as unknown as Parameters<typeof applyCardSchema>[0]);
   applyEventSchema(db as unknown as Parameters<typeof applyEventSchema>[0]);
   applyHandoutSchema(db as unknown as Parameters<typeof applyHandoutSchema>[0]);
