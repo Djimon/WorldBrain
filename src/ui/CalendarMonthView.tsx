@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { listEvents } from '../services/event-service';
 import type { DatabaseLike } from '../services/entity-service';
-import { dateToCounter } from '../../core_data/calendar-schema';
+import { dateToCounter, eraForYear, eraRelativeYear } from '../../core_data/calendar-schema';
+import { listEras } from '../services/era-service';
+import type { EraRow } from '../services/era-service';
 
 interface MonthDef { name: string; days: number }
 interface Calendar {
@@ -33,10 +35,16 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
   const [viewYear, setViewYear] = useState(1);
   const [viewMonthIdx, setViewMonthIdx] = useState(0);
   const [allEvents, setAllEvents] = useState<EventItem[]>([]);
+  const [eras, setEras] = useState<EraRow[]>([]);
+  const [eraMode, setEraMode] = useState(false);
 
   useEffect(() => {
     listEvents(database, {}).then(rows => setAllEvents(rows as EventItem[])).catch(console.error);
   }, [database]);
+
+  useEffect(() => {
+    listEras(database, calendar.id).then(setEras).catch(console.error);
+  }, [database, calendar.id]);
 
   const monthIdx = ((viewMonthIdx % months.length) + months.length) % months.length;
   const currentMonth = months[monthIdx];
@@ -69,7 +77,11 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
   function today() { setViewYear(1); setViewMonthIdx(0); }
 
   const weekDays = calendar.week.length > 0 ? calendar.week : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const heading = `${currentMonth.name} ${viewYear}`;
+  const era = eraForYear(eras, viewYear);
+  const yearText = eraMode && era
+    ? `${eraRelativeYear(era, viewYear)} ${era.name}`
+    : `${viewYear}${era ? ` · ${era.name}` : ''}`;
+  const heading = `${currentMonth.name} ${yearText}`;
 
   return (
     <div className="cal-month">
@@ -78,6 +90,12 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
         <button className="cal-month__nav" aria-label="today" onClick={today}>Today</button>
         <button className="cal-month__nav" aria-label="next >" onClick={() => step(1)}>{'›'}</button>
         <h2 className="cal-month__name">{heading}</h2>
+        {eras.length > 0 && (
+          <button className="cal-month__nav" aria-label="toggle era display" style={{ marginLeft: 'auto' }}
+            onClick={() => setEraMode(m => !m)}>
+            {eraMode ? 'Global' : 'Ära'}
+          </button>
+        )}
       </div>
       <div role="grid" className="cal-grid" style={{ '--cal-cols': weekDays.length } as CSSProperties}>
         <div role="row" className="cal-grid__row">

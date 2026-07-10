@@ -71,8 +71,10 @@ export function applyCalendarSchema(db: CalendarDb): void {
     CREATE TABLE IF NOT EXISTS eras (
       id TEXT PRIMARY KEY NOT NULL,
       calendar_id TEXT NOT NULL,
-      starts_absolute_day INTEGER NOT NULL DEFAULT 0,
+      name TEXT NOT NULL DEFAULT '',
+      start_year INTEGER NOT NULL DEFAULT 1,
       year_number_at_start INTEGER NOT NULL DEFAULT 1,
+      starts_absolute_day INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
@@ -145,4 +147,31 @@ export function counterToDate(calendar: CalendarShape, counterDay: number): Cale
 /** Inverse: this calendar's date → shared-counter day. */
 export function dateToCounter(calendar: CalendarShape, date: CalendarDate): number {
   return dateToDay(calendar, date) + (calendar.epoch_anchor_day ?? 0);
+}
+
+// ── Eras (M13 calendar-timelines S3) ─────────────────────────────────────────
+// An era is a named label over a contiguous range of GLOBAL years. Eras are
+// stored by their start year; each era runs until the next era's start (the
+// last era is open-ended). `year_number_at_start` supports era-relative
+// renumbering ("Year 5 of the Furchung"); default 1.
+export interface Era {
+  id?: string;
+  calendar_id?: string;
+  name: string;
+  start_year: number;
+  year_number_at_start?: number;
+}
+
+/** The era covering a global year (the latest era whose start_year <= year), or null. */
+export function eraForYear(eras: Era[], globalYear: number): Era | null {
+  let found: Era | null = null;
+  for (const e of [...eras].sort((a, b) => a.start_year - b.start_year)) {
+    if (e.start_year <= globalYear) found = e; else break;
+  }
+  return found;
+}
+
+/** Era-relative year number for a global year within its era ("Year 5 of X"). */
+export function eraRelativeYear(era: Era, globalYear: number): number {
+  return globalYear - era.start_year + (era.year_number_at_start ?? 1);
 }

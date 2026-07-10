@@ -137,6 +137,36 @@ describe('M5-S01 calendar schema', () => {
     });
   });
 
+  describe('eras: labeled year ranges (S3 #253)', () => {
+    it('eras table has name + start_year columns', async () => {
+      const { applyCalendarSchema } = await getCalendarSchema();
+      const db = openDb(); applyCalendarSchema(db);
+      const names = (db.prepare('PRAGMA table_info(eras)').all() as Array<{ name: string }>).map(c => c.name);
+      expect(names).toContain('name');
+      expect(names).toContain('start_year');
+    });
+
+    it('eraForYear picks the era whose range covers the global year', async () => {
+      const { eraForYear } = await getCalendarSchema();
+      const eras = [
+        { name: 'Furchung', start_year: 401 },
+        { name: 'Ära der Grah', start_year: 1 }, // deliberately unsorted
+      ];
+      expect(eraForYear(eras, 1)?.name).toBe('Ära der Grah');
+      expect(eraForYear(eras, 400)?.name).toBe('Ära der Grah');
+      expect(eraForYear(eras, 401)?.name).toBe('Furchung');
+      expect(eraForYear(eras, 1200)?.name).toBe('Furchung');
+      expect(eraForYear(eras, 0)).toBeNull(); // before the first era
+    });
+
+    it('eraRelativeYear renumbers within an era', async () => {
+      const { eraRelativeYear } = await getCalendarSchema();
+      const era = { name: 'Furchung', start_year: 401, year_number_at_start: 1 };
+      expect(eraRelativeYear(era, 401)).toBe(1);
+      expect(eraRelativeYear(era, 405)).toBe(5);
+    });
+  });
+
   describe('idempotency', () => {
     it('schema creation is idempotent', async () => {
       const { applyCalendarSchema } = await getCalendarSchema();

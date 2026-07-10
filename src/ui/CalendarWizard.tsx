@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { saveCalendar } from '../services/calendar-service';
+import { listEras, saveEra, deleteEra } from '../services/era-service';
+import type { EraRow } from '../services/era-service';
 import { CALENDAR_PRESETS } from '../../core_data/calendar-schema';
 import type { DatabaseLike } from '../services/entity-service';
 
@@ -29,6 +31,31 @@ export function CalendarWizard({ onComplete, database, initial }: Props) {
   );
   const [week, setWeek] = useState(initial?.week?.length ? [...initial.week] : [...DEFAULT_PRESET.week]);
   const [saving, setSaving] = useState(false);
+  const [eras, setEras] = useState<EraRow[]>([]);
+
+  const calendarId = initial?.id;
+  function reloadEras() {
+    if (!database || !calendarId) return;
+    listEras(database, calendarId).then(setEras).catch(console.error);
+  }
+  useEffect(() => { reloadEras(); }, [database, calendarId]);
+
+  async function addEra() {
+    if (!database || !calendarId) return;
+    const lastStart = eras.length ? Math.max(...eras.map((e) => e.start_year)) : 0;
+    await saveEra(database, { calendar_id: calendarId, name: 'Neue Ära', start_year: lastStart + 1, year_number_at_start: 1 });
+    reloadEras();
+  }
+  async function updateEra(era: EraRow, patch: Partial<EraRow>) {
+    if (!database) return;
+    await saveEra(database, { ...era, ...patch });
+    reloadEras();
+  }
+  async function removeEra(id: string) {
+    if (!database) return;
+    await deleteEra(database, id);
+    reloadEras();
+  }
 
   function applyPreset(id: string) {
     setPreset(id);
@@ -195,6 +222,39 @@ export function CalendarWizard({ onComplete, database, initial }: Props) {
             </div>
           </section>
         </div>
+
+        {/* Ären — nur bei bestehendem Kalender (brauchen calendar_id) */}
+        {calendarId && (
+          <section className="cal-section">
+            <div className="cal-section__head">
+              <h3 className="cal-section__title">Ären ({eras.length})</h3>
+              <button className="cal-add-btn" onClick={() => void addEra()}>+ Ära</button>
+            </div>
+            <div className="cal-week-grid">
+              {eras.map((e) => (
+                <div key={e.id} className="cal-week-row">
+                  <input
+                    className="cal-form__input"
+                    value={e.name}
+                    onChange={(ev) => void updateEra(e, { name: ev.target.value })}
+                    placeholder="Ära-Name"
+                  />
+                  <input
+                    className="cal-form__input cal-month-days"
+                    type="number"
+                    value={e.start_year}
+                    onChange={(ev) => void updateEra(e, { start_year: Number(ev.target.value) })}
+                    title="Startjahr (global)"
+                  />
+                  <button className="cal-remove-btn" onClick={() => void removeEra(e.id)} title="Entfernen">✕</button>
+                </div>
+              ))}
+              {eras.length === 0 && (
+                <span className="cal-month-days-label">Noch keine Ären. „+ Ära" legt einen benannten Jahres-Bereich an.</span>
+              )}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
