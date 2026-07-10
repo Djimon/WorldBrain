@@ -2268,6 +2268,11 @@ input {
   flex: 1;
 }
 
+.cal-era-abbr {
+  width: 6.5rem;
+  flex: none;
+}
+
 /* ── Calendar start / picker view ─────────────────────────────────────────── */
 .cal-start {
   display: flex;

@@ -32,6 +32,8 @@ type WizardTab = 'months' | 'weekdays' | 'eras';
 interface DraftEra {
   id?: string;
   name: string;
+  /** Official year unit, e.g. "E.K." */
+  abbr: string;
   start_year: number; start_month: number; start_day: number;
   end_year: number; end_month: number; end_day: number;
   year_number_at_start: number;
@@ -67,7 +69,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
     const lastMonth = months.length || 1;
     const lastDay = months[months.length - 1]?.days ?? 1;
     setEras((prev) => [...prev, {
-      name: 'Neue Ära',
+      name: 'Neue Ära', abbr: '',
       start_year: baseYear, start_month: 1, start_day: 1,
       end_year: baseYear, end_month: lastMonth, end_day: lastDay,
       year_number_at_start: 1,
@@ -282,7 +284,10 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
                 <div key={e.id ?? `draft-${i}`} className="cal-era-row">
                   <div className="cal-era-row__top">
                     <input className="cal-form__input cal-era-name" value={e.name}
-                      onChange={(ev) => updateEra(i, { name: ev.target.value })} placeholder="Ära-Name" />
+                      onChange={(ev) => updateEra(i, { name: ev.target.value })} placeholder="Ära-Name (z.B. Ära der erfrüchtigen Könige)" />
+                    <input className="cal-form__input cal-era-abbr" value={e.abbr}
+                      onChange={(ev) => updateEra(i, { abbr: ev.target.value })}
+                      placeholder="Kürzel" title="Kürzel — offizielle Jahreseinheit, z.B. E.K." />
                     <button className="cal-remove-btn" onClick={() => removeEra(i)} title="Entfernen">✕</button>
                   </div>
                   <div className="cal-era-row__dates">
@@ -292,6 +297,13 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
                     <span className="cal-era-label">Ende</span>
                     <EraDate day={e.end_day} month={e.end_month} year={e.end_year}
                       onChange={(p) => updateEra(i, { end_day: p.day, end_month: p.month, end_year: p.year })} />
+                    <span className="cal-datefield__unit">
+                      <input className="cal-form__input cal-month-days" type="number" value={e.year_number_at_start}
+                        onChange={(ev) => updateEra(i, { year_number_at_start: Number(ev.target.value) })}
+                        aria-label="Jahr bei Start"
+                        title="Welche Jahreszahl trägt das Startjahr der Ära (0 = Startjahr ist Jahr 0)" />
+                      <span className="cal-datefield__label">Jahr b. Start</span>
+                    </span>
                   </div>
                 </div>
               ))}

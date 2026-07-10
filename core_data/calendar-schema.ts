@@ -76,6 +76,7 @@ export function applyCalendarSchema(db: CalendarDb): void {
       id TEXT PRIMARY KEY NOT NULL,
       calendar_id TEXT NOT NULL,
       name TEXT NOT NULL DEFAULT '',
+      abbr TEXT NOT NULL DEFAULT '',
       start_year INTEGER NOT NULL DEFAULT 1,
       start_month INTEGER NOT NULL DEFAULT 1,
       start_day INTEGER NOT NULL DEFAULT 1,
@@ -167,6 +168,8 @@ export interface Era {
   id?: string;
   calendar_id?: string;
   name: string;
+  /** Short official year unit, e.g. "E.K." — shown instead of the full name. */
+  abbr?: string;
   start_year: number;
   start_month: number;
   start_day: number;
@@ -202,9 +205,16 @@ export function erasForDate(eras: Era[], date: CalendarDate): Era[] {
   return erasForRange(eras, date, date);
 }
 
-/** Era-relative year number for a global year within a given era ("Year 5 of X"). */
+/** Era-relative year number for a global year within a given era ("Year 5 of X").
+ *  `year_number_at_start` is the number the era's first year carries (default 1;
+ *  set it to 0 to make the start year "year 0" of the era). */
 export function eraRelativeYear(era: Era, globalYear: number): number {
   return globalYear - era.start_year + (era.year_number_at_start ?? 1);
+}
+
+/** The era's official year unit: its abbreviation if set, otherwise its name. */
+export function eraUnit(era: Era): string {
+  return era.abbr?.trim() ? era.abbr.trim() : era.name;
 }
 
 // ── Cross-calendar conversion (M13 calendar-timelines S5) ────────────────────

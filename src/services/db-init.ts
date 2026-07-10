@@ -72,6 +72,7 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   await adapter.execute(`ALTER TABLE calendars ADD COLUMN start_day INTEGER NOT NULL DEFAULT 1`).catch(() => {});
   await adapter.execute(`ALTER TABLE eras ADD COLUMN name TEXT NOT NULL DEFAULT ''`).catch(() => {});
   await adapter.execute(`ALTER TABLE eras ADD COLUMN start_year INTEGER NOT NULL DEFAULT 1`).catch(() => {});
+  await adapter.execute(`ALTER TABLE eras ADD COLUMN abbr TEXT NOT NULL DEFAULT ''`).catch(() => {});
   await adapter.execute(`ALTER TABLE eras ADD COLUMN start_month INTEGER NOT NULL DEFAULT 1`).catch(() => {});
   await adapter.execute(`ALTER TABLE eras ADD COLUMN start_day INTEGER NOT NULL DEFAULT 1`).catch(() => {});
   await adapter.execute(`ALTER TABLE eras ADD COLUMN end_year INTEGER NOT NULL DEFAULT 1`).catch(() => {});

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { listEvents } from '../services/event-service';
 import type { DatabaseLike } from '../services/entity-service';
-import { dateToCounter, erasForRange, eraRelativeYear } from '../../core_data/calendar-schema';
+import { dateToCounter, erasForRange, eraRelativeYear, eraUnit } from '../../core_data/calendar-schema';
 import { listEras } from '../services/era-service';
 import type { EraRow } from '../services/era-service';
 
@@ -96,8 +96,9 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
     { year: viewYear, month: monthIdx + 1, day: 1 },
     { year: viewYear, month: monthIdx + 1, day: currentMonth.days });
   const refEra = matchingEras.find((e) => e.id === refEraId) ?? matchingEras[0] ?? null;
+  // Era mode: the era-relative year plus the era's official unit ("150 E.K.").
   const yearText = eraMode && refEra
-    ? `${eraRelativeYear(refEra, viewYear)} ${refEra.name}`
+    ? `${eraRelativeYear(refEra, viewYear)} ${eraUnit(refEra)}`
     : `${viewYear}${matchingEras.length ? ` · ${matchingEras.map((e) => e.name).join(', ')}` : ''}`;
   const heading = `${currentMonth.name} ${yearText}`;
 
@@ -113,7 +114,7 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
             {eraMode && matchingEras.length > 1 && (
               <select className="cal-form__select" aria-label="Bezugs-Ära"
                 value={refEra?.id ?? ''} onChange={(e) => setRefEraId(e.target.value)}>
-                {matchingEras.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                {matchingEras.map((e) => <option key={e.id} value={e.id}>{eraUnit(e)}</option>)}
               </select>
             )}
             <button className="cal-month__nav" aria-label="toggle era display"
