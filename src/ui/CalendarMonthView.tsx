@@ -117,10 +117,12 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
                 {matchingEras.map((e) => <option key={e.id} value={e.id}>{eraUnit(e)}</option>)}
               </select>
             )}
-            <button className="cal-month__nav" aria-label="toggle era display"
-              onClick={() => setEraMode(m => !m)}>
-              {eraMode ? 'Global' : 'Ära'}
-            </button>
+            <span className="cal-yearmode">
+              <button className={`cal-yearmode__btn${!eraMode ? ' active' : ''}`} aria-pressed={!eraMode}
+                onClick={() => setEraMode(false)}>Global</button>
+              <button className={`cal-yearmode__btn${eraMode ? ' active' : ''}`} aria-pressed={eraMode}
+                onClick={() => setEraMode(true)}>Ära</button>
+            </span>
           </span>
         )}
       </div>
