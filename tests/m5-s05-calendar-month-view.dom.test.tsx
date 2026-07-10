@@ -63,6 +63,23 @@ describe('M5-S05 calendar month view', () => {
       render(<CalendarMonthView calendar={earthCalendar} database={mockDb as never} />);
       await waitFor(() => expect(screen.getByRole('button', { name: /today|current|jump/i })).toBeInTheDocument());
     });
+
+    it('header shows the year (S2 #252)', async () => {
+      render(<CalendarMonthView calendar={earthCalendar} database={mockDb as never} />);
+      await waitFor(() => expect(screen.getByRole('heading')).toBeInTheDocument());
+      // "January 1" — month name + year number
+      expect(screen.getByRole('heading').textContent).toMatch(/\bjanuary\b.*\b1\b/i);
+    });
+
+    it('advancing past the last month rolls into the next year (S2 #252)', async () => {
+      // earthCalendar has 2 months → next twice: Jan y1 → Feb y1 → Jan y2
+      render(<CalendarMonthView calendar={earthCalendar} database={mockDb as never} />);
+      await waitFor(() => expect(screen.getByRole('heading')).toBeInTheDocument());
+      const nextBtn = screen.getByRole('button', { name: /next|>/i });
+      fireEvent.click(nextBtn);
+      fireEvent.click(nextBtn);
+      await waitFor(() => expect(screen.getByRole('heading').textContent).toMatch(/\bjanuary\b.*\b2\b/i));
+    });
   });
 
   describe('create event from day cell', () => {

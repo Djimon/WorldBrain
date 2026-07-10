@@ -55,6 +55,7 @@ interface CalendarRow {
   year_length_days: number;
   months: { name: string; days: number }[];
   week: string[];
+  epoch_anchor_day: number;
 }
 
 interface Props {
@@ -146,8 +147,8 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   }
 
   async function loadCalendarById(id: string): Promise<CalendarRow | null> {
-    const rows = await database.select<{ id: string; title: string; year_length_days: number; months_json: string; week_json: string }>(
-      'SELECT id, title, year_length_days, months_json, week_json FROM calendars WHERE id = ?', [id],
+    const rows = await database.select<{ id: string; title: string; year_length_days: number; months_json: string; week_json: string; epoch_anchor_day: number }>(
+      'SELECT id, title, year_length_days, months_json, week_json, epoch_anchor_day FROM calendars WHERE id = ?', [id],
     );
     const row = rows[0];
     if (!row) return null;
@@ -157,6 +158,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
       year_length_days: row.year_length_days,
       months: JSON.parse(row.months_json ?? '[]') as { name: string; days: number }[],
       week: JSON.parse(row.week_json ?? '[]') as string[],
+      epoch_anchor_day: row.epoch_anchor_day ?? 0,
     };
   }
 

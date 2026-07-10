@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { listEvents } from '../services/event-service';
 import type { DatabaseLike } from '../services/entity-service';
+import { dateToCounter } from '../../core_data/calendar-schema';
 
 interface MonthDef { name: string; days: number }
 interface Calendar {
@@ -10,6 +11,8 @@ interface Calendar {
   year_length_days: number;
   months: MonthDef[];
   week: string[];
+  epoch_anchor_day?: number;
+  epoch_label?: string;
 }
 interface EventItem {
   id: string;
@@ -25,44 +28,56 @@ interface Props {
   onCreateEvent?: (day: number) => void;
 }
 
-function monthStartDay(calendar: Calendar, monthIndex: number): number {
-  return calendar.months.slice(0, monthIndex).reduce((acc, m) => acc + m.days, 0) + 1;
-}
-
 export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) {
-  const [monthIndex, setMonthIndex] = useState(0);
+  const months = calendar.months.length > 0 ? calendar.months : [{ name: 'Month 1', days: calendar.year_length_days }];
+  const [viewYear, setViewYear] = useState(1);
+  const [viewMonthIdx, setViewMonthIdx] = useState(0);
   const [allEvents, setAllEvents] = useState<EventItem[]>([]);
 
   useEffect(() => {
-    listEvents(database, {}).then(rows => setAllEvents(rows as EventItem[]));
+    listEvents(database, {}).then(rows => setAllEvents(rows as EventItem[])).catch(console.error);
   }, [database]);
 
-  const months = calendar.months.length > 0 ? calendar.months : [{ name: 'Month 1', days: calendar.year_length_days }];
-  const currentMonth = months[monthIndex % months.length];
-  const startDay = monthStartDay(calendar, monthIndex % months.length);
-  const endDay = startDay + currentMonth.days - 1;
+  const monthIdx = ((viewMonthIdx % months.length) + months.length) % months.length;
+  const currentMonth = months[monthIdx];
 
-  const events = allEvents.filter(e => {
+  // Each cell maps to a shared-counter day via the calendar's projection
+  // (S1). Events live on the counter, so they land in the right cell for any
+  // year — and for calendars with a non-zero epoch anchor.
+  function counterFor(day: number): number {
+    return dateToCounter(calendar, { year: viewYear, month: monthIdx + 1, day });
+  }
+  const firstCounter = counterFor(1);
+  const lastCounter = counterFor(currentMonth.days);
+
+  const visibleEvents = allEvents.filter(e => {
     const evEnd = e.end_day ?? e.start_day;
-    return e.start_day <= endDay && evEnd >= startDay;
+    return e.start_day <= lastCounter && evEnd >= firstCounter;
   });
-
-  function eventsForDay(day: number): EventItem[] {
-    return events.filter(e => {
-      const evEnd = e.end_day ?? e.start_day;
-      return day >= e.start_day && day <= evEnd;
-    });
+  function eventsForCounter(c: number): EventItem[] {
+    return visibleEvents.filter(e => c >= e.start_day && c <= (e.end_day ?? e.start_day));
   }
 
+  function step(delta: number) {
+    let m = monthIdx + delta;
+    let y = viewYear;
+    while (m < 0) { m += months.length; y -= 1; }
+    while (m >= months.length) { m -= months.length; y += 1; }
+    setViewMonthIdx(m);
+    setViewYear(y);
+  }
+  function today() { setViewYear(1); setViewMonthIdx(0); }
+
   const weekDays = calendar.week.length > 0 ? calendar.week : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const heading = `${currentMonth.name} ${viewYear}`;
 
   return (
     <div className="cal-month">
       <div className="cal-month__bar">
-        <button className="cal-month__nav" aria-label="< previous" onClick={() => setMonthIndex(i => Math.max(0, i - 1))}>{'‹'}</button>
-        <button className="cal-month__nav" aria-label="today" onClick={() => setMonthIndex(0)}>Today</button>
-        <button className="cal-month__nav" aria-label="next >" onClick={() => setMonthIndex(i => i + 1)}>{'›'}</button>
-        <h2 className="cal-month__name">{currentMonth.name}</h2>
+        <button className="cal-month__nav" aria-label="< previous" onClick={() => step(-1)}>{'‹'}</button>
+        <button className="cal-month__nav" aria-label="today" onClick={today}>Today</button>
+        <button className="cal-month__nav" aria-label="next >" onClick={() => step(1)}>{'›'}</button>
+        <h2 className="cal-month__name">{heading}</h2>
       </div>
       <div role="grid" className="cal-grid" style={{ '--cal-cols': weekDays.length } as CSSProperties}>
         <div role="row" className="cal-grid__row">
@@ -70,17 +85,18 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
         </div>
         <div role="row" className="cal-grid__row">
           {Array.from({ length: currentMonth.days }, (_, i) => {
-            const day = startDay + i;
-            const dayEvents = eventsForDay(day);
+            const day = i + 1;
+            const counterDay = counterFor(day);
+            const dayEvents = eventsForCounter(counterDay);
             return (
               <div
                 key={day}
                 role="gridcell"
                 className="cal-grid__day"
-                data-day={day}
-                onClick={() => onCreateEvent?.(day)}
+                data-day={counterDay}
+                onClick={() => onCreateEvent?.(counterDay)}
               >
-                <span className="cal-grid__day-num">{i + 1}</span>
+                <span className="cal-grid__day-num">{day}</span>
                 {dayEvents.map(e => <div key={e.id} className="cal-grid__event" title={e.title}>{e.title}</div>)}
               </div>
             );
