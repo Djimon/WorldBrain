@@ -102,7 +102,7 @@ function LabeledDate({ value, onChange }: { value: YMD; onChange: (v: YMD) => vo
         <span className="cal-datefield__label">Monat</span>
       </span>
       <span className="cal-datefield__unit">
-        <input className="cal-form__input cal-month-days" type="number" aria-label="Jahr" value={value.year}
+        <input className="cal-form__input cal-year-input" type="number" aria-label="Jahr" value={value.year}
           onChange={(e) => onChange({ ...value, year: Number(e.target.value) })} />
         <span className="cal-datefield__label">Jahr</span>
       </span>

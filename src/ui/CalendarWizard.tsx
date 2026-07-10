@@ -27,6 +27,9 @@ const DEFAULT_PRESET = CALENDAR_PRESETS[0];
 
 type WizardTab = 'months' | 'weekdays' | 'eras';
 
+/** An era being edited; `id` is absent until it has been persisted. */
+interface DraftEra { id?: string; name: string; start_year: number; year_number_at_start: number }
+
 export function CalendarWizard({ onComplete, database, initial, onCancel }: Props) {
   const { t } = useTranslation('nav');
   const [title, setTitle] = useState(initial?.title ?? t('calendar'));
@@ -38,30 +41,32 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
   const [start, setStart] = useState(initial?.start ?? { year: 1, month: 1, day: 1 });
   const [tab, setTab] = useState<WizardTab>('months');
   const [saving, setSaving] = useState(false);
-  const [eras, setEras] = useState<EraRow[]>([]);
+  // Eras live in local state so they can also be defined while CREATING a
+  // calendar (no calendar_id yet); they are persisted on save.
+  const [eras, setEras] = useState<DraftEra[]>([]);
+  const [removedEraIds, setRemovedEraIds] = useState<string[]>([]);
 
   const calendarId = initial?.id;
-  function reloadEras() {
+  useEffect(() => {
     if (!database || !calendarId) return;
-    listEras(database, calendarId).then(setEras).catch(console.error);
-  }
-  useEffect(() => { reloadEras(); }, [database, calendarId]);
+    listEras(database, calendarId)
+      .then((rows: EraRow[]) => setEras(rows.map((r) => ({ id: r.id, name: r.name, start_year: r.start_year, year_number_at_start: r.year_number_at_start }))))
+      .catch(console.error);
+  }, [database, calendarId]);
 
-  async function addEra() {
-    if (!database || !calendarId) return;
+  function addEra() {
     const lastStart = eras.length ? Math.max(...eras.map((e) => e.start_year)) : 0;
-    await saveEra(database, { calendar_id: calendarId, name: 'Neue Ära', start_year: lastStart + 1, year_number_at_start: 1 });
-    reloadEras();
+    setEras((prev) => [...prev, { name: 'Neue Ära', start_year: lastStart + 1, year_number_at_start: 1 }]);
   }
-  async function updateEra(era: EraRow, patch: Partial<EraRow>) {
-    if (!database) return;
-    await saveEra(database, { ...era, ...patch });
-    reloadEras();
+  function updateEra(index: number, patch: Partial<DraftEra>) {
+    setEras((prev) => prev.map((e, i) => (i === index ? { ...e, ...patch } : e)));
   }
-  async function removeEra(id: string) {
-    if (!database) return;
-    await deleteEra(database, id);
-    reloadEras();
+  function removeEra(index: number) {
+    setEras((prev) => {
+      const era = prev[index];
+      if (era?.id) setRemovedEraIds((ids) => [...ids, era.id!]);
+      return prev.filter((_, i) => i !== index);
+    });
   }
 
   function applyPreset(id: string) {
@@ -102,6 +107,12 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
     try {
       const yearLengthDays = months.reduce((s, m) => s + m.days, 0);
       const id = await saveCalendar(database, { title: title.trim(), yearLengthDays, months, week, start }, initial?.id);
+      // Persist era edits — works for a brand-new calendar too (id exists now).
+      for (const eraId of removedEraIds) await deleteEra(database, eraId);
+      for (const era of eras) {
+        await saveEra(database, { id: era.id, calendar_id: id, name: era.name, start_year: era.start_year, year_number_at_start: era.year_number_at_start });
+      }
+      setRemovedEraIds([]);
       onComplete(id);
     } finally {
       setSaving(false);
@@ -190,7 +201,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
                 <span className="cal-datefield__label">Monat</span>
               </span>
               <span className="cal-datefield__unit">
-                <input className="cal-form__input cal-month-days" type="number" value={start.year}
+                <input className="cal-form__input cal-year-input" type="number" value={start.year}
                   onChange={(e) => setStart((s) => ({ ...s, year: Number(e.target.value) }))} aria-label="Startjahr" />
                 <span className="cal-datefield__label">Jahr</span>
               </span>
@@ -203,9 +214,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
         <div className="cal-tabs" role="tablist">
           <button role="tab" aria-selected={tab === 'months'} className={`cal-tab${tab === 'months' ? ' active' : ''}`} onClick={() => setTab('months')}>Monate ({months.length})</button>
           <button role="tab" aria-selected={tab === 'weekdays'} className={`cal-tab${tab === 'weekdays' ? ' active' : ''}`} onClick={() => setTab('weekdays')}>Wochentage ({week.length})</button>
-          {calendarId && (
-            <button role="tab" aria-selected={tab === 'eras'} className={`cal-tab${tab === 'eras' ? ' active' : ''}`} onClick={() => setTab('eras')}>Ären ({eras.length})</button>
-          )}
+          <button role="tab" aria-selected={tab === 'eras'} className={`cal-tab${tab === 'eras' ? ' active' : ''}`} onClick={() => setTab('eras')}>Ären ({eras.length})</button>
         </div>
 
         {tab === 'months' && (
@@ -249,25 +258,25 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
           </section>
         )}
 
-        {tab === 'eras' && calendarId && (
+        {tab === 'eras' && (
           <section className="cal-section">
             <div className="cal-section__head">
               <h3 className="cal-section__title">Ären ({eras.length})</h3>
-              <button className="cal-add-btn" onClick={() => void addEra()}>+ Ära</button>
+              <button className="cal-add-btn" onClick={addEra}>+ Ära</button>
             </div>
             <div className="cal-era-grid">
-              {eras.map((e) => (
-                <div key={e.id} className="cal-era-row">
+              {eras.map((e, i) => (
+                <div key={e.id ?? `draft-${i}`} className="cal-era-row">
                   <input className="cal-form__input cal-era-name" value={e.name}
-                    onChange={(ev) => void updateEra(e, { name: ev.target.value })} placeholder="Ära-Name" />
-                  <input className="cal-form__input cal-month-days" type="number" value={e.start_year}
-                    onChange={(ev) => void updateEra(e, { start_year: Number(ev.target.value) })} title="Startjahr (global)" />
+                    onChange={(ev) => updateEra(i, { name: ev.target.value })} placeholder="Ära-Name" />
+                  <input className="cal-form__input cal-year-input" type="number" value={e.start_year}
+                    onChange={(ev) => updateEra(i, { start_year: Number(ev.target.value) })} title="Startjahr (global)" />
                   <span className="cal-month-days-label">ab Jahr</span>
-                  <button className="cal-remove-btn" onClick={() => void removeEra(e.id)} title="Entfernen">✕</button>
+                  <button className="cal-remove-btn" onClick={() => removeEra(i)} title="Entfernen">✕</button>
                 </div>
               ))}
               {eras.length === 0 && (
-                <p className="cal-hint">Noch keine Ären. „+ Ära" legt einen benannten Jahres-Bereich an (z.B. „Ära der Grah" ab Jahr 1).</p>
+                <p className="cal-hint">Noch keine Ären. „+ Ära" legt einen benannten Jahres-Bereich an (z.B. „Ära der Grah" ab Jahr 1). Ären werden beim Speichern übernommen.</p>
               )}
             </div>
           </section>

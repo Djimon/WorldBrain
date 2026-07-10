@@ -185,6 +185,14 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     }).catch(console.error);
   }, [database]);
 
+  // Keep the start-view selection valid: it is only seeded on mount, so after
+  // create/delete it can point at a removed id (or stay empty) while the
+  // <select> visually shows the first option — which made both buttons inert.
+  useEffect(() => {
+    if (calendarList.length === 0) { setStartSelId(''); return; }
+    if (!calendarList.some((c) => c.id === startSelId)) setStartSelId(calendarList[0].id);
+  }, [calendarList, startSelId]);
+
   function refreshCalendars() {
     if (!database) return;
     void listCalendars(database).then(setCalendarList).catch(console.error);

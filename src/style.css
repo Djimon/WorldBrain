@@ -2212,6 +2212,12 @@ input {
   width: 3.4rem;
 }
 
+/* year fields must fit 5-digit years (e.g. 12345) */
+.cal-year-input,
+.cal-datefield__unit input.cal-year-input {
+  width: 5.6rem;
+}
+
 .cal-datefield__label {
   font-size: 0.68rem;
   opacity: 0.6;
