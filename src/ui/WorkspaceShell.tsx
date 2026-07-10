@@ -104,6 +104,8 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   const [wizardCal, setWizardCal] = useState<CalendarRow | 'new' | null>(null);
   const [startSelId, setStartSelId] = useState('');
   const [deletePrompt, setDeletePrompt] = useState(false);
+  /** Show the calendar picker/start view even though a calendar is active. */
+  const [showPicker, setShowPicker] = useState(false);
   const [calendarList, setCalendarList] = useState<{ id: string; title: string; is_active: number }[]>([]);
   const [evalResult, setEvalResult] = useState<string | null>(null);
   const [mapImporting, setMapImporting] = useState(false);
@@ -201,7 +203,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     if (!database || !id) return;
     void persistActiveCalendar(database, id)
       .then(() => loadCalendarById(id))
-      .then((cal) => { if (cal) setActiveCalendar(cal); })
+      .then((cal) => { if (cal) { setActiveCalendar(cal); setShowPicker(false); } })
       .then(refreshCalendars)
       .catch(console.error);
   }
@@ -212,25 +214,15 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   function removeActiveCalendar() {
     if (!database || !activeCalendar) return;
     void deleteCalendar(database, activeCalendar.id)
-      .then(() => { setActiveCalendar(null); setDeletePrompt(false); })
+      .then(() => { setActiveCalendar(null); setDeletePrompt(false); setShowPicker(false); })
       .then(refreshCalendars)
       .catch(console.error);
   }
 
-  // Leaving the calendar area closes any open editor / delete prompt.
+  // Leaving the calendar area closes any open editor / delete prompt / picker.
   useEffect(() => {
-    if (activeArea !== 'calendar') { setWizardCal(null); setDeletePrompt(false); }
+    if (activeArea !== 'calendar') { setWizardCal(null); setDeletePrompt(false); setShowPicker(false); }
   }, [activeArea]);
-
-  function switchCalendar(id: string) {
-    if (!database || id === activeCalendar?.id) return;
-    void persistActiveCalendar(database, id)
-      .then(() => loadCalendarById(id))
-      .then((cal) => { if (cal) setActiveCalendar(cal); })
-      .then(() => listCalendars(database))
-      .then(setCalendarList)
-      .catch(console.error);
-  }
 
   async function handleMapImport() {
     const { open } = await import('@tauri-apps/plugin-dialog');
@@ -406,7 +398,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                   refreshCalendars();
                 }}
               />
-            ) : activeCalendar ? (
+            ) : (activeCalendar && !showPicker) ? (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                 <div style={{ padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                   <strong>{activeCalendar.title}</strong>
@@ -419,11 +411,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                     </span>
                   ) : (
                     <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                      {calendarList.length > 1 && (
-                        <select className="cal-form__select" aria-label="Kalender wählen" value={activeCalendar.id} onChange={(e) => switchCalendar(e.target.value)}>
-                          {calendarList.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-                        </select>
-                      )}
+                      <button className="btn" onClick={() => setShowPicker(true)}>Kalenderauswahl</button>
                       <button className="btn" onClick={() => setWizardCal(activeCalendar)}>{t('changeCalendar')}</button>
                       <button className="btn" style={{ color: 'var(--color-status-failure)' }} onClick={() => setDeletePrompt(true)}>Löschen</button>
                     </span>
@@ -457,6 +445,9 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                   <button className="btn" disabled={!startSelId} onClick={() => editCalendarById(startSelId)}>Bearbeiten</button>
                 </div>
                 <button className="btn cal-start__new" onClick={() => setWizardCal('new')}>+ Neuen Kalender erstellen</button>
+                {activeCalendar && (
+                  <button className="btn cal-start__new" onClick={() => setShowPicker(false)}>← Zurück zur Ansicht</button>
+                )}
               </div>
             )}
           </div>
