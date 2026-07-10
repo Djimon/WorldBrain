@@ -15,7 +15,7 @@ import { GlobalSearch } from './GlobalSearch';
 import { GlobalEntityGraph } from './GlobalEntityGraph';
 import { ChronicleView } from './ChronicleView';
 import { CalendarWizard } from './CalendarWizard';
-import { listCalendars, setActiveCalendar as persistActiveCalendar } from '../services/calendar-service';
+import { listCalendars, setActiveCalendar as persistActiveCalendar, deleteCalendar } from '../services/calendar-service';
 import { CalendarMonthView } from './CalendarMonthView';
 import { CalendarLinkPanel } from './CalendarLinkPanel';
 import { EntityTimeline } from './EntityTimeline';
@@ -101,7 +101,9 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   const [showCardCreation, setShowCardCreation] = useState(false);
   const [showPrintSheet, setShowPrintSheet] = useState(false);
   const [activeCalendar, setActiveCalendar] = useState<CalendarRow | null>(null);
-  const [editingCalendar, setEditingCalendar] = useState(false);
+  const [wizardCal, setWizardCal] = useState<CalendarRow | 'new' | null>(null);
+  const [startSelId, setStartSelId] = useState('');
+  const [deletePrompt, setDeletePrompt] = useState(false);
   const [calendarList, setCalendarList] = useState<{ id: string; title: string; is_active: number }[]>([]);
   const [evalResult, setEvalResult] = useState<string | null>(null);
   const [mapImporting, setMapImporting] = useState(false);
@@ -170,21 +172,47 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     };
   }
 
-  // Load the active display calendar on mount (fallback: most recent) so
-  // re-entering the area shows the chosen calendar, not a fresh wizard.
+  // On mount, load ONLY an explicitly-active calendar. If none is active we
+  // never auto-open the configurator — the start view (picker) is shown.
   useEffect(() => {
     if (!database) return;
     listCalendars(database).then((cals) => {
       setCalendarList(cals);
       if (cals.length === 0) return;
-      const activeId = cals.find((c) => c.is_active)?.id ?? cals[cals.length - 1].id;
-      void loadCalendarById(activeId).then((cal) => { if (cal) setActiveCalendar(cal); }).catch(console.error);
+      const activeId = cals.find((c) => c.is_active)?.id;
+      setStartSelId(activeId ?? cals[cals.length - 1].id);
+      if (activeId) void loadCalendarById(activeId).then((cal) => { if (cal) setActiveCalendar(cal); }).catch(console.error);
     }).catch(console.error);
   }, [database]);
 
-  // Leaving the calendar area cancels an in-progress edit, so returning shows
-  // the month view (standard calendar) instead of a still-open editor.
-  useEffect(() => { if (activeArea !== 'calendar') setEditingCalendar(false); }, [activeArea]);
+  function refreshCalendars() {
+    if (!database) return;
+    void listCalendars(database).then(setCalendarList).catch(console.error);
+  }
+  function activateCalendar(id: string) {
+    if (!database || !id) return;
+    void persistActiveCalendar(database, id)
+      .then(() => loadCalendarById(id))
+      .then((cal) => { if (cal) setActiveCalendar(cal); })
+      .then(refreshCalendars)
+      .catch(console.error);
+  }
+  function editCalendarById(id: string) {
+    if (!database || !id) return;
+    void loadCalendarById(id).then((cal) => { if (cal) setWizardCal(cal); }).catch(console.error);
+  }
+  function removeActiveCalendar() {
+    if (!database || !activeCalendar) return;
+    void deleteCalendar(database, activeCalendar.id)
+      .then(() => { setActiveCalendar(null); setDeletePrompt(false); })
+      .then(refreshCalendars)
+      .catch(console.error);
+  }
+
+  // Leaving the calendar area closes any open editor / delete prompt.
+  useEffect(() => {
+    if (activeArea !== 'calendar') { setWizardCal(null); setDeletePrompt(false); }
+  }, [activeArea]);
 
   function switchCalendar(id: string) {
     if (!database || id === activeCalendar?.id) return;
@@ -350,39 +378,48 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
       case 'calendar':
         return (
           <div className="workspace-area" style={{ flexDirection: 'column', overflow: 'hidden' }}>
-            {(!activeCalendar || editingCalendar) ? (
+            {wizardCal !== null ? (
               <CalendarWizard
                 database={database}
-                initial={activeCalendar ? {
-                  id: activeCalendar.id,
-                  title: activeCalendar.title,
-                  months: activeCalendar.months,
-                  week: activeCalendar.week,
-                  start: { year: activeCalendar.start_year, month: activeCalendar.start_month, day: activeCalendar.start_day },
+                initial={wizardCal !== 'new' ? {
+                  id: wizardCal.id,
+                  title: wizardCal.title,
+                  months: wizardCal.months,
+                  week: wizardCal.week,
+                  start: { year: wizardCal.start_year, month: wizardCal.start_month, day: wizardCal.start_day },
                 } : undefined}
-                onCancel={activeCalendar ? () => setEditingCalendar(false) : undefined}
+                onCancel={() => setWizardCal(null)}
                 onComplete={(id) => {
-                  setEditingCalendar(false);
-                  if (id) void loadCalendarById(id).then((cal) => { if (cal) setActiveCalendar(cal); }).catch(console.error);
+                  const wasNew = wizardCal === 'new';
+                  setWizardCal(null);
+                  if (!id || !database) return;
+                  if (wasNew) { activateCalendar(id); return; }
+                  if (activeCalendar?.id === id) void loadCalendarById(id).then((cal) => { if (cal) setActiveCalendar(cal); }).catch(console.error);
+                  refreshCalendars();
                 }}
               />
-            ) : (
+            ) : activeCalendar ? (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                 <div style={{ padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                   <strong>{activeCalendar.title}</strong>
                   <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{activeCalendar.year_length_days} Tage/Jahr · {activeCalendar.months.length} Monate · {activeCalendar.week.length} Wochentage</span>
-                  {calendarList.length > 1 && (
-                    <select
-                      className="cal-form__select"
-                      style={{ marginLeft: 'auto' }}
-                      aria-label="Kalender wählen"
-                      value={activeCalendar.id}
-                      onChange={(e) => switchCalendar(e.target.value)}
-                    >
-                      {calendarList.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-                    </select>
+                  {deletePrompt ? (
+                    <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <span>Kalender „{activeCalendar.title}" löschen — bist du sicher?</span>
+                      <button className="btn" style={{ color: 'var(--color-status-failure)' }} onClick={removeActiveCalendar}>Ja, löschen</button>
+                      <button className="btn" onClick={() => setDeletePrompt(false)}>Abbrechen</button>
+                    </span>
+                  ) : (
+                    <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      {calendarList.length > 1 && (
+                        <select className="cal-form__select" aria-label="Kalender wählen" value={activeCalendar.id} onChange={(e) => switchCalendar(e.target.value)}>
+                          {calendarList.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                        </select>
+                      )}
+                      <button className="btn" onClick={() => setWizardCal(activeCalendar)}>{t('changeCalendar')}</button>
+                      <button className="btn" style={{ color: 'var(--color-status-failure)' }} onClick={() => setDeletePrompt(true)}>Löschen</button>
+                    </span>
                   )}
-                  <button className="btn" style={calendarList.length > 1 ? undefined : { marginLeft: 'auto' }} onClick={() => setEditingCalendar(true)}>{t('changeCalendar')}</button>
                 </div>
                 <div style={{ flex: 1, overflow: 'auto' }}>
                   <CalendarMonthView calendar={activeCalendar} database={database} />
@@ -392,10 +429,26 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                       active={activeCalendar}
                       calendars={calendarList}
                       loadCalendar={loadCalendarById}
-                      onLinked={() => { void listCalendars(database).then(setCalendarList).catch(console.error); }}
+                      onLinked={refreshCalendars}
                     />
                   )}
                 </div>
+              </div>
+            ) : (
+              <div className="cal-start">
+                <h2 className="cal-start__title">Kalender</h2>
+                <div className="cal-start__row">
+                  <select className="cal-form__select cal-start__select" aria-label="Kalender auswählen"
+                    value={startSelId} disabled={calendarList.length === 0}
+                    onChange={(e) => setStartSelId(e.target.value)}>
+                    {calendarList.length === 0
+                      ? <option value="">Noch keine Kalender</option>
+                      : calendarList.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                  </select>
+                  <button className="btn btn--primary" disabled={!startSelId} onClick={() => activateCalendar(startSelId)}>Aktivieren</button>
+                  <button className="btn" disabled={!startSelId} onClick={() => editCalendarById(startSelId)}>Bearbeiten</button>
+                </div>
+                <button className="btn cal-start__new" onClick={() => setWizardCal('new')}>+ Neuen Kalender erstellen</button>
               </div>
             )}
           </div>

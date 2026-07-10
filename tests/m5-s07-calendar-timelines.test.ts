@@ -4,7 +4,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
 import { applyCalendarSchema } from '../core_data/calendar-schema';
-import { saveCalendar, listCalendars, setActiveCalendar, getActiveCalendarId, updateCalendarAnchor } from '../src/services/calendar-service';
+import { saveCalendar, listCalendars, setActiveCalendar, getActiveCalendarId, updateCalendarAnchor, deleteCalendar } from '../src/services/calendar-service';
 import { listEras, saveEra, deleteEra } from '../src/services/era-service';
 
 // Async DatabaseLike wrapper around the sync in-memory node:sqlite handle.
@@ -81,6 +81,21 @@ describe('S5 cross-calendar link persistence', () => {
     const rowA = await db.select<{ epoch_anchor_day: number }>('SELECT epoch_anchor_day FROM calendars WHERE id = ?', [a]);
     expect(rowB[0].epoch_anchor_day).toBe(-2243829);
     expect(rowA[0].epoch_anchor_day).toBe(0); // reference calendar untouched
+  });
+});
+
+describe('delete calendar', () => {
+  it('deleteCalendar removes the calendar and its eras, leaves others', async () => {
+    const db = makeDb();
+    const a = await saveCalendar(db, cal('A'));
+    const b = await saveCalendar(db, cal('B'));
+    await saveEra(db, { calendar_id: a, name: 'X', start_year: 1 });
+
+    await deleteCalendar(db, a);
+
+    const remaining = (await listCalendars(db)).map((c) => c.id);
+    expect(remaining).toEqual([b]);
+    expect(await listEras(db, a)).toEqual([]); // eras gone too
   });
 });
 

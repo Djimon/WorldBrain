@@ -2238,3 +2238,31 @@ input {
 .cal-era-name {
   flex: 1;
 }
+
+/* ── Calendar start / picker view ─────────────────────────────────────────── */
+.cal-start {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 460px;
+  margin: 40px auto 0;
+  padding: 0 16px;
+}
+
+.cal-start__title {
+  margin: 0;
+}
+
+.cal-start__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cal-start__select {
+  flex: 1;
+}
+
+.cal-start__new {
+  align-self: flex-start;
+}

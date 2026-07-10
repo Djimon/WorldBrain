@@ -58,6 +58,12 @@ export async function updateCalendarAnchor(db: DatabaseLike, id: string, epochAn
   await db.execute('UPDATE calendars SET epoch_anchor_day = ? WHERE id = ?', [epochAnchorDay, id]);
 }
 
+/** Deletes a calendar and its eras. Events are unaffected (pinned to the shared counter). */
+export async function deleteCalendar(db: DatabaseLike, id: string): Promise<void> {
+  await db.execute('DELETE FROM eras WHERE calendar_id = ?', [id]);
+  await db.execute('DELETE FROM calendars WHERE id = ?', [id]);
+}
+
 export function importCalendarFromJson(json: string): unknown {
   return JSON.parse(json);
 }
