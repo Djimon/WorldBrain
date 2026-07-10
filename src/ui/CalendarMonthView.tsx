@@ -114,7 +114,7 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
             {eraMode && matchingEras.length > 1 && (
               <select className="cal-form__select" aria-label="Bezugs-Ära"
                 value={refEra?.id ?? ''} onChange={(e) => setRefEraId(e.target.value)}>
-                {matchingEras.map((e) => <option key={e.id} value={e.id}>{eraUnit(e)}</option>)}
+                {matchingEras.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
             )}
             <span className="cal-yearmode">
