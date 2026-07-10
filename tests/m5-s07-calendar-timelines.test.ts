@@ -89,7 +89,7 @@ describe('delete calendar', () => {
     const db = makeDb();
     const a = await saveCalendar(db, cal('A'));
     const b = await saveCalendar(db, cal('B'));
-    await saveEra(db, { calendar_id: a, name: 'X', start_year: 1 });
+    await saveEra(db, { calendar_id: a, name: 'X', start_year: 1, start_month: 1, start_day: 1, end_year: 1, end_month: 1, end_day: 1 });
 
     await deleteCalendar(db, a);
 
@@ -103,8 +103,8 @@ describe('S3 era CRUD service', () => {
   it('save / list / delete eras for a calendar', async () => {
     const db = makeDb();
     const c = await saveCalendar(db, cal('C'));
-    await saveEra(db, { calendar_id: c, name: 'Ära der Grah', start_year: 1 });
-    await saveEra(db, { calendar_id: c, name: 'Furchung', start_year: 401 });
+    await saveEra(db, { calendar_id: c, name: 'Ära der Grah', start_year: 1, start_month: 1, start_day: 1, end_year: 400, end_month: 12, end_day: 30 });
+    await saveEra(db, { calendar_id: c, name: 'Furchung', start_year: 401, start_month: 1, start_day: 1, end_year: 1200, end_month: 12, end_day: 30 });
 
     let eras = await listEras(db, c);
     expect(eras.map((e) => e.name)).toEqual(['Ära der Grah', 'Furchung']); // ordered by start_year

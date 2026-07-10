@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { listEvents } from '../services/event-service';
 import type { DatabaseLike } from '../services/entity-service';
-import { dateToCounter, eraForYear, eraRelativeYear } from '../../core_data/calendar-schema';
+import { dateToCounter, erasForRange, eraRelativeYear } from '../../core_data/calendar-schema';
 import { listEras } from '../services/era-service';
 import type { EraRow } from '../services/era-service';
 
@@ -42,6 +42,7 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
   const [allEvents, setAllEvents] = useState<EventItem[]>([]);
   const [eras, setEras] = useState<EraRow[]>([]);
   const [eraMode, setEraMode] = useState(false);
+  const [refEraId, setRefEraId] = useState('');
 
   // Reset the view to the calendar's start date when the calendar changes
   // (e.g. the picker switches to another calendar).
@@ -89,10 +90,15 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
   function today() { setViewYear(startYear); setViewMonthIdx(startMonthIdx); }
 
   const weekDays = calendar.week.length > 0 ? calendar.week : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const era = eraForYear(eras, viewYear);
-  const yearText = eraMode && era
-    ? `${eraRelativeYear(era, viewYear)} ${era.name}`
-    : `${viewYear}${era ? ` · ${era.name}` : ''}`;
+  // Eras may overlap and may leave gaps: collect every era touching the shown
+  // month. The reference era (for era-relative years) is user-selectable.
+  const matchingEras = erasForRange(eras,
+    { year: viewYear, month: monthIdx + 1, day: 1 },
+    { year: viewYear, month: monthIdx + 1, day: currentMonth.days });
+  const refEra = matchingEras.find((e) => e.id === refEraId) ?? matchingEras[0] ?? null;
+  const yearText = eraMode && refEra
+    ? `${eraRelativeYear(refEra, viewYear)} ${refEra.name}`
+    : `${viewYear}${matchingEras.length ? ` · ${matchingEras.map((e) => e.name).join(', ')}` : ''}`;
   const heading = `${currentMonth.name} ${yearText}`;
 
   return (
@@ -103,10 +109,18 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
         <button className="cal-month__nav" aria-label="next >" onClick={() => step(1)}>{'›'}</button>
         <h2 className="cal-month__name">{heading}</h2>
         {eras.length > 0 && (
-          <button className="cal-month__nav" aria-label="toggle era display" style={{ marginLeft: 'auto' }}
-            onClick={() => setEraMode(m => !m)}>
-            {eraMode ? 'Global' : 'Ära'}
-          </button>
+          <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+            {eraMode && matchingEras.length > 1 && (
+              <select className="cal-form__select" aria-label="Bezugs-Ära"
+                value={refEra?.id ?? ''} onChange={(e) => setRefEraId(e.target.value)}>
+                {matchingEras.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select>
+            )}
+            <button className="cal-month__nav" aria-label="toggle era display"
+              onClick={() => setEraMode(m => !m)}>
+              {eraMode ? 'Global' : 'Ära'}
+            </button>
+          </span>
         )}
       </div>
       <div role="grid" className="cal-grid" style={{ '--cal-cols': weekDays.length } as CSSProperties}>

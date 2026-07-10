@@ -2237,8 +2237,31 @@ input {
 
 .cal-era-row {
   display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+
+.cal-era-row__top {
+  display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.cal-era-row__dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.cal-era-label {
+  font-size: 0.78rem;
+  opacity: 0.7;
+  padding-bottom: 16px;
 }
 
 .cal-era-name {

@@ -137,33 +137,62 @@ describe('M5-S01 calendar schema', () => {
     });
   });
 
-  describe('eras: labeled year ranges (S3 #253)', () => {
-    it('eras table has name + start_year columns', async () => {
+  describe('eras: explicit start/end ranges, overlaps + gaps allowed', () => {
+    // "Ära der Grah" 1.1.1 – 30.12.400 and "Furchung" 1.1.350 – 30.12.1200
+    // deliberately OVERLAP between years 350 and 400.
+    const grah = { name: 'Ära der Grah', start_year: 1, start_month: 1, start_day: 1, end_year: 400, end_month: 12, end_day: 30 };
+    const furchung = { name: 'Furchung', start_year: 350, start_month: 1, start_day: 1, end_year: 1200, end_month: 12, end_day: 30 };
+    const eras = [furchung, grah]; // deliberately unsorted
+
+    it('eras table has explicit start/end date columns', async () => {
       const { applyCalendarSchema } = await getCalendarSchema();
       const db = openDb(); applyCalendarSchema(db);
       const names = (db.prepare('PRAGMA table_info(eras)').all() as Array<{ name: string }>).map(c => c.name);
-      expect(names).toContain('name');
-      expect(names).toContain('start_year');
+      for (const col of ['name', 'start_year', 'start_month', 'start_day', 'end_year', 'end_month', 'end_day']) {
+        expect(names).toContain(col);
+      }
     });
 
-    it('eraForYear picks the era whose range covers the global year', async () => {
-      const { eraForYear } = await getCalendarSchema();
-      const eras = [
-        { name: 'Furchung', start_year: 401 },
-        { name: 'Ära der Grah', start_year: 1 }, // deliberately unsorted
+    it('erasForDate returns the single covering era', async () => {
+      const { erasForDate } = await getCalendarSchema();
+      expect(erasForDate(eras, { year: 100, month: 1, day: 1 }).map((e) => e.name)).toEqual(['Ära der Grah']);
+      expect(erasForDate(eras, { year: 900, month: 1, day: 1 }).map((e) => e.name)).toEqual(['Furchung']);
+    });
+
+    it('overlapping eras are ALL returned, sorted by start date', async () => {
+      const { erasForDate } = await getCalendarSchema();
+      expect(erasForDate(eras, { year: 380, month: 5, day: 3 }).map((e) => e.name))
+        .toEqual(['Ära der Grah', 'Furchung']);
+    });
+
+    it('a date outside every era (gap / before / after) returns none', async () => {
+      const { erasForDate } = await getCalendarSchema();
+      const gapped = [
+        { name: 'A', start_year: 1, start_month: 1, start_day: 1, end_year: 100, end_month: 1, end_day: 1 },
+        { name: 'B', start_year: 200, start_month: 1, start_day: 1, end_year: 300, end_month: 1, end_day: 1 },
       ];
-      expect(eraForYear(eras, 1)?.name).toBe('Ära der Grah');
-      expect(eraForYear(eras, 400)?.name).toBe('Ära der Grah');
-      expect(eraForYear(eras, 401)?.name).toBe('Furchung');
-      expect(eraForYear(eras, 1200)?.name).toBe('Furchung');
-      expect(eraForYear(eras, 0)).toBeNull(); // before the first era
+      expect(erasForDate(gapped, { year: 150, month: 1, day: 1 })).toEqual([]); // gap
+      expect(erasForDate(eras, { year: 1500, month: 1, day: 1 })).toEqual([]);  // after the last
     });
 
-    it('eraRelativeYear renumbers within an era', async () => {
+    it('era boundaries are inclusive (start and end day count)', async () => {
+      const { erasForDate } = await getCalendarSchema();
+      expect(erasForDate([grah], { year: 1, month: 1, day: 1 }).map((e) => e.name)).toEqual(['Ära der Grah']);
+      expect(erasForDate([grah], { year: 400, month: 12, day: 30 }).map((e) => e.name)).toEqual(['Ära der Grah']);
+      expect(erasForDate([grah], { year: 401, month: 1, day: 1 })).toEqual([]);
+    });
+
+    it('erasForRange returns every era overlapping a displayed month', async () => {
+      const { erasForRange } = await getCalendarSchema();
+      // month spanning the overlap
+      expect(erasForRange(eras, { year: 380, month: 1, day: 1 }, { year: 380, month: 1, day: 30 }).map((e) => e.name))
+        .toEqual(['Ära der Grah', 'Furchung']);
+    });
+
+    it('eraRelativeYear renumbers within a given era', async () => {
       const { eraRelativeYear } = await getCalendarSchema();
-      const era = { name: 'Furchung', start_year: 401, year_number_at_start: 1 };
-      expect(eraRelativeYear(era, 401)).toBe(1);
-      expect(eraRelativeYear(era, 405)).toBe(5);
+      expect(eraRelativeYear({ ...furchung, year_number_at_start: 1 }, 350)).toBe(1);
+      expect(eraRelativeYear({ ...furchung, year_number_at_start: 1 }, 354)).toBe(5);
     });
   });
 

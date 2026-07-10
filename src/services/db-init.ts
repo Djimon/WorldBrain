@@ -72,6 +72,11 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   await adapter.execute(`ALTER TABLE calendars ADD COLUMN start_day INTEGER NOT NULL DEFAULT 1`).catch(() => {});
   await adapter.execute(`ALTER TABLE eras ADD COLUMN name TEXT NOT NULL DEFAULT ''`).catch(() => {});
   await adapter.execute(`ALTER TABLE eras ADD COLUMN start_year INTEGER NOT NULL DEFAULT 1`).catch(() => {});
+  await adapter.execute(`ALTER TABLE eras ADD COLUMN start_month INTEGER NOT NULL DEFAULT 1`).catch(() => {});
+  await adapter.execute(`ALTER TABLE eras ADD COLUMN start_day INTEGER NOT NULL DEFAULT 1`).catch(() => {});
+  await adapter.execute(`ALTER TABLE eras ADD COLUMN end_year INTEGER NOT NULL DEFAULT 1`).catch(() => {});
+  await adapter.execute(`ALTER TABLE eras ADD COLUMN end_month INTEGER NOT NULL DEFAULT 1`).catch(() => {});
+  await adapter.execute(`ALTER TABLE eras ADD COLUMN end_day INTEGER NOT NULL DEFAULT 1`).catch(() => {});
   applyCardSchema(db as unknown as Parameters<typeof applyCardSchema>[0]);
   applyEventSchema(db as unknown as Parameters<typeof applyEventSchema>[0]);
   applyHandoutSchema(db as unknown as Parameters<typeof applyHandoutSchema>[0]);

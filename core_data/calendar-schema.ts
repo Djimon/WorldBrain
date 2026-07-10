@@ -77,6 +77,11 @@ export function applyCalendarSchema(db: CalendarDb): void {
       calendar_id TEXT NOT NULL,
       name TEXT NOT NULL DEFAULT '',
       start_year INTEGER NOT NULL DEFAULT 1,
+      start_month INTEGER NOT NULL DEFAULT 1,
+      start_day INTEGER NOT NULL DEFAULT 1,
+      end_year INTEGER NOT NULL DEFAULT 1,
+      end_month INTEGER NOT NULL DEFAULT 1,
+      end_day INTEGER NOT NULL DEFAULT 1,
       year_number_at_start INTEGER NOT NULL DEFAULT 1,
       starts_absolute_day INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -153,29 +158,51 @@ export function dateToCounter(calendar: CalendarShape, date: CalendarDate): numb
   return dateToDay(calendar, date) + (calendar.epoch_anchor_day ?? 0);
 }
 
-// ── Eras (M13 calendar-timelines S3) ─────────────────────────────────────────
-// An era is a named label over a contiguous range of GLOBAL years. Eras are
-// stored by their start year; each era runs until the next era's start (the
-// last era is open-ended). `year_number_at_start` supports era-relative
-// renumbering ("Year 5 of the Furchung"); default 1.
+// ── Eras (M13 calendar-timelines) ────────────────────────────────────────────
+// An era is a named label over an EXPLICIT date range (start date .. end date).
+// Eras may overlap each other and may leave gaps — a GM must be able to extend
+// or reshape an era without it being implicitly bounded by the next one.
+// `year_number_at_start` supports era-relative renumbering ("Year 5 of X").
 export interface Era {
   id?: string;
   calendar_id?: string;
   name: string;
   start_year: number;
+  start_month: number;
+  start_day: number;
+  end_year: number;
+  end_month: number;
+  end_day: number;
   year_number_at_start?: number;
 }
 
-/** The era covering a global year (the latest era whose start_year <= year), or null. */
-export function eraForYear(eras: Era[], globalYear: number): Era | null {
-  let found: Era | null = null;
-  for (const e of [...eras].sort((a, b) => a.start_year - b.start_year)) {
-    if (e.start_year <= globalYear) found = e; else break;
-  }
-  return found;
+/** Lexicographic compare of (year, month, day) — valid within one calendar. */
+function cmpDate(a: CalendarDate, b: CalendarDate): number {
+  if (a.year !== b.year) return a.year - b.year;
+  if (a.month !== b.month) return a.month - b.month;
+  return a.day - b.day;
 }
 
-/** Era-relative year number for a global year within its era ("Year 5 of X"). */
+export const eraStart = (e: Era): CalendarDate => ({ year: e.start_year, month: e.start_month, day: e.start_day });
+export const eraEnd = (e: Era): CalendarDate => ({ year: e.end_year, month: e.end_month, day: e.end_day });
+
+/**
+ * Every era overlapping the inclusive range [from, to], sorted by start date.
+ * Overlaps are allowed, so this can return several eras; gaps are allowed, so
+ * it can return none.
+ */
+export function erasForRange(eras: Era[], from: CalendarDate, to: CalendarDate): Era[] {
+  return eras
+    .filter((e) => cmpDate(eraStart(e), to) <= 0 && cmpDate(eraEnd(e), from) >= 0)
+    .sort((a, b) => cmpDate(eraStart(a), eraStart(b)));
+}
+
+/** Every era covering a single date. */
+export function erasForDate(eras: Era[], date: CalendarDate): Era[] {
+  return erasForRange(eras, date, date);
+}
+
+/** Era-relative year number for a global year within a given era ("Year 5 of X"). */
 export function eraRelativeYear(era: Era, globalYear: number): number {
   return globalYear - era.start_year + (era.year_number_at_start ?? 1);
 }
