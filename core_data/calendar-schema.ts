@@ -65,6 +65,9 @@ export function applyCalendarSchema(db: CalendarDb): void {
       week_json TEXT NOT NULL DEFAULT '[]',
       epoch_anchor_day INTEGER NOT NULL DEFAULT 0,
       is_active INTEGER NOT NULL DEFAULT 0,
+      start_year INTEGER NOT NULL DEFAULT 1,
+      start_month INTEGER NOT NULL DEFAULT 1,
+      start_day INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);

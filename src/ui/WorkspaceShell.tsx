@@ -57,6 +57,9 @@ interface CalendarRow {
   months: { name: string; days: number }[];
   week: string[];
   epoch_anchor_day: number;
+  start_year: number;
+  start_month: number;
+  start_day: number;
 }
 
 interface Props {
@@ -149,8 +152,8 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   }
 
   async function loadCalendarById(id: string): Promise<CalendarRow | null> {
-    const rows = await database.select<{ id: string; title: string; year_length_days: number; months_json: string; week_json: string; epoch_anchor_day: number }>(
-      'SELECT id, title, year_length_days, months_json, week_json, epoch_anchor_day FROM calendars WHERE id = ?', [id],
+    const rows = await database.select<{ id: string; title: string; year_length_days: number; months_json: string; week_json: string; epoch_anchor_day: number; start_year: number; start_month: number; start_day: number }>(
+      'SELECT id, title, year_length_days, months_json, week_json, epoch_anchor_day, start_year, start_month, start_day FROM calendars WHERE id = ?', [id],
     );
     const row = rows[0];
     if (!row) return null;
@@ -161,6 +164,9 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
       months: JSON.parse(row.months_json ?? '[]') as { name: string; days: number }[],
       week: JSON.parse(row.week_json ?? '[]') as string[],
       epoch_anchor_day: row.epoch_anchor_day ?? 0,
+      start_year: row.start_year ?? 1,
+      start_month: row.start_month ?? 1,
+      start_day: row.start_day ?? 1,
     };
   }
 
@@ -175,6 +181,10 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
       void loadCalendarById(activeId).then((cal) => { if (cal) setActiveCalendar(cal); }).catch(console.error);
     }).catch(console.error);
   }, [database]);
+
+  // Leaving the calendar area cancels an in-progress edit, so returning shows
+  // the month view (standard calendar) instead of a still-open editor.
+  useEffect(() => { if (activeArea !== 'calendar') setEditingCalendar(false); }, [activeArea]);
 
   function switchCalendar(id: string) {
     if (!database || id === activeCalendar?.id) return;
@@ -348,7 +358,9 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                   title: activeCalendar.title,
                   months: activeCalendar.months,
                   week: activeCalendar.week,
+                  start: { year: activeCalendar.start_year, month: activeCalendar.start_month, day: activeCalendar.start_day },
                 } : undefined}
+                onCancel={activeCalendar ? () => setEditingCalendar(false) : undefined}
                 onComplete={(id) => {
                   setEditingCalendar(false);
                   if (id) void loadCalendarById(id).then((cal) => { if (cal) setActiveCalendar(cal); }).catch(console.error);

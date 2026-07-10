@@ -15,6 +15,9 @@ interface Calendar {
   week: string[];
   epoch_anchor_day?: number;
   epoch_label?: string;
+  start_year?: number;
+  start_month?: number;
+  start_day?: number;
 }
 interface EventItem {
   id: string;
@@ -32,11 +35,20 @@ interface Props {
 
 export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) {
   const months = calendar.months.length > 0 ? calendar.months : [{ name: 'Month 1', days: calendar.year_length_days }];
-  const [viewYear, setViewYear] = useState(1);
-  const [viewMonthIdx, setViewMonthIdx] = useState(0);
+  const startYear = calendar.start_year ?? 1;
+  const startMonthIdx = (calendar.start_month ?? 1) - 1;
+  const [viewYear, setViewYear] = useState(startYear);
+  const [viewMonthIdx, setViewMonthIdx] = useState(startMonthIdx);
   const [allEvents, setAllEvents] = useState<EventItem[]>([]);
   const [eras, setEras] = useState<EraRow[]>([]);
   const [eraMode, setEraMode] = useState(false);
+
+  // Reset the view to the calendar's start date when the calendar changes
+  // (e.g. the picker switches to another calendar).
+  useEffect(() => {
+    setViewYear(calendar.start_year ?? 1);
+    setViewMonthIdx((calendar.start_month ?? 1) - 1);
+  }, [calendar.id, calendar.start_year, calendar.start_month]);
 
   useEffect(() => {
     listEvents(database, {}).then(rows => setAllEvents(rows as EventItem[])).catch(console.error);
@@ -74,7 +86,7 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
     setViewMonthIdx(m);
     setViewYear(y);
   }
-  function today() { setViewYear(1); setViewMonthIdx(0); }
+  function today() { setViewYear(startYear); setViewMonthIdx(startMonthIdx); }
 
   const weekDays = calendar.week.length > 0 ? calendar.week : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const era = eraForYear(eras, viewYear);

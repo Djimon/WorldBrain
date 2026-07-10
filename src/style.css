@@ -2156,3 +2156,85 @@ input {
 .cal-link__status {
   color: var(--color-accent);
 }
+
+.cal-link__toggle {
+  background: none;
+  border: none;
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+/* ── Wizard tabs (Monate / Wochentage / Ären) ─────────────────────────────── */
+.cal-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--color-border);
+  margin: 8px 0 12px;
+}
+
+.cal-tab {
+  padding: 7px 14px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text);
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.cal-tab:hover {
+  opacity: 0.9;
+}
+
+.cal-tab.active {
+  opacity: 1;
+  border-bottom-color: var(--color-accent);
+}
+
+/* labelled day/month/year input group */
+.cal-datefield {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.cal-datefield__unit {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.cal-datefield__unit input {
+  width: 3.4rem;
+}
+
+.cal-datefield__label {
+  font-size: 0.68rem;
+  opacity: 0.6;
+}
+
+.cal-hint {
+  margin: 4px 0;
+  opacity: 0.7;
+  font-size: 0.85rem;
+}
+
+.cal-era-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cal-era-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cal-era-name {
+  flex: 1;
+}

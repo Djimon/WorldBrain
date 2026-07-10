@@ -52,6 +52,25 @@ describe('S4 active display calendar', () => {
   });
 });
 
+describe('editing preserves anchor + active flag (UPDATE, not REPLACE)', () => {
+  it('editing a calendar keeps epoch_anchor_day / is_active and saves the start date', async () => {
+    const db = makeDb();
+    const a = await saveCalendar(db, cal('A'));
+    await setActiveCalendar(db, a);
+    await updateCalendarAnchor(db, a, -999);
+
+    // re-save the same calendar (edit): must not reset the unlisted columns
+    await saveCalendar(db, { ...cal('A renamed'), start: { year: 400, month: 4, day: 5 } }, a);
+
+    const rows = await db.select<{ title: string; epoch_anchor_day: number; is_active: number; start_year: number; start_month: number; start_day: number }>(
+      'SELECT title, epoch_anchor_day, is_active, start_year, start_month, start_day FROM calendars WHERE id = ?', [a]);
+    expect(rows[0].title).toBe('A renamed');
+    expect(rows[0].epoch_anchor_day).toBe(-999); // preserved
+    expect(rows[0].is_active).toBe(1);            // preserved
+    expect([rows[0].start_year, rows[0].start_month, rows[0].start_day]).toEqual([400, 4, 5]);
+  });
+});
+
 describe('S5 cross-calendar link persistence', () => {
   it('updateCalendarAnchor persists the epoch anchor (only that calendar)', async () => {
     const db = makeDb();

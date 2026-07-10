@@ -11,6 +11,7 @@ interface CalendarInitial {
   title: string;
   months: { name: string; days: number }[];
   week: string[];
+  start?: { year: number; month: number; day: number };
 }
 
 interface Props {
@@ -18,11 +19,15 @@ interface Props {
   database: DatabaseLike | undefined;
   /** Existing calendar to edit; when absent the wizard starts from the default preset. */
   initial?: CalendarInitial;
+  /** Shown as an "Abbrechen" button when editing an existing calendar. */
+  onCancel?: () => void;
 }
 
 const DEFAULT_PRESET = CALENDAR_PRESETS[0];
 
-export function CalendarWizard({ onComplete, database, initial }: Props) {
+type WizardTab = 'months' | 'weekdays' | 'eras';
+
+export function CalendarWizard({ onComplete, database, initial, onCancel }: Props) {
   const { t } = useTranslation('nav');
   const [title, setTitle] = useState(initial?.title ?? t('calendar'));
   const [preset, setPreset] = useState(DEFAULT_PRESET.id);
@@ -30,6 +35,8 @@ export function CalendarWizard({ onComplete, database, initial }: Props) {
     initial?.months?.length ? initial.months.map((m) => ({ ...m })) : DEFAULT_PRESET.months.map((m) => ({ ...m })),
   );
   const [week, setWeek] = useState(initial?.week?.length ? [...initial.week] : [...DEFAULT_PRESET.week]);
+  const [start, setStart] = useState(initial?.start ?? { year: 1, month: 1, day: 1 });
+  const [tab, setTab] = useState<WizardTab>('months');
   const [saving, setSaving] = useState(false);
   const [eras, setEras] = useState<EraRow[]>([]);
 
@@ -94,7 +101,7 @@ export function CalendarWizard({ onComplete, database, initial }: Props) {
     setSaving(true);
     try {
       const yearLengthDays = months.reduce((s, m) => s + m.days, 0);
-      const id = await saveCalendar(database, { title: title.trim(), yearLengthDays, months, week }, initial?.id);
+      const id = await saveCalendar(database, { title: title.trim(), yearLengthDays, months, week, start }, initial?.id);
       onComplete(id);
     } finally {
       setSaving(false);
@@ -113,6 +120,9 @@ export function CalendarWizard({ onComplete, database, initial }: Props) {
         <button className="btn btn--primary" onClick={() => void handleSave()} disabled={saving}>
           {saving ? 'Speichern…' : 'Kalender speichern'}
         </button>
+        {onCancel && (
+          <button className="btn" onClick={onCancel} disabled={saving}>Abbrechen</button>
+        )}
       </div>
 
       {/* Live-Summe: aktualisiert sich bei jeder Monats-/Wochentag-Änderung */}
@@ -166,10 +176,39 @@ export function CalendarWizard({ onComplete, database, initial }: Props) {
             />
             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>= {months.length} Monate × ~{months.length ? Math.round(totalDays / months.length) : 0}</span>
           </div>
+          <div className="cal-form__row">
+            <label className="cal-form__label">Startdatum</label>
+            <span className="cal-datefield">
+              <span className="cal-datefield__unit">
+                <input className="cal-form__input cal-month-days" type="number" value={start.day}
+                  onChange={(e) => setStart((s) => ({ ...s, day: Number(e.target.value) }))} aria-label="Starttag" />
+                <span className="cal-datefield__label">Tag</span>
+              </span>
+              <span className="cal-datefield__unit">
+                <input className="cal-form__input cal-month-days" type="number" value={start.month}
+                  onChange={(e) => setStart((s) => ({ ...s, month: Number(e.target.value) }))} aria-label="Startmonat" />
+                <span className="cal-datefield__label">Monat</span>
+              </span>
+              <span className="cal-datefield__unit">
+                <input className="cal-form__input cal-month-days" type="number" value={start.year}
+                  onChange={(e) => setStart((s) => ({ ...s, year: Number(e.target.value) }))} aria-label="Startjahr" />
+                <span className="cal-datefield__label">Jahr</span>
+              </span>
+            </span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>„Die Welt beginnt an diesem Datum"</span>
+          </div>
         </section>
 
-        <div className="cal-form__columns">
-          {/* Monate */}
+        {/* Tabs — je Bereich volle Breite, kein Platz-Konkurrieren */}
+        <div className="cal-tabs" role="tablist">
+          <button role="tab" aria-selected={tab === 'months'} className={`cal-tab${tab === 'months' ? ' active' : ''}`} onClick={() => setTab('months')}>Monate ({months.length})</button>
+          <button role="tab" aria-selected={tab === 'weekdays'} className={`cal-tab${tab === 'weekdays' ? ' active' : ''}`} onClick={() => setTab('weekdays')}>Wochentage ({week.length})</button>
+          {calendarId && (
+            <button role="tab" aria-selected={tab === 'eras'} className={`cal-tab${tab === 'eras' ? ' active' : ''}`} onClick={() => setTab('eras')}>Ären ({eras.length})</button>
+          )}
+        </div>
+
+        {tab === 'months' && (
           <section className="cal-section">
             <div className="cal-section__head">
               <h3 className="cal-section__title">Monate ({months.length})</h3>
@@ -179,28 +218,19 @@ export function CalendarWizard({ onComplete, database, initial }: Props) {
               {months.map((m, i) => (
                 <div key={i} className="cal-month-row">
                   <span className="cal-month-num">{i + 1}.</span>
-                  <input
-                    className="cal-form__input cal-month-name"
-                    value={m.name}
-                    onChange={(e) => updateMonth(i, 'name', e.target.value)}
-                    placeholder="Monatsname"
-                  />
-                  <input
-                    className="cal-form__input cal-month-days"
-                    type="number"
-                    min={1}
-                    max={99}
-                    value={m.days}
-                    onChange={(e) => updateMonth(i, 'days', e.target.value)}
-                  />
+                  <input className="cal-form__input cal-month-name" value={m.name}
+                    onChange={(e) => updateMonth(i, 'name', e.target.value)} placeholder="Monatsname" />
+                  <input className="cal-form__input cal-month-days" type="number" min={1} max={99} value={m.days}
+                    onChange={(e) => updateMonth(i, 'days', e.target.value)} />
                   <span className="cal-month-days-label">T</span>
                   <button className="cal-remove-btn" onClick={() => removeMonth(i)} title="Entfernen">✕</button>
                 </div>
               ))}
             </div>
           </section>
+        )}
 
-          {/* Wochentage */}
+        {tab === 'weekdays' && (
           <section className="cal-section">
             <div className="cal-section__head">
               <h3 className="cal-section__title">Wochentage ({week.length})</h3>
@@ -210,47 +240,34 @@ export function CalendarWizard({ onComplete, database, initial }: Props) {
               {week.map((d, i) => (
                 <div key={i} className="cal-week-row">
                   <span className="cal-month-num">{i + 1}.</span>
-                  <input
-                    className="cal-form__input"
-                    value={d}
-                    onChange={(e) => updateWeekday(i, e.target.value)}
-                    placeholder="Tagesname"
-                  />
+                  <input className="cal-form__input" value={d}
+                    onChange={(e) => updateWeekday(i, e.target.value)} placeholder="Tagesname" />
                   <button className="cal-remove-btn" onClick={() => removeWeekday(i)} title="Entfernen">✕</button>
                 </div>
               ))}
             </div>
           </section>
-        </div>
+        )}
 
-        {/* Ären — nur bei bestehendem Kalender (brauchen calendar_id) */}
-        {calendarId && (
+        {tab === 'eras' && calendarId && (
           <section className="cal-section">
             <div className="cal-section__head">
               <h3 className="cal-section__title">Ären ({eras.length})</h3>
               <button className="cal-add-btn" onClick={() => void addEra()}>+ Ära</button>
             </div>
-            <div className="cal-week-grid">
+            <div className="cal-era-grid">
               {eras.map((e) => (
-                <div key={e.id} className="cal-week-row">
-                  <input
-                    className="cal-form__input"
-                    value={e.name}
-                    onChange={(ev) => void updateEra(e, { name: ev.target.value })}
-                    placeholder="Ära-Name"
-                  />
-                  <input
-                    className="cal-form__input cal-month-days"
-                    type="number"
-                    value={e.start_year}
-                    onChange={(ev) => void updateEra(e, { start_year: Number(ev.target.value) })}
-                    title="Startjahr (global)"
-                  />
+                <div key={e.id} className="cal-era-row">
+                  <input className="cal-form__input cal-era-name" value={e.name}
+                    onChange={(ev) => void updateEra(e, { name: ev.target.value })} placeholder="Ära-Name" />
+                  <input className="cal-form__input cal-month-days" type="number" value={e.start_year}
+                    onChange={(ev) => void updateEra(e, { start_year: Number(ev.target.value) })} title="Startjahr (global)" />
+                  <span className="cal-month-days-label">ab Jahr</span>
                   <button className="cal-remove-btn" onClick={() => void removeEra(e.id)} title="Entfernen">✕</button>
                 </div>
               ))}
               {eras.length === 0 && (
-                <span className="cal-month-days-label">Noch keine Ären. „+ Ära" legt einen benannten Jahres-Bereich an.</span>
+                <p className="cal-hint">Noch keine Ären. „+ Ära" legt einen benannten Jahres-Bereich an (z.B. „Ära der Grah" ab Jahr 1).</p>
               )}
             </div>
           </section>
