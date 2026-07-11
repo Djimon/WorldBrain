@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useTransition, useEffect, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
-import { getActivatedCells, setCellState, clearAllCells } from '../services/session-grid-service';
+import { getActivatedCells, setCellState } from '../services/session-grid-service';
 
 export interface CellState {
   id: number;

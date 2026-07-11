@@ -1,4 +1,4 @@
-import { getRelationTypeDefinition as getCoreRelationType, getAllRelationTypes } from '../data/relation-type-registry';
+import { getRelationTypeDefinition as getCoreRelationType } from '../data/relation-type-registry';
 import { getPlugin } from './plugin-loader';
 
 export interface PluginEntityType {

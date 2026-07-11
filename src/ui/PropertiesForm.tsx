@@ -64,8 +64,6 @@ interface MentionInputProps {
 }
 
 function MentionInput({ value, onChange, entities, placeholder }: MentionInputProps) {
-  // Display raw text with @[Name](id) → shown as @Name for readability
-  const displayValue = mentionDisplayText(value);
   const [showSuggest, setShowSuggest] = useState(false);
   const [suggestQuery, setSuggestQuery] = useState('');
   const [atPos, setAtPos] = useState(-1);

@@ -63,7 +63,7 @@ function listJsonFiles(directory: string, projectRoot: string): string[] {
         return relative(projectRoot, absolutePath).replaceAll('\\', '/');
       })
       .sort((left, right) => left.localeCompare(right));
-  } catch (error) {
+  } catch {
     return [];
   }
 }

@@ -51,12 +51,9 @@ export function PlayerScreen({ context, entityId, database, onReveal: _onReveal 
 }
 
 export function PlayerScreenLauncher() {
-  const [_open, setOpen] = useState(false);
-
   async function handleOpen() {
     const { WebviewWindow } = await import('@tauri-apps/api/window');
     new WebviewWindow('player-screen', { url: 'player.html' });
-    setOpen(true);
   }
 
   return (
