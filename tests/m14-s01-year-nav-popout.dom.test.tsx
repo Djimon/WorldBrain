@@ -6,7 +6,8 @@
 // used for this component in m5-s05).
 // AP-003: no prompt()/alert()/confirm() — asserted via source scan.
 // AP-008 (RTL): all name/text queries below are anchored or use
-// getAllBy*/within where labels could collide (year digits vs. day digits).
+// getAllBy*/within where labels could collide (MRU pills "Jahr N" vs.
+// adjacency pills "Springe zu Jahr N" vs. day digits).
 
 import { readFileSync } from 'node:fs';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -28,6 +29,10 @@ async function openYearPopout() {
   return trigger;
 }
 
+function jumpToAdjacentYear(year: number) {
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^springe zu jahr ${year}$`, 'i') }));
+}
+
 describe('M14-S01 year navigation popout', () => {
   describe('trigger opens a popout (not permanently visible)', () => {
     it('the "Gehe zu Jahr" button is not visible before the trigger is clicked', () => {
@@ -41,19 +46,36 @@ describe('M14-S01 year navigation popout', () => {
     });
   });
 
-  describe('quick-jump -5 / +5', () => {
-    it('"+5" advances the view year by 5', async () => {
+  describe('10 adjacency pills next to the active year (5 predecessor, 5 successor)', () => {
+    it('renders 5 predecessor and 5 successor year pills around year 400', async () => {
+      await openYearPopout();
+      const popout = await screen.findByRole('dialog', { name: /^jahr-navigation$/i });
+      for (const y of [395, 396, 397, 398, 399, 401, 402, 403, 404, 405]) {
+        expect(within(popout).getByRole('button', { name: new RegExp(`^springe zu jahr ${y}$`, 'i') })).toBeInTheDocument();
+      }
+    });
+
+    it('clicking a predecessor pill jumps the view to that year', async () => {
       await openYearPopout();
       const heading = screen.getByRole('heading');
-      fireEvent.click(screen.getByRole('button', { name: /^\+5$/ }));
+      jumpToAdjacentYear(395);
+      await waitFor(() => expect(heading.textContent).toMatch(/\b395\b/));
+    });
+
+    it('clicking a successor pill jumps the view to that year', async () => {
+      await openYearPopout();
+      const heading = screen.getByRole('heading');
+      jumpToAdjacentYear(405);
       await waitFor(() => expect(heading.textContent).toMatch(/\b405\b/));
     });
 
-    it('"-5" moves the view year back by 5', async () => {
+    it('the adjacency window recomputes around the new active year after a jump', async () => {
       await openYearPopout();
-      const heading = screen.getByRole('heading');
-      fireEvent.click(screen.getByRole('button', { name: /^[-−]5$/ }));
-      await waitFor(() => expect(heading.textContent).toMatch(/\b395\b/));
+      jumpToAdjacentYear(395);
+      const popout = await screen.findByRole('dialog', { name: /^jahr-navigation$/i });
+      await waitFor(() =>
+        expect(within(popout).getByRole('button', { name: /^springe zu jahr 390$/i })).toBeInTheDocument(),
+      );
     });
   });
 
@@ -87,9 +109,10 @@ describe('M14-S01 year navigation popout', () => {
   describe('MRU recent-year pills', () => {
     it('after visiting 400 -> 395 -> 390, the popout shows pills for the last 3 distinct years, newest first', async () => {
       await openYearPopout();
-      // Visit 395 via -5, then 390 via -5 again (starting year is 400).
-      fireEvent.click(screen.getByRole('button', { name: /^[-−]5$/ }));
-      fireEvent.click(screen.getByRole('button', { name: /^[-−]5$/ }));
+      // Visit 395 via its adjacency pill, then 390 via the recomputed window.
+      jumpToAdjacentYear(395);
+      await screen.findByRole('button', { name: /^springe zu jahr 390$/i });
+      jumpToAdjacentYear(390);
       const popout = await screen.findByRole('dialog', { name: /^jahr-navigation$/i });
       const pills = within(popout).getAllByRole('button', { name: /^jahr \d+$/i });
       const pillYears = pills.map((p) => p.textContent?.match(/\d+/)?.[0]);
@@ -99,8 +122,9 @@ describe('M14-S01 year navigation popout', () => {
     it('re-visiting an already-recent year does not duplicate its pill', async () => {
       await openYearPopout();
       const popout = await screen.findByRole('dialog', { name: /^jahr-navigation$/i });
-      fireEvent.click(screen.getByRole('button', { name: /^[-−]5$/ })); // 395
-      fireEvent.click(screen.getByRole('button', { name: /^\+5$/ }));   // back to 400 (already recent)
+      jumpToAdjacentYear(395);
+      await screen.findByRole('button', { name: /^springe zu jahr 400$/i }); // window recomputed, 400 is now a successor pill
+      jumpToAdjacentYear(400); // back to 400 (already recent)
       const pills = within(popout).getAllByRole('button', { name: /^jahr \d+$/i });
       const pillYears = pills.map((p) => p.textContent?.match(/\d+/)?.[0]);
       expect(new Set(pillYears).size).toBe(pillYears.length);
@@ -110,8 +134,8 @@ describe('M14-S01 year navigation popout', () => {
       await openYearPopout();
       const heading = screen.getByRole('heading');
       const popout = await screen.findByRole('dialog', { name: /^jahr-navigation$/i });
-      fireEvent.click(screen.getByRole('button', { name: /^[-−]5$/ })); // visits 395, current year now 395
-      fireEvent.click(screen.getByRole('button', { name: /^jahr 400$/i }), { target: popout });
+      jumpToAdjacentYear(395); // visits 395, current year now 395
+      fireEvent.click(within(popout).getByRole('button', { name: /^jahr 400$/i }));
       await waitFor(() => expect(heading.textContent).toMatch(/\b400\b/));
     });
   });

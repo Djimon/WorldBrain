@@ -124,9 +124,20 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
                     onClick={() => setViewYear(y)}>Jahr {y}</button>
                 ))}
               </div>
-              <div className="cal-year-popout__quick">
-                <button type="button" onClick={() => setViewYear((y) => y - 5)}>{'−5'}</button>
-                <button type="button" onClick={() => setViewYear((y) => y + 5)}>{'+5'}</button>
+              <div className="cal-year-popout__adjacent">
+                {[-5, -4, -3, -2, -1].map((offset) => (
+                  <button key={offset} type="button" aria-label={`Springe zu Jahr ${viewYear + offset}`}
+                    className="cal-year-popout__adj-pill" onClick={() => setViewYear(viewYear + offset)}>
+                    {viewYear + offset}
+                  </button>
+                ))}
+                <span className="cal-year-popout__active">{viewYear}</span>
+                {[1, 2, 3, 4, 5].map((offset) => (
+                  <button key={offset} type="button" aria-label={`Springe zu Jahr ${viewYear + offset}`}
+                    className="cal-year-popout__adj-pill" onClick={() => setViewYear(viewYear + offset)}>
+                    {viewYear + offset}
+                  </button>
+                ))}
               </div>
               <div className="cal-year-popout__goto">
                 <input type="number" role="spinbutton" aria-label="Jahr" className="cal-form__input"
