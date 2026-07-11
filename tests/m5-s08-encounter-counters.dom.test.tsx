@@ -5,9 +5,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { EncounterCounters } from '../src/ui/EncounterCounters';
 
-vi.mock('../src/services/event-service', () => ({
-  updateEvent: vi.fn(),
-  createEvent: vi.fn(() => ({ id: 'enc-1' })),
+vi.mock('../src/services/event-entity-service', () => ({
+  createEventEntity: vi.fn(() => ({ id: 'enc-1' })),
+  listEventEntities: vi.fn(async () => []),
+  getEventEntity: vi.fn(async () => null),
+  updateEventEntity: vi.fn(),
 }));
 
 const mockDb = {};
@@ -102,6 +104,16 @@ describe('M5-S08 encounter counters', () => {
       render(<EncounterCounters sessionId="s1" database={mockDb as never} onEncounterEnd={onEnd} />);
       fireEvent.click(screen.getByRole('button', { name: /end encounter/i }));
       expect(onEnd).toHaveBeenCalled();
+    });
+
+    it('issue #270: End Encounter creates an Event entity via event-entity-service (event_kind single, start_day)', async () => {
+      const { createEventEntity } = await import('../src/services/event-entity-service');
+      render(<EncounterCounters sessionId="s1" database={mockDb as never} />);
+      fireEvent.click(screen.getByRole('button', { name: /end encounter/i }));
+      expect(createEventEntity).toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({ event_kind: 'single', start_day: expect.any(Number) }),
+      );
     });
 
     it('encounter counters are not persisted after end — component resets', () => {
