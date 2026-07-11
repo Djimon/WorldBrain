@@ -43,6 +43,15 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
   const [eras, setEras] = useState<EraRow[]>([]);
   const [eraMode, setEraMode] = useState(false);
   const [refEraId, setRefEraId] = useState('');
+  const [yearPopoutOpen, setYearPopoutOpen] = useState(false);
+  const [yearInput, setYearInput] = useState(String(startYear));
+  const [recentYears, setRecentYears] = useState<number[]>([startYear]);
+
+  // M14-S01: MRU of visited years (incl. the initial one) — most-recent
+  // first, distinct, capped at 3.
+  useEffect(() => {
+    setRecentYears((prev) => [viewYear, ...prev.filter((y) => y !== viewYear)].slice(0, 3));
+  }, [viewYear]);
 
   // Reset the view to the calendar's start date when the calendar changes
   // (e.g. the picker switches to another calendar).
@@ -105,8 +114,40 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
   return (
     <div className="cal-month">
       <div className="cal-month__bar">
-        <button className="cal-month__nav" aria-label="< previous" onClick={() => step(-1)}>{'‹'}</button>
+        <span className="cal-year-nav">
+          <button className="cal-month__nav" aria-label="Jahr" onClick={() => setYearPopoutOpen((o) => !o)}>Jahr</button>
+          {yearPopoutOpen && (
+            <div role="dialog" aria-label="Jahr-Navigation" className="cal-year-popout">
+              <div className="cal-year-popout__pills">
+                {recentYears.map((y) => (
+                  <button key={y} type="button" aria-label={`Jahr ${y}`} className="cal-year-popout__pill"
+                    onClick={() => setViewYear(y)}>Jahr {y}</button>
+                ))}
+              </div>
+              <div className="cal-year-popout__quick">
+                <button type="button" onClick={() => setViewYear((y) => y - 5)}>{'−5'}</button>
+                <button type="button" onClick={() => setViewYear((y) => y + 5)}>{'+5'}</button>
+              </div>
+              <div className="cal-year-popout__goto">
+                <input type="number" role="spinbutton" aria-label="Jahr" className="cal-form__input"
+                  value={yearInput} onChange={(e) => setYearInput(e.target.value)} />
+                <button type="button" disabled={yearInput === '' || Number.isNaN(Number(yearInput))}
+                  onClick={() => setViewYear(Number(yearInput))}>
+                  Gehe zu Jahr
+                </button>
+              </div>
+            </div>
+          )}
+        </span>
+        <select className="cal-form__select" aria-label="Monat" value={currentMonth.name}
+          onChange={(e) => {
+            const idx = months.findIndex((m) => m.name === e.target.value);
+            if (idx !== -1) setViewMonthIdx(idx);
+          }}>
+          {months.map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
+        </select>
         <button className="cal-month__nav" aria-label="today" onClick={today}>Today</button>
+        <button className="cal-month__nav" aria-label="< previous" onClick={() => step(-1)}>{'‹'}</button>
         <button className="cal-month__nav" aria-label="next >" onClick={() => step(1)}>{'›'}</button>
         <h2 className="cal-month__name">{heading}</h2>
         {eras.length > 0 && (
