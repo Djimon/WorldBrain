@@ -53,11 +53,11 @@ you never formally declared, only mentioned.
 
 ## Stories
 
-| Story | Type | Kern |
-|---|---|---|
-| M15-S17 | story | Mention-edge extraction: `buildMentionEdges(entities)` reusing `parseMentions` over summary + properties + body; deduped directed edges; drops self/dangling |
-| M15-S18 | story | `GlobalEntityGraph` = Relations + Verlinkungen: merge both edge sources, solid vs dashed styling, node color by type, toggle "Verlinkungen an/aus", all strings i18n |
-| M15-S19 | story (optional) | Politur: layout/reset controls, legend (solid=Relation / dashed=Verlinkung), hooked into app navigation as a knowledge view |
+| Story | Issue | Type | Kern |
+|---|---|---|---|
+| M15-S17 | #288 | story · p1 | Mention-edge extraction: `buildMentionEdges(entities)` reusing `parseMentions` over summary + properties + body; deduped directed edges; drops self/dangling |
+| M15-S18 | #289 | story · p1 | `GlobalEntityGraph` = Relations + Verlinkungen: merge both edge sources, solid vs dashed styling, node color by type, toggle "Verlinkungen an/aus", all strings i18n |
+| M15-S19 | #290 | story · p2 (optional) | Politur: layout/reset controls, legend (solid=Relation / dashed=Verlinkung), hooked into app navigation as a knowledge view |
 
 **Dependency axis:** S17 → S18 → (S19). S17 is a pure function (easy TDD). S18 does the Cytoscape merge + UI.
 
