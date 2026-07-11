@@ -117,7 +117,8 @@ describe('M14-S04 event entity model (replaces the events table)', () => {
       try {
         await createEventEntity(asyncDb, { title: 'Real Event', start_day: 1, event_kind: 'single' });
         db.prepare(
-          `INSERT INTO base_entities (id, type, title, summary, properties_json, created_at, updated_at) VALUES (?, ?, ?, '', '{}', ?, ?)`,
+          `INSERT INTO base_entities (id, type, title, summary, properties_json, aliases_json, body_json, visibility, created_at, updated_at)
+           VALUES (?, ?, ?, '', '{}', '[]', '{"format":"portable_blocks_v1","blocks":[]}', 'public', ?, ?)`,
         ).run('char-1', 'Character', 'Not An Event', new Date().toISOString(), new Date().toISOString());
         const events = await listEventEntities(asyncDb);
         expect(events.map((e) => e.title)).toEqual(['Real Event']);
