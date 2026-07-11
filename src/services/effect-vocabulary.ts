@@ -24,11 +24,33 @@ export type ParsedTarget =
  * parser recognizes but rejects in V1 (Decision: reserved, not implemented).
  * Any other scope prefix is an unknown-scope error.
  */
-export function parseTarget(_target: string): ParsedTarget {
-  throw new Error('not implemented');
+export function parseTarget(target: string): ParsedTarget {
+  const colonIdx = target.indexOf(':');
+  if (colonIdx === -1) throw new Error(`Invalid target (missing scope prefix): ${target}`);
+  const scope = target.slice(0, colonIdx);
+  const rest = target.slice(colonIdx + 1);
+
+  if (scope === 'world') return { scope: 'world', name: rest };
+
+  if (scope === 'entity') {
+    const hashIdx = rest.indexOf('#');
+    if (hashIdx === -1) throw new Error(`Invalid entity target (missing #field): ${target}`);
+    const id = rest.slice(0, hashIdx);
+    const field = rest.slice(hashIdx + 1);
+    if (field !== 'status') throw new Error(`Unsupported entity target field: ${field}`);
+    return { scope: 'entity', id, field: 'status' };
+  }
+
+  if (scope === 'session' || scope === 'char') {
+    throw new Error(`Target scope "${scope}:" is reserved for a later version — not supported in V1: ${target}`);
+  }
+
+  throw new Error(`Unknown target scope: ${scope}`);
 }
 
 /** Validates an effect's verb against the shared vocabulary — invalid verb is an error, never a silent no-op. */
-export function validateEffectVerb(_verb: string): asserts _verb is EffectVerb {
-  throw new Error('not implemented');
+export function validateEffectVerb(verb: string): asserts verb is EffectVerb {
+  if (!(EFFECT_VERBS as readonly string[]).includes(verb)) {
+    throw new Error(`Invalid effect verb: ${verb}`);
+  }
 }
