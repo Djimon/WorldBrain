@@ -15,6 +15,7 @@
 5. **Tag-Klick → Standard-Entity-Erstell-Formular** (dasselbe wie im Entity-Menü) mit aus dem geklickten Counter-Tag **vorbelegtem** `start_day`; `event_kind` default `'single'`.
 6. **`precision` entfällt** (geht in `event_kind` auf; eine konkrete Uhrzeit schreibt der DM als Plaintext in den Body).
 7. **`visibility` setzt der DM im Erstell-Formular.** Verlinkte Entities erben nichts. Spieler-spezifische Kalender-Filterung ist **out of scope** (Session-Modus, später).
+8. **Event-Kategorie = thematisch, optional, erweiterbar** (`properties.category`, freier String). Ersetzt die alte, gemischte `type`-Taxonomie. Seed-Vorschläge cross-genre: `battle`, `politics`, `disaster`, `discovery`, `ritual`, `investigation`, `social`, `death` — DM-erweiterbar, kein Enum-Zwang. **Provenienz** (authored vs. session) ist NICHT die Kategorie; sie kommt später automatisch mit dem Session-Modus. Realisiert in M14-S15 (#272, da #259 closed). ChronicleView filtert nach `category`; `precision`/`vague` fällt weg.
 
 ## Anti-Patterns (verbatim in AC der betroffenen Stories)
 
@@ -30,6 +31,7 @@
 - Navigations-UX & geklemmtes Datums-Widget (= EPIC-020 α; β konsumiert das Widget).
 - Spieler-spezifische Sichtbarkeits-Filterung (Session-Modus).
 - Schaltjahre / variable Jahreslängen (M5-Kalender-Entscheidung, weiterhin out).
+- **Undatierte Events / Gerücht / Prophezeiung:** ein Event hat **zwingend** ein `start_day` (Interview-Entscheidung). Undatierte, epistemisch unsichere Inhalte (Gerücht, Prophezeiung) sind KEINE Events → künftiges eigenes **Lore-Entity-Konzept** (Typen story/backstory/readout/secret/prophecy/rumor…), separat gespect. Die alten ChronicleView-`type`-Werte `rumor`/`prophecy` wandern dorthin, nicht ins Event-Modell.
 
 ## Stories
 
@@ -79,6 +81,17 @@
 - AP-001, AP-003, AP-008(RTL) in AC.
 - Tests: `m14-s07-event-form-fields` — `.dom.test.tsx`: kind-Umschalter zeigt/versteckt `end_day`; participant-Pill legt Relation an; visibility-Auswahl schreibt `visibility`.
 
+### M14-S15: Event-Kategorie (thematisch, erweiterbar)
+**Owner:** data-model + ui. **Erweitert #259 (closed).** **Ziel:** optionales thematisches `category`-Feld für den Chronicle-Filter.
+
+**AC:**
+- `event-entity-service.ts`: `properties.category?: string` (optional) durch `CreateEventEntityParams`/`EventEntitySummary`/`parse`/`toProperties`; fehlt/leer ⇒ `undefined`.
+- Exportierte Konstante `EVENT_CATEGORY_SUGGESTIONS` = `[battle, politics, disaster, discovery, ritual, investigation, social, death]`.
+- Event-Formular (M14-S07): Kategorie-Feld — Auswahl aus Vorschlägen **oder** Freitext; schreibt `properties.category`.
+- Kein DB-Enum-Zwang (freier String).
+- AP-001, AP-006 in AC.
+- Tests `m14-s15-event-category`: create mit `category` gelesen; ohne → `undefined`; Suggestions-Länge 8.
+
 ## Story Tracking
 
 | Story | Prio | Titel | Issue |
@@ -87,6 +100,7 @@
 | M14-S05 | p0 | Kalender rendert Event-Entities | #260 |
 | M14-S06 | p0 | Tag-Klick → Event-Erstellung mit vorbelegtem Datum | #261 |
 | M14-S07 | p1 | Event-Formular — Zusatzfelder (kind, participants/locations, visibility) | #262 |
+| M14-S15 | p1 | Event-Kategorie (thematisch, erweiterbar) | #272 |
 
 ## Abhängigkeiten
 
