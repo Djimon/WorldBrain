@@ -7,11 +7,18 @@ import type { DatabaseLike } from './entity-service';
 
 export type EventKind = 'single' | 'phase';
 
+// M14-S15 (#272): thematic, optional, DM-extensible — not a hard enum. These
+// are seed suggestions for the form/Chronicle filter, not a closed set.
+export const EVENT_CATEGORY_SUGGESTIONS = [
+  'battle', 'politics', 'disaster', 'discovery', 'ritual', 'investigation', 'social', 'death',
+] as const;
+
 export interface CreateEventEntityParams {
   title: string;
   start_day: number;
   event_kind: EventKind;
   end_day?: number;
+  category?: string;
 }
 
 export interface EventEntitySummary {
@@ -20,6 +27,7 @@ export interface EventEntitySummary {
   start_day: number;
   end_day?: number;
   event_kind: EventKind;
+  category?: string;
 }
 
 interface EventProperties {
