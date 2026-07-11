@@ -5,6 +5,7 @@ import { listEras, saveEra, deleteEra } from '../services/era-service';
 import type { EraRow } from '../services/era-service';
 import { CALENDAR_PRESETS } from '../../core_data/calendar-schema';
 import type { DatabaseLike } from '../services/entity-service';
+import { CalendarDateInput } from './CalendarDateInput';
 
 interface CalendarInitial {
   id?: string;
@@ -292,11 +293,11 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
                   </div>
                   <div className="cal-era-row__dates">
                     <span className="cal-era-label">Start</span>
-                    <EraDate day={e.start_day} month={e.start_month} year={e.start_year}
-                      onChange={(p) => updateEra(i, { start_day: p.day, start_month: p.month, start_year: p.year })} />
+                    <CalendarDateInput months={months} value={{ year: e.start_year, month: e.start_month, day: e.start_day }}
+                      onChange={(v) => updateEra(i, { start_year: v.year, start_month: v.month, start_day: v.day })} />
                     <span className="cal-era-label">Ende</span>
-                    <EraDate day={e.end_day} month={e.end_month} year={e.end_year}
-                      onChange={(p) => updateEra(i, { end_day: p.day, end_month: p.month, end_year: p.year })} />
+                    <CalendarDateInput months={months} value={{ year: e.end_year, month: e.end_month, day: e.end_day }}
+                      onChange={(v) => updateEra(i, { end_year: v.year, end_month: v.month, end_day: v.day })} />
                     <span className="cal-datefield__unit">
                       <input className="cal-form__input cal-month-days" type="number" value={e.year_number_at_start}
                         onChange={(ev) => updateEra(i, { year_number_at_start: Number(ev.target.value) })}
@@ -315,30 +316,5 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
         )}
       </div>
     </div>
-  );
-}
-
-function EraDate({ day, month, year, onChange }: {
-  day: number; month: number; year: number;
-  onChange: (v: { day: number; month: number; year: number }) => void;
-}) {
-  return (
-    <span className="cal-datefield">
-      <span className="cal-datefield__unit">
-        <input className="cal-form__input cal-month-days" type="number" aria-label="Tag" value={day}
-          onChange={(e) => onChange({ day: Number(e.target.value), month, year })} />
-        <span className="cal-datefield__label">Tag</span>
-      </span>
-      <span className="cal-datefield__unit">
-        <input className="cal-form__input cal-month-days" type="number" aria-label="Monat" value={month}
-          onChange={(e) => onChange({ day, month: Number(e.target.value), year })} />
-        <span className="cal-datefield__label">Monat</span>
-      </span>
-      <span className="cal-datefield__unit">
-        <input className="cal-form__input cal-year-input" type="number" aria-label="Jahr" value={year}
-          onChange={(e) => onChange({ day, month, year: Number(e.target.value) })} />
-        <span className="cal-datefield__label">Jahr</span>
-      </span>
-    </span>
   );
 }
