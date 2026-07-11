@@ -27,6 +27,23 @@ Provide map import and annotation tools that link maps back to lore without beco
 - MBTiles, GeoJSON, Tiled JSON in V1 (roadmap/import later).
 - Map versioning beyond session-level snapshots.
 
+## ⚠️ Rendering status correction (2026-07-11)
+
+The story note "E8-S02: Leaflet MapContainer+ImageOverlay" below is **stale and misleading** —
+it describes the original implementation that **violated** the Canvas-2D decision. Actual state,
+verified in code:
+
+- **`src/ui/MapViewer.tsx` uses NO Leaflet.** It renders `<img>` + CSS `transform: translate/scale`
+  (zoom/pan), `<div>` pin overlays, `<svg>` ruler/radius, Canvas grid layers (`./MapGrid`). This IS
+  the decided Canvas-2D architecture. **All future map work (see EPIC-023) builds on this path.**
+- The Leaflet slip was caught in review as **#107 (P0)** with a guard test
+  (`tests/issue-107-no-react-leaflet.test.ts`). MapViewer + GridOverlay were migrated back — but
+  the migration was **left half-finished and #107 was closed prematurely while still RED**:
+  `src/blocks/MapEmbedBlock.tsx` still imports `react-leaflet`; `package.json` still lists
+  `leaflet` / `react-leaflet` / `@types/leaflet`; the guard test fails 3/7.
+- **Deferred to a later cleanup refactor:** finish de-Leaflet (MapEmbedBlock → img/CSS), drop the
+  three deps, get #107 green and reopen/replace it. Do not re-derive the renderer from the stale note.
+
 ## Decisions
 
 - **Rendering:** Plain Canvas 2D API — no map framework. Custom `MapCanvas` component with transform-matrix zoom/pan, `MarkerLayer` for pins/polygons/labels, `GridLayer` for square and hex grids. Hex grid math via axial coordinates (redblobgames reference). Hit-detection via ray casting. No Leaflet, Konva, or Pixi — keeps the dependency footprint minimal and avoids fighting geo-map abstractions that don't fit fantasy coordinates. If very large images (>8000px) cause performance issues on import, downscale to a sane max resolution at import time. Coordinates stored as pixel floats internally; world units derived from calibration.
@@ -53,7 +70,7 @@ Provide map import and annotation tools that link maps back to lore without beco
 | Story | Status | Notes |
 |---|---|---|
 | E8-S01: Map data model & schema | Verified | #75 — core_data/map-schema.ts: maps/map_markers tables, getMarkersForMap/Entity. |
-| E8-S02: Map image import & viewer | Verified | #76 — src/ui/MapViewer.tsx: Leaflet MapContainer+ImageOverlay, MapList export. 2 tests use require() in ESM context (test bug). |
+| E8-S02: Map image import & viewer | Verified | #76 — src/ui/MapViewer.tsx. NOTE: shipped renderer is `<img>`+CSS-transform+Canvas (NO Leaflet) after the #107 migration; original Leaflet impl was reverted. See "Rendering status correction" above. |
 | E8-S03: Map calibration | Verified | #77 — src/services/map-calibration.ts: computeCalibration (Euclidean), convertPixelsToWorldUnits. |
 | E8-S04: Marker system (pins, regions, labels) | Verified | #78 — src/ui/MapMarkers.tsx: MarkerPanel with kind filter, elevation, entity navigation, CRUD. |
 | E8-S05: Grid overlay | Verified | #79 — src/ui/GridOverlay.tsx: SVGOverlay square/hex, GridToggle, GridSettings. 4 tests use require() in ESM context (test bug). |
