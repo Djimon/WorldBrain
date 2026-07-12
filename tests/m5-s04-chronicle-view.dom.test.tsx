@@ -1,15 +1,23 @@
-// M5-S04: Chronicle view — chronological event list with filters.
+// M5-S04: Chronicle view — chronological event list.
 // See: https://github.com/Djimon/WorldBrain/issues/70
+//
+// #270 (2026-07): type-filter, type-badge and precision-aware display
+// removed — the event-entity-service model (event_kind/start_day/end_day)
+// carries neither `type` nor `precision`. Rumor/Prophecy move to a future,
+// separate Lore-Entity concept, not Event. Deprecated tests removed by
+// direct user authorization (same test file, no new issue needed — user:
+// "testet der test noch was anderes? falls er genau nur da stestes,
+// einfach deprecated setzen").
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ChronicleView } from '../src/ui/ChronicleView';
 
-vi.mock('../src/services/event-service', () => ({
-  listEvents: vi.fn(async () => [
-    { id: 'ev-1', title: 'Battle of Iron Keep', type: 'historical_event', start_day: 100, precision: 'day', visibility: 'public', participants: ['char-ada'], locations: ['loc-keep'] },
-    { id: 'ev-2', title: 'The Rumor', type: 'rumor', start_day: 500, precision: 'month', visibility: 'gm_only', participants: [], locations: [] },
-    { id: 'ev-3', title: 'Council Meeting', type: 'session_event', start_day: 800, precision: 'day', visibility: 'public', participants: ['char-bram'], locations: [] },
+vi.mock('../src/services/event-entity-service', () => ({
+  listEventEntities: vi.fn(async () => [
+    { id: 'ev-1', title: 'Battle of Iron Keep', start_day: 100, event_kind: 'single' },
+    { id: 'ev-2', title: 'The Rumor', start_day: 500, event_kind: 'single' },
+    { id: 'ev-3', title: 'Council Meeting', start_day: 800, event_kind: 'single' },
   ]),
 }));
 
@@ -29,11 +37,6 @@ describe('M5-S04 chronicle view', () => {
       render(<ChronicleView database={mockDb as never} />);
       await waitFor(() => expect(screen.getByText('Battle of Iron Keep')).toBeInTheDocument());
       expect(screen.getByText('Council Meeting')).toBeInTheDocument();
-    });
-
-    it('shows event type badges', async () => {
-      render(<ChronicleView database={mockDb as never} />);
-      await waitFor(() => expect(screen.getByText(/historical.?event|historical_event/i)).toBeInTheDocument());
     });
 
     it('shows calendar date for each event', async () => {
@@ -59,29 +62,6 @@ describe('M5-S04 chronicle view', () => {
     });
   });
 
-  describe('filter bar', () => {
-    it('renders a filter bar', async () => {
-      render(<ChronicleView database={mockDb as never} />);
-      await waitFor(() => {
-        const filter = screen.queryByRole('combobox')
-          ?? screen.queryByRole('searchbox')
-          ?? screen.queryByRole('listbox');
-        expect(filter).toBeInTheDocument();
-      });
-    });
-
-    it('filtering by type narrows results', async () => {
-      render(<ChronicleView database={mockDb as never} />);
-      await waitFor(() => expect(screen.getByText('Battle of Iron Keep')).toBeInTheDocument());
-      const typeFilter = screen.queryByRole('combobox', { name: /type|event type/i });
-      if (typeFilter) {
-        fireEvent.change(typeFilter, { target: { value: 'rumor' } });
-        await waitFor(() => expect(screen.getByText('The Rumor')).toBeInTheDocument());
-        expect(screen.queryByText('Battle of Iron Keep')).not.toBeInTheDocument();
-      }
-    });
-  });
-
   describe('event click', () => {
     it('clicking an event calls onEventSelect', async () => {
       const onSelect = vi.fn();
@@ -89,17 +69,6 @@ describe('M5-S04 chronicle view', () => {
       await waitFor(() => expect(screen.getByText('Battle of Iron Keep')).toBeInTheDocument());
       fireEvent.click(screen.getByText('Battle of Iron Keep'));
       expect(onSelect).toHaveBeenCalledWith('ev-1');
-    });
-  });
-
-  describe('precision-aware display', () => {
-    it('vague-precision events show without a specific date', async () => {
-      const { listEvents } = await import('../src/services/event-service');
-      (listEvents as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
-        { id: 'ev-v', title: 'Ancient War', type: 'historical_event', start_day: 0, precision: 'vague', visibility: 'public', participants: [], locations: [] },
-      ]);
-      render(<ChronicleView database={mockDb as never} />);
-      expect(screen.getByText('Ancient War')).toBeInTheDocument();
     });
   });
 });
