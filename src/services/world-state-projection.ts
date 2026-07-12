@@ -96,3 +96,12 @@ export async function entityStatusAt(
   const state = await worldStateAt(db, day);
   return state.get(`entity:${entityId}#status`);
 }
+
+/**
+ * M14-S11 (#266): distinct `world:<name>` targets used across ALL existing
+ * effect assertions (any day, no upper bound) — for the S12 target-picker.
+ * Ad-hoc/create-on-use: derived from usage, never a pre-declared registry.
+ */
+export async function listWorldVariables(_db: DatabaseLike): Promise<string[]> {
+  throw new Error('not implemented');
+}
