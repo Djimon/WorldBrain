@@ -1,5 +1,16 @@
 # EPIC-007: Time, Events & World State Light
 
+> ⚠️ **TEILWEISE ABGELÖST (Stand 2026-07-12) — nachgelagerte Milestones gewinnen.**
+> M5-S01…S08 sind CLOSED (Milestone „M5 - Maps and Export"). Aber zwei Entscheidungen sind von
+> M14 (EPIC-020/021/022, offen) bewusst überschrieben — hier NICHT re-flaggen:
+> - **`precision` (day/month/year/vague) entfällt** (EPIC-021 Decision 6). Das Feld aus M5-S03 ist
+>   im Event-Entity-Modell abgelöst; `rumor`/`prophecy` wandern ins künftige Lore-Entity, nicht ins Event.
+> - **`events`-Tabelle + `event-service.ts`/`event-schema.ts` werden von M14-S04 (#259) ersetzt**
+>   durch `Event`-als-`base_entities`-Entity. Wer heute `listEvents` nutzt (ChronicleView, EntityTimeline,
+>   EncounterCounters, CalendarMonthView), migriert mit #259/#260 — das ist geplante Arbeit, kein Bug.
+> - Kalender/Ären wurden über `calendar-timelines-eras.md` **und** einen UI/UX-Sprint real umgebaut
+>   (signierter Tages-Counter, Projektion, explizite Ära-Start/End-Daten). Siehe dortige Banner.
+
 ## Goal
 
 Model campaign time through events, calendars, session time, and lightweight counters without overbuilding state-at-time.

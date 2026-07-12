@@ -1,5 +1,10 @@
 # EPIC-011: Rules Reference & SRD-Safe Rulesets
 
+> ✅ **GEBAUT (Stand 2026-07-12) — Story-Tracking-Tabelle unten ist STALE.** Die „Open"-Zeilen
+> E11-S01…S05 (#97–#101) sind ausgeliefert als **M6-S07…M6-S11, CLOSED** (Milestone „M6 - Plugins
+> and Rulesets", 0 open). Code: `rule-import-service`, `DmScreen`/`DmScreenSelector`,
+> `rule-evaluations`. Ein Review darf hieraus **nicht** „Rules/DM-Screen nie gebaut" ableiten.
+>
 > ⚠️ **In Überarbeitung — Konsolidierung M6 ↔ M9 (#225). Inhalt unten NICHT als finale Wahrheit nehmen.**
 > Kernkorrektur: Ein Spielsystem = **ein** Plugin, und das ist das **M9-Deliverable** (`dnd5e_srd`). M6 bleibt **systemagnostisches Framework** — die *Grammatik*: „welche Regeln/Mechaniken sind möglich, wie werden sie definiert". M6 liefert **kein** konkretes System mehr; das bestehende `plugins/dnd5e_srd/` war ein Kategorienfehler und wird aufgelöst. M6-Tests laufen künftig gegen ein **generisches Toy-Fixture**, nicht gegen D&D. Neue, sauber strukturierte Issues/Epics folgen nach der SRD-Grammatik-Vollständigkeitsprüfung.
 

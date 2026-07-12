@@ -1,5 +1,13 @@
 # EPIC-009: Cards, Handouts & Export Pipeline
 
+> ✅ **AUSGELIEFERT (Stand 2026-07-12) — Story-Tracking-Tabelle unten ist STALE.**
+> Die „Open"-Zeilen E9-S01…S07 (#84–#90) sind irreführend: diese Issues wurden zu
+> **M5-S18…M5-S24 umbenannt und sind CLOSED** (Milestone „M5 - Maps and Export", 0 open).
+> Beispiel: #84 = „M5-S18: Card template schema & data model" (closed). Code existiert:
+> `CardList`/`CardCreationFlow`/`PrintSheetComposer`/`card-service`/`pdf-export`/`png-export`,
+> in WorkspaceShell gemountet (`<CardList>`). Ein Review darf hieraus **nicht** „Cards nie gebaut"
+> ableiten. Status = gebaut; einzige echte Restarbeit siehe MI-Integration + evtl. Handout-UI.
+
 ## Goal
 
 Generate table-ready cards and handouts as projections of entity data, applying templates and visibility rules.

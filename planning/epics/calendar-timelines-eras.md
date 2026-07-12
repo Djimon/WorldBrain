@@ -1,5 +1,18 @@
 # EPIC: Calendar Timelines, Years & Eras
 
+> ⚠️ **UMGESETZT + TEILS ÜBERHOLT (Stand 2026-07-12) — Code ist die Wahrheit, nicht S1–S5 unten.**
+> S1–S5 wurden über einen UI/UX-Sprint realisiert (`calendar-schema.ts`, `calendar-service.ts`,
+> `era-service.ts`, `CalendarMonthView`, `CalendarWizard`, `CalendarLinkPanel`; Tests `m5-s01`/`m5-s07`).
+> Zwei Punkte weichen bewusst von der Spec unten ab — hier NICHT als „Bug" re-flaggen:
+> - **Äras: explizites Start- UND End-Datum, Überschneidungen + Lücken erlaubt.** Der S3-Text
+>   („Ende abgeleitet aus nächster Ära", zusammenhängend) ist überholt. Resolver ist
+>   `erasForRange`/`erasForDate: Era[]`, NICHT `eraForYear: Era|null`.
+> - **Epoch-Anker liegt in `calendars.epoch_anchor_day`** (nicht `eras.starts_absolute_day`).
+>   `eras.starts_absolute_day` ist heute eine tote Spalte (Alt-Gerüst; Modell nutzt start_year/month/day
+>   + end_* + year_number_at_start).
+> - Diese Datei ist faktisch der Vorläufer der M14-Kalender-Arbeit (EPIC-020 α). Neue Kalender-Navigation/
+>   Datums-Widgets laufen dort weiter.
+
 **Ziel:** Aus dem heutigen Ein-Kalender-Wizard einen echten Zeit-Layer machen: mehrere Kalender als **Projektionen** über einer gemeinsamen internen Zeitachse, mit Jahreszahlen, benannten Äras und Umschalten zwischen Kalendern — ohne Events zu verschieben.
 
 ## Kern-Architektur (Interview-Entscheidung)

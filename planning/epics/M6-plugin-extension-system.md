@@ -1,5 +1,11 @@
 # EPIC-010: Plugin & Extension System
 
+> ✅ **GEBAUT (Stand 2026-07-12) — Story-Tracking-Tabelle unten ist STALE.** Die „Open"-Zeilen
+> E10-S01…S06 (#91–#96) sind ausgeliefert als **M6-S01…M6-S06, CLOSED** (Milestone „M6 - Plugins
+> and Rulesets", 0 open). Code: `plugin-loader`, `PluginManager`, `renderer-registry`,
+> `plugin-entity-service`. Ein Review darf hieraus **nicht** „Plugin-System nie gebaut" ableiten.
+> Die #225-Konsolidierung betrifft die *Aufteilung* M6-Framework ↔ M9-Plugin, nicht das Ob.
+>
 > ⚠️ **In Überarbeitung — Konsolidierung M6 ↔ M9 (#225). Inhalt unten NICHT als finale Wahrheit nehmen.**
 > M6 bleibt das **systemagnostische Framework** (Manifest-Format, Loader/Validator, Rule-Entity-Typ — die *Erlaubnis*, dass ein Plugin `mechanics`/`computed`/`lookup`/`entity_type`-Schemas/i18n mitbringt). Es liefert **kein** konkretes Spielsystem. Das eine echte D&D-Plugin ist das **M9-Deliverable**; das bestehende `plugins/dnd5e_srd/` (mit `mechanics`-Block) wird als Kategorienfehler aufgelöst. Tests laufen künftig gegen ein **generisches Toy-Fixture**. Manifest-Schema + Ladepfad werden im Zuge von #225 vereinheitlicht. Neue Issues/Epics folgen nach der SRD-Grammatik-Vollständigkeitsprüfung.
 
