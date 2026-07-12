@@ -36,7 +36,7 @@
 ## Stories
 
 ### M14-S04: Event-Entity-Modell (#259) — nur Modell; Ablösung = #270
-> **Split 2026-07 (Zyklus aufgelöst):** #259 enthielt ursprünglich *Modell* **und** *events-Tabellen-Ablösung*. Die Ablösung braucht aber die Konsumenten-Migration (#260 CalendarMonthView + ChronicleView), die ihrerseits das Modell braucht → #259 ↔ #260 zyklisch. Aufgelöst: **#259 = nur Modell** (`event-entity-service.ts`, im Code vorhanden); **die Ablösung der `events`-Tabelle + Konsumenten-Migration lebt in #270**. Reihenfolge: #259 (Modell) → #260 + ChronicleView → #270 (Rest + Tabelle droppen).
+> **Split 2026-07 (Zyklus aufgelöst):** #259 enthielt ursprünglich *Modell* **und** *events-Tabellen-Ablösung*. Die Ablösung braucht aber die Konsumenten-Migration (#260 CalendarMonthView + ChronicleView), die ihrerseits das Modell braucht → #259 ↔ #260 zyklisch. Aufgelöst: **#259 = nur Modell** (`event-entity-service.ts`, im Code vorhanden); **die Ablösung der `events`-Tabelle + Konsumenten-Migration lebt in #270**. Reihenfolge: #259-Modell-Code (fertig) → #260 + ChronicleView → #270 (Rest + Tabelle droppen). **Wichtig: Issue #259 bleibt trotzdem BLOCKED bis #270 fertig ist** (ChronicleView migriert + `event-service.ts`/`event-schema.ts` gelöscht) — der Modell-*Code* ist fertig, die *Story* schließt erst nach sauberer Ablösung. Erst dann unblocken #264–#268. Stand 2026-07: #260 ✅ geschlossen; in #270 offen nur noch ChronicleView-Migration (+ 2 stale `m5-s05`-Tests als Fallout).
 
 **Owner:** data-model. **Ziel:** `Event` als generische Entity mit event-spezifischen `properties`. (Entfernen der alten `events`-Tabelle/`event-service` NICHT hier → #270.)
 
