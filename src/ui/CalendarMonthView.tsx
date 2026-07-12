@@ -30,9 +30,10 @@ interface Props {
   calendar: Calendar;
   database: DatabaseLike;
   onCreateEvent?: (day: number) => void;
+  refreshToken?: number;
 }
 
-export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) {
+export function CalendarMonthView({ calendar, database, onCreateEvent, refreshToken }: Props) {
   const months = calendar.months.length > 0 ? calendar.months : [{ name: 'Month 1', days: calendar.year_length_days }];
   const startYear = calendar.start_year ?? 1;
   const startMonthIdx = (calendar.start_month ?? 1) - 1;
@@ -61,7 +62,7 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
 
   useEffect(() => {
     listEventEntities(database).then(rows => setAllEvents(rows as EventItem[])).catch(console.error);
-  }, [database]);
+  }, [database, refreshToken]);
 
   useEffect(() => {
     listEras(database, calendar.id).then(setEras).catch(console.error);
