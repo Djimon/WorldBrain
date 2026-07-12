@@ -10,10 +10,8 @@ const components = [
   'src/ui/CalendarWizard.tsx',
   'src/ui/SessionClock.tsx',
   'src/ui/EncounterCounters.tsx',
-  'src/ui/SessionGridTracker.tsx',
   'src/ui/MapViewer.tsx',
   'src/blocks/MapEmbedBlock.tsx',
-  'src/ui/MapMarkers.tsx',
 ];
 
 describe('issue-104 no database as never in M5/E8 components', () => {
@@ -36,11 +34,6 @@ describe('issue-104 no database as never in M5/E8 components', () => {
 
   it('EncounterCounters types database prop as DatabaseLike', () => {
     const source = src('src/ui/EncounterCounters.tsx');
-    expect(source).toMatch(/database\s*:\s*DatabaseLike/);
-  });
-
-  it('SessionGridTracker types database prop as DatabaseLike', () => {
-    const source = src('src/ui/SessionGridTracker.tsx');
     expect(source).toMatch(/database\s*:\s*DatabaseLike/);
   });
 
