@@ -35,13 +35,15 @@
 
 ## Stories
 
-### M14-S04: Event-Entity-Modell & Ablösung der events-Tabelle
-**Owner:** data-model. **Ziel:** `Event` als generische Entity mit event-spezifischen `properties`; alte `events`-Tabelle/`event-service` weg.
+### M14-S04: Event-Entity-Modell (#259) — nur Modell; Ablösung = #270
+> **Split 2026-07 (Zyklus aufgelöst):** #259 enthielt ursprünglich *Modell* **und** *events-Tabellen-Ablösung*. Die Ablösung braucht aber die Konsumenten-Migration (#260 CalendarMonthView + ChronicleView), die ihrerseits das Modell braucht → #259 ↔ #260 zyklisch. Aufgelöst: **#259 = nur Modell** (`event-entity-service.ts`, im Code vorhanden); **die Ablösung der `events`-Tabelle + Konsumenten-Migration lebt in #270**. Reihenfolge: #259 (Modell) → #260 + ChronicleView → #270 (Rest + Tabelle droppen).
+
+**Owner:** data-model. **Ziel:** `Event` als generische Entity mit event-spezifischen `properties`. (Entfernen der alten `events`-Tabelle/`event-service` NICHT hier → #270.)
 
 **AC:**
 - Eine `Event`-Entity ist eine `base_entities`-Zeile mit `type='Event'`. Event-Daten liegen in `properties`: `event_kind` (`'single'|'phase'`), `start_day` (Integer, darf negativ), `end_day` (Integer, nur bei `phase`), `effects` (Array, in β immer `[]`).
-- Ein Service-Modul (Ersatz für `event-service.ts`) bietet: Event-Entity anlegen (mit `start_day`, `event_kind`, optional `end_day`), auflisten, lesen, aktualisieren — **über `base_entities`**, nicht über eine `events`-Tabelle.
-- Die `events`-Tabelle (`event-schema.ts`) und `event-service.ts` werden entfernt; kein Dual-Format, keine Migrations-Kompatibilitätsschicht (Decision 1).
+- `event-entity-service.ts` bietet: Event-Entity anlegen (mit `start_day`, `event_kind`, optional `end_day`), auflisten, lesen, aktualisieren — **über `base_entities`**, nicht über eine `events`-Tabelle.
+- Das neue Service-Modul referenziert die `events`-Tabelle selbst nicht. (Das Entfernen der Tabelle/`event-service.ts` + Konsumenten-Migration = **#270**, kein Dual-Format/keine Kompat-Schicht — Decision 1.)
 - `start_day`/`end_day` werden als Zahlen in `properties` gespeichert und beim Lesen sicher geparst (`JSON.parse`-Fallback erlaubt, AP-006).
 - AP-001, AP-006 in AC.
 - Tests: `m14-s04-event-entity` — anlegen/lesen mit negativem `start_day`; `phase` mit `end_day`; `single` ohne `end_day`.
@@ -82,7 +84,7 @@
 - Tests: `m14-s07-event-form-fields` — `.dom.test.tsx`: kind-Umschalter zeigt/versteckt `end_day`; participant-Pill legt Relation an; visibility-Auswahl schreibt `visibility`.
 
 ### M14-S15: Event-Kategorie (thematisch, erweiterbar)
-**Owner:** data-model + ui. **Erweitert #259 (closed).** **Ziel:** optionales thematisches `category`-Feld für den Chronicle-Filter.
+**Owner:** data-model + ui. **Erweitert #259 (offen — Modell).** **Ziel:** optionales thematisches `category`-Feld für den Chronicle-Filter.
 
 **AC:**
 - `event-entity-service.ts`: `properties.category?: string` (optional) durch `CreateEventEntityParams`/`EventEntitySummary`/`parse`/`toProperties`; fehlt/leer ⇒ `undefined`.
@@ -96,7 +98,8 @@
 
 | Story | Prio | Titel | Issue |
 |---|---|---|---|
-| M14-S04 | p0 | Event-Entity-Modell & Ablösung der events-Tabelle | #259 |
+| M14-S04 | p0 | Event-Entity-Modell (nur Modell) | #259 |
+| — | p0 | Ablösung events-Tabelle + Konsumenten-Migration (aus #259 gesplittet) | #270 |
 | M14-S05 | p0 | Kalender rendert Event-Entities | #260 |
 | M14-S06 | p0 | Tag-Klick → Event-Erstellung mit vorbelegtem Datum | #261 |
 | M14-S07 | p1 | Event-Formular — Zusatzfelder (kind, participants/locations, visibility) | #262 |
