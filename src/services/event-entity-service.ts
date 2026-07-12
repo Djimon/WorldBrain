@@ -34,6 +34,7 @@ interface EventProperties {
   event_kind: EventKind;
   start_day: number;
   end_day?: number;
+  category?: string;
   effects: unknown[];
 }
 
@@ -45,6 +46,7 @@ function parseEventProperties(propertiesJson: string): EventProperties {
       event_kind: parsed.event_kind === 'phase' ? 'phase' : 'single',
       start_day: typeof parsed.start_day === 'number' ? parsed.start_day : 0,
       end_day: typeof parsed.end_day === 'number' ? parsed.end_day : undefined,
+      category: typeof parsed.category === 'string' && parsed.category !== '' ? parsed.category : undefined,
       effects: Array.isArray(parsed.effects) ? parsed.effects : [],
     };
   } catch {
@@ -52,9 +54,10 @@ function parseEventProperties(propertiesJson: string): EventProperties {
   }
 }
 
-function toProperties(params: { start_day: number; event_kind: EventKind; end_day?: number }): EventProperties {
+function toProperties(params: { start_day: number; event_kind: EventKind; end_day?: number; category?: string }): EventProperties {
   const properties: EventProperties = { event_kind: params.event_kind, start_day: params.start_day, effects: [] };
   if (params.event_kind === 'phase' && params.end_day !== undefined) properties.end_day = params.end_day;
+  if (params.category !== undefined && params.category !== '') properties.category = params.category;
   return properties;
 }
 
@@ -66,6 +69,7 @@ function toSummary(row: { id: string; title: string; properties_json: string }):
     start_day: properties.start_day,
     end_day: properties.end_day,
     event_kind: properties.event_kind,
+    category: properties.category,
   };
 }
 
