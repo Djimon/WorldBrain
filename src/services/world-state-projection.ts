@@ -102,6 +102,15 @@ export async function entityStatusAt(
  * effect assertions (any day, no upper bound) — for the S12 target-picker.
  * Ad-hoc/create-on-use: derived from usage, never a pre-declared registry.
  */
-export async function listWorldVariables(_db: DatabaseLike): Promise<string[]> {
-  throw new Error('not implemented');
+export async function listWorldVariables(db: DatabaseLike): Promise<string[]> {
+  const rows = await db.select<EventRow>(
+    `SELECT id, properties_json, created_at FROM base_entities WHERE type = 'Event'`,
+  );
+  const vars = new Set<string>();
+  for (const row of rows) {
+    for (const effect of parseEffects(row.properties_json)) {
+      if (effect.target.startsWith('world:')) vars.add(effect.target);
+    }
+  }
+  return [...vars];
 }
