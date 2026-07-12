@@ -3,13 +3,36 @@
 // declared resources/flags — no arbitrary code (Decision 6). Effects flow
 // through the resource primitive (S03); its triggers fire normally as a
 // result (cascade).
+//
+// M14-S14 (#269): verbs reference the S08 shared vocabulary (effect-
+// vocabulary.ts) — no duplicate verb definition. Targets reuse S08's
+// parseTarget for world:/entity:; char:/session: are the prefixes S08
+// reserves for V1 (EPIC-022) — M12 is the consumer they're reserved for,
+// so they're active here instead of rejected.
 
 import { evaluateFormula } from './formula-engine';
+import type { EffectVerb } from './effect-vocabulary';
 
 export type EffectDescriptor =
-  | { verb: 'gain' | 'spend' | 'set'; resource: string; amount: string }
-  | { verb: 'set_flag'; flag: string }
-  | { verb: 'clear'; resource: string; amount?: string };
+  | { verb: Extract<EffectVerb, 'gain' | 'spend' | 'set'>; resource: string; amount: string }
+  | { verb: Extract<EffectVerb, 'set_flag'>; flag: string }
+  | { verb: Extract<EffectVerb, 'clear'>; resource: string; amount?: string };
+
+export type HookTarget =
+  | { scope: 'world'; name: string }
+  | { scope: 'entity'; id: string; field: 'status' }
+  | { scope: 'char'; id: string; resource: string }
+  | { scope: 'session'; name: string };
+
+/**
+ * Resolves a hook effect's target. Delegates world:/entity: parsing to the
+ * shared S08 parser (effect-vocabulary.ts). char:<charId>:<resource> and
+ * session:<name> are active in M12's context (S08 only reserves the
+ * prefixes for V1/EPIC-022, which doesn't consume them).
+ */
+export function resolveHookTarget(_target: string): HookTarget {
+  throw new Error('not implemented');
+}
 
 /** Looks up the effect list attached to a specific outcome/band name. */
 export function resolveHookEffects(
