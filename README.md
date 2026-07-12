@@ -8,12 +8,14 @@ WorldBuilderX is a structured worldbuilding tool for game masters and writers. W
 
 ## Core Features
 
-- **Entity model** — Characters, Locations, Factions, Items, Events, and more with a rich block-based editor
+- **Entity model** — Characters, Locations, Factions, Items, Events and more with a rich block-based editor
 - **Knowledge views** — Full-text search, table view, wiki reading view, and filtered graph
-- **Session mode** — Visibility conditions, variable system, capture inbox, and player view
-- **Maps** — Image import, marker system, grid overlay, and session tracking
-- **Export** — Cards, handouts, PDF/PNG export
-- **Extensible** — Plugin system for custom entity types, renderers, and rulesets
+- **Calendar & world state** — In-world calendar, event entities, and derived world-state projections
+- **Session mode** — Visibility conditions, variable system, capture inbox, dice panel, and player view
+- **Maps** — Image import, marker system, grid overlay, fog of war, and token tracking
+- **Rules & systems** — Plugin system for custom entity types, formula engine, character sheets, and rulesets
+- **Export** — Cards, handouts, PDF/PNG, and session-log markdown export
+- **Multiplayer** — Local-network session hosting with per-player visibility and character creation
 
 ## Architecture
 
@@ -50,10 +52,14 @@ flowchart LR
 | M6 | Plugins & rulesets | ✅ Done |
 | M7 | Packaging & operations | ✅ Done |
 | MI | UI Integration Sprint | ✅ Done |
-| M8 | Session play mode | 🔄 In progress |
-| M9 | System plugin & character sheet | 🔄 In progress |
-| M10 | Multiplayer & player identity | ⏳ Planned |
-| M11 | Localization / i18n | ⏳ Planned |
+| M8 | Session play mode | ✅ Done |
+| M9 | System plugin & character sheet | ✅ Done |
+| M10 | Multiplayer & player identity | 🔄 In progress |
+| M11 | Localization / i18n | ✅ Done |
+| M12 | Resolution & resource layer | ✅ Done |
+| M13 | House-rule overlays | 🔄 In progress |
+| M14 | Calendar, events & world state | 🔄 In progress |
+| M15 | Play & presentation tools | ⏳ Planned |
 
 ## Development
 
