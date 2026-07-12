@@ -11,7 +11,7 @@
 
 import { readFileSync } from 'node:fs';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EffectEditor } from '../src/ui/EffectEditor';
 
 vi.mock('../src/services/event-effects-service', () => ({
@@ -24,6 +24,10 @@ vi.mock('../src/services/event-effects-service', () => ({
 vi.mock('../src/services/world-state-projection', () => ({
   listWorldVariables: vi.fn(async () => ['world:siege']),
 }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 const mockDb = { execute: vi.fn(), select: vi.fn() };
 
