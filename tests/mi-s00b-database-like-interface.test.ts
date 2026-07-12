@@ -41,7 +41,6 @@ const AFFECTED_SERVICES = [
   'src/services/card-service.ts',
   'src/services/dm-screen-service.ts',
   'src/services/entity-service.ts',
-  'src/services/event-service.ts',
   'src/services/handout-service.ts',
   'src/services/map-marker-service.ts',
   'src/services/map-service.ts',

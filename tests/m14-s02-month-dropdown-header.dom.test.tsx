@@ -19,8 +19,8 @@ const threeMonthCalendar = {
   start_month: 1,
 };
 
-vi.mock('../src/services/event-service', () => ({
-  listEvents: vi.fn(async () => []),
+vi.mock('../src/services/event-entity-service', () => ({
+  listEventEntities: vi.fn(async () => []),
 }));
 
 const mockDb = {};

@@ -16,8 +16,8 @@ import { CalendarMonthView } from '../src/ui/CalendarMonthView';
 
 const earthCalendar = { id: 'cal-earth', title: 'Earth-like', year_length_days: 365, months: [{ name: 'January', days: 31 }, { name: 'February', days: 28 }], week: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], start_year: 400 };
 
-vi.mock('../src/services/event-service', () => ({
-  listEvents: vi.fn(async () => []),
+vi.mock('../src/services/event-entity-service', () => ({
+  listEventEntities: vi.fn(async () => []),
 }));
 
 const mockDb = {};

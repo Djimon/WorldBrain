@@ -2,7 +2,6 @@ import type { DatabaseLike } from './entity-service';
 import { TauriSqlAdapter } from './tauri-sql-adapter';
 import { applyCalendarSchema } from '../../core_data/calendar-schema';
 import { applyCardSchema } from '../../core_data/card-schema';
-import { applyEventSchema } from '../../core_data/event-schema';
 import { applyHandoutSchema } from '../../core_data/handout-schema';
 import { applyMapSchema } from '../../core_data/map-schema';
 import { applyRelationsSchema } from '../../core_data/relations-schema';
@@ -79,7 +78,6 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   await adapter.execute(`ALTER TABLE eras ADD COLUMN end_month INTEGER NOT NULL DEFAULT 1`).catch(() => {});
   await adapter.execute(`ALTER TABLE eras ADD COLUMN end_day INTEGER NOT NULL DEFAULT 1`).catch(() => {});
   applyCardSchema(db as unknown as Parameters<typeof applyCardSchema>[0]);
-  applyEventSchema(db as unknown as Parameters<typeof applyEventSchema>[0]);
   applyHandoutSchema(db as unknown as Parameters<typeof applyHandoutSchema>[0]);
   applyMapSchema(db as unknown as Parameters<typeof applyMapSchema>[0]);
   applySavedViewsSchema(db as unknown as Parameters<typeof applySavedViewsSchema>[0]);
