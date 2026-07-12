@@ -7,10 +7,10 @@ import { CalendarMonthView } from '../src/ui/CalendarMonthView';
 
 const earthCalendar = { id: 'cal-earth', title: 'Earth-like', year_length_days: 365, months: [{ name: 'January', days: 31 }, { name: 'February', days: 28 }], week: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] };
 
-vi.mock('../src/services/event-service', () => ({
-  listEvents: vi.fn(async () => [
-    { id: 'ev-1', title: 'Festival', type: 'session_event', start_day: 15, end_day: 15, precision: 'day', visibility: 'public', participants: [], locations: [] },
-    { id: 'ev-2', title: 'Long March', type: 'historical_event', start_day: 20, end_day: 25, precision: 'day', visibility: 'public', participants: [], locations: [] },
+vi.mock('../src/services/event-entity-service', () => ({
+  listEventEntities: vi.fn(async () => [
+    { id: 'ev-1', title: 'Festival', start_day: 15, end_day: 15, event_kind: 'single' },
+    { id: 'ev-2', title: 'Long March', start_day: 20, end_day: 25, event_kind: 'phase' },
   ]),
 }));
 
