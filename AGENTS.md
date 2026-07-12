@@ -22,6 +22,7 @@ When completing a Story: audit dependency fallout — check blocked issues in th
 
 Before implementation state: (1) requirements understood (2) codebase constraints (3) open questions (4) assumptions with evidence. No evidence = blocker.
 
+### Token Frugality
 Always work witch /caveman (skill) unless real explaination, explorative brainstorming is needed.
 
 ### Bug Priority
