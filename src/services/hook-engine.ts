@@ -11,6 +11,7 @@
 // so they're active here instead of rejected.
 
 import { evaluateFormula } from './formula-engine';
+import { parseTarget as parseSharedTarget } from './effect-vocabulary';
 import type { EffectVerb } from './effect-vocabulary';
 
 export type EffectDescriptor =
@@ -30,8 +31,21 @@ export type HookTarget =
  * session:<name> are active in M12's context (S08 only reserves the
  * prefixes for V1/EPIC-022, which doesn't consume them).
  */
-export function resolveHookTarget(_target: string): HookTarget {
-  throw new Error('not implemented');
+export function resolveHookTarget(target: string): HookTarget {
+  const colonIdx = target.indexOf(':');
+  if (colonIdx === -1) throw new Error(`Invalid target (missing scope prefix): ${target}`);
+  const scope = target.slice(0, colonIdx);
+  const rest = target.slice(colonIdx + 1);
+
+  if (scope === 'char') {
+    const sepIdx = rest.indexOf(':');
+    if (sepIdx === -1) throw new Error(`Invalid char target (missing :<resource>): ${target}`);
+    return { scope: 'char', id: rest.slice(0, sepIdx), resource: rest.slice(sepIdx + 1) };
+  }
+
+  if (scope === 'session') return { scope: 'session', name: rest };
+
+  return parseSharedTarget(target);
 }
 
 /** Looks up the effect list attached to a specific outcome/band name. */
