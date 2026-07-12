@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createEvent } from '../services/event-service';
+import { createEventEntity } from '../services/event-entity-service';
 import type { DatabaseLike } from '../services/entity-service';
 
 interface CustomCounter {
@@ -55,14 +55,10 @@ export function EncounterCounters({ sessionId: _sessionId, database, onEncounter
   }
 
   function handleEndEncounter() {
-    createEvent(database, {
+    createEventEntity(database, {
       title: `Encounter — ${round} rounds (${elapsedSeconds + SECONDS_PER_ROUND}s)`,
-      type: 'session_event',
+      event_kind: 'single',
       start_day: 0,
-      precision: 'day',
-      visibility: 'public',
-      participants: [],
-      locations: [],
     });
     setRound(1);
     setCounters([]);
