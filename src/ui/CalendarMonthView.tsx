@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
-import { listEvents } from '../services/event-service';
+import { listEventEntities } from '../services/event-entity-service';
 import type { DatabaseLike } from '../services/entity-service';
 import { dateToCounter, erasForRange, eraRelativeYear, eraUnit } from '../../core_data/calendar-schema';
 import { listEras } from '../services/era-service';
@@ -24,7 +24,6 @@ interface EventItem {
   title: string;
   start_day: number;
   end_day?: number;
-  precision: string;
 }
 
 interface Props {
@@ -61,7 +60,7 @@ export function CalendarMonthView({ calendar, database, onCreateEvent }: Props) 
   }, [calendar.id, calendar.start_year, calendar.start_month]);
 
   useEffect(() => {
-    listEvents(database, {}).then(rows => setAllEvents(rows as EventItem[])).catch(console.error);
+    listEventEntities(database).then(rows => setAllEvents(rows as EventItem[])).catch(console.error);
   }, [database]);
 
   useEffect(() => {
