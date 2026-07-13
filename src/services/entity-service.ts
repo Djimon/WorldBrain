@@ -42,7 +42,10 @@ export async function updateEntityProperties(
   ]);
 }
 
-/** Permanently deletes an entity row. Does not touch relations pointing at it. */
+/** Permanently deletes an entity row and cascades: every relation where this
+ *  entity is source or target goes with it — a dangling relation pointing at
+ *  a deleted entity is exactly the orphan this is meant to prevent. */
 export async function deleteEntity(database: DatabaseLike, entityId: string): Promise<void> {
+  await database.execute(`DELETE FROM relations WHERE source_id = ? OR target_id = ?`, [entityId, entityId]);
   await database.execute(`DELETE FROM base_entities WHERE id = ?`, [entityId]);
 }
