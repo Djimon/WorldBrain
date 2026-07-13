@@ -42,10 +42,8 @@ function baseProps(overrides: Partial<ComponentProps<typeof EventFormFields>> = 
   return {
     database: mockDb,
     eventId: 'event-1',
-    kind: 'single' as const,
     startDay: 42,
     endDay: undefined,
-    onKindChange: vi.fn(),
     onEndDayChange: vi.fn(),
     visibility: 'public',
     onVisibilityChange: vi.fn(),
@@ -55,7 +53,7 @@ function baseProps(overrides: Partial<ComponentProps<typeof EventFormFields>> = 
   };
 }
 
-describe('M14-S07 event form fields (kind, participants/locations, visibility)', () => {
+describe('M14-S07 event form fields (end_day, participants/locations, visibility)', () => {
   describe('isEventFormValid: phase requires end_day >= start_day', () => {
     it('single kind is always valid regardless of end_day', () => {
       expect(isEventFormValid('single', 10, undefined)).toBe(true);
@@ -74,22 +72,27 @@ describe('M14-S07 event form fields (kind, participants/locations, visibility)',
     });
   });
 
-  describe('event_kind switcher: phase reveals end_day, single hides it', () => {
-    it('kind=single does not show an end_day field', () => {
-      render(<EventFormFields {...baseProps({ kind: 'single' })} />);
-      expect(screen.queryByRole('spinbutton', { name: /^enddatum$/i })).not.toBeInTheDocument();
-    });
-
-    it('kind=phase shows an end_day field', () => {
-      render(<EventFormFields {...baseProps({ kind: 'phase', endDay: 50 })} />);
+  // #292: event_kind is no longer a user-facing toggle — it's derived
+  // internally from end_day vs start_day (deriveEventKind, pinned in
+  // m14-s16-event-form-wiring.dom.test.tsx). The end_day field is always
+  // present; there is no "Art"/kind switcher control in this component.
+  describe('end_day field is always present (no kind switcher, #292)', () => {
+    it('the end_day field is present regardless of whether a value is set', () => {
+      render(<EventFormFields {...baseProps({ endDay: undefined })} />);
       expect(screen.getByRole('spinbutton', { name: /^enddatum$/i })).toBeInTheDocument();
     });
 
-    it('clicking the "Phase" switch calls onKindChange("phase")', () => {
-      const onKindChange = vi.fn();
-      render(<EventFormFields {...baseProps({ onKindChange })} />);
-      fireEvent.click(screen.getByRole('button', { name: /^phase$/i }));
-      expect(onKindChange).toHaveBeenCalledWith('phase');
+    it('there is no Single/Phase toggle control', () => {
+      render(<EventFormFields {...baseProps()} />);
+      expect(screen.queryByRole('button', { name: /^single$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^phase$/i })).not.toBeInTheDocument();
+    });
+
+    it('entering an end_day below start_day is clamped up to start_day', () => {
+      const onEndDayChange = vi.fn();
+      render(<EventFormFields {...baseProps({ startDay: 42, onEndDayChange })} />);
+      fireEvent.change(screen.getByRole('spinbutton', { name: /^enddatum$/i }), { target: { value: '10' } });
+      expect(onEndDayChange).toHaveBeenCalledWith(42);
     });
   });
 

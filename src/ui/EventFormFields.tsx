@@ -3,12 +3,13 @@
 // come from EntityDetailView — not rebuilt here, per this Story's AC).
 //
 // Assumption (undocumented in AC): the end_day field is a plain counter-day
-// number input, matching how start_day is already represented elsewhere
-// (e.g. EventQuickCreatePanel's prefilled day). The AC mentions reusing
-// CalendarDateInput, but that widget operates on {year,month,day} and would
-// require the active calendar object + counter<->date conversion here —
-// that wiring is presentation-layer detail for the Implementation Agent,
-// not a behavioral requirement this test file needs to pin down.
+// number input, matching how start_day is already shown (as a "Tag N" label)
+// elsewhere in the app. The AC mentions reusing CalendarDateInput, but that
+// widget operates on {year,month,day} and would require the active calendar
+// object + counter<->date conversion here — deferred (#292's own scope note:
+// no calendar object is available in EntityDetailView today; which calendar
+// would be "active" when browsing entities outside the calendar area is an
+// open architecture question, not something to invent here).
 import { useEffect, useState } from 'react';
 import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
@@ -21,10 +22,8 @@ export type EventKind = 'single' | 'phase';
 export interface EventFormFieldsProps {
   database: DatabaseLike;
   eventId: string;
-  kind: EventKind;
   startDay: number;
   endDay?: number;
-  onKindChange: (kind: EventKind) => void;
   onEndDayChange: (endDay: number | undefined) => void;
   visibility: string;
   onVisibilityChange: (visibility: string) => void;
@@ -45,8 +44,9 @@ export function isEventFormValid(kind: EventKind, startDay: number, endDay: numb
  * => 'phase'. Clamped end_day (>= start_day) is the caller's job before
  * calling this — this function only classifies.
  */
-export function deriveEventKind(_startDay: number, _endDay: number | undefined): EventKind {
-  throw new Error('not implemented');
+export function deriveEventKind(startDay: number, endDay: number | undefined): EventKind {
+  if (endDay === undefined || endDay === startDay) return 'single';
+  return 'phase';
 }
 
 const PARTICIPANT_RELATION = 'event_has_participant';
@@ -55,7 +55,7 @@ const LOCATION_RELATION = 'event_at_location';
 const LOCATION_INVERSE = 'location_of';
 
 export function EventFormFields({
-  database, eventId, kind, startDay, endDay, onKindChange, onEndDayChange, visibility, onVisibilityChange,
+  database, eventId, startDay, endDay, onEndDayChange, visibility, onVisibilityChange,
   category, onCategoryChange,
 }: EventFormFieldsProps) {
   const [entityTitles, setEntityTitles] = useState<Record<string, string>>({});
@@ -106,19 +106,18 @@ export function EventFormFields({
     <div className="event-form-fields">
       <div className="event-form-fields__kind">
         <span>Start: Tag {startDay}</span>
-        <button type="button" aria-pressed={kind === 'single'} onClick={() => onKindChange('single')}>Single</button>
-        <button type="button" aria-pressed={kind === 'phase'} onClick={() => onKindChange('phase')}>Phase</button>
       </div>
 
-      {kind === 'phase' && (
-        <input
-          type="number"
-          role="spinbutton"
-          aria-label="Enddatum"
-          value={endDay ?? ''}
-          onChange={(e) => onEndDayChange(e.target.value === '' ? undefined : Number(e.target.value))}
-        />
-      )}
+      <input
+        type="number"
+        role="spinbutton"
+        aria-label="Enddatum"
+        value={endDay ?? ''}
+        onChange={(e) => {
+          if (e.target.value === '') { onEndDayChange(undefined); return; }
+          onEndDayChange(Math.max(Number(e.target.value), startDay));
+        }}
+      />
 
       <div className="event-form-fields__pills">
         <input

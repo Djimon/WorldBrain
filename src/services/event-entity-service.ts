@@ -109,12 +109,25 @@ export async function updateEventEntity(
   id: string,
   patch: Partial<CreateEventEntityParams>,
 ): Promise<void> {
-  const existing = await getEventEntity(db, id);
-  if (!existing) return;
-  const merged = { ...existing, ...patch };
-  const properties = toProperties(merged);
+  const rows = await db.select<{ title: string; properties_json: string }>(
+    `SELECT title, properties_json FROM base_entities WHERE id = ? AND type = 'Event'`,
+    [id],
+  );
+  const row = rows[0];
+  if (!row) return;
+  // #292: read the raw current properties (not the EventEntitySummary, which
+  // has no `effects` field) so an unrelated field update (title/start_day/
+  // category/...) never wipes effects added via event-effects-service.
+  const current = parseEventProperties(row.properties_json);
+  const title = patch.title ?? row.title;
+  const startDay = patch.start_day ?? current.start_day;
+  const endDay = patch.end_day !== undefined ? patch.end_day : current.end_day;
+  const category = patch.category !== undefined ? patch.category : current.category;
+  const eventKind = patch.event_kind ?? current.event_kind;
+  const properties = toProperties({ start_day: startDay, event_kind: eventKind, end_day: endDay, category });
+  properties.effects = current.effects;
   await db.execute(
     `UPDATE base_entities SET title = ?, properties_json = ?, updated_at = ? WHERE id = ?`,
-    [merged.title, JSON.stringify(properties), new Date().toISOString(), id],
+    [title, JSON.stringify(properties), new Date().toISOString(), id],
   );
 }

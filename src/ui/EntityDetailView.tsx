@@ -8,6 +8,9 @@ import { PropertiesForm, MentionText } from './PropertiesForm';
 import type { EntityMention } from './PropertiesForm';
 import { getSchemaForType } from '../data/entity-type-schemas';
 import { listEntitiesByType } from '../services/entity-service';
+import { EventFormFields, deriveEventKind } from './EventFormFields';
+import { EffectEditor } from './EffectEditor';
+import { updateEventEntity } from '../services/event-entity-service';
 
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
@@ -27,13 +30,14 @@ export function registerEntityTab(tab: TabDefinition) {
 export function clearEntityTabs() { registeredTabs.splice(0); }
 
 async function saveEntity(db: DatabaseLike, entityId: string, patch: {
-  title?: string; summary?: string; properties?: Record<string, unknown>;
+  title?: string; summary?: string; properties?: Record<string, unknown>; visibility?: string;
 }) {
   const fields: string[] = [];
   const vals: unknown[] = [];
   if (patch.title !== undefined) { fields.push('title = ?'); vals.push(patch.title); }
   if (patch.summary !== undefined) { fields.push('summary = ?'); vals.push(patch.summary); }
   if (patch.properties !== undefined) { fields.push('properties_json = ?'); vals.push(JSON.stringify(patch.properties)); }
+  if (patch.visibility !== undefined) { fields.push('visibility = ?'); vals.push(patch.visibility); }
   if (!fields.length) return;
   fields.push("updated_at = datetime('now')");
   vals.push(entityId);
@@ -53,6 +57,12 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
   const [editTitle, setEditTitle] = useState('');
   const [editSummary, setEditSummary] = useState('');
   const [editProps, setEditProps] = useState<Record<string, unknown>>({});
+  // #292: Event-specific edit state (EventFormFields + EffectEditor own these
+  // fields instead of the generic PropertiesForm for type='Event').
+  const [editStartDay, setEditStartDay] = useState(0);
+  const [editEndDay, setEditEndDay] = useState<number | undefined>(undefined);
+  const [editVisibility, setEditVisibility] = useState('public');
+  const [editCategory, setEditCategory] = useState<string | undefined>(undefined);
 
   function load() {
     setLoading(true);
@@ -77,16 +87,33 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
     setEditTitle(entity.title);
     setEditSummary(entity.summary);
     setEditProps({ ...entity.properties });
+    if (entity.type === 'Event') {
+      setEditStartDay(typeof entity.properties.start_day === 'number' ? entity.properties.start_day : 0);
+      setEditEndDay(typeof entity.properties.end_day === 'number' ? entity.properties.end_day : undefined);
+      setEditVisibility(entity.visibility);
+      setEditCategory(typeof entity.properties.category === 'string' ? entity.properties.category : undefined);
+    }
     setEditing(true);
   }
 
   async function commitEdit() {
-    if (!database) return;
-    await saveEntity(database as DatabaseLike, entityId, {
-      title: editTitle,
-      summary: editSummary,
-      properties: editProps,
-    });
+    if (!database || !result?.found) return;
+    if (result.entity.type === 'Event') {
+      const eventKind = deriveEventKind(editStartDay, editEndDay);
+      await updateEventEntity(database as DatabaseLike, entityId, {
+        title: editTitle,
+        end_day: editEndDay,
+        event_kind: eventKind,
+        category: editCategory,
+      });
+      await saveEntity(database as DatabaseLike, entityId, { summary: editSummary, visibility: editVisibility });
+    } else {
+      await saveEntity(database as DatabaseLike, entityId, {
+        title: editTitle,
+        summary: editSummary,
+        properties: editProps,
+      });
+    }
     setEditing(false);
     load();
   }
@@ -114,7 +141,26 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
             <textarea className="entity-detail__textarea" value={editSummary} rows={3}
               onChange={(e) => setEditSummary(e.target.value)} />
           </div>
-          {Object.keys(schema.properties).length > 0 && (
+          {entity.type === 'Event' ? (
+            <>
+              <div className="entity-detail__field">
+                <EventFormFields
+                  database={database as DatabaseLike}
+                  eventId={entityId}
+                  startDay={editStartDay}
+                  endDay={editEndDay}
+                  onEndDayChange={setEditEndDay}
+                  visibility={editVisibility}
+                  onVisibilityChange={setEditVisibility}
+                  category={editCategory}
+                  onCategoryChange={setEditCategory}
+                />
+              </div>
+              <div className="entity-detail__field">
+                <EffectEditor database={database as DatabaseLike} eventId={entityId} startDay={editStartDay} />
+              </div>
+            </>
+          ) : Object.keys(schema.properties).length > 0 && (
             <div className="entity-detail__field">
               <label className="entity-detail__field-label">{t('field.properties')}</label>
               <div className="entity-detail__props-form">
@@ -137,7 +183,27 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(entity.summary)) }} />
             </div>
           )}
-          {Object.keys(schema.properties).length > 0 && (
+          {entity.type === 'Event' ? (
+            // #292: Event's real fields (start_day/end_day are raw day
+            // counters) are not shown as generic property rows here — no
+            // calendar object is available in this view to project them into
+            // a real date (see m14-s16-event-form-wiring.dom.test.tsx's
+            // scope note), and showing the bare counter integer is exactly
+            // the bug this issue fixes. Only category (already a plain,
+            // safe-to-display string) is surfaced; participants/locations
+            // are relations shown via the Relations tab, not here.
+            typeof entity.properties.category === 'string' && entity.properties.category !== '' && (
+              <div className="entity-detail__field">
+                <label className="entity-detail__field-label">{t('field.properties')}</label>
+                <div className="entity-detail__properties">
+                  <div className="entity-detail__prop-row">
+                    <span className="entity-detail__prop-key">Kategorie</span>
+                    <span className="entity-detail__prop-val">{String(entity.properties.category)}</span>
+                  </div>
+                </div>
+              </div>
+            )
+          ) : Object.keys(schema.properties).length > 0 && (
             <div className="entity-detail__field">
               <label className="entity-detail__field-label">{t('field.properties')}</label>
               <div className="entity-detail__properties">
@@ -200,7 +266,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
               onClick={() => setEditing(false)}>{t('cancel')}</button>
           </>
         ) : (
-          <button className="entity-detail__edit-btn" onClick={startEdit} title={t('edit')}>✏️</button>
+          <button className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', 'Bearbeiten')} title={t('edit', 'Bearbeiten')}>✏️</button>
         )}
       </div>
       <div className="entity-detail__tabs" role="tablist">

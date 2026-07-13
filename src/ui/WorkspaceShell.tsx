@@ -17,7 +17,6 @@ import { CalendarWizard } from './CalendarWizard';
 import { listCalendars, setActiveCalendar as persistActiveCalendar, deleteCalendar } from '../services/calendar-service';
 import { CalendarMonthView } from './CalendarMonthView';
 import { CalendarLinkPanel } from './CalendarLinkPanel';
-import { EventQuickCreatePanel } from './EventQuickCreatePanel';
 import { createEventEntity } from '../services/event-entity-service';
 import { CardList } from './CardList';
 import { CardCreationFlow } from './CardCreationFlow';
@@ -105,7 +104,6 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   /** Show the calendar picker/start view even though a calendar is active. */
   const [showPicker, setShowPicker] = useState(false);
   const [calendarList, setCalendarList] = useState<{ id: string; title: string; is_active: number }[]>([]);
-  const [quickCreateDay, setQuickCreateDay] = useState<number | null>(null);
   const [calendarRefreshToken, setCalendarRefreshToken] = useState(0);
   const [evalResult, setEvalResult] = useState<string | null>(null);
   const [mapImporting, setMapImporting] = useState(false);
@@ -421,21 +419,20 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                   <CalendarMonthView
                     calendar={activeCalendar}
                     database={database}
-                    onCreateEvent={(day) => setQuickCreateDay(day)}
+                    onCreateEvent={(day) => {
+                      // #292: day-click creates the event immediately and opens
+                      // the same real entity form (EventFormFields + EffectEditor
+                      // via EntityDetailView) that the entity browser uses — no
+                      // separate title-only quick-create stub.
+                      createEventEntity(database, { title: '', start_day: day, event_kind: 'single' })
+                        .then(({ id }) => {
+                          setCalendarRefreshToken((n) => n + 1);
+                          navigateToEntity(id);
+                        })
+                        .catch(console.error);
+                    }}
                     refreshToken={calendarRefreshToken}
                   />
-                  {quickCreateDay !== null && (
-                    <EventQuickCreatePanel
-                      day={quickCreateDay}
-                      onCreate={(params) => {
-                        createEventEntity(database, params).then(() => {
-                          setQuickCreateDay(null);
-                          setCalendarRefreshToken((n) => n + 1);
-                        }).catch(console.error);
-                      }}
-                      onCancel={() => setQuickCreateDay(null)}
-                    />
-                  )}
                   {calendarList.length > 1 && (
                     <CalendarLinkPanel
                       database={database}
