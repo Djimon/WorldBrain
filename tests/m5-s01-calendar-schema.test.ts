@@ -29,14 +29,23 @@ describe('M5-S01 calendar schema', () => {
   });
 
   describe('eras table', () => {
-    it('creates eras table with calendar_id, starts_absolute_day, year_number_at_start', async () => {
+    it('creates eras table with calendar_id, year_number_at_start', async () => {
       const { applyCalendarSchema } = await getCalendarSchema();
       const db = openDb(); applyCalendarSchema(db);
       const names = (db.prepare('PRAGMA table_info(eras)').all() as Array<{ name: string }>).map(c => c.name);
       expect(names).toContain('id');
       expect(names).toContain('calendar_id');
-      expect(names).toContain('starts_absolute_day');
       expect(names).toContain('year_number_at_start');
+    });
+
+    // #291 Cluster 2: dead column — the era model uses start_year/month/day +
+    // end_* + year_number_at_start (UI/UX-Sprint-Rework); starts_absolute_day
+    // is unused and must be removed, not just left unreferenced.
+    it('does not create the dead starts_absolute_day column', async () => {
+      const { applyCalendarSchema } = await getCalendarSchema();
+      const db = openDb(); applyCalendarSchema(db);
+      const names = (db.prepare('PRAGMA table_info(eras)').all() as Array<{ name: string }>).map(c => c.name);
+      expect(names).not.toContain('starts_absolute_day');
     });
   });
 

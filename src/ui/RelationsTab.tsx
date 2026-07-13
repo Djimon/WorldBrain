@@ -80,37 +80,38 @@ export function RelationsTab({ entityId, database }: Props) {
   }
 
   return (
-    <div>
-      <section>
+    <div className="relations-tab">
+      <section className="relations-tab__section">
         <h3>{t('relations.active')}</h3>
         {active.map((rel) => {
           const label = getLabel(rel, entityId);
           const otherId = getOtherEntityId(rel, entityId);
           const visibility = JSON.parse(rel.visibility_json ?? '"public"');
           return (
-            <div key={rel.id}>
-              {label} → <EntityTitle entityId={otherId} database={db} />
-              {visibility === 'gm_only' && ' [GM only]'}
-              {rel.notes && ` (${rel.notes})`}
-              <button onClick={() => void handleDeactivate(rel.id)} aria-label="Deactivate">
+            <div key={rel.id} className="relations-tab__row">
+              <span>{label} → <EntityTitle entityId={otherId} database={db} /></span>
+              {visibility === 'gm_only' && <span className="relations-tab__badge">GM only</span>}
+              {rel.notes && <span className="relations-tab__notes">({rel.notes})</span>}
+              <button className="btn" onClick={() => void handleDeactivate(rel.id)} aria-label="Deactivate">
                 Deactivate
               </button>
             </div>
           );
         })}
+        {active.length === 0 && <span className="relations-tab__empty">{t('relations.none', 'Keine Relationen')}</span>}
       </section>
 
       {inactive.length > 0 && (
-        <section>
+        <section className="relations-tab__section">
           <h3>{t('relations.inactive')}</h3>
           {inactive.map((rel) => {
             const label = getLabel(rel, entityId);
             const otherId = getOtherEntityId(rel, entityId);
             return (
-              <div key={rel.id} style={{ opacity: 0.5 }}>
-                {label} → <EntityTitle entityId={otherId} database={db} />
-                {rel.notes && ` (${rel.notes})`}
-                <button onClick={() => void handleReactivate(rel.id)} aria-label="Reactivate">
+              <div key={rel.id} className="relations-tab__row relations-tab__row--inactive">
+                <span>{label} → <EntityTitle entityId={otherId} database={db} /></span>
+                {rel.notes && <span className="relations-tab__notes">({rel.notes})</span>}
+                <button className="btn" onClick={() => void handleReactivate(rel.id)} aria-label="Reactivate">
                   Reactivate
                 </button>
               </div>
@@ -119,10 +120,10 @@ export function RelationsTab({ entityId, database }: Props) {
         </section>
       )}
 
-      <div>
-        <button onClick={() => setShowAddForm((v) => !v)}>Add relation</button>
+      <div className="relations-tab__add">
+        <button className="btn" onClick={() => setShowAddForm((v) => !v)}>Add relation</button>
         {showAddForm && (
-          <div>
+          <div className="relations-tab__add-form">
             <select
               aria-label="Relation type"
               value={newRelationType}
@@ -135,7 +136,7 @@ export function RelationsTab({ entityId, database }: Props) {
                 </option>
               ))}
             </select>
-            <label>
+            <label className="relations-tab__gm-toggle">
               <input
                 type="checkbox"
                 checked={gmOnly}
@@ -144,7 +145,14 @@ export function RelationsTab({ entityId, database }: Props) {
               />
               GM only
             </label>
-            <EntityPicker onSelect={(id) => void handleAddSelect(id)} database={db} />
+            {/* Picker only shown once a type is chosen — otherwise clicking
+                a result would silently no-op in handleAddSelect (#292
+                follow-up finding). */}
+            {newRelationType ? (
+              <EntityPicker onSelect={(id) => void handleAddSelect(id)} database={db} />
+            ) : (
+              <span className="relations-tab__hint">Bitte zuerst einen Relation-Typ wählen.</span>
+            )}
           </div>
         )}
       </div>
