@@ -84,6 +84,13 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   await applySearchSchema(adapter);
   applySessionSchema(db as unknown as Parameters<typeof applySessionSchema>[0]);
   await applyRelationsSchema(adapter);
+  // One-time (idempotent) cleanup: relations left dangling by deletes that
+  // predate deleteEntity's cascade (or any other path that removed an entity
+  // without cleaning up its relations) — a relation pointing at a
+  // non-existent entity is never valid, drop it on every open.
+  await adapter.execute(
+    `DELETE FROM relations WHERE source_id NOT IN (SELECT id FROM base_entities) OR target_id NOT IN (SELECT id FROM base_entities)`,
+  ).catch(() => {});
   applyRuleSchema(adapter);
 
   // Drain all fire-and-forget schema exec() calls before returning.
