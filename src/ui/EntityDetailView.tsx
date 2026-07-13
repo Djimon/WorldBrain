@@ -1,9 +1,9 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import DOMPurify from 'dompurify';
 import { renderMarkdown } from '../utils/markdown';
 import type { DatabaseLike } from '../services/entity-service';
-import { getEffectiveEntity } from '../services/entity-service';
+import { getEffectiveEntity, deleteEntity } from '../services/entity-service';
 import { PropertiesForm, MentionText } from './PropertiesForm';
 import type { EntityMention } from './PropertiesForm';
 import { getSchemaForType } from '../data/entity-type-schemas';
@@ -11,6 +11,8 @@ import { listEntitiesByType } from '../services/entity-service';
 import { EventFormFields, deriveEventKind } from './EventFormFields';
 import { EffectEditor } from './EffectEditor';
 import { updateEventEntity } from '../services/event-entity-service';
+import type { CalendarShape } from '../../core_data/calendar-schema';
+import { formatCalendarDate } from '../../core_data/calendar-schema';
 
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
@@ -44,9 +46,21 @@ async function saveEntity(db: DatabaseLike, entityId: string, patch: {
   await db.execute(`UPDATE base_entities SET ${fields.join(', ')} WHERE id = ?`, vals);
 }
 
-type EntityDetailViewProps = { entityId: string; database?: DatabaseLike; onNavigateToEntity?: (id: string) => void };
+type EntityDetailViewProps = {
+  entityId: string;
+  database?: DatabaseLike;
+  onNavigateToEntity?: (id: string) => void;
+  // #292: when rendered inline inside the calendar area, the caller has a
+  // real calendar to project Event day-counters into dates, and wants the
+  // freshly-created event to open directly in edit mode.
+  calendar?: CalendarShape;
+  startInEditMode?: boolean;
+  /** Called after the entity is deleted — the parent owns what happens next
+   *  (close an inline panel, clear a list selection, ...). */
+  onDeleted?: () => void;
+};
 
-export function EntityDetailView({ entityId, database, onNavigateToEntity }: EntityDetailViewProps) {
+export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted }: EntityDetailViewProps) {
   const { t } = useTranslation('entity');
   const [activeTab, setActiveTab] = useState('overview');
   const [extraTabs] = useState<TabDefinition[]>(() => [...registeredTabs]);
@@ -63,6 +77,14 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
   const [editEndDay, setEditEndDay] = useState<number | undefined>(undefined);
   const [editVisibility, setEditVisibility] = useState('public');
   const [editCategory, setEditCategory] = useState<string | undefined>(undefined);
+  const [deletePrompt, setDeletePrompt] = useState(false);
+
+  async function handleDelete() {
+    if (!database) return;
+    await deleteEntity(database as DatabaseLike, entityId);
+    setDeletePrompt(false);
+    onDeleted?.();
+  }
 
   function load() {
     setLoading(true);
@@ -73,13 +95,24 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
   }
 
   useEffect(() => {
-    load(); setEditing(false); setActiveTab('overview');
+    load(); setEditing(false); setActiveTab('overview'); setDeletePrompt(false);
     if (database) {
       listEntitiesByType({ database: database as Parameters<typeof listEntitiesByType>[0]['database'], type: null })
         .then((rows) => setAllEntities(rows as EntityMention[]))
         .catch(console.error);
     }
   }, [database, entityId]);
+
+  // #292: auto-enter edit mode once, right after a freshly-created event
+  // loads (day-click in the calendar) — not on every subsequent reload of
+  // the same entity (e.g. after commitEdit's own load() call).
+  const autoEditAppliedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (startInEditMode && result?.found && autoEditAppliedFor.current !== entityId) {
+      autoEditAppliedFor.current = entityId;
+      startEdit();
+    }
+  }, [result, startInEditMode, entityId]);
 
   function startEdit() {
     if (!result?.found) return;
@@ -154,10 +187,11 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
                   onVisibilityChange={setEditVisibility}
                   category={editCategory}
                   onCategoryChange={setEditCategory}
+                  calendar={calendar}
                 />
               </div>
               <div className="entity-detail__field">
-                <EffectEditor database={database as DatabaseLike} eventId={entityId} startDay={editStartDay} />
+                <EffectEditor database={database as DatabaseLike} eventId={entityId} startDay={editStartDay} calendar={calendar} />
               </div>
             </>
           ) : Object.keys(schema.properties).length > 0 && (
@@ -184,25 +218,35 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
             </div>
           )}
           {entity.type === 'Event' ? (
-            // #292: Event's real fields (start_day/end_day are raw day
-            // counters) are not shown as generic property rows here — no
-            // calendar object is available in this view to project them into
-            // a real date (see m14-s16-event-form-wiring.dom.test.tsx's
-            // scope note), and showing the bare counter integer is exactly
-            // the bug this issue fixes. Only category (already a plain,
-            // safe-to-display string) is surfaced; participants/locations
-            // are relations shown via the Relations tab, not here.
-            typeof entity.properties.category === 'string' && entity.properties.category !== '' && (
-              <div className="entity-detail__field">
-                <label className="entity-detail__field-label">{t('field.properties')}</label>
-                <div className="entity-detail__properties">
+            // #292: start_day/end_day are raw day counters — only shown as a
+            // real calendar date (when a `calendar` was passed in, e.g. the
+            // inline calendar-area editor) or omitted entirely (Entity-Browser
+            // context, no calendar available to project them). Never the bare
+            // counter integer. Participants/locations are relations shown via
+            // the Relations tab, not here.
+            <div className="entity-detail__field">
+              <label className="entity-detail__field-label">{t('field.properties')}</label>
+              <div className="entity-detail__properties">
+                {calendar && typeof entity.properties.start_day === 'number' && (
+                  <div className="entity-detail__prop-row">
+                    <span className="entity-detail__prop-key">Start</span>
+                    <span className="entity-detail__prop-val">{formatCalendarDate(calendar, entity.properties.start_day)}</span>
+                  </div>
+                )}
+                {calendar && typeof entity.properties.end_day === 'number' && (
+                  <div className="entity-detail__prop-row">
+                    <span className="entity-detail__prop-key">Ende</span>
+                    <span className="entity-detail__prop-val">{formatCalendarDate(calendar, entity.properties.end_day)}</span>
+                  </div>
+                )}
+                {typeof entity.properties.category === 'string' && entity.properties.category !== '' && (
                   <div className="entity-detail__prop-row">
                     <span className="entity-detail__prop-key">Kategorie</span>
                     <span className="entity-detail__prop-val">{String(entity.properties.category)}</span>
                   </div>
-                </div>
+                )}
               </div>
-            )
+            </div>
           ) : Object.keys(schema.properties).length > 0 && (
             <div className="entity-detail__field">
               <label className="entity-detail__field-label">{t('field.properties')}</label>
@@ -264,6 +308,17 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity }: Ent
               onClick={() => void commitEdit()}>{t('save')}</button>
             <button className="btn" style={{ fontSize: '0.8rem', padding: '3px 10px' }}
               onClick={() => setEditing(false)}>{t('cancel')}</button>
+            {deletePrompt ? (
+              <span className="entity-detail__delete-confirm">
+                <span>{t('deleteConfirm', 'Wirklich löschen?')}</span>
+                <button className="btn" style={{ color: 'var(--color-status-failure)' }}
+                  onClick={() => void handleDelete()}>{t('deleteConfirmYes', 'Ja, löschen')}</button>
+                <button className="btn" onClick={() => setDeletePrompt(false)}>{t('cancel')}</button>
+              </span>
+            ) : (
+              <button className="btn" style={{ fontSize: '0.8rem', padding: '3px 10px', color: 'var(--color-status-failure)' }}
+                onClick={() => setDeletePrompt(true)}>{t('delete', 'Löschen')}</button>
+            )}
           </>
         ) : (
           <button className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', 'Bearbeiten')} title={t('edit', 'Bearbeiten')}>✏️</button>

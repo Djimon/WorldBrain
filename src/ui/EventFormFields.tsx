@@ -2,20 +2,23 @@
 // Event-specific extra fields for the standard entity edit form (title/body
 // come from EntityDetailView — not rebuilt here, per this Story's AC).
 //
-// Assumption (undocumented in AC): the end_day field is a plain counter-day
-// number input, matching how start_day is already shown (as a "Tag N" label)
-// elsewhere in the app. The AC mentions reusing CalendarDateInput, but that
-// widget operates on {year,month,day} and would require the active calendar
-// object + counter<->date conversion here — deferred (#292's own scope note:
-// no calendar object is available in EntityDetailView today; which calendar
-// would be "active" when browsing entities outside the calendar area is an
-// open architecture question, not something to invent here).
+// #292 follow-up: an optional `calendar` prop renders start/end via the real
+// CalendarDateInput widget (counter <-> {year,month,day} projection) when a
+// calendar is available (e.g. the calendar area, which always has one).
+// Without it (e.g. browsing entities outside the calendar context, where no
+// calendar is unambiguously "active"), falls back to the plain counter-day
+// number input this component originally shipped with — m14-s07's tests
+// exercise that fallback path directly.
 import { useEffect, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
 import { addRelation, deactivateRelation, getRelations } from '../services/relation-service';
 import type { RelationRow } from '../services/relation-service';
 import { EVENT_CATEGORY_SUGGESTIONS } from '../services/event-entity-service';
+import type { CalendarShape } from '../../core_data/calendar-schema';
+import { counterToDate, dateToCounter, formatCalendarDate } from '../../core_data/calendar-schema';
+import { CalendarDateInput } from './CalendarDateInput';
 
 export type EventKind = 'single' | 'phase';
 
@@ -29,6 +32,7 @@ export interface EventFormFieldsProps {
   onVisibilityChange: (visibility: string) => void;
   category?: string;
   onCategoryChange?: (category: string) => void;
+  calendar?: CalendarShape;
 }
 
 /** Whether the current kind/day combination is valid to save: phase requires end_day >= start_day. */
@@ -54,18 +58,109 @@ const PARTICIPANT_INVERSE = 'participant_in';
 const LOCATION_RELATION = 'event_at_location';
 const LOCATION_INVERSE = 'location_of';
 
+interface EntityOption { id: string; title: string }
+
+/**
+ * @-triggered autocomplete for picking an entity to attach as a relation
+ * (participant/location) — same interaction as PropertiesForm's mention
+ * field (type "@", arrow keys, Enter/click to pick). Typing the full title
+ * without "@" and pressing Enter also works (exact match), so this mirrors
+ * the pill-input's original plain-Enter contract too.
+ */
+function RelationAutocomplete({
+  label, entities, onSelect, pills, onRemovePill, onEnterFallback,
+}: {
+  label: string;
+  entities: EntityOption[];
+  onSelect: (entity: EntityOption) => void;
+  pills: { id: string; title: string }[];
+  onRemovePill: (id: string) => void;
+  onEnterFallback: (input: string) => void;
+}) {
+  const [input, setInput] = useState('');
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(0);
+
+  const query = input.replace(/^@/, '');
+  const matches = open && query
+    ? entities.filter((e) => e.title.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
+    : [];
+
+  function selectEntity(entity: EntityOption) {
+    onSelect(entity);
+    setInput('');
+    setOpen(false);
+  }
+
+  function handleChange(value: string) {
+    setInput(value);
+    setOpen(value.startsWith('@') && value.length > 1);
+    setHighlight(0);
+  }
+
+  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (open && matches.length > 0) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight((i) => Math.min(i + 1, matches.length - 1)); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight((i) => Math.max(i - 1, 0)); return; }
+      if (e.key === 'Enter') { e.preventDefault(); selectEntity(matches[highlight]); return; }
+      if (e.key === 'Escape') { setOpen(false); return; }
+    }
+    if (e.key === 'Enter') {
+      const value = input;
+      setInput('');
+      onEnterFallback(value);
+    }
+  }
+
+  return (
+    <div className="event-form-fields__pills">
+      <div className="event-form-fields__autocomplete">
+        <input
+          type="text"
+          aria-label={label}
+          placeholder={label}
+          value={input}
+          onChange={(e) => handleChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+        />
+        {open && matches.length > 0 && (
+          <div className="event-form-fields__suggest">
+            {matches.map((m, i) => (
+              <button
+                key={m.id}
+                type="button"
+                className={`event-form-fields__suggest-item${i === highlight ? ' active' : ''}`}
+                onMouseDown={(ev) => { ev.preventDefault(); selectEntity(m); }}
+              >
+                {m.title}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {pills.map((p) => (
+        <span key={p.id} data-pill>
+          <span>{p.title}</span>
+          <button type="button" aria-label="Entfernen" onClick={() => onRemovePill(p.id)}>×</button>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function EventFormFields({
   database, eventId, startDay, endDay, onEndDayChange, visibility, onVisibilityChange,
-  category, onCategoryChange,
+  category, onCategoryChange, calendar,
 }: EventFormFieldsProps) {
   const [entityTitles, setEntityTitles] = useState<Record<string, string>>({});
+  const [allEntities, setAllEntities] = useState<EntityOption[]>([]);
   const [relations, setRelations] = useState<RelationRow[]>([]);
-  const [participantInput, setParticipantInput] = useState('');
-  const [locationInput, setLocationInput] = useState('');
 
   useEffect(() => {
     listEntitiesByType({ database, type: null }).then((rows) => {
       setEntityTitles(Object.fromEntries(rows.map((r) => [r.id, r.title])));
+      setAllEntities(rows.map((r) => ({ id: r.id, title: r.title })));
     }).catch(console.error);
   }, [database]);
 
@@ -73,24 +168,31 @@ export function EventFormFields({
     getRelations(database, eventId, { includeInactive: false }).then(setRelations).catch(console.error);
   }, [database, eventId]);
 
-  async function confirmPill(relationType: string, inverseType: string, input: string, clear: () => void) {
-    const trimmed = input.trim();
-    if (!trimmed) return;
-    const rows = await listEntitiesByType({ database, type: null });
-    const match = rows.find((r) => r.title.toLowerCase() === trimmed.toLowerCase());
-    if (!match) return;
+  async function addPillRelation(relationType: string, inverseType: string, entity: EntityOption) {
     const { id } = await addRelation(database, {
       source_id: eventId,
-      target_id: match.id,
+      target_id: entity.id,
       relation_type: relationType,
       inverse_type: inverseType,
       visibility,
     });
     setRelations((prev) => [...prev, {
-      id, source_id: eventId, target_id: match.id, relation_type: relationType,
+      id, source_id: eventId, target_id: entity.id, relation_type: relationType,
       inverse_type: inverseType, active: 1, visibility_json: JSON.stringify(visibility), notes: null,
     }]);
-    setEntityTitles((prev) => ({ ...prev, [match.id]: match.title }));
+    setEntityTitles((prev) => ({ ...prev, [entity.id]: entity.title }));
+  }
+
+  /** Enter with no "@" dropdown open: fresh-fetched exact title match (no
+   *  reliance on allEntities' load timing — keeps this path safe even if the
+   *  mount-effect fetch hasn't resolved yet). */
+  async function confirmExactMatch(relationType: string, inverseType: string, input: string, clear: () => void) {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    const rows = await listEntitiesByType({ database, type: null });
+    const match = rows.find((r) => r.title.toLowerCase() === trimmed.toLowerCase());
+    if (!match) return;
+    await addPillRelation(relationType, inverseType, { id: match.id, title: match.title });
     clear();
   }
 
@@ -105,57 +207,48 @@ export function EventFormFields({
   return (
     <div className="event-form-fields">
       <div className="event-form-fields__kind">
-        <span>Start: Tag {startDay}</span>
+        <span>Start: {calendar ? formatCalendarDate(calendar, startDay) : `Tag ${startDay}`}</span>
       </div>
 
-      <input
-        type="number"
-        role="spinbutton"
-        aria-label="Enddatum"
-        value={endDay ?? ''}
-        onChange={(e) => {
-          if (e.target.value === '') { onEndDayChange(undefined); return; }
-          onEndDayChange(Math.max(Number(e.target.value), startDay));
-        }}
+      {calendar ? (
+        <div className="event-form-fields__enddate">
+          <span className="event-form-fields__field-label">Ende</span>
+          <CalendarDateInput
+            months={calendar.months ?? []}
+            value={counterToDate(calendar, endDay ?? startDay)}
+            onChange={(date) => onEndDayChange(Math.max(dateToCounter(calendar, date), startDay))}
+          />
+        </div>
+      ) : (
+        <input
+          type="number"
+          role="spinbutton"
+          aria-label="Enddatum"
+          value={endDay ?? ''}
+          onChange={(e) => {
+            if (e.target.value === '') { onEndDayChange(undefined); return; }
+            onEndDayChange(Math.max(Number(e.target.value), startDay));
+          }}
+        />
+      )}
+
+      <RelationAutocomplete
+        label="Teilnehmer"
+        entities={allEntities}
+        onSelect={(entity) => void addPillRelation(PARTICIPANT_RELATION, PARTICIPANT_INVERSE, entity)}
+        onEnterFallback={(input) => void confirmExactMatch(PARTICIPANT_RELATION, PARTICIPANT_INVERSE, input, () => {})}
+        pills={participantPills.map((r) => ({ id: r.id, title: entityTitles[r.target_id] ?? r.target_id }))}
+        onRemovePill={removePill}
       />
 
-      <div className="event-form-fields__pills">
-        <input
-          type="text"
-          aria-label="Teilnehmer"
-          placeholder="Teilnehmer"
-          value={participantInput}
-          onChange={(e) => setParticipantInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') void confirmPill(PARTICIPANT_RELATION, PARTICIPANT_INVERSE, participantInput, () => setParticipantInput(''));
-          }}
-        />
-        {participantPills.map((r) => (
-          <span key={r.id} data-pill>
-            <span>{entityTitles[r.target_id] ?? r.target_id}</span>
-            <button type="button" aria-label="Entfernen" onClick={() => removePill(r.id)}>×</button>
-          </span>
-        ))}
-      </div>
-
-      <div className="event-form-fields__pills">
-        <input
-          type="text"
-          aria-label="Orte"
-          placeholder="Orte"
-          value={locationInput}
-          onChange={(e) => setLocationInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') void confirmPill(LOCATION_RELATION, LOCATION_INVERSE, locationInput, () => setLocationInput(''));
-          }}
-        />
-        {locationPills.map((r) => (
-          <span key={r.id} data-pill>
-            <span>{entityTitles[r.target_id] ?? r.target_id}</span>
-            <button type="button" aria-label="Entfernen" onClick={() => removePill(r.id)}>×</button>
-          </span>
-        ))}
-      </div>
+      <RelationAutocomplete
+        label="Orte"
+        entities={allEntities}
+        onSelect={(entity) => void addPillRelation(LOCATION_RELATION, LOCATION_INVERSE, entity)}
+        onEnterFallback={(input) => void confirmExactMatch(LOCATION_RELATION, LOCATION_INVERSE, input, () => {})}
+        pills={locationPills.map((r) => ({ id: r.id, title: entityTitles[r.target_id] ?? r.target_id }))}
+        onRemovePill={removePill}
+      />
 
       <select aria-label="Sichtbarkeit" value={visibility} onChange={(e) => onVisibilityChange(e.target.value)}>
         <option value="public">Öffentlich</option>

@@ -35,10 +35,27 @@ function renderEditor(startDay = 42) {
   return render(<EffectEditor database={mockDb} eventId="event-1" startDay={startDay} />);
 }
 
+// #292 follow-up: the add-form (day/target/verb/value) is collapsed behind
+// a "+ Neuer Effekt" toggle by default — pure list display otherwise. Every
+// test that interacts with the add-form must open it first.
+async function openAddForm() {
+  fireEvent.click(await screen.findByRole('button', { name: /^\+ neuer effekt$/i }));
+}
+
 describe('M14-S12 effect editor (event form)', () => {
+  describe('list is pure display: no add-form visible until "+ Neuer Effekt" is clicked', () => {
+    it('the day/target/verb/value fields are not present before opening the add-form', async () => {
+      renderEditor(42);
+      await screen.findByRole('button', { name: /^\+ neuer effekt$/i });
+      expect(screen.queryByRole('spinbutton', { name: /^tag$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('textbox', { name: /^target$/i })).not.toBeInTheDocument();
+    });
+  });
+
   describe('day field defaults to the event start_day', () => {
     it('the day input is prefilled with start_day', async () => {
       renderEditor(42);
+      await openAddForm();
       const dayInput = await screen.findByRole('spinbutton', { name: /^tag$/i });
       expect(dayInput).toHaveValue(42);
     });
@@ -48,6 +65,7 @@ describe('M14-S12 effect editor (event form)', () => {
     it('filling target/verb/value and clicking "Effekt hinzufügen" calls addEffect', async () => {
       const { addEffect } = await import('../src/services/event-effects-service');
       renderEditor(42);
+      await openAddForm();
       const targetInput = await screen.findByRole('textbox', { name: /^target$/i });
       fireEvent.change(targetInput, { target: { value: 'world:siege' } });
       fireEvent.change(screen.getByRole('combobox', { name: /^verb$/i }), { target: { value: 'set_flag' } });
@@ -64,6 +82,7 @@ describe('M14-S12 effect editor (event form)', () => {
   describe('invalid target/verb (S08) is marked and blocks "hinzufügen"', () => {
     it('an unparseable target ("bogus", no scope prefix) disables the add button', async () => {
       renderEditor(42);
+      await openAddForm();
       const targetInput = await screen.findByRole('textbox', { name: /^target$/i });
       fireEvent.change(targetInput, { target: { value: 'bogus' } });
       expect(screen.getByRole('button', { name: /^effekt hinzufügen$/i })).toBeDisabled();
@@ -72,6 +91,7 @@ describe('M14-S12 effect editor (event form)', () => {
     it('an unparseable target never calls addEffect', async () => {
       const { addEffect } = await import('../src/services/event-effects-service');
       renderEditor(42);
+      await openAddForm();
       const targetInput = await screen.findByRole('textbox', { name: /^target$/i });
       fireEvent.change(targetInput, { target: { value: 'bogus' } });
       fireEvent.click(screen.getByRole('button', { name: /^effekt hinzufügen$/i }));

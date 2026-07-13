@@ -159,6 +159,13 @@ export function dateToCounter(calendar: CalendarShape, date: CalendarDate): numb
   return dateToDay(calendar, date) + (calendar.epoch_anchor_day ?? 0);
 }
 
+/** Human-readable "D. Month Year" for a shared-counter day, never the raw integer. */
+export function formatCalendarDate(calendar: CalendarShape, counterDay: number): string {
+  const date = counterToDate(calendar, counterDay);
+  const monthName = calendar.months?.[date.month - 1]?.name ?? `Monat ${date.month}`;
+  return `${date.day}. ${monthName} ${date.year}`;
+}
+
 // ── Eras (M13 calendar-timelines) ────────────────────────────────────────────
 // An era is a named label over an EXPLICIT date range (start date .. end date).
 // Eras may overlap each other and may leave gaps — a GM must be able to extend

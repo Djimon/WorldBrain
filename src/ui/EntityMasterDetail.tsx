@@ -125,7 +125,8 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
 
       <div className="emd__detail">
         {selectedId
-          ? <EntityDetailView entityId={selectedId} database={database} onNavigateToEntity={onNavigateToEntity ?? handleSelect} />
+          ? <EntityDetailView entityId={selectedId} database={database} onNavigateToEntity={onNavigateToEntity ?? handleSelect}
+              onDeleted={() => { setSelectedId(null); reload(); }} />
           : <div className="emd__detail-empty">{t('selectOrCreate')}</div>
         }
       </div>

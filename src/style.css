@@ -690,6 +690,15 @@ input {
 }
 .entity-detail__edit-btn:hover { opacity: 1; color: var(--color-accent-strong); }
 
+.entity-detail__delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-left: var(--space-2);
+}
+
 .entity-detail__title-input {
   flex: 1; font-size: 1.1rem; font-weight: 600;
   background: var(--color-surface); border: 1px solid var(--color-accent);
@@ -2326,3 +2335,284 @@ input {
 .cal-start__new {
   align-self: flex-start;
 }
+
+/* ── #292: CalendarDateInput (year/month/day widget) ──────────────────────── */
+.cal-dateinput {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+}
+
+.cal-dateinput__unit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cal-dateinput__label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.cal-dateinput__day,
+.cal-dateinput__month,
+.cal-dateinput__year {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 5px 6px;
+  color: var(--color-text);
+  font-size: 0.88rem;
+}
+.cal-dateinput__day { width: 3.2em; }
+.cal-dateinput__month { width: 3.2em; }
+.cal-dateinput__year { width: 5em; }
+.cal-dateinput__day:focus,
+.cal-dateinput__month:focus,
+.cal-dateinput__year:focus { border-color: var(--color-accent); outline: none; }
+.cal-dateinput--snap { border-color: var(--color-accent-strong); }
+
+/* ── #292: EventFormFields (event-specific edit fields) ───────────────────── */
+.event-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.event-form-fields__kind {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.event-form-fields__field-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin-right: var(--space-2);
+}
+
+.event-form-fields__enddate {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.event-form-fields > input[type="text"],
+.event-form-fields > input[type="number"],
+.event-form-fields > select,
+.event-form-fields__autocomplete input[type="text"] {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  color: var(--color-text);
+  font-size: 0.88rem;
+  width: 100%;
+}
+.event-form-fields > input[type="text"]:focus,
+.event-form-fields > input[type="number"]:focus,
+.event-form-fields > select:focus,
+.event-form-fields__autocomplete input[type="text"]:focus { border-color: var(--color-accent); outline: none; }
+
+.event-form-fields__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.event-form-fields__autocomplete {
+  position: relative;
+  flex: 1 1 100%;
+}
+
+.event-form-fields__suggest {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 220px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  z-index: 500;
+  overflow: hidden;
+}
+
+.event-form-fields__suggest-item {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text);
+  font-size: 0.85rem;
+  text-align: left;
+}
+.event-form-fields__suggest-item:hover,
+.event-form-fields__suggest-item.active { background: var(--color-surface-active); }
+
+.event-form-fields__pills [data-pill] {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-surface-active);
+  color: var(--color-accent);
+  border-radius: 999px;
+  padding: 2px 4px 2px 10px;
+  font-size: 0.82rem;
+}
+
+.event-form-fields__pills [data-pill] button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+/* ── #292: EffectEditor ────────────────────────────────────────────────────── */
+.effect-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.effect-editor ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.effect-editor li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 0.82rem;
+  color: var(--color-text);
+}
+
+.effect-editor li button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-status-failure);
+  font-size: 0.78rem;
+}
+
+.effect-editor__empty {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+  background: transparent !important;
+  padding: 2px 0 !important;
+}
+
+.effect-editor__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.effect-editor__form input[type="text"],
+.effect-editor__form input[type="number"],
+.effect-editor__form select {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  color: var(--color-text);
+  font-size: 0.88rem;
+  width: 100%;
+}
+.effect-editor__form input[type="text"]:focus,
+.effect-editor__form input[type="number"]:focus,
+.effect-editor__form select:focus { border-color: var(--color-accent); outline: none; }
+
+.effect-editor__form-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.effect-editor__form-actions button[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+.effect-editor__suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.effect-editor__suggestions button {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.effect-editor__suggestions button:hover { color: var(--color-text); border-color: var(--color-accent); }
+
+.effect-editor__add-toggle {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  color: var(--color-accent);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.effect-editor__add-toggle:hover { border-color: var(--color-accent); background: var(--color-surface-active); }
+
+/* ── #292: inline event editor mounted directly in the calendar area ─────── */
+.cal-inline-event-editor {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.cal-inline-event-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.cal-inline-event-editor__new-form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cal-inline-event-editor__new-form input[type="text"] {
+  flex: 1;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  color: var(--color-text);
+  font-size: 0.9rem;
+}
+.cal-inline-event-editor__new-form input[type="text"]:focus { border-color: var(--color-accent); outline: none; }

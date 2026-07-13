@@ -11,10 +11,12 @@ import { detectMysteryBreakers, analyzeRoleCoverage, detectQuestBlockers } from 
 import { listVars } from '../services/session-variable-service';
 import type { VarRow } from '../services/session-variable-service';
 import { EntityMasterDetail } from './EntityMasterDetail';
+import { EntityDetailView } from './EntityDetailView';
 import { GlobalSearch } from './GlobalSearch';
 import { ChronicleView } from './ChronicleView';
 import { CalendarWizard } from './CalendarWizard';
 import { listCalendars, setActiveCalendar as persistActiveCalendar, deleteCalendar } from '../services/calendar-service';
+import { formatCalendarDate } from '../../core_data/calendar-schema';
 import { CalendarMonthView } from './CalendarMonthView';
 import { CalendarLinkPanel } from './CalendarLinkPanel';
 import { createEventEntity } from '../services/event-entity-service';
@@ -105,6 +107,12 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   const [showPicker, setShowPicker] = useState(false);
   const [calendarList, setCalendarList] = useState<{ id: string; title: string; is_active: number }[]>([]);
   const [calendarRefreshToken, setCalendarRefreshToken] = useState(0);
+  // #292: entityId of the event being created/edited inline in the calendar
+  // area (day-click) — NOT a navigation to the Entities area, same page.
+  const [calendarEditingEventId, setCalendarEditingEventId] = useState<string | null>(null);
+  // Day clicked, not yet an entity — title required before createEventEntity.
+  const [calendarNewDay, setCalendarNewDay] = useState<number | null>(null);
+  const [calendarNewTitle, setCalendarNewTitle] = useState('');
   const [evalResult, setEvalResult] = useState<string | null>(null);
   const [mapImporting, setMapImporting] = useState(false);
   const [savedViews, setSavedViews] = useState<SavedViewRow[]>([]);
@@ -420,19 +428,86 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                     calendar={activeCalendar}
                     database={database}
                     onCreateEvent={(day) => {
-                      // #292: day-click creates the event immediately and opens
-                      // the same real entity form (EventFormFields + EffectEditor
-                      // via EntityDetailView) that the entity browser uses — no
-                      // separate title-only quick-create stub.
-                      createEventEntity(database, { title: '', start_day: day, event_kind: 'single' })
-                        .then(({ id }) => {
-                          setCalendarRefreshToken((n) => n + 1);
-                          navigateToEntity(id);
-                        })
-                        .catch(console.error);
+                      // #292 follow-up: don't create an entity yet — a stray
+                      // day-click would otherwise leave a permanent empty-title
+                      // junk event. Ask for a title first; only createEventEntity
+                      // once confirmed non-blank.
+                      setCalendarNewDay(day);
+                      setCalendarNewTitle('');
                     }}
                     refreshToken={calendarRefreshToken}
                   />
+                  {calendarNewDay !== null && (
+                    <div className="cal-inline-event-editor">
+                      <div className="cal-inline-event-editor__header">
+                        <span>Neues Event — {formatCalendarDate(activeCalendar, calendarNewDay)}</span>
+                      </div>
+                      <div className="cal-inline-event-editor__new-form">
+                        <input
+                          type="text"
+                          aria-label="Titel"
+                          placeholder="Titel"
+                          autoFocus
+                          value={calendarNewTitle}
+                          onChange={(e) => setCalendarNewTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') { setCalendarNewDay(null); return; }
+                            if (e.key !== 'Enter' || !calendarNewTitle.trim()) return;
+                            createEventEntity(database, { title: calendarNewTitle.trim(), start_day: calendarNewDay, event_kind: 'single' })
+                              .then(({ id }) => {
+                                setCalendarNewDay(null);
+                                setCalendarRefreshToken((n) => n + 1);
+                                setCalendarEditingEventId(id);
+                              })
+                              .catch(console.error);
+                          }}
+                        />
+                        <button
+                          className="btn btn--primary"
+                          disabled={!calendarNewTitle.trim()}
+                          onClick={() => {
+                            createEventEntity(database, { title: calendarNewTitle.trim(), start_day: calendarNewDay, event_kind: 'single' })
+                              .then(({ id }) => {
+                                setCalendarNewDay(null);
+                                setCalendarRefreshToken((n) => n + 1);
+                                setCalendarEditingEventId(id);
+                              })
+                              .catch(console.error);
+                          }}
+                        >
+                          Erstellen
+                        </button>
+                        <button className="btn" onClick={() => setCalendarNewDay(null)}>Abbrechen</button>
+                      </div>
+                    </div>
+                  )}
+                  {calendarEditingEventId && (
+                    <div className="cal-inline-event-editor">
+                      <div className="cal-inline-event-editor__header">
+                        <span>Event bearbeiten</span>
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            setCalendarEditingEventId(null);
+                            setCalendarRefreshToken((n) => n + 1);
+                          }}
+                        >
+                          Schließen
+                        </button>
+                      </div>
+                      <EntityDetailView
+                        entityId={calendarEditingEventId}
+                        database={database}
+                        onNavigateToEntity={navigateToEntity}
+                        calendar={activeCalendar}
+                        startInEditMode
+                        onDeleted={() => {
+                          setCalendarEditingEventId(null);
+                          setCalendarRefreshToken((n) => n + 1);
+                        }}
+                      />
+                    </div>
+                  )}
                   {calendarList.length > 1 && (
                     <CalendarLinkPanel
                       database={database}
