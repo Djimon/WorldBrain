@@ -17,6 +17,7 @@ import type { ComponentProps } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { EventFormFields, isEventFormValid } from '../src/ui/EventFormFields';
+import { EVENT_CATEGORY_SUGGESTIONS } from '../src/services/event-entity-service';
 
 vi.mock('../src/services/entity-service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/services/entity-service')>();
@@ -48,6 +49,8 @@ function baseProps(overrides: Partial<ComponentProps<typeof EventFormFields>> = 
     onEndDayChange: vi.fn(),
     visibility: 'public',
     onVisibilityChange: vi.fn(),
+    category: undefined,
+    onCategoryChange: vi.fn(),
     ...overrides,
   };
 }
@@ -140,6 +143,38 @@ describe('M14-S07 event form fields (kind, participants/locations, visibility)',
       render(<EventFormFields {...baseProps({ onVisibilityChange })} />);
       fireEvent.change(screen.getByRole('combobox', { name: /^sichtbarkeit$/i }), { target: { value: 'gm_only' } });
       expect(onVisibilityChange).toHaveBeenCalledWith('gm_only');
+    });
+  });
+
+  describe('issue #272 (M14-S15): category field — seed suggestions or free text', () => {
+    it('renders a category field offering the 8 seed suggestions', () => {
+      render(<EventFormFields {...baseProps()} />);
+      const input = screen.getByRole('combobox', { name: /^kategorie$/i });
+      const listId = input.getAttribute('list');
+      const options = listId ? document.querySelectorAll(`#${listId} option`) : [];
+      const optionValues = [...options].map((o) => (o as HTMLOptionElement).value);
+      expect(optionValues.sort()).toEqual([...EVENT_CATEGORY_SUGGESTIONS].sort());
+    });
+
+    it('prefills the category field with the current value', () => {
+      render(<EventFormFields {...baseProps({ category: 'ritual' })} />);
+      expect(screen.getByRole('combobox', { name: /^kategorie$/i })).toHaveValue('ritual');
+    });
+
+    it('selecting a seed suggestion calls onCategoryChange with that value', () => {
+      const onCategoryChange = vi.fn();
+      render(<EventFormFields {...baseProps({ onCategoryChange })} />);
+      const input = screen.getByRole('combobox', { name: /^kategorie$/i });
+      fireEvent.change(input, { target: { value: 'battle' } });
+      expect(onCategoryChange).toHaveBeenCalledWith('battle');
+    });
+
+    it('accepts a free-text category not in the seed suggestions (no enum constraint)', () => {
+      const onCategoryChange = vi.fn();
+      render(<EventFormFields {...baseProps({ onCategoryChange })} />);
+      const input = screen.getByRole('combobox', { name: /^kategorie$/i });
+      fireEvent.change(input, { target: { value: 'geheimtreffen_der_diebesgilde' } });
+      expect(onCategoryChange).toHaveBeenCalledWith('geheimtreffen_der_diebesgilde');
     });
   });
 
