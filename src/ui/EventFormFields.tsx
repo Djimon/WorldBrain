@@ -14,6 +14,7 @@ import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
 import { addRelation, deactivateRelation, getRelations } from '../services/relation-service';
 import type { RelationRow } from '../services/relation-service';
+import { EVENT_CATEGORY_SUGGESTIONS } from '../services/event-entity-service';
 
 export type EventKind = 'single' | 'phase';
 
@@ -27,6 +28,8 @@ export interface EventFormFieldsProps {
   onEndDayChange: (endDay: number | undefined) => void;
   visibility: string;
   onVisibilityChange: (visibility: string) => void;
+  category?: string;
+  onCategoryChange?: (category: string) => void;
 }
 
 /** Whether the current kind/day combination is valid to save: phase requires end_day >= start_day. */
@@ -42,6 +45,7 @@ const LOCATION_INVERSE = 'location_of';
 
 export function EventFormFields({
   database, eventId, kind, startDay, endDay, onKindChange, onEndDayChange, visibility, onVisibilityChange,
+  category, onCategoryChange,
 }: EventFormFieldsProps) {
   const [entityTitles, setEntityTitles] = useState<Record<string, string>>({});
   const [relations, setRelations] = useState<RelationRow[]>([]);
@@ -147,6 +151,18 @@ export function EventFormFields({
         <option value="public">Öffentlich</option>
         <option value="gm_only">Nur SL</option>
       </select>
+
+      <input
+        type="text"
+        aria-label="Kategorie"
+        placeholder="Kategorie"
+        list="event-category-suggestions"
+        value={category ?? ''}
+        onChange={(e) => onCategoryChange?.(e.target.value)}
+      />
+      <datalist id="event-category-suggestions">
+        {EVENT_CATEGORY_SUGGESTIONS.map((c) => <option key={c} value={c} />)}
+      </datalist>
     </div>
   );
 }
