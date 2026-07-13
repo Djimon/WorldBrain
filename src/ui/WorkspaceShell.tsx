@@ -435,6 +435,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                       setCalendarNewDay(day);
                       setCalendarNewTitle('');
                     }}
+                    onEventClick={(id) => setCalendarEditingEventId(id)}
                     refreshToken={calendarRefreshToken}
                   />
                   {calendarNewDay !== null && (

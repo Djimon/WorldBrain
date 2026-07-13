@@ -52,6 +52,54 @@ export async function getActiveCalendarId(db: DatabaseLike): Promise<string | nu
   return rows[0]?.id ?? null;
 }
 
+export interface CalendarRow {
+  id: string;
+  title: string;
+  year_length_days: number;
+  months: { name: string; days: number }[];
+  week: string[];
+  epoch_anchor_day: number;
+  start_year: number;
+  start_month: number;
+  start_day: number;
+}
+
+export async function loadCalendarById(db: DatabaseLike, id: string): Promise<CalendarRow | null> {
+  const rows = await db.select<{
+    id: string; title: string; year_length_days: number; months_json: string; week_json: string;
+    epoch_anchor_day: number; start_year: number; start_month: number; start_day: number;
+  }>(
+    'SELECT id, title, year_length_days, months_json, week_json, epoch_anchor_day, start_year, start_month, start_day FROM calendars WHERE id = ?',
+    [id],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    year_length_days: row.year_length_days,
+    months: JSON.parse(row.months_json ?? '[]') as { name: string; days: number }[],
+    week: JSON.parse(row.week_json ?? '[]') as string[],
+    epoch_anchor_day: row.epoch_anchor_day ?? 0,
+    start_year: row.start_year ?? 1,
+    start_month: row.start_month ?? 1,
+    start_day: row.start_day ?? 1,
+  };
+}
+
+/**
+ * The project's active display calendar (one at a time, is_active flag) —
+ * the same one CalendarMonthView shows. A day-counter is meaningless without
+ * one; this lets any Event display resolve a real date even when it wasn't
+ * explicitly handed a calendar (e.g. viewed via the Entity-Browser, not the
+ * calendar area).
+ */
+export async function loadActiveCalendar(db: DatabaseLike): Promise<CalendarRow | null> {
+  const activeId = await getActiveCalendarId(db);
+  if (!activeId) return null;
+  return loadCalendarById(db, activeId);
+}
+
 /** Persists a calendar's epoch anchor on the shared counter (cross-calendar
  *  link calibration, S5). Only the linked calendar moves; the reference stays. */
 export async function updateCalendarAnchor(db: DatabaseLike, id: string, epochAnchorDay: number): Promise<void> {

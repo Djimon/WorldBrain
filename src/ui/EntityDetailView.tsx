@@ -13,6 +13,9 @@ import { EffectEditor } from './EffectEditor';
 import { updateEventEntity } from '../services/event-entity-service';
 import type { CalendarShape } from '../../core_data/calendar-schema';
 import { formatCalendarDate } from '../../core_data/calendar-schema';
+import { loadActiveCalendar } from '../services/calendar-service';
+import { getRelations } from '../services/relation-service';
+import type { RelationRow } from '../services/relation-service';
 
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
@@ -78,6 +81,20 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
   const [editVisibility, setEditVisibility] = useState('public');
   const [editCategory, setEditCategory] = useState<string | undefined>(undefined);
   const [deletePrompt, setDeletePrompt] = useState(false);
+  // #292 follow-up: a day-counter is meaningless without a calendar to
+  // project it through. If the caller didn't hand one down explicitly (e.g.
+  // viewed via the Entity-Browser, not the calendar area), resolve the
+  // project's active calendar ourselves — a counter always corresponds to a
+  // real date in whichever calendar is active, this isn't optional.
+  const [autoCalendar, setAutoCalendar] = useState<CalendarShape | null>(null);
+  const effectiveCalendar = calendar ?? autoCalendar ?? undefined;
+  const [eventRelations, setEventRelations] = useState<RelationRow[]>([]);
+  const [relationEntityTitles, setRelationEntityTitles] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (calendar || !database) return;
+    loadActiveCalendar(database as DatabaseLike).then(setAutoCalendar).catch(console.error);
+  }, [calendar, database]);
 
   async function handleDelete() {
     if (!database) return;
@@ -113,6 +130,21 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
       startEdit();
     }
   }, [result, startInEditMode, entityId]);
+
+  // #292 follow-up: participants/locations shown directly in the Event
+  // overview (not only behind the separate Relations tab) — "who/where" is
+  // core info for an event, not an incidental relation to browse elsewhere.
+  useEffect(() => {
+    if (!database || !result?.found || result.entity.type !== 'Event') return;
+    getRelations(database as DatabaseLike, entityId, { includeInactive: false }).then(setEventRelations).catch(console.error);
+  }, [database, entityId, result]);
+
+  useEffect(() => {
+    if (!database || eventRelations.length === 0) return;
+    listEntitiesByType({ database: database as Parameters<typeof listEntitiesByType>[0]['database'], type: null })
+      .then((rows) => setRelationEntityTitles(Object.fromEntries(rows.map((r) => [r.id, r.title]))))
+      .catch(console.error);
+  }, [database, eventRelations]);
 
   function startEdit() {
     if (!result?.found) return;
@@ -187,11 +219,11 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
                   onVisibilityChange={setEditVisibility}
                   category={editCategory}
                   onCategoryChange={setEditCategory}
-                  calendar={calendar}
+                  calendar={effectiveCalendar}
                 />
               </div>
               <div className="entity-detail__field">
-                <EffectEditor database={database as DatabaseLike} eventId={entityId} startDay={editStartDay} calendar={calendar} />
+                <EffectEditor database={database as DatabaseLike} eventId={entityId} startDay={editStartDay} calendar={effectiveCalendar} />
               </div>
             </>
           ) : Object.keys(schema.properties).length > 0 && (
@@ -218,31 +250,53 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
             </div>
           )}
           {entity.type === 'Event' ? (
-            // #292: start_day/end_day are raw day counters — only shown as a
-            // real calendar date (when a `calendar` was passed in, e.g. the
-            // inline calendar-area editor) or omitted entirely (Entity-Browser
-            // context, no calendar available to project them). Never the bare
-            // counter integer. Participants/locations are relations shown via
-            // the Relations tab, not here.
+            // #292 follow-up: start_day/end_day are raw day counters — a
+            // counter is meaningless without a calendar, but the project
+            // always HAS an active one (effectiveCalendar self-resolves it
+            // when no explicit `calendar` prop was passed), so a real date
+            // shows here too, never the bare integer. Participants/locations
+            // surfaced directly (not only behind the separate Relations tab).
             <div className="entity-detail__field">
               <label className="entity-detail__field-label">{t('field.properties')}</label>
               <div className="entity-detail__properties">
-                {calendar && typeof entity.properties.start_day === 'number' && (
+                {effectiveCalendar && typeof entity.properties.start_day === 'number' && (
                   <div className="entity-detail__prop-row">
                     <span className="entity-detail__prop-key">Start</span>
-                    <span className="entity-detail__prop-val">{formatCalendarDate(calendar, entity.properties.start_day)}</span>
+                    <span className="entity-detail__prop-val">{formatCalendarDate(effectiveCalendar, entity.properties.start_day)}</span>
                   </div>
                 )}
-                {calendar && typeof entity.properties.end_day === 'number' && (
+                {effectiveCalendar && typeof entity.properties.end_day === 'number' && (
                   <div className="entity-detail__prop-row">
                     <span className="entity-detail__prop-key">Ende</span>
-                    <span className="entity-detail__prop-val">{formatCalendarDate(calendar, entity.properties.end_day)}</span>
+                    <span className="entity-detail__prop-val">{formatCalendarDate(effectiveCalendar, entity.properties.end_day)}</span>
                   </div>
                 )}
                 {typeof entity.properties.category === 'string' && entity.properties.category !== '' && (
                   <div className="entity-detail__prop-row">
                     <span className="entity-detail__prop-key">Kategorie</span>
                     <span className="entity-detail__prop-val">{String(entity.properties.category)}</span>
+                  </div>
+                )}
+                {eventRelations.filter((r) => r.relation_type === 'event_has_participant' && r.active === 1).length > 0 && (
+                  <div className="entity-detail__prop-row">
+                    <span className="entity-detail__prop-key">Teilnehmer</span>
+                    <span className="entity-detail__prop-val">
+                      {eventRelations
+                        .filter((r) => r.relation_type === 'event_has_participant' && r.active === 1)
+                        .map((r) => relationEntityTitles[r.target_id] ?? r.target_id)
+                        .join(', ')}
+                    </span>
+                  </div>
+                )}
+                {eventRelations.filter((r) => r.relation_type === 'event_at_location' && r.active === 1).length > 0 && (
+                  <div className="entity-detail__prop-row">
+                    <span className="entity-detail__prop-key">Orte</span>
+                    <span className="entity-detail__prop-val">
+                      {eventRelations
+                        .filter((r) => r.relation_type === 'event_at_location' && r.active === 1)
+                        .map((r) => relationEntityTitles[r.target_id] ?? r.target_id)
+                        .join(', ')}
+                    </span>
                   </div>
                 )}
               </div>

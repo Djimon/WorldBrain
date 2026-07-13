@@ -53,9 +53,10 @@ export function EntityPicker({ onSelect, typeFilter = null, database }: Props) {
   }
 
   return (
-    <div role="combobox" aria-expanded={filtered.length > 0} aria-haspopup="listbox">
+    <div className="entity-picker" role="combobox" aria-expanded={filtered.length > 0} aria-haspopup="listbox">
       <input
         ref={inputRef}
+        className="entity-picker__input"
         role="searchbox"
         type="search"
         value={query}
@@ -64,19 +65,19 @@ export function EntityPicker({ onSelect, typeFilter = null, database }: Props) {
         placeholder="Search entities…"
         aria-autocomplete="list"
       />
-      <ul role="listbox">
+      <ul className="entity-picker__list" role="listbox">
         {filtered.map((entity, i) => (
           <li
             key={entity.id}
+            className={`entity-picker__item${i === activeIndex ? ' active' : ''}`}
             role="option"
             aria-selected={i === activeIndex}
             onClick={() => onSelect(entity.id)}
-            style={{ cursor: 'pointer', background: i === activeIndex ? '#eee' : undefined }}
           >
-            <span>{entity.title}</span>
-            <span style={{ marginLeft: 8, fontSize: '0.8em', opacity: 0.7 }}>{entity.type}</span>
+            <span className="entity-picker__item-title">{entity.title}</span>
+            <span className="entity-picker__item-type">{entity.type}</span>
             {entity.summary && (
-              <span style={{ marginLeft: 8, fontSize: '0.8em' }}>{stripMarkdown(entity.summary)}</span>
+              <span className="entity-picker__item-summary">{stripMarkdown(entity.summary)}</span>
             )}
           </li>
         ))}

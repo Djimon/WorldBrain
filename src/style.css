@@ -2104,7 +2104,9 @@ input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
 }
+.cal-grid__event:hover { background: var(--color-accent-strong); }
 
 .cal-form__summary {
   display: flex;
@@ -2616,3 +2618,115 @@ input {
   font-size: 0.9rem;
 }
 .cal-inline-event-editor__new-form input[type="text"]:focus { border-color: var(--color-accent); outline: none; }
+
+/* ── #292 follow-up: RelationsTab + EntityPicker (previously unstyled) ────── */
+.relations-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.relations-tab__section h3 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-2);
+}
+
+.relations-tab__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px 8px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+.relations-tab__row--inactive { opacity: 0.5; }
+.relations-tab__row button { margin-left: auto; }
+
+.relations-tab__badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  background: var(--color-surface-active);
+  color: var(--color-accent);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.relations-tab__notes { color: var(--color-text-muted); font-size: 0.8rem; }
+.relations-tab__empty { font-size: 0.82rem; color: var(--color-text-muted); font-style: italic; }
+
+.relations-tab__add-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.relations-tab__add-form select {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  color: var(--color-text);
+  font-size: 0.88rem;
+}
+
+.relations-tab__gm-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.relations-tab__hint { font-size: 0.82rem; color: var(--color-text-muted); font-style: italic; }
+
+.entity-picker {
+  position: relative;
+}
+
+.entity-picker__input {
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  color: var(--color-text);
+  font-size: 0.88rem;
+}
+.entity-picker__input:focus { border-color: var(--color-accent); outline: none; }
+
+.entity-picker__list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.entity-picker__item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+.entity-picker__item:hover,
+.entity-picker__item.active { background: var(--color-surface-active); }
+
+.entity-picker__item-type { font-size: 0.75rem; color: var(--color-accent); opacity: 0.8; }
+.entity-picker__item-summary { font-size: 0.78rem; color: var(--color-text-muted); }

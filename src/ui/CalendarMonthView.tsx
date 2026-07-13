@@ -30,10 +30,15 @@ interface Props {
   calendar: Calendar;
   database: DatabaseLike;
   onCreateEvent?: (day: number) => void;
+  /** Clicking an existing event opens it instead of falling through to
+   *  onCreateEvent (the cell's own click handler) — #292 follow-up: events
+   *  were unclickable because they had no handler of their own and the
+   *  click bubbled up to the cell, always creating a new event instead. */
+  onEventClick?: (eventId: string) => void;
   refreshToken?: number;
 }
 
-export function CalendarMonthView({ calendar, database, onCreateEvent, refreshToken }: Props) {
+export function CalendarMonthView({ calendar, database, onCreateEvent, onEventClick, refreshToken }: Props) {
   const months = calendar.months.length > 0 ? calendar.months : [{ name: 'Month 1', days: calendar.year_length_days }];
   const startYear = calendar.start_year ?? 1;
   const startMonthIdx = (calendar.start_month ?? 1) - 1;
@@ -196,7 +201,16 @@ export function CalendarMonthView({ calendar, database, onCreateEvent, refreshTo
                 onClick={() => onCreateEvent?.(counterDay)}
               >
                 <span className="cal-grid__day-num">{day}</span>
-                {dayEvents.map(e => <div key={e.id} className="cal-grid__event" title={e.title}>{e.title}</div>)}
+                {dayEvents.map(e => (
+                  <div
+                    key={e.id}
+                    className="cal-grid__event"
+                    title={e.title}
+                    onClick={(ev) => { ev.stopPropagation(); onEventClick?.(e.id); }}
+                  >
+                    {e.title}
+                  </div>
+                ))}
               </div>
             );
           })}
