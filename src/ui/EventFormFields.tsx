@@ -38,6 +38,17 @@ export function isEventFormValid(kind: EventKind, startDay: number, endDay: numb
   return endDay !== undefined && endDay >= startDay;
 }
 
+/**
+ * #292: event_kind is derived internally from the end-date field, never
+ * shown/asked as its own control (the "Art" toggle must not appear in the
+ * DOM). Empty end_day or end_day === start_day => 'single'; anything else
+ * => 'phase'. Clamped end_day (>= start_day) is the caller's job before
+ * calling this — this function only classifies.
+ */
+export function deriveEventKind(_startDay: number, _endDay: number | undefined): EventKind {
+  throw new Error('not implemented');
+}
+
 const PARTICIPANT_RELATION = 'event_has_participant';
 const PARTICIPANT_INVERSE = 'participant_in';
 const LOCATION_RELATION = 'event_at_location';
