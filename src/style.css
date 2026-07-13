@@ -2051,6 +2051,25 @@ input {
   border-color: var(--color-accent);
 }
 
+/* Fixed-size month dropdown — the grow belongs to .cal-month__spacer, not
+   the select (was stretching to fill the whole header bar). */
+.cal-month__select {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 110px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.cal-month__spacer {
+  flex: 1;
+}
+
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(var(--cal-cols, 7), 1fr);
@@ -2591,6 +2610,8 @@ input {
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  width: 50%;
+  min-width: 420px;
 }
 
 .cal-inline-event-editor__header {

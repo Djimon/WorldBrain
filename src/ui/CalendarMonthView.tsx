@@ -155,7 +155,7 @@ export function CalendarMonthView({ calendar, database, onCreateEvent, onEventCl
             </div>
           )}
         </span>
-        <select className="cal-form__select" aria-label="Monat" value={currentMonth.name}
+        <select className="cal-month__select" aria-label="Monat" value={currentMonth.name}
           onChange={(e) => {
             const idx = months.findIndex((m) => m.name === e.target.value);
             if (idx !== -1) setViewMonthIdx(idx);
@@ -165,6 +165,7 @@ export function CalendarMonthView({ calendar, database, onCreateEvent, onEventCl
         <button className="cal-month__nav" aria-label="today" onClick={today}>Today</button>
         <button className="cal-month__nav" aria-label="< previous" onClick={() => step(-1)}>{'‹'}</button>
         <button className="cal-month__nav" aria-label="next >" onClick={() => step(1)}>{'›'}</button>
+        <span className="cal-month__spacer" />
         <h2 className="cal-month__name">{heading}</h2>
         {eras.length > 0 && (
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
