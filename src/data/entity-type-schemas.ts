@@ -67,12 +67,20 @@ export const ENTITY_TYPE_SCHEMAS: Record<string, EntityTypeSchema> = {
     },
   },
   Event: {
+    // M14-S04/#259: Event is now a generic base_entities row whose properties
+    // are event_kind/start_day/end_day/category/effects (event-entity-service.ts),
+    // not the pre-M14 date/location/importance/tags/secret shape. participants/
+    // locations are relations (M14-S07), not properties — not representable
+    // here. effects is a validated array-of-objects (M14-S09) — not editable
+    // via this generic scalar form; EffectEditor.tsx owns that (not yet wired
+    // into EntityDetailView, see #267 follow-up). category stays a plain
+    // string (no enum) — free text or a suggestion, never DB-enum-locked
+    // (M14-S15 Decision).
     properties: {
-      date:        { type: 'string', title: 'Datum (In-World)' },
-      location:    { type: 'string', title: 'Ort' },
-      importance:  { type: 'string', enum: ['minor', 'moderate', 'major', 'pivotal', ''], title: 'Bedeutung' },
-      tags:        { type: 'array',  items: { type: 'string' }, title: 'Tags' },
-      secret:      { type: 'boolean', title: 'Geheim (nur GM)' },
+      event_kind: { type: 'string', enum: ['single', 'phase', ''], title: 'Art' },
+      start_day:  { type: 'number', title: 'Starttag' },
+      end_day:    { type: 'number', title: 'Endtag (nur bei Phase)' },
+      category:   { type: 'string', title: 'Kategorie' },
     },
   },
   Scene: {
