@@ -41,12 +41,12 @@ verified in code:
   migration was left half-finished and #107 was closed prematurely while still RED.
 - **Resolved 2026-07 (#291):** `src/blocks/MapEmbedBlock.tsx` migrated off `react-leaflet` onto a
   plain `<img>` (it's a static preview embed, no pan/zoom needed); `leaflet`/`react-leaflet`/
-  `@types/leaflet` removed from `package.json`. Guard test now 6/7 (was 3/7) — the one remaining
-  failure is a test-assertion/naming mismatch on `MapViewer.tsx` (checks for a literal `<canvas`/
-  `MapCanvas` substring; the actual grid rendering goes through `GridLayer`/`MapGrid.tsx`, which
-  works fine but isn't named that in MapViewer's own source), not a Leaflet regression. `GridOverlay.tsx`
-  itself turned out to be dead code (superseded by `MapGrid.tsx`/`GridLayer`, never wired anywhere) —
-  marked `.deprecated` rather than deleted.
+  `@types/leaflet` removed from `package.json`. Guard test's canvas-assertion also corrected — it
+  checked for a literal `<canvas`/`MapCanvas` substring in `MapViewer.tsx`, but the real grid
+  rendering goes through `GridLayer`/`MapGrid.tsx` under a different name; widened to accept
+  `GridLayer` too. Guard test now **7/7 green** (was 3/7). `GridOverlay.tsx` itself turned out to be
+  dead code (superseded by `MapGrid.tsx`/`GridLayer`, never wired anywhere) — marked `.deprecated`
+  rather than deleted.
 
 ## Decisions
 
