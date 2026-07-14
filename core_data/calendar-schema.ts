@@ -84,7 +84,6 @@ export function applyCalendarSchema(db: CalendarDb): void {
       end_month INTEGER NOT NULL DEFAULT 1,
       end_day INTEGER NOT NULL DEFAULT 1,
       year_number_at_start INTEGER NOT NULL DEFAULT 1,
-      starts_absolute_day INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
