@@ -37,12 +37,16 @@ verified in code:
   (zoom/pan), `<div>` pin overlays, `<svg>` ruler/radius, Canvas grid layers (`./MapGrid`). This IS
   the decided Canvas-2D architecture. **All future map work (see EPIC-023) builds on this path.**
 - The Leaflet slip was caught in review as **#107 (P0)** with a guard test
-  (`tests/issue-107-no-react-leaflet.test.ts`). MapViewer + GridOverlay were migrated back — but
-  the migration was **left half-finished and #107 was closed prematurely while still RED**:
-  `src/blocks/MapEmbedBlock.tsx` still imports `react-leaflet`; `package.json` still lists
-  `leaflet` / `react-leaflet` / `@types/leaflet`; the guard test fails 3/7.
-- **Deferred to a later cleanup refactor:** finish de-Leaflet (MapEmbedBlock → img/CSS), drop the
-  three deps, get #107 green and reopen/replace it. Do not re-derive the renderer from the stale note.
+  (`tests/issue-107-no-react-leaflet.test.ts`). MapViewer + GridOverlay were migrated back, but the
+  migration was left half-finished and #107 was closed prematurely while still RED.
+- **Resolved 2026-07 (#291):** `src/blocks/MapEmbedBlock.tsx` migrated off `react-leaflet` onto a
+  plain `<img>` (it's a static preview embed, no pan/zoom needed); `leaflet`/`react-leaflet`/
+  `@types/leaflet` removed from `package.json`. Guard test now 6/7 (was 3/7) — the one remaining
+  failure is a test-assertion/naming mismatch on `MapViewer.tsx` (checks for a literal `<canvas`/
+  `MapCanvas` substring; the actual grid rendering goes through `GridLayer`/`MapGrid.tsx`, which
+  works fine but isn't named that in MapViewer's own source), not a Leaflet regression. `GridOverlay.tsx`
+  itself turned out to be dead code (superseded by `MapGrid.tsx`/`GridLayer`, never wired anywhere) —
+  marked `.deprecated` rather than deleted.
 
 ## Decisions
 

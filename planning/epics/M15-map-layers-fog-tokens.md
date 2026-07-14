@@ -41,11 +41,14 @@ Actual current state, verified in code 2026-07-11:
 - **All new layer/fog/token rendering builds on this MapViewer path** — plain `<img>` layers stacked in
   the existing CSS-transform container, a `<canvas>` overlay for the fog mask, `<div>`/`<canvas>` for
   tokens. **No Leaflet, no new rendering engine.**
-- **Known debt (deferred to a later cleanup refactor, NOT part of this epic):**
-  `src/blocks/MapEmbedBlock.tsx` still imports `react-leaflet`; `package.json` still lists
-  `leaflet` / `react-leaflet` / `@types/leaflet`; the guard test `tests/issue-107-no-react-leaflet.test.ts`
-  is therefore RED (3/7), and issue #107 (P0) was closed prematurely while still failing. Do not touch
-  this here; do not let it mislead the layer work. The map subsystem's authoritative renderer is MapViewer.
+- **Debt resolved 2026-07 (#291):** `src/blocks/MapEmbedBlock.tsx` migrated off `react-leaflet` onto a
+  plain `<img>`; `leaflet`/`react-leaflet`/`@types/leaflet` removed from `package.json`. Guard test
+  (`tests/issue-107-no-react-leaflet.test.ts`) now 6/7 (was 3/7) — #107 got an honest verification
+  comment. The one remaining guard-test failure is an assertion/naming mismatch on `MapViewer.tsx`
+  (checks for a literal `<canvas`/`MapCanvas` substring; the real grid rendering goes through
+  `GridLayer`/`MapGrid.tsx` under a different name), not a Leaflet issue. `GridOverlay.tsx` (an older,
+  never-wired component superseded by `MapGrid.tsx`/`GridLayer`) was marked `.deprecated`. The map
+  subsystem's authoritative renderer is still MapViewer, as above.
 
 ## Decisions
 
