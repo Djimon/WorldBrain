@@ -16,6 +16,21 @@ export function applyMapSchema(db: MapDb): void {
     )
   `);
   db.exec(`
+    CREATE TABLE IF NOT EXISTS map_layers (
+      id TEXT PRIMARY KEY NOT NULL,
+      map_id TEXT NOT NULL,
+      layer_type TEXT NOT NULL,
+      name TEXT,
+      asset_id TEXT,
+      mask_data TEXT,
+      opacity REAL NOT NULL DEFAULT 1,
+      z_order INTEGER NOT NULL DEFAULT 0,
+      visible INTEGER NOT NULL DEFAULT 1,
+      player_visible INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+  db.exec(`
     CREATE TABLE IF NOT EXISTS map_markers (
       id TEXT PRIMARY KEY NOT NULL,
       map_id TEXT NOT NULL,
