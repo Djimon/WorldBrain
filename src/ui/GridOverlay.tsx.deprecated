@@ -1,3 +1,6 @@
+// DEPRECATED (#291): superseded by MapGrid.tsx / GridLayer, which MapViewer.tsx
+// actually uses. Never wired into the app. Kept (not deleted) for reference;
+// the .deprecated extension excludes it from tsc/vite/vitest. Do not import.
 import { useRef, useEffect } from 'react';
 
 interface GridOverlayProps {

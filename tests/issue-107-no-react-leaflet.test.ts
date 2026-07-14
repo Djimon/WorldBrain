@@ -1,5 +1,10 @@
 // @vitest-environment node
 // Issue #107: MapViewer/GridOverlay/MapEmbedBlock use react-leaflet — architecture decision requires Canvas 2D.
+//
+// #291: GridOverlay.tsx was found to be dead code (superseded by MapGrid.tsx/
+// GridLayer, never wired into MapViewer) and marked .deprecated rather than
+// deleted. Its assertions here still read the .deprecated path so the file
+// doesn't quietly regrow a react-leaflet import.
 
 import { describe, expect, it } from 'vitest';
 
@@ -14,7 +19,7 @@ describe('issue-107 no react-leaflet in map components', () => {
   });
 
   it('GridOverlay.tsx does not import from react-leaflet', () => {
-    const src = readSrc('src/ui/GridOverlay.tsx');
+    const src = readSrc('src/ui/GridOverlay.tsx.deprecated');
     expect(src).not.toMatch(/from ['"]react-leaflet['"]/);
   });
 
@@ -34,7 +39,7 @@ describe('issue-107 no react-leaflet in map components', () => {
   });
 
   it('GridOverlay.tsx uses canvas draw calls or CSS positioning, not Leaflet SVGOverlay', () => {
-    const src = readSrc('src/ui/GridOverlay.tsx');
+    const src = readSrc('src/ui/GridOverlay.tsx.deprecated');
     expect(src).not.toMatch(/SVGOverlay|useMap\(\)|getBounds\(\)/);
     expect(src).toMatch(/canvas|ctx\.|getContext|position.*absolute|drawLine|fillRect/i);
   });
