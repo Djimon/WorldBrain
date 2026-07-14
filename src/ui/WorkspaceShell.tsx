@@ -84,7 +84,7 @@ const AREAS: { id: Area; icon: string }[] = [
 
 const CORE_ENTITY_TYPES = [
   'Character', 'Location', 'Faction', 'Item',
-  'Quest', 'Event', 'Scene', 'Rule', 'Resource', 'Culture',
+  'Quest', 'Event', 'Scene', 'Rule', 'Resource', 'Culture', 'Lore',
 ];
 
 export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsDir, onProjectClose }: Props) {

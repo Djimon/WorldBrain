@@ -30,5 +30,6 @@
   "type.scene": "Scene",
   "type.rule": "Rule",
   "type.resource": "Resource",
-  "type.culture": "Culture"
+  "type.culture": "Culture",
+  "type.lore": "Lore"
 }

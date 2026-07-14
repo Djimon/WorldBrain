@@ -110,6 +110,18 @@ export const ENTITY_TYPE_SCHEMAS: Record<string, EntityTypeSchema> = {
       secret:      { type: 'boolean', title: 'Geheim (nur GM)' },
     },
   },
+  // #271: standalone, undated world lore (story/backstory/secret/prophecy/
+  // rumor/legend/history…) — distinct from Event, which requires a start_day.
+  // lore_kind is a soft, DM-extensible string (D1) — never a DB enum, so no
+  // `enum` here (LORE_KIND_SUGGESTIONS in lore-schema.ts are seed suggestions
+  // for the picker UI, not a closed set).
+  Lore: {
+    properties: {
+      lore_kind:   { type: 'string', title: 'Art' },
+      tags:        { type: 'array',  items: { type: 'string' }, title: 'Tags' },
+      secret:      { type: 'boolean', title: 'Geheim (nur GM)' },
+    },
+  },
 };
 
 export function getSchemaForType(type: string): EntityTypeSchema {
