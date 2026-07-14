@@ -1,15 +1,12 @@
 // E8-S08: Map embed block — TipTap block type for embedding a map view in entity bodies.
 // See: https://github.com/Djimon/WorldBrain/issues/82
+//
+// #291: MapEmbedBlock migrated off react-leaflet onto the MapViewer track
+// (plain <img>) — no react-leaflet mock needed anymore.
 
 import { readFileSync } from 'node:fs';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('react-leaflet', () => ({
-  MapContainer: vi.fn(({ children }: { children: React.ReactNode }) => <div data-testid="map-container">{children}</div>),
-  ImageOverlay: vi.fn(() => null),
-  useMap: vi.fn(() => ({ on: vi.fn(), off: vi.fn() })),
-}));
 
 vi.mock('../src/services/map-service', () => ({
   getMap: vi.fn(() => ({ id: 'map-1', title: 'World Map', asset_id: 'asset-1', image_width_px: 1000, image_height_px: 800, calibration_json: null })),
@@ -48,10 +45,10 @@ describe('E8-S08 map embed block', () => {
       expect(screen.getByText(/World Map/i)).toBeInTheDocument();
     });
 
-    it('renders the map container', async () => {
+    it('renders the map image', async () => {
       const { MapEmbedBlock } = await import('../src/blocks/MapEmbedBlock');
       render(<MapEmbedBlock mapId="map-1" />);
-      expect(screen.getByTestId('map-container')).toBeInTheDocument();
+      expect(screen.getByRole('img')).toBeInTheDocument();
     });
 
     it('shows a fallback when mapId is missing', async () => {

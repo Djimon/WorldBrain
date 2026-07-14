@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { MapContainer, ImageOverlay } from 'react-leaflet';
 import { getMap, getAssetUrl } from '../services/map-service';
 import type { DatabaseLike } from '../services/entity-service';
 import type { MapRow } from '../services/map-service';
@@ -9,6 +8,9 @@ interface Props {
   database?: DatabaseLike;
 }
 
+// #291: migrated off react-leaflet onto the MapViewer track — plain <img>,
+// no pan/zoom interactivity here (this is a static preview embed, not the
+// full interactive viewer).
 export function MapEmbedBlock({ mapId, database }: Props) {
   const [map, setMap] = useState<MapRow | null>(null);
   useEffect(() => {
@@ -24,14 +26,18 @@ export function MapEmbedBlock({ mapId, database }: Props) {
   }
 
   const url = getAssetUrl(map.asset_id);
-  const bounds: [[number, number], [number, number]] = [[0, 0], [map.image_height_px, map.image_width_px]];
 
   return (
-    <div>
+    <div className="map-embed-block">
       <h4>{map.title}</h4>
-      <MapContainer crs={{ Simple: {} } as unknown as Parameters<typeof MapContainer>[0]['crs']} bounds={bounds} style={{ height: '300px', width: '100%' }}>
-        <ImageOverlay url={url} bounds={bounds} />
-      </MapContainer>
+      <div className="map-embed-block__frame" style={{ height: '300px', width: '100%' }}>
+        <img
+          src={url}
+          alt={map.title}
+          className="map-embed-block__img"
+          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+        />
+      </div>
     </div>
   );
 }
