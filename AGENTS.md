@@ -75,6 +75,7 @@ Mandatory before AC:
 - Read `ANTI_PATTERNS.md` — copy relevant constraints verbatim into AC
 - Propagate Epic Decisions into every affected Story AC verbatim (not "see Decisions")
 - Output-producing Stories: add AC "All user-supplied strings HTML-escaped; no raw template injection"
+- UI-component Stories: name the container/mount point in the AC — a component nobody mounts is a dead deliverable
 
 Output: Epic summary · Story list · AC per Story · Open decisions · Blockers. No implementation.
 
