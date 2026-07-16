@@ -77,3 +77,16 @@ export interface ImportImageLayerParams {
 export async function importImageLayer(_db: DatabaseLike, _params: ImportImageLayerParams): Promise<{ id: string }> {
   throw new Error('not implemented');
 }
+
+export interface CreateFogLayerParams {
+  map_id: string;
+  name?: string;
+}
+
+/**
+ * M15-S04 (#276): creates a `fog` layer at `z_order = max(existing) + 1`
+ * with an initial fully-covering mask_data (whole map hidden until painted).
+ */
+export async function createFogLayer(_db: DatabaseLike, _params: CreateFogLayerParams): Promise<{ id: string }> {
+  throw new Error('not implemented');
+}
