@@ -12,6 +12,15 @@ export function applyMapSchema(db: MapDb): void {
       image_width_px INTEGER NOT NULL DEFAULT 0,
       image_height_px INTEGER NOT NULL DEFAULT 0,
       calibration_json TEXT,
+      folder_id TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS map_folders (
+      id TEXT PRIMARY KEY NOT NULL,
+      parent_id TEXT,
+      name TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
