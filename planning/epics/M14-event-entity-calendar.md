@@ -61,9 +61,20 @@
 ### M14-S06: Tag-Klick → Event-Erstellung mit vorbelegtem Datum
 **Owner:** ui (WorkspaceShell + CalendarMonthView Verdrahtung). **Blocked by:** M14-S04. **Ziel:** Der lose `onCreateEvent`-Draht wird an das Standard-Entity-Erstell-Formular gehängt.
 
-**AC:**
+> ✅ **AUSGELIEFERT & VOM USER BESTÄTIGT (2026-07-16) — die AC unten beschreibt NICHT das gewollte Verhalten.**
+> Die ursprüngliche AC („Tag-Klick öffnet direkt das Standard-Erstell-Formular") wurde bewusst
+> verworfen: ein versehentlicher Tag-Klick hätte sonst ein permanentes Junk-Event mit leerem Titel
+> angelegt. **Gewolltes und ausgeliefertes Verhalten (`WorkspaceShell.tsx:430-478`):**
+> Tag-Klick → **Titel-Gate** (Inline-Editor, zeigt das formatierte Kalenderdatum) → nach Bestätigung
+> `createEventEntity(start_day, event_kind='single')` → **Editor öffnet sich** mit dem vollen Formular
+> (dort Enddatum, Effekte, participants/locations). `event_kind='single'` beim Anlegen ist korrekt —
+> ohne Enddatum IST es `single`; abweichendes Enddatum ⇒ `phase` wird im Editor via `deriveEventKind`
+> abgeleitet. **Ein Review darf das nicht mehr als AC-Abweichung melden.**
+> (Herkunft: UX-Sprint-Entscheidung, stand vorher nur im Commit — deshalb hier nachgetragen.)
+
+**AC (historisch, überholt — siehe Banner):**
 - `WorkspaceShell` reicht `onCreateEvent(counterDay)` an `CalendarMonthView` durch (heute fehlt der Prop).
-- Klick auf eine Tageszelle öffnet **dasselbe Entity-Erstell-Formular wie das Entity-Menü** für `type='Event'`, mit `start_day` = geklicktem Counter-Tag vorbelegt, `event_kind='single'`.
+- ~~Klick auf eine Tageszelle öffnet **dasselbe Entity-Erstell-Formular wie das Entity-Menü** für `type='Event'`~~ → ersetzt durch Titel-Gate → Editor (siehe Banner), `start_day` = geklickter Counter-Tag vorbelegt, `event_kind='single'`.
 - Nach Speichern erscheint das Event ohne Reload in der Ansicht (Liste neu geladen).
 - Kein `prompt()/alert()/confirm()` (AP-003); Formular ist gerendertes React-UI.
 - AP-001, AP-003, AP-008(RTL), AP-008(prop-gate) in AC.

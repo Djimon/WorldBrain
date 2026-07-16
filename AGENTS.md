@@ -86,6 +86,8 @@ Bug tests for a Story belong in the **existing Story test file**, not a new `iss
 
 **Bug tests:** Every test case must have a direct match in the Finding or AC text — no extrapolation from the underlying principle.
 
+**Guard assertions:** Absence checks (source grep, `not.toMatch`, "X must not exist") are a regression net, never proof of a behavior AC — allowed only *in addition* to the positive test. Without a recurrence history they belong in lint/architecture, not the suite.
+
 **UI Stories:** At least one `.dom.test.tsx` asserting every interactive element and event handler in AC exists in rendered output. Placeholder text where AC requires a form = test failure.
 
 **Async assertions:** Assertions depending on async state updates require `waitFor(...)`. Sync `expect(screen.getBy...)` directly after `render()` is only valid when the service is synchronous or not called at all.
