@@ -61,3 +61,19 @@ export async function deleteLayer(_db: DatabaseLike, _id: string): Promise<void>
 export async function reorderLayers(_db: DatabaseLike, _mapId: string, _orderedIds: string[]): Promise<void> {
   throw new Error('not implemented');
 }
+
+export interface ImportImageLayerParams {
+  map_id: string;
+  srcPath: string;
+  projectDir: string;
+  name?: string;
+}
+
+/**
+ * M15-S03 (#275): imports an image (reusing map-service's existing asset-copy
+ * flow — same path as the base map image import, no new importer) and
+ * creates an `image` layer for it at `z_order = max(existing z_order) + 1`.
+ */
+export async function importImageLayer(_db: DatabaseLike, _params: ImportImageLayerParams): Promise<{ id: string }> {
+  throw new Error('not implemented');
+}
