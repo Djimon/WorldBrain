@@ -116,6 +116,8 @@ AC in the Issue overrides test assumptions when they conflict — tests describe
 
 Review against: Story AC · architecture · `ANTI_PATTERNS.md` (any instance = automatic Severe) · scope creep · hidden assumptions. Findings first, severity-ordered, with file/line refs.
 
+**Epic-vs-code deviation:** Check `git log` first — UX-sprint decisions often live only in the commit message, never reaching the Epic. Intentional → record it in the Epic instead of filing a finding. Unclear → ask, don't guess.
+
 ---
 
 ## Interaction Rules
