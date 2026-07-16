@@ -40,6 +40,23 @@ export function applyMapSchema(db: MapDb): void {
     )
   `);
   db.exec(`
+    CREATE TABLE IF NOT EXISTS map_tokens (
+      id TEXT PRIMARY KEY NOT NULL,
+      layer_id TEXT NOT NULL,
+      map_id TEXT NOT NULL,
+      entity_id TEXT,
+      label TEXT,
+      x REAL NOT NULL,
+      y REAL NOT NULL,
+      ring_color TEXT,
+      counter_label TEXT,
+      counter_value REAL,
+      status_chips_json TEXT NOT NULL DEFAULT '[]',
+      session_id TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+  db.exec(`
     CREATE TABLE IF NOT EXISTS map_markers (
       id TEXT PRIMARY KEY NOT NULL,
       map_id TEXT NOT NULL,
