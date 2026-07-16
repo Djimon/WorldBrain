@@ -3,7 +3,7 @@
 // semantics — no parallel merge logic. Output is the same declaration-map
 // shape as a base plugin's registered declarations, so M9/M12 engines stay
 // overlay-agnostic (they never know an overlay was involved).
-import type { OverrideEntry } from './override-entry';
+import { applyOverrideEntry, type OverrideEntry } from './override-entry';
 
 export interface OverlayModule {
   id: string;
@@ -22,8 +22,27 @@ export interface OverlayResolution {
  * (order still decides the winner, but the collision is surfaced).
  */
 export function resolveOverlay(
-  _base: Record<string, unknown>,
-  _modules: OverlayModule[],
+  base: Record<string, unknown>,
+  modules: OverlayModule[],
 ): OverlayResolution {
-  throw new Error('not implemented');
+  const effective: Record<string, unknown> = { ...base };
+  const touchCounts = new Map<string, number>();
+
+  for (const module of modules) {
+    for (const entry of module.overrides) {
+      touchCounts.set(entry.target, (touchCounts.get(entry.target) ?? 0) + 1);
+      const next = applyOverrideEntry(effective[entry.target], entry);
+      if (next === undefined) {
+        delete effective[entry.target];
+      } else {
+        effective[entry.target] = next;
+      }
+    }
+  }
+
+  const conflicts = [...touchCounts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([target]) => target);
+
+  return { effective, conflicts };
 }
