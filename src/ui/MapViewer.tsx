@@ -2,6 +2,7 @@
 import { useTranslation } from 'react-i18next';
 import { getMap, getAssetUrl, loadGridSettings, saveGridSettings } from '../services/map-service';
 import { listLayers } from '../services/map-layer-service';
+import type { MapLayerRow } from '../services/map-layer-service';
 import type { DatabaseLike } from '../services/entity-service';
 import { getMarkersForMap, createMarker, updateMarker, deleteMarker } from '../services/map-marker-service';
 import type { MarkerRow } from '../services/map-marker-service';
@@ -448,6 +449,7 @@ function RadiusOverlay({
 export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity }: Props) {
   const { t } = useTranslation('map');
   const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const [imageLayers, setImageLayers] = useState<MapLayerRow[]>([]);
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
   const [markers, setMarkers] = useState<MarkerRow[]>([]);
   const [cells, setCells] = useState<Map<string, number>>(new Map());
@@ -531,8 +533,11 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       if (m.image_width_px) setImgSize({ w: m.image_width_px, h: m.image_height_px });
     }).catch(console.error);
     listLayers(database, mapId).then((layers) => {
-      const baseLayer = layers.find((l) => l.layer_type === 'image');
-      setImgSrc(baseLayer?.asset_id ? getAssetUrl(baseLayer.asset_id) : null);
+      const visibleImages = layers
+        .filter((l) => l.layer_type === 'image' && l.visible)
+        .sort((a, b) => a.z_order - b.z_order);
+      setImageLayers(visibleImages);
+      setImgSrc(visibleImages[0]?.asset_id ? getAssetUrl(visibleImages[0].asset_id) : null);
     }).catch(console.error);
     reloadMarkers();
     getActivatedCells(database, sessionId, mapId)
@@ -874,9 +879,22 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         </div>
 
         <div style={{ position: 'absolute', top: 0, left: 0, transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin: '0 0' }}>
-          <img src={imgSrc} alt="Karte" draggable={false} style={{ display: 'block', maxWidth: 'none' }}
-            onLoad={(e) => { const i = e.currentTarget; setImgSize({ w: i.naturalWidth, h: i.naturalHeight }); }}
-          />
+          {imageLayers.map((layer, idx) => (
+            <img
+              key={layer.id}
+              data-layer-id={layer.id}
+              src={getAssetUrl(layer.asset_id ?? '')}
+              alt={layer.name || 'Karte'}
+              draggable={false}
+              style={{
+                display: 'block',
+                maxWidth: 'none',
+                opacity: layer.opacity,
+                ...(idx > 0 ? { position: 'absolute' as const, top: 0, left: 0 } : {}),
+              }}
+              onLoad={idx === 0 ? (e) => { const i = e.currentTarget; setImgSize({ w: i.naturalWidth, h: i.naturalHeight }); } : undefined}
+            />
+          ))}
           {imgSize.w > 0 && gridSettings.visible && (
             <GridLayer
               imgW={imgSize.w} imgH={imgSize.h}
