@@ -2,11 +2,11 @@ import { copyFile, mkdir } from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import type { DatabaseLike } from './entity-service';
+import { createLayer } from './map-layer-service';
 
 export interface MapRow {
   id: string;
   title: string;
-  asset_id: string;
   image_width_px: number;
   image_height_px: number;
   calibration_json: string | null;
@@ -44,18 +44,20 @@ export async function importMapImage(
   });
 
   await db.execute(
-    'INSERT INTO maps (id, title, asset_id, image_width_px, image_height_px) VALUES (?, ?, ?, ?, ?)',
-    [id, opts.title, destPath, w, h],
+    'INSERT INTO maps (id, title, image_width_px, image_height_px) VALUES (?, ?, ?, ?)',
+    [id, opts.title, w, h],
   );
+  await createLayer(db, { map_id: id, layer_type: 'image', asset_id: destPath });
   return { id };
 }
 
 export async function createMap(db: DatabaseLike, opts: { title: string; asset_id?: string; image_width_px?: number; image_height_px?: number }): Promise<{ id: string }> {
   const id = `map-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   await db.execute(
-    'INSERT INTO maps (id, title, asset_id, image_width_px, image_height_px) VALUES (?, ?, ?, ?, ?)',
-    [id, opts.title, opts.asset_id ?? '', opts.image_width_px ?? 0, opts.image_height_px ?? 0],
+    'INSERT INTO maps (id, title, image_width_px, image_height_px) VALUES (?, ?, ?, ?)',
+    [id, opts.title, opts.image_width_px ?? 0, opts.image_height_px ?? 0],
   );
+  await createLayer(db, { map_id: id, layer_type: 'image', asset_id: opts.asset_id });
   return { id };
 }
 

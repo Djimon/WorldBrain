@@ -1,6 +1,7 @@
 ﻿import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getMap, getAssetUrl, loadGridSettings, saveGridSettings } from '../services/map-service';
+import { listLayers } from '../services/map-layer-service';
 import type { DatabaseLike } from '../services/entity-service';
 import { getMarkersForMap, createMarker, updateMarker, deleteMarker } from '../services/map-marker-service';
 import type { MarkerRow } from '../services/map-marker-service';
@@ -527,8 +528,11 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   useEffect(() => {
     getMap(database, mapId).then((m) => {
       if (!m) return;
-      setImgSrc(getAssetUrl(m.asset_id));
       if (m.image_width_px) setImgSize({ w: m.image_width_px, h: m.image_height_px });
+    }).catch(console.error);
+    listLayers(database, mapId).then((layers) => {
+      const baseLayer = layers.find((l) => l.layer_type === 'image');
+      setImgSrc(baseLayer?.asset_id ? getAssetUrl(baseLayer.asset_id) : null);
     }).catch(console.error);
     reloadMarkers();
     getActivatedCells(database, sessionId, mapId)

@@ -8,7 +8,6 @@ export function applyMapSchema(db: MapDb): void {
     CREATE TABLE IF NOT EXISTS maps (
       id TEXT PRIMARY KEY NOT NULL,
       title TEXT NOT NULL,
-      asset_id TEXT NOT NULL,
       image_width_px INTEGER NOT NULL DEFAULT 0,
       image_height_px INTEGER NOT NULL DEFAULT 0,
       calibration_json TEXT,
