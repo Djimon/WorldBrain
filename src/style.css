@@ -2117,6 +2117,107 @@ input {
   border-color: var(--color-accent);
 }
 
+/* ── Year navigation popout ───────────────────────────────────────────────── */
+.cal-year-nav {
+  position: relative;
+  display: inline-flex;
+}
+
+.cal-year-popout {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 260px;
+  padding: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+.cal-year-popout__pills,
+.cal-year-popout__adjacent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.cal-year-popout__adjacent {
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.cal-year-popout__pill,
+.cal-year-popout__adj-pill {
+  padding: 4px 10px;
+  background: var(--color-surface-alt, var(--color-background));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.cal-year-popout__pill:hover,
+.cal-year-popout__adj-pill:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface);
+}
+
+.cal-year-popout__adj-pill {
+  min-width: 40px;
+  text-align: center;
+}
+
+.cal-year-popout__active {
+  min-width: 44px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.cal-year-popout__goto {
+  display: flex;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.cal-year-popout__goto .cal-form__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cal-year-popout__goto button {
+  flex: 0 0 auto;
+  padding: 4px 12px;
+  background: var(--color-surface-alt, var(--color-background));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.cal-year-popout__goto button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.cal-year-popout__goto button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Fixed-size month dropdown — the grow belongs to .cal-month__spacer, not
    the select (was stretching to fill the whole header bar). */
 .cal-month__select {

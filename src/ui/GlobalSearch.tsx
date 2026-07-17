@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { stripMarkdown } from '../utils/markdown';
-import { searchEntities, getSearchFacets } from '../services/search-service';
+import { searchEntities, getSearchFacets, rebuildSearchIndex } from '../services/search-service';
 import type { SearchResult, SearchFacets } from '../services/search-service';
 import type { DatabaseLike } from '../services/entity-service';
 
@@ -15,9 +15,23 @@ export function GlobalSearch({ onNavigate, database }: Props) {
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [activeTypeFilter, setActiveTypeFilter] = useState<string | null>(null);
   const [facets, setFacets] = useState<SearchFacets | null>(null);
+  const [indexing, setIndexing] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  // The FTS index has no incremental writers/triggers, so refresh it whenever
+  // the search view mounts (or the project db changes) — picks up entities
+  // created since the app started without needing a restart.
+  useEffect(() => {
+    if (!database) return;
+    let cancelled = false;
+    setIndexing(true);
+    rebuildSearchIndex(database)
+      .catch(console.error)
+      .finally(() => { if (!cancelled) setIndexing(false); });
+    return () => { cancelled = true; };
+  }, [database]);
 
   useEffect(() => {
     if (results.length > 0) {
@@ -34,6 +48,13 @@ export function GlobalSearch({ onNavigate, database }: Props) {
     const res = await searchEntities(database!, value, {});
     setResults(res);
   }
+
+  // Re-run the active query once the (re)index finishes, so results typed
+  // during indexing are not stuck empty.
+  useEffect(() => {
+    if (indexing || !database || !query.trim()) return;
+    searchEntities(database, query, {}).then(setResults).catch(console.error);
+  }, [indexing]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'ArrowDown') setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1));
@@ -79,7 +100,9 @@ export function GlobalSearch({ onNavigate, database }: Props) {
       )}
 
       {!query && (
-        <div className="gsearch__hint">Tippe um Entities, Orte, Fraktionen u.v.m. zu suchen.</div>
+        <div className="gsearch__hint">
+          {indexing ? 'Index wird aktualisiert…' : 'Tippe um Entities, Orte, Fraktionen u.v.m. zu suchen.'}
+        </div>
       )}
 
       <ul className="gsearch__results" role="listbox">
