@@ -67,6 +67,7 @@ export function applyMapSchema(db: MapDb): void {
       label_text TEXT,
       elevation_value REAL,
       elevation_unit TEXT,
+      group_name TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);

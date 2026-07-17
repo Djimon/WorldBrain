@@ -26,33 +26,37 @@ export function NewProjectDialog({ onCreated, onCancel, baseDir }: NewProjectDia
   }
 
   return (
-    <div>
-      <h2>{t('createNewProject')}</h2>
+    <div className="new-project">
+      <div className="new-project__card">
+        <h2>{t('createNewProject')}</h2>
 
-      {error && <div role="alert">{error}</div>}
+        {error && <div className="new-project__error" role="alert">{error}</div>}
 
-      <label>
-        {t('newProject')}
-        <input
-          type="text"
-          aria-label={t('newProject')}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </label>
+        <label className="new-project__field">
+          <span>{t('newProject')}</span>
+          <input
+            type="text"
+            aria-label={t('newProject')}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
 
-      <label>
-        {tc('edit')}
-        <input
-          type="text"
-          aria-label={tc('edit')}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </label>
+        <label className="new-project__field">
+          <span>{tc('description')}</span>
+          <input
+            type="text"
+            aria-label={tc('description')}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </label>
 
-      <button onClick={handleSubmit}>{tc('create')}</button>
-      <button onClick={onCancel}>{tc('cancel')}</button>
+        <div className="new-project__actions">
+          <button className="btn" onClick={onCancel}>{tc('cancel')}</button>
+          <button className="btn btn--primary" onClick={handleSubmit}>{tc('create')}</button>
+        </div>
+      </div>
     </div>
   );
 }

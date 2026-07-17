@@ -46,6 +46,14 @@ const PIN_ICONS = [
   { key: 'question',    emoji: '❓', label: 'Frage' },
   { key: 'exclamation', emoji: '❗', label: 'Wichtig' },
   { key: 'combat',      emoji: '⚔️', label: 'Kampf' },
+  { key: 'mountain',    emoji: '🏔️', label: 'Berg' },
+  { key: 'forest',      emoji: '🌲', label: 'Wald' },
+  { key: 'cave',        emoji: '🕳️', label: 'Höhle' },
+  { key: 'npc',         emoji: '👤', label: 'NPC/Person' },
+  { key: 'shop',        emoji: '🛒', label: 'Händler' },
+  { key: 'inn',         emoji: '🛏️', label: 'Taverne/Rast' },
+  { key: 'town',        emoji: '🏘️', label: 'Stadt/Dorf' },
+  { key: 'poi',         emoji: '⭐', label: 'Sehenswert' },
 ] as const;
 
 type PinIconKey = typeof PIN_ICONS[number]['key'];

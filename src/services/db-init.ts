@@ -50,7 +50,6 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   `);
 
   await adapter.execute(`ALTER TABLE maps ADD COLUMN grid_json TEXT`).catch(() => {});
-  await adapter.execute(`ALTER TABLE map_markers ADD COLUMN group_name TEXT NOT NULL DEFAULT ''`).catch(() => {});
 
   await adapter.execute(`
     CREATE TABLE IF NOT EXISTS session_grid_cells (
@@ -80,6 +79,8 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   applyCardSchema(db as unknown as Parameters<typeof applyCardSchema>[0]);
   applyHandoutSchema(db as unknown as Parameters<typeof applyHandoutSchema>[0]);
   applyMapSchema(db as unknown as Parameters<typeof applyMapSchema>[0]);
+  // Idempotent: adds group_name to map_markers on pre-folder DBs (table now exists).
+  await adapter.execute(`ALTER TABLE map_markers ADD COLUMN group_name TEXT NOT NULL DEFAULT ''`).catch(() => {});
   applySavedViewsSchema(db as unknown as Parameters<typeof applySavedViewsSchema>[0]);
   await applySearchSchema(adapter);
   applySessionSchema(db as unknown as Parameters<typeof applySessionSchema>[0]);

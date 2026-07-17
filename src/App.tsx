@@ -148,7 +148,7 @@ export function App() {
       <NewProjectDialog
         onCreated={handleProjectCreated}
         onCancel={() => setMode({ kind: 'welcome' })}
-        baseDir={appBase ? `${appBase}/${PROJECTS_SUBDIR}` : undefined}
+        baseDir={appBase.current ? `${appBase.current}/${PROJECTS_SUBDIR}` : undefined}
       />
     );
   }
