@@ -34,6 +34,7 @@ import { SessionClock } from './SessionClock';
 import { SnapshotManager } from './SnapshotManager';
 import { UpdateNotification } from './UpdateNotification';
 import { MapViewer } from './MapViewer';
+import { LayerPanel } from './LayerPanel';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -369,9 +370,16 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 </p>
               )}
             </div>
-            <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+            <div style={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' }}>
               {selectedMapId ? (
-                <MapViewer mapId={selectedMapId} sessionId={projectId} database={database} showCoordinates onNavigateToEntity={navigateToEntity} />
+                <>
+                  <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                    <MapViewer mapId={selectedMapId} sessionId={projectId} database={database} showCoordinates onNavigateToEntity={navigateToEntity} />
+                  </div>
+                  <div className="maps-layer-dock">
+                    <LayerPanel database={database} mapId={selectedMapId} />
+                  </div>
+                </>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)' }}>
                   Karte aus der Liste wählen oder importieren

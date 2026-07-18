@@ -2918,3 +2918,95 @@ input {
 
 .entity-picker__item-type { font-size: 0.75rem; color: var(--color-accent); opacity: 0.8; }
 .entity-picker__item-summary { font-size: 0.78rem; color: var(--color-text-muted); }
+
+/* ── Maps layer dock (LayerPanel mount in the maps area, #294) ─────────────── */
+.maps-layer-dock {
+  flex: 0 0 auto;
+  max-height: 40%;
+  overflow: auto;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.layer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.layer-panel__toolbar {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.layer-panel__toolbar button {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt, var(--color-background));
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.layer-panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.layer-panel__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  font-size: 0.8rem;
+}
+
+.layer-panel__name {
+  min-width: 90px;
+  font-weight: 600;
+  cursor: text;
+}
+
+.layer-panel__opacity {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-muted);
+}
+
+.layer-panel__row button {
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.layer-panel__row button:hover {
+  border-color: var(--color-accent);
+}
+
+.layer-panel__hidden-indicator {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.layer-panel__delete-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-status-failure, #b43c3c);
+}

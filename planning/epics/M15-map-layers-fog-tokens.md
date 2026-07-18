@@ -103,8 +103,11 @@ Verifizierter Status aus git. Die Stories-Tabelle bildet Plan/Scope ab, NICHT de
 
 - S01 #273: DONE (ff69bc8) — `map_layers`-Schema + `map-layer-service` CRUD/reorder,
   `maps.asset_id` dropped.
-- S02 #274: `LayerPanel`-Component gebaut + getestet, aber NIRGENDS gemountet (nur im eigenen
-  Test gerendert). Kein User-Pfad erreicht es -> #294 offen (8350747).
+- S02 #274: `LayerPanel`-Component gebaut + getestet (8350747). War NIRGENDS gemountet ->
+  #294 (P0). GELÖST 2026-07-18: LayerPanel dockt im Maps-Bereich unter dem `MapViewer`
+  (`WorkspaceShell` case 'maps', `.maps-layer-dock`), sichtbar sobald eine Karte gewählt ist.
+  Mount-Verhaltenstest: `tests/m15-s02-layer-panel-mount.dom.test.tsx` (rendert das echte
+  Panel im Maps-Container, nicht isoliert). Add-Image/Add-Fog-Handler bleiben offen (S03/S04).
 - S03 #275: PARTIELL — Image-Layer-Stacking rendert (72234e8), aber
   `map-layer-service.importImageLayer` ist ein Stub (throw 'not implemented'); neue Layer
   können nicht importiert werden.
