@@ -4,7 +4,7 @@
 
 > Local-first desktop workspace for building, organizing, and running fictional worlds.
 
-WorldBuilderX is a structured worldbuilding tool for game masters and writers. World data lives as JSON on disk — readable, portable, and git-friendly. A SQLite runtime layer enables fast search, session views, and campaign overlays without touching the source files.
+WorldBuilderX is a structured worldbuilding tool for game masters and writers. It is designed around a JSON-on-disk ground truth — readable, portable, git-friendly — with a SQLite runtime layer for fast search, session views, and campaign overlays. (The JSON import path is still in progress; today the runtime DB is primary.)
 
 ## Core Features
 
@@ -12,10 +12,10 @@ WorldBuilderX is a structured worldbuilding tool for game masters and writers. W
 - **Knowledge views** — Full-text search, table view, wiki reading view, and filtered graph
 - **Calendar & world state** — In-world calendar, event entities, and derived world-state projections
 - **Session mode** — Visibility conditions, variable system, capture inbox, dice panel, and player view
-- **Maps** — Image import, marker system, grid overlay, fog of war, and token tracking
+- **Maps** — Image import, marker system, and grid overlay (layered maps, fog of war, and tokens in progress)
 - **Rules & systems** — Plugin system for custom entity types, formula engine, character sheets, and rulesets
 - **Export** — Cards, handouts, PDF/PNG, and session-log markdown export
-- **Multiplayer** — Local-network session hosting with per-player visibility and character creation
+- **Multiplayer** — Local-network session hosting with per-player visibility and character creation (in progress)
 
 ## Architecture
 
@@ -34,7 +34,7 @@ flowchart LR
     UI[React UI]
   end
 
-  JSON -->|import| SQLite
+  JSON -.->|import · planned| SQLite
   Campaign -->|overlay| SQLite
   SQLite -->|query| UI
 ```
@@ -59,7 +59,7 @@ flowchart LR
 | M12 | Resolution & resource layer | ✅ Done |
 | M13 | House-rule overlays | 🔄 In progress |
 | M14 | Calendar, events & world state | 🔄 In progress |
-| M15 | Play & presentation tools | ⏳ Planned |
+| M15 | Play & presentation tools | 🔄 In progress |
 
 ## Development
 
