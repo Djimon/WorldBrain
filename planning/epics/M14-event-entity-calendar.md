@@ -74,7 +74,7 @@
 > abgeleitet. **Ein Review darf das nicht mehr als AC-Abweichung melden.**
 > (Herkunft: UX-Sprint-Entscheidung, stand vorher nur im Commit — deshalb hier nachgetragen.)
 >
-> **Test-Luecke 2026-07-18:** offenes Issue #293 — der Tag-Klick-Pfad hat keinen Verhaltenstest; ein Guard auf Stub-Abwesenheit ersetzt ihn. (Auch an EPIC-020 S01 verlinkt.)
+> **Test-Lücke #293 — GELÖST 2026-07-18:** Verhaltenstest für den Tag-Klick-Pfad ergänzt in `tests/m14-s06-day-click-creates-event.dom.test.tsx` (Tageszellen-Klick -> Titel-Gate mit formatiertem Datum; leerer Titel legt nichts an; Titel + Bestätigen ruft `createEventEntity` mit dem geklickten `start_day` und öffnet den Editor für die neue Entity). Der #292-Guard bleibt zusätzlich bestehen. (Auch an EPIC-020 S01 verlinkt.)
 
 **AC (historisch, überholt — siehe Banner):**
 - `WorkspaceShell` reicht `onCreateEvent(counterDay)` an `CalendarMonthView` durch (heute fehlt der Prop).
@@ -98,7 +98,7 @@
 - AP-001, AP-003, AP-008(RTL) in AC.
 - Tests: `m14-s07-event-form-fields` — `.dom.test.tsx`: kind-Umschalter zeigt/versteckt `end_day`; participant-Pill legt Relation an; visibility-Auswahl schreibt `visibility`.
 
-> **Ist-Zustand 2026-07-18 (Nachtrag, im Epic bisher nicht erfasst):** Nach S06/S07 kamen Wiring-/Day-Click-Fixes (#292: Commits dd2acb0, 85e6b80, 5c1956b), die das Event-Formular-Dead-Wiring und Tag-Klick-Bugs behoben. Test-Luecke zum Tag-Klick-Pfad siehe offenes Issue #293 (S06).
+> **Ist-Zustand 2026-07-18 (Nachtrag, im Epic bisher nicht erfasst):** Nach S06/S07 kamen Wiring-/Day-Click-Fixes (#292: Commits dd2acb0, 85e6b80, 5c1956b), die das Event-Formular-Dead-Wiring und Tag-Klick-Bugs behoben. Die Test-Lücke dazu (#293) ist seit 2026-07-18 geschlossen -> `tests/m14-s06-day-click-creates-event.dom.test.tsx`.
 
 ### M14-S15: Event-Kategorie (thematisch, erweiterbar)
 **Owner:** data-model + ui. **Erweitert #259 (offen — Modell).** **Ziel:** optionales thematisches `category`-Feld für den Chronicle-Filter.

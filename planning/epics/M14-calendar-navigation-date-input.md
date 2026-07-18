@@ -46,7 +46,7 @@ Der DM kann gezielt und elegant durch die Zeit navigieren — auch in die (negat
 - AP-001, AP-003, AP-008(RTL) in AC.
 - Tests: `m14-s01-year-nav-popout` — `.dom.test.tsx`: `Gehe zu -50` setzt Jahr −50; Recent-Pills zeigen die letzten 3 Jahre; Adjacency-Pill springt aufs korrekte Jahr.
   > **Ist-Zustand 2026-07-18 (Commit 827dafb):** AC an Impl angeglichen — statt `-5 / +5`-Schnellsprung 10 einzelne Adjacency-Jahr-Pills; der `+5`-Test wurde auf einen Adjacency-Pill-Klick umgeschrieben.
-  > **Test-Luecke:** offenes Issue #293 (Tag-Klick-Pfad ohne Verhaltenstest — ein Guard auf Stub-Abwesenheit ersetzt ihn). Siehe auch S06.
+  > **Test-Lücke #293 — GELÖST 2026-07-18:** Verhaltenstest für den Tag-Klick-Pfad ergänzt (`tests/m14-s06-day-click-creates-event.dom.test.tsx`). Siehe auch S06.
 
 ### M14-S02: Monats-Dropdown & Header-Reihenfolge/Layout
 **Owner:** ui (CalendarMonthView-Header). **Ziel:** Monatswahl + granularitäts-geordneter, aufgeräumter Header.
