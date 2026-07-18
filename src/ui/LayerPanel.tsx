@@ -19,11 +19,15 @@ export interface LayerPanelProps {
   mapId: string;
   onAddImageLayer?: () => void;
   onAddFogLayer?: () => void;
+  /** Fog layer currently selected for painting (highlighted here). */
+  editingFogLayerId?: string | null;
+  /** Toggle a fog layer as the paint target (MapViewer paints it). */
+  onEditFogLayer?: (layerId: string) => void;
 }
 
 const LAYER_TYPE_ICON: Record<string, string> = { image: '🖼️', fog: '🌫️', token: '🎯' };
 
-export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer }: LayerPanelProps) {
+export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, editingFogLayerId, onEditFogLayer }: LayerPanelProps) {
   const { t } = useTranslation();
   const [layers, setLayers] = useState<MapLayerRow[]>([]);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -91,7 +95,7 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer }: 
       </div>
       <ul className="layer-panel__list">
         {sorted.map((layer) => (
-          <li key={layer.id} className="layer-panel__row" aria-label={layer.name ?? ''}>
+          <li key={layer.id} className={`layer-panel__row${editingFogLayerId === layer.id ? ' editing' : ''}`} aria-label={layer.name ?? ''}>
             <span className="layer-panel__icon">{LAYER_TYPE_ICON[layer.layer_type] ?? '📄'}</span>
             {editingNameId === layer.id ? (
               <input
@@ -126,6 +130,16 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer }: 
             <button type="button" onClick={() => handleTogglePlayerVisible(layer)}>
               {t('layerPanel.playerVisible', 'Spielersichtbar')}
             </button>
+            {layer.layer_type === 'fog' && onEditFogLayer && (
+              <button
+                type="button"
+                className={editingFogLayerId === layer.id ? 'active' : ''}
+                aria-pressed={editingFogLayerId === layer.id}
+                onClick={() => onEditFogLayer(layer.id)}
+              >
+                {editingFogLayerId === layer.id ? t('layerPanel.fogEditing', 'Malen beenden') : t('layerPanel.fogEdit', 'Bemalen')}
+              </button>
+            )}
             <button type="button" onClick={() => handleMove(layer.id, -1)}>{t('layerPanel.moveUp', 'Nach oben')}</button>
             <button type="button" onClick={() => handleMove(layer.id, 1)}>{t('layerPanel.moveDown', 'Nach unten')}</button>
             {deleteConfirmId === layer.id ? (

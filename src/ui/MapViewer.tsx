@@ -1,8 +1,10 @@
 ﻿import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getMap, getAssetUrl, loadGridSettings, saveGridSettings } from '../services/map-service';
-import { listLayers } from '../services/map-layer-service';
+import { listLayers, updateLayer } from '../services/map-layer-service';
 import type { MapLayerRow } from '../services/map-layer-service';
+import { FogTools, type FogToolMode, type FogToolShape } from './FogTools';
+import { FogMaskCanvas } from './FogMaskCanvas';
 import type { DatabaseLike } from '../services/entity-service';
 import { getMarkersForMap, createMarker, updateMarker, deleteMarker } from '../services/map-marker-service';
 import type { MarkerRow } from '../services/map-marker-service';
@@ -22,7 +24,7 @@ const VISIBILITY_OPTIONS: { key: string; label: string }[] = [
   { key: 'hidden_until_condition', label: 'Bedingung…' },
 ];
 
-type Mode = 'navigate' | 'pin' | 'move-pin' | 'grid' | 'measure' | 'radius';
+type Mode = 'navigate' | 'pin' | 'move-pin' | 'grid' | 'measure' | 'radius' | 'fog';
 
 const PIN_SIZE_PX: Record<string, number> = { S: 18, M: 26, L: 38 };
 
@@ -32,6 +34,9 @@ interface Props {
   database: DatabaseLike;
   showCoordinates?: boolean;
   onNavigateToEntity?: (entityId: string) => void;
+  /** Fog layer currently selected for painting (from the LayerPanel). When set,
+   *  the map enters fog-paint on that layer and shows the fog toolbar. */
+  editFogLayerId?: string | null;
 }
 
 function parsePinGeometry(json: string): { x: number; y: number; notes?: string; condition?: unknown } {
@@ -454,10 +459,15 @@ function RadiusOverlay({
   );
 }
 
-export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity }: Props) {
+export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity, editFogLayerId = null }: Props) {
   const { t } = useTranslation('map');
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [imageLayers, setImageLayers] = useState<MapLayerRow[]>([]);
+  const [fogLayers, setFogLayers] = useState<MapLayerRow[]>([]);
+  const [fogBrush, setFogBrush] = useState(40);
+  const [fogFeather, setFogFeather] = useState(8);
+  const [fogMode, setFogMode] = useState<FogToolMode>('cover');
+  const [fogShape, setFogShape] = useState<FogToolShape>('brush');
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
   const [markers, setMarkers] = useState<MarkerRow[]>([]);
   const [cells, setCells] = useState<Map<string, number>>(new Map());
@@ -546,6 +556,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         .sort((a, b) => a.z_order - b.z_order);
       setImageLayers(visibleImages);
       setImgSrc(visibleImages[0]?.asset_id ? getAssetUrl(visibleImages[0].asset_id) : null);
+      setFogLayers(layers
+        .filter((l) => l.layer_type === 'fog' && l.visible)
+        .sort((a, b) => a.z_order - b.z_order));
     }).catch(console.error);
     reloadMarkers();
     getActivatedCells(database, sessionId, mapId)
@@ -576,6 +589,17 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   useEffect(() => {
     if (mode !== 'pin' && mode !== 'move-pin') setGhostPos(null);
   }, [mode]);
+
+  // Selecting a fog layer to edit (from the LayerPanel) puts the map into
+  // fog-paint mode; clearing the selection returns to navigate.
+  useEffect(() => {
+    setMode((m) => (editFogLayerId ? 'fog' : m === 'fog' ? 'navigate' : m));
+  }, [editFogLayerId]);
+
+  function handleFogStrokeEnd(layerId: string, maskDataUrl: string) {
+    setFogLayers((prev) => prev.map((l) => (l.id === layerId ? { ...l, mask_data: maskDataUrl } : l)));
+    updateLayer(database, layerId, { mask_data: maskDataUrl }).catch(console.error);
+  }
 
   // NOTE: onWheel as React synthetic handler works in Tauri (no outer scroll container).
   // A web port would need addEventListener({ passive: false }) on containerRef instead.
@@ -763,7 +787,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const sessionVarDefs: VarDef[] = sessionVarsRaw
     .filter((v) => VALID_VAR_TYPES.has(v.type))
     .map((v) => ({ id: v.id, label: v.label, type: v.type as VarDef['type'] }));
-  const cursor = mode === 'pin' ? 'crosshair' : mode === 'grid' ? 'cell' : (mode === 'measure' || mode === 'radius') ? 'crosshair' : dragging ? 'grabbing' : 'grab';
+  const cursor = mode === 'pin' ? 'crosshair' : mode === 'grid' ? 'cell' : (mode === 'measure' || mode === 'radius' || mode === 'fog') ? 'crosshair' : dragging ? 'grabbing' : 'grab';
 
   if (!imgSrc) return <div className="map-empty">Kein Kartenbild — Karte importieren um zu beginnen.</div>;
 
@@ -886,6 +910,17 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           <button className="map-tool-btn" onClick={resetView} title="Reset">⌂</button>
         </div>
 
+        {/* Fog paint toolbar — shown while a fog layer is selected for editing */}
+        {editFogLayerId && (
+          <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10 }}>
+            <FogTools
+              brushSize={fogBrush} feather={fogFeather} mode={fogMode} shape={fogShape}
+              onBrushSizeChange={setFogBrush} onFeatherChange={setFogFeather}
+              onModeChange={setFogMode} onShapeChange={setFogShape}
+            />
+          </div>
+        )}
+
         <div style={{ position: 'absolute', top: 0, left: 0, transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin: '0 0' }}>
           {imageLayers.map((layer, idx) => (
             <img
@@ -902,6 +937,22 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               }}
               onLoad={idx === 0 ? (e) => { const i = e.currentTarget; setImgSize({ w: i.naturalWidth, h: i.naturalHeight }); } : undefined}
             />
+          ))}
+          {imgSize.w > 0 && fogLayers.map((layer) => (
+            <div key={layer.id} style={{ position: 'absolute', top: 0, left: 0, opacity: layer.opacity }}>
+              <FogMaskCanvas
+                layerId={layer.id}
+                maskData={layer.mask_data}
+                imgW={imgSize.w}
+                imgH={imgSize.h}
+                mode={fogMode}
+                shape={fogShape}
+                brushSize={fogBrush}
+                feather={fogFeather}
+                active={editFogLayerId === layer.id}
+                onStrokeEnd={(m) => handleFogStrokeEnd(layer.id, m)}
+              />
+            </div>
           ))}
           {imgSize.w > 0 && gridSettings.visible && (
             <GridLayer

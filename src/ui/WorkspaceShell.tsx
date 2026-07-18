@@ -120,12 +120,18 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   // Bumped after adding a layer -> remounts MapViewer + LayerPanel so both
   // reload by map_id (markers/grid/cells/layers all re-render, nothing lost).
   const [layerRefresh, setLayerRefresh] = useState(0);
+  // Fog layer currently selected for painting (shared: LayerPanel selects it,
+  // MapViewer paints it).
+  const [editingFogLayerId, setEditingFogLayerId] = useState<string | null>(null);
   const [savedViews, setSavedViews] = useState<SavedViewRow[]>([]);
   const [sessionVarsRaw, setSessionVarsRaw] = useState<VarRow[]>([]);
 
   useEffect(() => {
     listMaps(database).then(setMaps).catch(console.error);
   }, [database]);
+
+  // A fog selection belongs to one map — drop it when the map changes.
+  useEffect(() => { setEditingFogLayerId(null); }, [selectedMapId]);
 
   useEffect(() => {
     listViews(database).then(setSavedViews).catch(console.error);
@@ -263,7 +269,8 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
 
   async function handleAddFogLayer() {
     if (!selectedMapId) return;
-    await createFogLayer(database, { map_id: selectedMapId, name: 'Fog' });
+    const { id } = await createFogLayer(database, { map_id: selectedMapId, name: 'Fog' });
+    setEditingFogLayerId(id); // select the new fog layer for painting right away
     setLayerRefresh((n) => n + 1);
   }
 
@@ -394,13 +401,15 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
               {selectedMapId ? (
                 <>
                   <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                    <MapViewer key={`mv-${selectedMapId}-${layerRefresh}`} mapId={selectedMapId} sessionId={projectId} database={database} showCoordinates onNavigateToEntity={navigateToEntity} />
+                    <MapViewer key={`mv-${selectedMapId}-${layerRefresh}`} mapId={selectedMapId} sessionId={projectId} database={database} showCoordinates onNavigateToEntity={navigateToEntity} editFogLayerId={editingFogLayerId} />
                   </div>
                   <div className="maps-layer-dock">
                     <LayerPanel
                       key={`lp-${selectedMapId}-${layerRefresh}`}
                       database={database}
                       mapId={selectedMapId}
+                      editingFogLayerId={editingFogLayerId}
+                      onEditFogLayer={(id) => setEditingFogLayerId((cur) => (cur === id ? null : id))}
                       onAddImageLayer={() => void handleAddImageLayer()}
                       onAddFogLayer={() => void handleAddFogLayer()}
                     />

@@ -113,9 +113,19 @@ Verifizierter Status aus git. Die Stories-Tabelle bildet Plan/Scope ab, NICHT de
   auch `importMapImage`), neuer Image-Layer bei `z_order = max+1`. Add-Image-Button im
   LayerPanel verdrahtet (`WorkspaceShell.handleAddImageLayer`). Additiv — Pins/Grid/Cells
   bleiben (per `map_id`, kein `layer_id`). Rest offen: mehrfach-Stack-Feinschliff.
-- S04 #276 (Fog): `createFogLayer` implementiert 2026-07-18 (fog-Layer bei `z_order = max+1`
-  mit voll deckender Maske; Add-Fog-Button verdrahtet). OFFEN: Fog-Paint-Tooling
-  (`FogTools`/`FogMaskCanvas`, Pinsel/Rechteck, Reveal/Cover) + MapViewer-Fog-Render.
+- S04 #276 (Fog): FERTIG 2026-07-18 (mit S03 gemergt — kaum unabhängig umsetzbar).
+  `createFogLayer` (fog-Layer `z_order = max+1`, voll deckende Maske). `FogTools.tsx`
+  (Pinsel/Rechteck, Aufdecken=destination-out / Verdecken=source-over, Pinselgröße +
+  Weichzeichnung). `FogMaskCanvas.tsx` (Canvas-Maske, Pointer down/move/up in Map-Koordinaten,
+  persist via `updateLayer(mask_data)` on stroke-end). MapViewer rendert Fog-Layer als
+  Canvas-Overlays über Image-Layern und UNTER Grid/Pins (Pins bleiben sichtbar/klickbar);
+  hidden (`visible=0`) wird nicht gerendert. Fog-Layer-Auswahl elegant über die eine
+  LayerPanel-Liste ("Bemalen"-Button je Fog-Row -> `editingFogLayerId`, MapViewer malt genau
+  den). Add-Fog wählt den neuen Layer direkt zum Malen. Progressive Reveal = `visible=0`
+  Toggle im LayerPanel (bestand). Tests: `m15-s04-fog-layer` (Komponenten+Service),
+  `m15-s04-fog-in-mapviewer` (Container-Integration), `m15-s03-s04-layer-add-preserves-map`
+  (Pins/Grid überleben). Epic-"Out of scope" (LoS/dyn. Licht/Undo/per-Pixel-Session) bleibt
+  V1-Grenze — nicht Teil von #276.
 - S05 #277 (Folders): NICHT implementiert — RED-Tests, `map-folder-service` komplett Stubs,
   `MapFolderTree.tsx` unmounted.
 - S06 #278 (Tokens): NICHT implementiert — RED-Tests, `map-token-service` komplett Stubs.
