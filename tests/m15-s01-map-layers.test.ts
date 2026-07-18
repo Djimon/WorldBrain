@@ -43,7 +43,7 @@ describe('M15-S01 map_layers schema & service', () => {
       try {
         const cols = (db.prepare('PRAGMA table_info(map_layers)').all() as Array<{ name: string }>).map((c) => c.name);
         expect(cols.sort()).toEqual(
-          ['asset_id', 'created_at', 'id', 'layer_type', 'map_id', 'mask_data', 'name', 'opacity', 'player_visible', 'visible', 'z_order'].sort(),
+          ['asset_id', 'created_at', 'id', 'layer_type', 'map_id', 'mask_data', 'name', 'offset_x', 'offset_y', 'opacity', 'player_visible', 'visible', 'z_order'].sort(),
         );
       } finally {
         db.close();

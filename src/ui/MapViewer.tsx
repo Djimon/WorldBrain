@@ -24,7 +24,7 @@ const VISIBILITY_OPTIONS: { key: string; label: string }[] = [
   { key: 'hidden_until_condition', label: 'Bedingung…' },
 ];
 
-type Mode = 'navigate' | 'pin' | 'move-pin' | 'grid' | 'measure' | 'radius' | 'fog';
+type Mode = 'navigate' | 'pin' | 'move-pin' | 'grid' | 'measure' | 'radius' | 'fog' | 'move-layer';
 
 const PIN_SIZE_PX: Record<string, number> = { S: 18, M: 26, L: 38 };
 
@@ -42,6 +42,9 @@ interface Props {
   /** Notifies the parent that layers changed here (e.g. a fog stroke) so other
    *  views (LayerPanel) can refresh. */
   onLayersChanged?: () => void;
+  /** Image layer currently in move mode (from the LayerPanel). When set, that
+   *  layer is draggable on the map to reposition it. */
+  moveLayerId?: string | null;
 }
 
 function parsePinGeometry(json: string): { x: number; y: number; notes?: string; condition?: unknown } {
@@ -464,7 +467,7 @@ function RadiusOverlay({
   );
 }
 
-export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity, editFogLayerId = null, reloadKey = 0, onLayersChanged }: Props) {
+export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity, editFogLayerId = null, reloadKey = 0, onLayersChanged, moveLayerId = null }: Props) {
   const { t } = useTranslation('map');
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [imageLayers, setImageLayers] = useState<MapLayerRow[]>([]);
@@ -523,6 +526,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   }, [gridFlyout]);
 
   const dragStart = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
+  const layerDrag = useRef<{ mx: number; my: number; ox: number; oy: number; last: { x: number; y: number } } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const measureBtnRef = useRef<HTMLButtonElement>(null);
@@ -613,6 +617,36 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   function handleFogStrokeEnd(layerId: string, maskDataUrl: string) {
     setFogLayers((prev) => prev.map((l) => (l.id === layerId ? { ...l, mask_data: maskDataUrl } : l)));
     updateLayer(database, layerId, { mask_data: maskDataUrl }).then(() => onLayersChanged?.()).catch(console.error);
+  }
+
+  // Selecting an image layer to move (from the LayerPanel) puts the map into
+  // move-layer mode; clearing the selection returns to navigate.
+  useEffect(() => {
+    setMode((m) => (moveLayerId ? 'move-layer' : m === 'move-layer' ? 'navigate' : m));
+  }, [moveLayerId]);
+
+  function handleLayerDragStart(layer: MapLayerRow, e: React.PointerEvent<HTMLImageElement>) {
+    e.stopPropagation();
+    layerDrag.current = { mx: e.clientX, my: e.clientY, ox: layer.offset_x, oy: layer.offset_y, last: { x: layer.offset_x, y: layer.offset_y } };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* jsdom */ }
+  }
+
+  function handleLayerDragMove(layerId: string, e: React.PointerEvent<HTMLImageElement>) {
+    const d = layerDrag.current;
+    if (!d) return;
+    const nx = d.ox + (e.clientX - d.mx) / scale;
+    const ny = d.oy + (e.clientY - d.my) / scale;
+    d.last = { x: nx, y: ny };
+    setImageLayers((prev) => prev.map((l) => (l.id === layerId ? { ...l, offset_x: nx, offset_y: ny } : l)));
+  }
+
+  function handleLayerDragEnd(layerId: string) {
+    const d = layerDrag.current;
+    layerDrag.current = null;
+    if (!d) return;
+    updateLayer(database, layerId, { offset_x: Math.round(d.last.x), offset_y: Math.round(d.last.y) })
+      .then(() => onLayersChanged?.())
+      .catch(console.error);
   }
 
   // NOTE: onWheel as React synthetic handler works in Tauri (no outer scroll container).
@@ -801,7 +835,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const sessionVarDefs: VarDef[] = sessionVarsRaw
     .filter((v) => VALID_VAR_TYPES.has(v.type))
     .map((v) => ({ id: v.id, label: v.label, type: v.type as VarDef['type'] }));
-  const cursor = mode === 'pin' ? 'crosshair' : mode === 'grid' ? 'cell' : (mode === 'measure' || mode === 'radius' || mode === 'fog') ? 'crosshair' : dragging ? 'grabbing' : 'grab';
+  const cursor = mode === 'pin' ? 'crosshair' : mode === 'grid' ? 'cell' : (mode === 'measure' || mode === 'radius' || mode === 'fog') ? 'crosshair' : mode === 'move-layer' ? 'move' : dragging ? 'grabbing' : 'grab';
 
   if (!imgSrc) return <div className="map-empty">Kein Kartenbild — Karte importieren um zu beginnen.</div>;
 
@@ -924,8 +958,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           <button className="map-tool-btn" onClick={resetView} title="Reset">⌂</button>
         </div>
 
-        {/* Fog paint toolbar — shown while a fog layer is selected for editing */}
-        {editFogLayerId && (
+        {/* Fog paint toolbar — only while the selected fog layer still exists
+            (guards against the layer being deleted mid-paint). */}
+        {editFogLayerId && fogLayers.some((l) => l.id === editFogLayerId) && (
           <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10 }}>
             <FogTools
               brushSize={fogBrush} feather={fogFeather} mode={fogMode} shape={fogShape}
@@ -936,22 +971,33 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         )}
 
         <div style={{ position: 'absolute', top: 0, left: 0, transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin: '0 0' }}>
-          {imageLayers.map((layer, idx) => (
-            <img
-              key={layer.id}
-              data-layer-id={layer.id}
-              src={getAssetUrl(layer.asset_id ?? '')}
-              alt={layer.name || 'Karte'}
-              draggable={false}
-              style={{
-                display: 'block',
-                maxWidth: 'none',
-                opacity: layer.opacity,
-                ...(idx > 0 ? { position: 'absolute' as const, top: 0, left: 0 } : {}),
-              }}
-              onLoad={idx === 0 ? (e) => { const i = e.currentTarget; setImgSize({ w: i.naturalWidth, h: i.naturalHeight }); } : undefined}
-            />
-          ))}
+          {imageLayers.map((layer, idx) => {
+            const moving = moveLayerId === layer.id;
+            return (
+              <img
+                key={layer.id}
+                data-layer-id={layer.id}
+                src={getAssetUrl(layer.asset_id ?? '')}
+                alt={layer.name || 'Karte'}
+                draggable={false}
+                style={{
+                  display: 'block',
+                  maxWidth: 'none',
+                  opacity: layer.opacity,
+                  position: 'absolute',
+                  left: layer.offset_x,
+                  top: layer.offset_y,
+                  pointerEvents: moving ? 'auto' : 'none',
+                  cursor: moving ? 'move' : undefined,
+                  outline: moving ? '2px dashed var(--color-accent)' : undefined,
+                }}
+                onLoad={idx === 0 ? (e) => { const i = e.currentTarget; setImgSize({ w: i.naturalWidth, h: i.naturalHeight }); } : undefined}
+                onPointerDown={moving ? (e) => handleLayerDragStart(layer, e) : undefined}
+                onPointerMove={moving ? (e) => handleLayerDragMove(layer.id, e) : undefined}
+                onPointerUp={moving ? () => handleLayerDragEnd(layer.id) : undefined}
+              />
+            );
+          })}
           {imgSize.w > 0 && fogLayers.map((layer) => (
             // DM editing view dims fog to ~half so the map stays visible while
             // painting; the mask itself is full coverage (players see it opaque

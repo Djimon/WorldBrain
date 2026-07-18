@@ -17,6 +17,8 @@ export interface MapLayerRow {
   z_order: number;
   visible: number;
   player_visible: number;
+  offset_x: number;
+  offset_y: number;
   created_at: string;
 }
 
@@ -35,6 +37,8 @@ export interface UpdateLayerPatch {
   visible?: boolean;
   player_visible?: boolean;
   mask_data?: string;
+  offset_x?: number;
+  offset_y?: number;
 }
 
 function clampOpacity(opacity: number): number {
@@ -65,6 +69,8 @@ export async function updateLayer(db: DatabaseLike, id: string, patch: UpdateLay
   if (patch.visible !== undefined) { fields.push('visible = ?'); args.push(patch.visible ? 1 : 0); }
   if (patch.player_visible !== undefined) { fields.push('player_visible = ?'); args.push(patch.player_visible ? 1 : 0); }
   if (patch.mask_data !== undefined) { fields.push('mask_data = ?'); args.push(patch.mask_data); }
+  if (patch.offset_x !== undefined) { fields.push('offset_x = ?'); args.push(patch.offset_x); }
+  if (patch.offset_y !== undefined) { fields.push('offset_y = ?'); args.push(patch.offset_y); }
   if (fields.length === 0) return;
   args.push(id);
   await db.execute(`UPDATE map_layers SET ${fields.join(', ')} WHERE id = ?`, args);

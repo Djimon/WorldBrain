@@ -4,7 +4,7 @@
 // coordinates (PaintInteractionLayer's existing pattern), NOT Leaflet.
 // On stroke end, calls onStrokeEnd with the updated mask dataURL — the
 // caller (MapViewer) persists it via updateLayer (debounce acceptable).
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FogToolMode, FogToolShape } from './FogTools';
 
 export interface FogMaskCanvasProps {
@@ -26,6 +26,7 @@ export function FogMaskCanvas({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
   const start = useRef<{ x: number; y: number } | null>(null);
+  const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
 
   // (Re)load the stored mask onto the canvas whenever it changes.
   useEffect(() => {
@@ -96,11 +97,12 @@ export function FogMaskCanvas({
   }
 
   function handleMove(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!active || !drawing.current) return;
-    if (shape !== 'brush') return;
+    if (!active) return;
+    const p = toCanvasCoords(e.clientX, e.clientY);
+    setHover(p); // brush-size preview follows the cursor
+    if (!drawing.current || shape !== 'brush') return;
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
-    const p = toCanvasCoords(e.clientX, e.clientY);
     stampBrush(ctx, p.x, p.y);
   }
 
@@ -117,17 +119,37 @@ export function FogMaskCanvas({
   }
 
   return (
-    <canvas
-      ref={canvasRef}
-      data-fog-layer-id={layerId}
-      width={imgW}
-      height={imgH}
-      className="fog-mask-canvas"
-      style={{ position: 'absolute', top: 0, left: 0, pointerEvents: active ? 'auto' : 'none' }}
-      onPointerDown={handleDown}
-      onPointerMove={handleMove}
-      onPointerUp={handleUp}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        data-fog-layer-id={layerId}
+        width={imgW}
+        height={imgH}
+        className="fog-mask-canvas"
+        style={{ position: 'absolute', top: 0, left: 0, pointerEvents: active ? 'auto' : 'none', cursor: active ? 'none' : undefined }}
+        onPointerDown={handleDown}
+        onPointerMove={handleMove}
+        onPointerUp={handleUp}
+        onPointerLeave={() => setHover(null)}
+      />
+      {active && hover && shape === 'brush' && (
+        <div
+          className="fog-brush-preview"
+          style={{
+            position: 'absolute',
+            left: hover.x - brushSize / 2,
+            top: hover.y - brushSize / 2,
+            width: brushSize,
+            height: brushSize,
+            borderRadius: '50%',
+            pointerEvents: 'none',
+            border: '1px solid rgba(255,255,255,0.9)',
+            boxShadow: '0 0 0 1px rgba(0,0,0,0.6)',
+            filter: feather > 0 ? `blur(${feather / 4}px)` : undefined,
+          }}
+        />
+      )}
+    </>
   );
 }
 

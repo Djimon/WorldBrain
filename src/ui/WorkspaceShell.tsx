@@ -124,6 +124,8 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   // Fog layer currently selected for painting (shared: LayerPanel selects it,
   // MapViewer paints it).
   const [editingFogLayerId, setEditingFogLayerId] = useState<string | null>(null);
+  // Image layer currently in move mode (shared: LayerPanel selects, MapViewer drags).
+  const [movingLayerId, setMovingLayerId] = useState<string | null>(null);
   const [savedViews, setSavedViews] = useState<SavedViewRow[]>([]);
   const [sessionVarsRaw, setSessionVarsRaw] = useState<VarRow[]>([]);
 
@@ -131,8 +133,8 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     listMaps(database).then(setMaps).catch(console.error);
   }, [database]);
 
-  // A fog selection belongs to one map — drop it when the map changes.
-  useEffect(() => { setEditingFogLayerId(null); }, [selectedMapId]);
+  // Fog/move selections belong to one map — drop them when the map changes.
+  useEffect(() => { setEditingFogLayerId(null); setMovingLayerId(null); }, [selectedMapId]);
 
   useEffect(() => {
     listViews(database).then(setSavedViews).catch(console.error);
@@ -405,9 +407,15 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                     database={database}
                     mapId={selectedMapId}
                     editingFogLayerId={editingFogLayerId}
-                    onEditFogLayer={(id) => setEditingFogLayerId((cur) => (cur === id ? null : id))}
+                    onEditFogLayer={(id) => { setMovingLayerId(null); setEditingFogLayerId((cur) => (cur === id ? null : id)); }}
+                    movingLayerId={movingLayerId}
+                    onMoveLayer={(id) => { setEditingFogLayerId(null); setMovingLayerId((cur) => (cur === id ? null : id)); }}
                     onAddImageLayer={() => void handleAddImageLayer()}
                     onAddFogLayer={() => void handleAddFogLayer()}
+                    onLayerDeleted={(id) => {
+                      setEditingFogLayerId((cur) => (cur === id ? null : cur));
+                      setMovingLayerId((cur) => (cur === id ? null : cur));
+                    }}
                     reloadKey={layerReloadKey}
                     onLayersChanged={() => setLayerReloadKey((n) => n + 1)}
                   />
@@ -424,6 +432,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                   showCoordinates
                   onNavigateToEntity={navigateToEntity}
                   editFogLayerId={editingFogLayerId}
+                  moveLayerId={movingLayerId}
                   reloadKey={layerReloadKey}
                   onLayersChanged={() => setLayerReloadKey((n) => n + 1)}
                 />

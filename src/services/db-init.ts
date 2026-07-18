@@ -81,6 +81,9 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   applyMapSchema(db as unknown as Parameters<typeof applyMapSchema>[0]);
   // Idempotent: adds group_name to map_markers on pre-folder DBs (table now exists).
   await adapter.execute(`ALTER TABLE map_markers ADD COLUMN group_name TEXT NOT NULL DEFAULT ''`).catch(() => {});
+  // Idempotent: per-image-layer position (movable image layers).
+  await adapter.execute(`ALTER TABLE map_layers ADD COLUMN offset_x REAL NOT NULL DEFAULT 0`).catch(() => {});
+  await adapter.execute(`ALTER TABLE map_layers ADD COLUMN offset_y REAL NOT NULL DEFAULT 0`).catch(() => {});
   applySavedViewsSchema(db as unknown as Parameters<typeof applySavedViewsSchema>[0]);
   await applySearchSchema(adapter);
   applySessionSchema(db as unknown as Parameters<typeof applySessionSchema>[0]);

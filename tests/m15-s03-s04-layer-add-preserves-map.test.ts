@@ -45,6 +45,21 @@ describe('M15-S04 createFogLayer contract', () => {
   });
 });
 
+describe('image layer offset persistence (movable image layers)', () => {
+  it('updateLayer writes offset_x/offset_y; new layers default to 0/0', async () => {
+    const { db, asyncDb } = createDatabase();
+    const { createLayer, updateLayer, listLayers } = await import('../src/services/map-layer-service');
+    try {
+      const { id } = await createLayer(asyncDb, { map_id: 'm1', layer_type: 'image' });
+      expect((await listLayers(asyncDb, 'm1'))[0].offset_x).toBe(0);
+      await updateLayer(asyncDb, id, { offset_x: 320, offset_y: -40 });
+      const layer = (await listLayers(asyncDb, 'm1')).find((l) => l.id === id);
+      expect(layer?.offset_x).toBe(320);
+      expect(layer?.offset_y).toBe(-40);
+    } finally { db.close(); }
+  });
+});
+
 describe('M15-S03 importImageLayer contract', () => {
   it('creates an image layer at z_order = max+1 with the copied asset path', async () => {
     const { db, asyncDb } = createDatabase();

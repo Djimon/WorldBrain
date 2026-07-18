@@ -35,6 +35,8 @@ export function applyMapSchema(db: MapDb): void {
       z_order INTEGER NOT NULL DEFAULT 0,
       visible INTEGER NOT NULL DEFAULT 1,
       player_visible INTEGER NOT NULL DEFAULT 0,
+      offset_x REAL NOT NULL DEFAULT 0,
+      offset_y REAL NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);

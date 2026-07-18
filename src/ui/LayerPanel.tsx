@@ -27,16 +27,31 @@ export interface LayerPanelProps {
   reloadKey?: number;
   /** Notifies the parent that layers changed so other views (MapViewer) refresh. */
   onLayersChanged?: () => void;
+  /** Image layer currently in move mode (highlighted here). */
+  movingLayerId?: string | null;
+  /** Toggle an image layer as the move target (MapViewer makes it draggable). */
+  onMoveLayer?: (layerId: string) => void;
+  /** Called after a layer is deleted so the parent can clear any edit/move target. */
+  onLayerDeleted?: (layerId: string) => void;
 }
 
 const LAYER_TYPE_ICON: Record<string, string> = { image: '🖼️', fog: '🌫️', token: '🎯' };
 
-export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, editingFogLayerId, onEditFogLayer, reloadKey = 0, onLayersChanged }: LayerPanelProps) {
+export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, editingFogLayerId, onEditFogLayer, reloadKey = 0, onLayersChanged, movingLayerId, onMoveLayer, onLayerDeleted }: LayerPanelProps) {
   const { t } = useTranslation();
   const [layers, setLayers] = useState<MapLayerRow[]>([]);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  function toggleCollapsed(id: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   function reload() {
     listLayers(database, mapId).then(setLayers).catch(console.error);
@@ -77,7 +92,7 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, ed
 
   function commitDelete(layerId: string) {
     setDeleteConfirmId(null);
-    deleteLayer(database, layerId).then(reload).then(() => onLayersChanged?.()).catch(console.error);
+    deleteLayer(database, layerId).then(reload).then(() => { onLayerDeleted?.(layerId); onLayersChanged?.(); }).catch(console.error);
   }
 
   function startEditName(layer: MapLayerRow) {
@@ -99,61 +114,86 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, ed
       </div>
       <ul className="layer-panel__list">
         {sorted.map((layer) => (
-          <li key={layer.id} className={`layer-panel__row${editingFogLayerId === layer.id ? ' editing' : ''}`} aria-label={layer.name ?? ''}>
-            <span className="layer-panel__icon">{LAYER_TYPE_ICON[layer.layer_type] ?? '📄'}</span>
-            {editingNameId === layer.id ? (
-              <input
-                className="layer-panel__name-input"
-                aria-label={t('layerPanel.name', 'Name')}
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
-                onBlur={() => commitName(layer)}
-                onKeyDown={(e) => { if (e.key === 'Enter') commitName(layer); }}
-                autoFocus
-              />
-            ) : (
-              <span className="layer-panel__name" onDoubleClick={() => startEditName(layer)}>{layer.name}</span>
-            )}
-            <label className="layer-panel__opacity">
-              {t('layerPanel.opacity', 'Deckkraft')}
-              <input
-                type="range"
-                aria-label={t('layerPanel.opacity', 'Deckkraft')}
-                min={0}
-                max={100}
-                value={Math.round(layer.opacity * 100)}
-                onChange={(e) => handleOpacityChange(layer, Number(e.target.value))}
-              />
-            </label>
-            <button type="button" onClick={() => handleToggleVisible(layer)}>
-              {layer.visible ? t('layerPanel.hide', 'Ausblenden') : t('layerPanel.show', 'Einblenden')}
-            </button>
-            {!layer.visible && (
-              <span className="layer-panel__hidden-indicator">{t('layerPanel.hiddenIndicator', 'Ausgeblendet')}</span>
-            )}
-            <button type="button" onClick={() => handleTogglePlayerVisible(layer)}>
-              {t('layerPanel.playerVisible', 'Spielersichtbar')}
-            </button>
-            {layer.layer_type === 'fog' && onEditFogLayer && (
+          <li key={layer.id} className={`layer-panel__row${editingFogLayerId === layer.id || movingLayerId === layer.id ? ' editing' : ''}${collapsed.has(layer.id) ? ' collapsed' : ''}`} aria-label={layer.name ?? ''}>
+            <div className="layer-panel__row-header">
               <button
                 type="button"
-                className={editingFogLayerId === layer.id ? 'active' : ''}
-                aria-pressed={editingFogLayerId === layer.id}
-                onClick={() => onEditFogLayer(layer.id)}
+                className="layer-panel__collapse"
+                aria-expanded={!collapsed.has(layer.id)}
+                aria-label={t('layerPanel.toggleDetails', 'Details')}
+                onClick={() => toggleCollapsed(layer.id)}
               >
-                {editingFogLayerId === layer.id ? t('layerPanel.fogEditing', 'Malen beenden') : t('layerPanel.fogEdit', 'Bemalen')}
+                {collapsed.has(layer.id) ? '▶' : '▼'}
               </button>
-            )}
-            <button type="button" onClick={() => handleMove(layer.id, -1)}>{t('layerPanel.moveUp', 'Nach oben')}</button>
-            <button type="button" onClick={() => handleMove(layer.id, 1)}>{t('layerPanel.moveDown', 'Nach unten')}</button>
-            {deleteConfirmId === layer.id ? (
-              <span className="layer-panel__delete-confirm">
-                {t('layerPanel.confirmDelete', 'Layer wirklich löschen?')}
-                <button type="button" onClick={() => commitDelete(layer.id)}>{t('layerPanel.confirmYes', 'Ja, löschen')}</button>
-                <button type="button" onClick={() => setDeleteConfirmId(null)}>{t('layerPanel.confirmNo', 'Abbrechen')}</button>
-              </span>
-            ) : (
-              <button type="button" onClick={() => setDeleteConfirmId(layer.id)}>{t('layerPanel.delete', 'Löschen')}</button>
+              <span className="layer-panel__icon">{LAYER_TYPE_ICON[layer.layer_type] ?? '📄'}</span>
+              {editingNameId === layer.id ? (
+                <input
+                  className="layer-panel__name-input"
+                  aria-label={t('layerPanel.name', 'Name')}
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  onBlur={() => commitName(layer)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') commitName(layer); }}
+                  autoFocus
+                />
+              ) : (
+                <span className="layer-panel__name" onDoubleClick={() => startEditName(layer)}>{layer.name}</span>
+              )}
+              {!layer.visible && (
+                <span className="layer-panel__hidden-indicator">{t('layerPanel.hiddenIndicator', 'Ausgeblendet')}</span>
+              )}
+            </div>
+            {!collapsed.has(layer.id) && (
+              <div className="layer-panel__controls">
+                <label className="layer-panel__opacity">
+                  {t('layerPanel.opacity', 'Deckkraft')}
+                  <input
+                    type="range"
+                    aria-label={t('layerPanel.opacity', 'Deckkraft')}
+                    min={0}
+                    max={100}
+                    value={Math.round(layer.opacity * 100)}
+                    onChange={(e) => handleOpacityChange(layer, Number(e.target.value))}
+                  />
+                </label>
+                <button type="button" onClick={() => handleToggleVisible(layer)}>
+                  {layer.visible ? t('layerPanel.hide', 'Ausblenden') : t('layerPanel.show', 'Einblenden')}
+                </button>
+                <button type="button" onClick={() => handleTogglePlayerVisible(layer)}>
+                  {t('layerPanel.playerVisible', 'Spielersichtbar')}
+                </button>
+                {layer.layer_type === 'fog' && onEditFogLayer && (
+                  <button
+                    type="button"
+                    className={editingFogLayerId === layer.id ? 'active' : ''}
+                    aria-pressed={editingFogLayerId === layer.id}
+                    onClick={() => onEditFogLayer(layer.id)}
+                  >
+                    {editingFogLayerId === layer.id ? t('layerPanel.fogEditing', 'Malen beenden') : t('layerPanel.fogEdit', 'Bemalen')}
+                  </button>
+                )}
+                {layer.layer_type === 'image' && onMoveLayer && (
+                  <button
+                    type="button"
+                    className={movingLayerId === layer.id ? 'active' : ''}
+                    aria-pressed={movingLayerId === layer.id}
+                    onClick={() => onMoveLayer(layer.id)}
+                  >
+                    {movingLayerId === layer.id ? t('layerPanel.moveDone', 'Verschieben beenden') : t('layerPanel.move', 'Verschieben')}
+                  </button>
+                )}
+                <button type="button" onClick={() => handleMove(layer.id, -1)}>{t('layerPanel.moveUp', 'Nach oben')}</button>
+                <button type="button" onClick={() => handleMove(layer.id, 1)}>{t('layerPanel.moveDown', 'Nach unten')}</button>
+                {deleteConfirmId === layer.id ? (
+                  <span className="layer-panel__delete-confirm">
+                    {t('layerPanel.confirmDelete', 'Layer wirklich löschen?')}
+                    <button type="button" onClick={() => commitDelete(layer.id)}>{t('layerPanel.confirmYes', 'Ja, löschen')}</button>
+                    <button type="button" onClick={() => setDeleteConfirmId(null)}>{t('layerPanel.confirmNo', 'Abbrechen')}</button>
+                  </span>
+                ) : (
+                  <button type="button" onClick={() => setDeleteConfirmId(layer.id)}>{t('layerPanel.delete', 'Löschen')}</button>
+                )}
+              </div>
             )}
           </li>
         ))}

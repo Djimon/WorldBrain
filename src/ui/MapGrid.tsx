@@ -247,7 +247,7 @@ export function PaintInteractionLayer({ imgW, imgH, cellSize, type, active, acti
 
   return (
     <svg
-      style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', cursor: active ? 'cell' : 'default' }}
+      style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', cursor: active ? 'cell' : 'default', pointerEvents: active ? 'auto' : 'none' }}
       width={imgW} height={imgH}
       onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onContextMenu={handleContextMenu}
