@@ -15,7 +15,9 @@ Der DM kann gezielt und elegant durch die Zeit navigieren — auch in die (negat
 ## Decisions (verbatim in jede betroffene Story-AC)
 
 1. **Header-Reihenfolge nach Granularität: Jahr > Monat > Today.**
-2. **Jahr-Auswahl als Popout** (nicht dauerhaft sichtbar — selten genutzt, spart Platz): oben die **3 zuletzt besuchten Jahre** als Pills, darunter Schnellsprung `−5 / +5`, darunter Integer-Input + `Gehe zu Jahr`-Button. **Das Jahr ist das einzige vorzeichenbehaftete/unbegrenzte Feld** (darf negativ).
+2. **Jahr-Auswahl als Popout** (nicht dauerhaft sichtbar — selten genutzt, spart Platz): oben die **3 zuletzt besuchten Jahre** als Pills, darunter **10 einzelne Adjacency-Jahr-Pills** (5 vor + 5 nach dem aktiven Jahr), darunter Integer-Input + `Gehe zu Jahr`-Button. **Das Jahr ist das einzige vorzeichenbehaftete/unbegrenzte Feld** (darf negativ).
+   > **Ist-Zustand 2026-07-18 (Drift-Korrektur, Commit 827dafb):** Der urspruenglich hier beschriebene Schnellsprung `-5 / +5` existiert NICHT so. Implementiert sind **10 einzelne Adjacency-Jahr-Pills** (5 vor + 5 nach dem aktiven Jahr, je 1 Klick = 1 Jahr direkt). Der fruehere `-5/+5`-Test wurde entsprechend umgeschrieben.
+   > **CSS-Nachtrag 2026-07-18 (Commit b340b2c):** Das Jahr-Popout-UI erhielt sein erstes CSS erst in b340b2c (`.cal-year-popout` + Kinder); davor rendered es ohne Styles inline statt als schwebendes Panel.
 3. **Monats-Dropdown** listet die abgeleiteten Monate des aktiven Kalenders; Auswahl springt den Monat, Jahr bleibt.
 4. **Datums-Eingabe klemmen:** Tag ∈ [1, Monatslänge], Monat ∈ [1, Monatszahl], Jahr ∈ ℤ. Verkürzt ein Monatswechsel das Tag-Maximum (Tag 31 → Monat mit 30 Tagen), **springt der Tag automatisch auf das Max (30) + einmaliger visueller Cue** (kurzes Aufblinken des Feldes). Kein Speichern-Block (ein geklemmter Wert ist nie ungültig). Als wiederverwendbares Widget `CalendarDateInput`, genutzt von **Event- und Ära-Datum**.
 5. **Header-Layout:** Titel/Ära-Anzeige zentriert (bzw. nach rechts), damit die neuen Controls links Platz haben.
@@ -37,12 +39,14 @@ Der DM kann gezielt und elegant durch die Zeit navigieren — auch in die (negat
 **Owner:** ui (CalendarMonthView-Header). **Ziel:** gezielter Jahr-Sprung, inkl. Vergangenheit.
 
 **AC:**
-- Ein Popout (nicht dauerhaft sichtbar) enthält: **3 zuletzt besuchte Jahre** als Pills (aktualisiert bei Navigation), Schnellsprung `−5 / +5`, Integer-Input + `Gehe zu Jahr`-Button.
+- Ein Popout (nicht dauerhaft sichtbar) enthält: **3 zuletzt besuchte Jahre** als Pills (aktualisiert bei Navigation), **10 einzelne Adjacency-Jahr-Pills** (5 vor + 5 nach dem aktiven Jahr), Integer-Input + `Gehe zu Jahr`-Button.
 - Das Jahr **darf negativ** sein (Sprung in die Vergangenheit); die Ansicht projiziert korrekt (Counter ist vorzeichenbehaftet).
 - Auswahl/Eingabe setzt das View-Jahr; Monat bleibt.
 - Kein `prompt()/alert()/confirm()` (AP-003).
 - AP-001, AP-003, AP-008(RTL) in AC.
-- Tests: `m14-s01-year-nav-popout` — `.dom.test.tsx`: `Gehe zu -50` setzt Jahr −50; Recent-Pills zeigen die letzten 3 Jahre; `+5` springt korrekt.
+- Tests: `m14-s01-year-nav-popout` — `.dom.test.tsx`: `Gehe zu -50` setzt Jahr −50; Recent-Pills zeigen die letzten 3 Jahre; Adjacency-Pill springt aufs korrekte Jahr.
+  > **Ist-Zustand 2026-07-18 (Commit 827dafb):** AC an Impl angeglichen — statt `-5 / +5`-Schnellsprung 10 einzelne Adjacency-Jahr-Pills; der `+5`-Test wurde auf einen Adjacency-Pill-Klick umgeschrieben.
+  > **Test-Luecke:** offenes Issue #293 (Tag-Klick-Pfad ohne Verhaltenstest — ein Guard auf Stub-Abwesenheit ersetzt ihn). Siehe auch S06.
 
 ### M14-S02: Monats-Dropdown & Header-Reihenfolge/Layout
 **Owner:** ui (CalendarMonthView-Header). **Ziel:** Monatswahl + granularitäts-geordneter, aufgeräumter Header.

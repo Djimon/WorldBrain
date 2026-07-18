@@ -97,6 +97,25 @@ above the token. One counter, N status chips.
 
 **Dependency axis:** S01 first → unblocks S02, S03, S04, S06. S06 → S07. S05 independent.
 
+### Reality 2026-07-18 (Code = Truth) — Stories-Tabelle oben überzeichnet Liefergrad
+
+Verifizierter Status aus git. Die Stories-Tabelle bildet Plan/Scope ab, NICHT den Ist-Stand.
+
+- S01 #273: DONE (ff69bc8) — `map_layers`-Schema + `map-layer-service` CRUD/reorder,
+  `maps.asset_id` dropped.
+- S02 #274: `LayerPanel`-Component gebaut + getestet, aber NIRGENDS gemountet (nur im eigenen
+  Test gerendert). Kein User-Pfad erreicht es -> #294 offen (8350747).
+- S03 #275: PARTIELL — Image-Layer-Stacking rendert (72234e8), aber
+  `map-layer-service.importImageLayer` ist ein Stub (throw 'not implemented'); neue Layer
+  können nicht importiert werden.
+- S04 #276 (Fog): NICHT implementiert — nur RED-Tests, `createFogLayer` ist Stub.
+- S05 #277 (Folders): NICHT implementiert — RED-Tests, `map-folder-service` komplett Stubs,
+  `MapFolderTree.tsx` unmounted.
+- S06 #278 (Tokens): NICHT implementiert — RED-Tests, `map-token-service` komplett Stubs.
+- S07 #279 (Token-UI/Export): NICHT gestartet.
+- Hinweis: Schema für `map_layers`/`map_tokens`/`map_folders` existiert bereits (landete vor
+  den Services).
+
 ## Constraints propagated into every Story AC (verbatim)
 
 - AP-001: `database` prop typed as `DatabaseLike` (from `entity-service.ts`); no `unknown` or `as never` casts at call sites.

@@ -161,6 +161,39 @@ project content.
 | #16 M1-S07: Runtime database placement and gitignore boundary | Verified | Runtime SQLite/cache artifacts are documented and ignored while base JSON and schema files remain trackable. |
 | #17 M1-S08: Deterministic JSON serialization | Verified | Base entity and project serializers use stable formatting, key ordering, and filename generation. |
 
+## Reality 2026-07-18 (Code = Truth)
+
+Additive Korrektur: die "Verified"-Angaben oben beschreiben den geplanten M1-Stand
+auf Modul- und Test-Ebene. Diese Werte weichen von dem ab, was die laufende App
+tatsächlich tut. Belege aus dem Code (Stand 2026-07-18, Fix-Commit 220b951).
+
+- **Runtime-Schema (`src/services/db-init.ts`):** Die Laufzeit legt NUR
+  `base_entities` und `campaign_entity_overrides` an. `base_entity_types` und
+  `campaign_notes` werden NICHT erzeugt. `core_data/base-json-import.ts` macht
+  jedoch INSERT/DELETE auf `base_entity_types` -> Zugriff auf eine Tabelle, die
+  die Laufzeit nie anlegt (wuerde zur Laufzeit "no such table" werfen).
+
+- **Import-Pipeline (`core_data/base-json-import.ts`):** `importBaseJsonProject`
+  wird NUR von Tests referenziert (`tests/m1-s05-base-json-import.test.ts`),
+  nirgends unter `src/` importiert. Es nutzt die `node:sqlite` Sync-API
+  (`prepare().run()`, `exec('BEGIN')`), nicht den `TauriSqlAdapter`. -> Die
+  Pipeline ist NICHT in die laufende App verdrahtet. Story #14 ("Verified") ist
+  auf Modul- und Test-Ebene wahr, aber in der App NICHT aktiv.
+
+- **Projekt-Layout auf Platte (`src/services/project-service.ts`):**
+  `createProject` legt die Unterordner `entities/`, `maps/`, `sessions/`,
+  `assets/` und `plugins/` an -- NICHT `entity-types/`, `entities/{type}/` oder
+  `schemas/base/` wie im Abschnitt "Base JSON Project Layout" beschrieben. Die
+  drei Schema-Dateien liegen nur im Repo-Root unter `schemas/base/*.schema.json`
+  und werden nicht pro Projekt kopiert.
+
+- **DB-Init Migrations-Regel (Lektion aus 220b951):** Neue Spalten gehoeren in
+  das `CREATE TABLE` (Source of Truth) UND als idempotenter `ALTER`, der NACH dem
+  `apply*Schema`-Aufruf der jeweiligen Tabelle steht. Die ALTERs nutzen ein
+  verschlucktes `.catch(() => {})`; bei falscher Reihenfolge scheitert der ALTER
+  auf einer frischen DB LAUTLOS (Tabelle existiert noch nicht). Genau das
+  verursachte den `map_markers.group_name` Pin-Bug: der ALTER lief vor dem CREATE.
+
 ## Sources
 
 - `worldbuilding_architecture_study/01_Core_Data_Model.md`

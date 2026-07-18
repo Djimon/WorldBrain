@@ -36,7 +36,9 @@
 ## Stories
 
 ### M14-S04: Event-Entity-Modell (#259) — nur Modell; Ablösung = #270
-> **Split 2026-07 (Zyklus aufgelöst):** #259 enthielt ursprünglich *Modell* **und** *events-Tabellen-Ablösung*. Die Ablösung braucht aber die Konsumenten-Migration (#260 CalendarMonthView + ChronicleView), die ihrerseits das Modell braucht → #259 ↔ #260 zyklisch. Aufgelöst: **#259 = nur Modell** (`event-entity-service.ts`, im Code vorhanden); **die Ablösung der `events`-Tabelle + Konsumenten-Migration lebt in #270**. Reihenfolge: #259-Modell-Code (fertig) → #260 + ChronicleView → #270 (Rest + Tabelle droppen). **Wichtig: Issue #259 bleibt trotzdem BLOCKED bis #270 fertig ist** (ChronicleView migriert + `event-service.ts`/`event-schema.ts` gelöscht) — der Modell-*Code* ist fertig, die *Story* schließt erst nach sauberer Ablösung. Erst dann unblocken #264–#268. Stand 2026-07: #260 ✅ geschlossen; in #270 offen nur noch ChronicleView-Migration (+ 2 stale `m5-s05`-Tests als Fallout).
+> **Split 2026-07 (Zyklus aufgelöst):** #259 enthielt ursprünglich *Modell* **und** *events-Tabellen-Ablösung*. Die Ablösung braucht aber die Konsumenten-Migration (#260 CalendarMonthView + ChronicleView), die ihrerseits das Modell braucht → #259 ↔ #260 zyklisch. Aufgelöst: **#259 = nur Modell** (`event-entity-service.ts`, im Code vorhanden); **die Ablösung der `events`-Tabelle + Konsumenten-Migration lebt in #270**. Reihenfolge: #259-Modell-Code (fertig) → #260 + ChronicleView → #270 (Rest + Tabelle droppen).
+>
+> **Ist-Zustand 2026-07-18 (Drift-Korrektur):** #270 ist **KOMPLETT fertig** — ChronicleView migriert (Commit 4046119); `events`-Tabellen-DDL entfernt, `src/services/event-service.ts` + `core_data/event-schema.ts` gelöscht, `applyEventSchema()` aus `db-init.ts` entfernt (Commit e9a84a4). Damit ist die Dual-Model-Verletzung aus Decision 1 aufgelöst. **#259 ist NICHT mehr blocked** — die frühere „bleibt BLOCKED bis #270"/„nur noch ChronicleView"-Formulierung ist überholt. #264–#268 sind damit entblockt.
 
 **Owner:** data-model. **Ziel:** `Event` als generische Entity mit event-spezifischen `properties`. (Entfernen der alten `events`-Tabelle/`event-service` NICHT hier → #270.)
 
@@ -71,6 +73,8 @@
 > ohne Enddatum IST es `single`; abweichendes Enddatum ⇒ `phase` wird im Editor via `deriveEventKind`
 > abgeleitet. **Ein Review darf das nicht mehr als AC-Abweichung melden.**
 > (Herkunft: UX-Sprint-Entscheidung, stand vorher nur im Commit — deshalb hier nachgetragen.)
+>
+> **Test-Luecke 2026-07-18:** offenes Issue #293 — der Tag-Klick-Pfad hat keinen Verhaltenstest; ein Guard auf Stub-Abwesenheit ersetzt ihn. (Auch an EPIC-020 S01 verlinkt.)
 
 **AC (historisch, überholt — siehe Banner):**
 - `WorkspaceShell` reicht `onCreateEvent(counterDay)` an `CalendarMonthView` durch (heute fehlt der Prop).
@@ -93,6 +97,8 @@
 - Kein `prompt()/alert()/confirm()` (AP-003).
 - AP-001, AP-003, AP-008(RTL) in AC.
 - Tests: `m14-s07-event-form-fields` — `.dom.test.tsx`: kind-Umschalter zeigt/versteckt `end_day`; participant-Pill legt Relation an; visibility-Auswahl schreibt `visibility`.
+
+> **Ist-Zustand 2026-07-18 (Nachtrag, im Epic bisher nicht erfasst):** Nach S06/S07 kamen Wiring-/Day-Click-Fixes (#292: Commits dd2acb0, 85e6b80, 5c1956b), die das Event-Formular-Dead-Wiring und Tag-Klick-Bugs behoben. Test-Luecke zum Tag-Klick-Pfad siehe offenes Issue #293 (S06).
 
 ### M14-S15: Event-Kategorie (thematisch, erweiterbar)
 **Owner:** data-model + ui. **Erweitert #259 (offen — Modell).** **Ziel:** optionales thematisches `category`-Feld für den Chronicle-Filter.

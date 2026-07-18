@@ -39,6 +39,12 @@ Establish the local application foundation: React/TypeScript web app, basic app 
   Markdown/HTML rendering, or other user-provided content can reach the
   renderer.
 
+## Reality 2026-07-18 (Code = Truth)
+
+- Der New-Project-Flow liegt in `src/App.tsx` + `src/ui/NewProjectDialog.tsx`
+  (Projekt-Erstellung kam unter M7, 085eebe); die `appBase.current`- und
+  Dialog-CSS/Label-Bugs wurden in 220b951 (2026-07-18) gefixt.
+
 ## Story Tracking
 
 | Story | Status | Notes |

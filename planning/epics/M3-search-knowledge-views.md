@@ -29,6 +29,15 @@ Make project knowledge findable and usable through search and structured views.
 - **Global graph view:** A filtered graph not centered on one entity. User selects entity types and/or relation types to show globally (e.g. "all Faction–enemy_of–Faction edges"). Distinct from EPIC-004 local graph (which is always centered on one entity). Uses Cytoscape.js.
 - **Saved views:** Persist filter + column + sort configuration for Table and Graph views. Schema stored as JSON in SQLite.
 
+## Reality 2026-07-18 (Code = Truth): Index-Population
+
+Betrifft die Decision "Search implementation" und Story M3-S01.
+
+- Der FTS5-Index `entity_search` hat KEINE inkrementellen Writer und KEINE SQLite-Trigger. `indexEntity`/`removeEntityFromIndex` existieren, haben aber keine Laufzeit-Aufrufer (nur Tests). Bis 2026-07-18 wurde `rebuildSearchIndex` nie aufgerufen -> Index blieb leer, Suche fand nichts.
+- Fix `b340b2c` (2026-07-18): `GlobalSearch` ruft `rebuildSearchIndex` beim Mount / DB-Wechsel auf -> Voll-Rebuild, KEINE Live-Indexierung. Neue Entities erscheinen erst beim Wechsel in die Suche.
+- `rebuildSearchIndex` ist DOPPELT definiert: `core_data/search-schema.ts` UND `src/services/search-service.ts`. Der Laufzeit-Pfad (`GlobalSearch`) nutzt die SERVICE-Version. Diese speichert rohes `body_json` in die `body`-Spalte und fuellt `tags`/`properties` NIE; `aliases` werden roh (`aliases_json`) gespeichert. Die Decision-Aussage "FTS über title, aliases, summary, body, tags, properties" ist damit überzeichnet -- `tags`/`properties` sind faktisch leer.
+- Nebenbefund (niedrige Prio): M3-S01..S07 landeten in einem einzigen Squash-Commit `14012a9` (Range #42-#57); die Einzel-Nummern #43-#48 in der Story-Tabelle sind Issue-Nummern, keine separaten Merges.
+
 ## Open Decisions
 
 - None.

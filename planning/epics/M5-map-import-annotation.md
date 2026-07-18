@@ -48,6 +48,16 @@ verified in code:
   dead code (superseded by `MapGrid.tsx`/`GridLayer`, never wired anywhere) — marked `.deprecated`
   rather than deleted.
 
+## Reality 2026-07-18 (Code = Truth)
+
+- Pins tragen eine Icon-Kategorie (question/mountain/forest/cave/npc/shop/inn/town/poi);
+  Picker in `src/ui/MapViewer.tsx`. Die 'quest'-Flagge wurde probiert und wieder entfernt
+  (unleserlich). Commit 220b951.
+- `map_markers.group_name` (Default '') bildet einen per-Map Pin-Ordnerbaum
+  (Pfadsegmente mit "/"); Ordner werden als folder-anchor-Marker persistiert.
+  Migration-Reihenfolge auf frischer DB in 220b951 gefixt (ALTER lief vor CREATE ->
+  Spalte fehlte -> Pin-Anlegen schlug fehl).
+
 ## Decisions
 
 - **Rendering:** Plain Canvas 2D API — no map framework. Custom `MapCanvas` component with transform-matrix zoom/pan, `MarkerLayer` for pins/polygons/labels, `GridLayer` for square and hex grids. Hex grid math via axial coordinates (redblobgames reference). Hit-detection via ray casting. No Leaflet, Konva, or Pixi — keeps the dependency footprint minimal and avoids fighting geo-map abstractions that don't fit fantasy coordinates. If very large images (>8000px) cause performance issues on import, downscale to a sane max resolution at import time. Coordinates stored as pixel floats internally; world units derived from calibration.
@@ -77,7 +87,7 @@ verified in code:
 | E8-S02: Map image import & viewer | Verified | #76 — src/ui/MapViewer.tsx. NOTE: shipped renderer is `<img>`+CSS-transform+Canvas (NO Leaflet) after the #107 migration; original Leaflet impl was reverted. See "Rendering status correction" above. |
 | E8-S03: Map calibration | Verified | #77 — src/services/map-calibration.ts: computeCalibration (Euclidean), convertPixelsToWorldUnits. |
 | E8-S04: Marker system (pins, regions, labels) | Verified | #78 — src/ui/MapMarkers.tsx: MarkerPanel with kind filter, elevation, entity navigation, CRUD. |
-| E8-S05: Grid overlay | Verified | #79 — src/ui/GridOverlay.tsx: SVGOverlay square/hex, GridToggle, GridSettings. 4 tests use require() in ESM context (test bug). |
+| E8-S05: Grid overlay | Verified | #79 — grid overlay shipped in src/ui/MapGrid.tsx (GridLayer/CellStateLayer/PaintInteractionLayer); original src/ui/GridOverlay.tsx superseded and renamed .deprecated (#291). |
 | E8-S06: Session grid tracking mode | Verified | #80 — src/ui/SessionGridTracker.tsx: paint mode, activated cells, clear all, session scoping. |
 | E8-S07: Marker visibility & condition gates | Verified | #81 — src/services/map-marker-visibility.ts: 4 visibility scopes, inline JsonLogic evaluator. |
 | E8-S08: Map embed block | Verified | #82 — src/blocks/MapEmbedBlock.tsx + src/editor/extensions/MapEmbedExtension.ts; map_embed in block-registry (renderer) + block-conversion. |
