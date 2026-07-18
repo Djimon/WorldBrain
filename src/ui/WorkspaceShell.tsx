@@ -35,6 +35,7 @@ import { SnapshotManager } from './SnapshotManager';
 import { UpdateNotification } from './UpdateNotification';
 import { MapViewer } from './MapViewer';
 import { LayerPanel } from './LayerPanel';
+import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -116,6 +117,9 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   const [calendarNewTitle, setCalendarNewTitle] = useState('');
   const [evalResult, setEvalResult] = useState<string | null>(null);
   const [mapImporting, setMapImporting] = useState(false);
+  // Bumped after adding a layer -> remounts MapViewer + LayerPanel so both
+  // reload by map_id (markers/grid/cells/layers all re-render, nothing lost).
+  const [layerRefresh, setLayerRefresh] = useState(0);
   const [savedViews, setSavedViews] = useState<SavedViewRow[]>([]);
   const [sessionVarsRaw, setSessionVarsRaw] = useState<VarRow[]>([]);
 
@@ -247,6 +251,22 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     }
   }
 
+  async function handleAddImageLayer() {
+    if (!selectedMapId) return;
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const selected = await open({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
+    if (typeof selected !== 'string') return;
+    const name = selected.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? 'Bild-Layer';
+    await importImageLayer(database, { map_id: selectedMapId, srcPath: selected, projectDir, name });
+    setLayerRefresh((n) => n + 1);
+  }
+
+  async function handleAddFogLayer() {
+    if (!selectedMapId) return;
+    await createFogLayer(database, { map_id: selectedMapId, name: 'Fog' });
+    setLayerRefresh((n) => n + 1);
+  }
+
   function runEvaluation(kind: 'mystery' | 'role' | 'quest') {
     try {
       if (kind === 'mystery') {
@@ -374,10 +394,16 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
               {selectedMapId ? (
                 <>
                   <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                    <MapViewer mapId={selectedMapId} sessionId={projectId} database={database} showCoordinates onNavigateToEntity={navigateToEntity} />
+                    <MapViewer key={`mv-${selectedMapId}-${layerRefresh}`} mapId={selectedMapId} sessionId={projectId} database={database} showCoordinates onNavigateToEntity={navigateToEntity} />
                   </div>
                   <div className="maps-layer-dock">
-                    <LayerPanel database={database} mapId={selectedMapId} />
+                    <LayerPanel
+                      key={`lp-${selectedMapId}-${layerRefresh}`}
+                      database={database}
+                      mapId={selectedMapId}
+                      onAddImageLayer={() => void handleAddImageLayer()}
+                      onAddFogLayer={() => void handleAddFogLayer()}
+                    />
                   </div>
                 </>
               ) : (

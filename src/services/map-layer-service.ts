@@ -82,6 +82,13 @@ export async function reorderLayers(db: DatabaseLike, _mapId: string, orderedIds
   }
 }
 
+/** Next free z_order for a map = max(existing) + 1, or 0 for the first layer. */
+async function nextZOrder(db: DatabaseLike, mapId: string): Promise<number> {
+  const rows = await db.select<{ maxZ: number | null }>('SELECT MAX(z_order) AS maxZ FROM map_layers WHERE map_id = ?', [mapId]);
+  const maxZ = rows[0]?.maxZ;
+  return maxZ === null || maxZ === undefined ? 0 : maxZ + 1;
+}
+
 export interface ImportImageLayerParams {
   map_id: string;
   srcPath: string;
@@ -93,9 +100,20 @@ export interface ImportImageLayerParams {
  * M15-S03 (#275): imports an image (reusing map-service's existing asset-copy
  * flow — same path as the base map image import, no new importer) and
  * creates an `image` layer for it at `z_order = max(existing z_order) + 1`.
+ * Purely additive: never touches maps, markers, grid, or existing layers.
  */
-export async function importImageLayer(_db: DatabaseLike, _params: ImportImageLayerParams): Promise<{ id: string }> {
-  throw new Error('not implemented');
+export async function importImageLayer(db: DatabaseLike, params: ImportImageLayerParams): Promise<{ id: string }> {
+  // Dynamic import keeps this module free of Tauri deps for non-import code
+  // paths (e.g. createFogLayer under node:sqlite tests).
+  const { copyMapAsset } = await import('./map-asset');
+  const assetPath = await copyMapAsset(params.srcPath, params.projectDir, `layer-${crypto.randomUUID()}`);
+  const z = await nextZOrder(db, params.map_id);
+  const id = `layer_${crypto.randomUUID()}`;
+  await db.execute(
+    'INSERT INTO map_layers (id, map_id, layer_type, name, asset_id, opacity, z_order) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [id, params.map_id, 'image', params.name ?? null, assetPath, 1, z],
+  );
+  return { id };
 }
 
 export interface CreateFogLayerParams {
@@ -103,10 +121,46 @@ export interface CreateFogLayerParams {
   name?: string;
 }
 
+// 1x1 opaque PNG — placeholder mask for environments without a canvas 2D
+// backend (jsdom/tests). Real masks are generated full-size below; fog paint
+// (S04) replaces this per stroke.
+const OPAQUE_1PX_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+/** Builds a fully-covering (opaque) mask sized to the map, or a 1x1 fallback. */
+async function buildFullCoverMask(db: DatabaseLike, mapId: string): Promise<string> {
+  try {
+    const rows = await db.select<{ w: number; h: number }>('SELECT image_width_px AS w, image_height_px AS h FROM maps WHERE id = ?', [mapId]);
+    const w = rows[0]?.w;
+    const h = rows[0]?.h;
+    if (w && h && typeof document !== 'undefined') {
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, w, h);
+        return canvas.toDataURL('image/png');
+      }
+    }
+  } catch {
+    // fall through to the placeholder
+  }
+  return OPAQUE_1PX_PNG;
+}
+
 /**
  * M15-S04 (#276): creates a `fog` layer at `z_order = max(existing) + 1`
  * with an initial fully-covering mask_data (whole map hidden until painted).
+ * Purely additive: never touches maps, markers, grid, or existing layers.
  */
-export async function createFogLayer(_db: DatabaseLike, _params: CreateFogLayerParams): Promise<{ id: string }> {
-  throw new Error('not implemented');
+export async function createFogLayer(db: DatabaseLike, params: CreateFogLayerParams): Promise<{ id: string }> {
+  const mask = await buildFullCoverMask(db, params.map_id);
+  const z = await nextZOrder(db, params.map_id);
+  const id = `layer_${crypto.randomUUID()}`;
+  await db.execute(
+    'INSERT INTO map_layers (id, map_id, layer_type, name, mask_data, opacity, z_order) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [id, params.map_id, 'fog', params.name ?? null, mask, 1, z],
+  );
+  return { id };
 }

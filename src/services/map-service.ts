@@ -1,8 +1,7 @@
-import { copyFile, mkdir } from '@tauri-apps/plugin-fs';
-import { join } from '@tauri-apps/api/path';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import type { DatabaseLike } from './entity-service';
 import { createLayer } from './map-layer-service';
+import { copyMapAsset } from './map-asset';
 
 export interface MapRow {
   id: string;
@@ -25,14 +24,9 @@ export async function importMapImage(
   db: DatabaseLike,
   opts: { srcPath: string; title: string; projectDir: string },
 ): Promise<{ id: string }> {
-  const assetsDir = await join(opts.projectDir, 'assets', 'maps');
-  await mkdir(assetsDir, { recursive: true });
-
-  const ext = opts.srcPath.split('.').pop() ?? 'png';
   const id = `map-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-  const destName = `${id}.${ext}`;
-  const destPath = await join(assetsDir, destName);
-  await copyFile(opts.srcPath, destPath);
+  // Same asset-copy flow used for per-layer image import (assets/maps/<id>.<ext>).
+  const destPath = await copyMapAsset(opts.srcPath, opts.projectDir, id);
 
   // Get image dimensions via Image element
   const url = convertFileSrc(destPath);

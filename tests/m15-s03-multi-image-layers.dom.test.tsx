@@ -72,6 +72,12 @@ vi.mock('../src/services/session-variable-service', () => ({
   getGlobalVar: vi.fn(async () => null),
 }));
 
+// importImageLayer reuses the shared asset copy — mock it (Tauri fs has no
+// runtime in jsdom). Only the orchestration contract is asserted here.
+vi.mock('../src/services/map-asset', () => ({
+  copyMapAsset: vi.fn(async () => '/proj/assets/maps/layer-x.png'),
+}));
+
 const mockDb = { execute: vi.fn(), select: vi.fn() };
 
 describe('M15-S03 multi-image layers render stacked in MapViewer', () => {
@@ -117,8 +123,21 @@ describe('M15-S03 multi-image layers render stacked in MapViewer', () => {
 });
 
 describe('M15-S03 importImageLayer orchestration', () => {
-  it('is not yet implemented (stub) — creating an image layer via import throws', async () => {
+  it('creates an image layer at z_order = max(existing) + 1 with the copied asset path', async () => {
     const { importImageLayer } = await import('../src/services/map-layer-service');
-    await expect(importImageLayer(mockDb as never, { map_id: 'map-1', srcPath: '/tmp/x.png', projectDir: '/proj' })).rejects.toThrow();
+    const execute = vi.fn(async () => {});
+    const select = vi.fn(async (sql: string) => (sql.includes('MAX(z_order)') ? [{ maxZ: 2 }] : []));
+    const db = { execute, select } as never;
+
+    const { id } = await importImageLayer(db, { map_id: 'map-1', srcPath: '/tmp/x.png', projectDir: '/proj', name: 'Overlay' });
+    expect(id).toMatch(/^layer_/);
+
+    const insert = execute.mock.calls.find((c) => String(c[0]).includes('INSERT INTO map_layers'));
+    expect(insert).toBeTruthy();
+    const args = insert![1] as unknown[];
+    expect(args).toContain('image');
+    expect(args).toContain('Overlay');
+    expect(args).toContain('/proj/assets/maps/layer-x.png'); // from mocked copyMapAsset
+    expect(args).toContain(3); // z_order = max(2) + 1
   });
 });

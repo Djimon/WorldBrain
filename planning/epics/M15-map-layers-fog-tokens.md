@@ -107,11 +107,15 @@ Verifizierter Status aus git. Die Stories-Tabelle bildet Plan/Scope ab, NICHT de
   #294 (P0). GELÖST 2026-07-18: LayerPanel dockt im Maps-Bereich unter dem `MapViewer`
   (`WorkspaceShell` case 'maps', `.maps-layer-dock`), sichtbar sobald eine Karte gewählt ist.
   Mount-Verhaltenstest: `tests/m15-s02-layer-panel-mount.dom.test.tsx` (rendert das echte
-  Panel im Maps-Container, nicht isoliert). Add-Image/Add-Fog-Handler bleiben offen (S03/S04).
-- S03 #275: PARTIELL — Image-Layer-Stacking rendert (72234e8), aber
-  `map-layer-service.importImageLayer` ist ein Stub (throw 'not implemented'); neue Layer
-  können nicht importiert werden.
-- S04 #276 (Fog): NICHT implementiert — nur RED-Tests, `createFogLayer` ist Stub.
+  Panel im Maps-Container, nicht isoliert). Add-Image/Add-Fog-Handler verdrahtet 2026-07-18.
+- S03 #275: Image-Layer-Stacking rendert (72234e8). `importImageLayer` implementiert
+  2026-07-18: reuse des geteilten Asset-Copy (`map-asset.copyMapAsset`, denselben Flow nutzt
+  auch `importMapImage`), neuer Image-Layer bei `z_order = max+1`. Add-Image-Button im
+  LayerPanel verdrahtet (`WorkspaceShell.handleAddImageLayer`). Additiv — Pins/Grid/Cells
+  bleiben (per `map_id`, kein `layer_id`). Rest offen: mehrfach-Stack-Feinschliff.
+- S04 #276 (Fog): `createFogLayer` implementiert 2026-07-18 (fog-Layer bei `z_order = max+1`
+  mit voll deckender Maske; Add-Fog-Button verdrahtet). OFFEN: Fog-Paint-Tooling
+  (`FogTools`/`FogMaskCanvas`, Pinsel/Rechteck, Reveal/Cover) + MapViewer-Fog-Render.
 - S05 #277 (Folders): NICHT implementiert — RED-Tests, `map-folder-service` komplett Stubs,
   `MapFolderTree.tsx` unmounted.
 - S06 #278 (Tokens): NICHT implementiert — RED-Tests, `map-token-service` komplett Stubs.
