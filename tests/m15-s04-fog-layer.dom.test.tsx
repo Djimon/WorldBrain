@@ -99,12 +99,14 @@ describe('M15-S04 (UI): FogTools toolbar', () => {
     expect(screen.getByRole('slider', { name: /^weichzeichnung$/i })).toBeInTheDocument();
   });
 
-  it('renders brush and rectangle shape buttons; clicking rectangle calls onShapeChange', () => {
+  it('renders brush, square and region shape buttons; clicking calls onShapeChange with the right shape', () => {
     const onShapeChange = vi.fn();
     render(<FogTools {...baseProps({ onShapeChange })} />);
     expect(screen.getByRole('button', { name: /^pinsel$/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^rechteck$/i }));
-    expect(onShapeChange).toHaveBeenCalledWith('rectangle');
+    expect(onShapeChange).toHaveBeenCalledWith('square');
+    fireEvent.click(screen.getByRole('button', { name: /^bereich$/i }));
+    expect(onShapeChange).toHaveBeenCalledWith('region');
   });
 
   it('renders reveal/cover mode buttons; clicking cover calls onModeChange', () => {
@@ -162,6 +164,19 @@ describe('M15-S04 (UI): FogMaskCanvas', () => {
     fireEvent.pointerDown(canvas, { clientX: 10, clientY: 10 });
     fireEvent.pointerUp(canvas, { clientX: 10, clientY: 10 });
     expect(onStrokeEnd).not.toHaveBeenCalled();
+  });
+
+  it('square dab and region tools both commit a mask on stroke end', () => {
+    for (const shape of ['square', 'region'] as const) {
+      const onStrokeEnd = vi.fn();
+      const { unmount } = render(<FogMaskCanvas {...baseProps({ shape, onStrokeEnd })} />);
+      const canvas = document.querySelector('canvas[data-fog-layer-id="layer_fog_1"]') as HTMLElement;
+      fireEvent.pointerDown(canvas, { clientX: 10, clientY: 10 });
+      fireEvent.pointerMove(canvas, { clientX: 40, clientY: 40 });
+      fireEvent.pointerUp(canvas, { clientX: 40, clientY: 40 });
+      expect(onStrokeEnd).toHaveBeenCalledWith(expect.any(String));
+      unmount();
+    }
   });
 });
 

@@ -65,11 +65,26 @@ export function FogMaskCanvas({
     ctx.restore();
   }
 
+  // Square dab (rectangular brush) — edge = brushSize, centered on the cursor.
+  function stampSquare(ctx: CanvasRenderingContext2D, x: number, y: number) {
+    ctx.save();
+    paintOp(ctx);
+    if (feather > 0) { ctx.shadowColor = '#000'; ctx.shadowBlur = feather; }
+    ctx.fillRect(x - brushSize / 2, y - brushSize / 2, brushSize, brushSize);
+    ctx.restore();
+  }
+
+  // Region fill — drag corner to corner.
   function stampRect(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number) {
     ctx.save();
     paintOp(ctx);
     ctx.fillRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
     ctx.restore();
+  }
+
+  function dab(ctx: CanvasRenderingContext2D, x: number, y: number) {
+    if (shape === 'brush') stampBrush(ctx, x, y);
+    else if (shape === 'square') stampSquare(ctx, x, y);
   }
 
   function emit() {
@@ -92,25 +107,25 @@ export function FogMaskCanvas({
     const p = toCanvasCoords(e.clientX, e.clientY);
     start.current = p;
     const ctx = canvas.getContext('2d');
-    if (ctx && shape === 'brush') stampBrush(ctx, p.x, p.y);
+    if (ctx) dab(ctx, p.x, p.y); // brush/square paint immediately; region waits for up
     try { canvas.setPointerCapture(e.pointerId); } catch { /* jsdom */ }
   }
 
   function handleMove(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!active) return;
     const p = toCanvasCoords(e.clientX, e.clientY);
-    setHover(p); // brush-size preview follows the cursor
-    if (!drawing.current || shape !== 'brush') return;
+    setHover(p); // preview follows the cursor (also drives the region rubber-band)
+    if (!drawing.current || shape === 'region') return;
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
-    stampBrush(ctx, p.x, p.y);
+    dab(ctx, p.x, p.y);
   }
 
   function handleUp(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!active || !drawing.current) return;
     drawing.current = false;
     const ctx = canvasRef.current?.getContext('2d') ?? null;
-    if (ctx && shape === 'rectangle' && start.current) {
+    if (ctx && shape === 'region' && start.current) {
       const p = toCanvasCoords(e.clientX, e.clientY);
       stampRect(ctx, start.current.x, start.current.y, p.x, p.y);
     }
@@ -126,16 +141,16 @@ export function FogMaskCanvas({
         width={imgW}
         height={imgH}
         className="fog-mask-canvas"
-        style={{ position: 'absolute', top: 0, left: 0, pointerEvents: active ? 'auto' : 'none', cursor: active ? 'none' : undefined }}
+        style={{ position: 'absolute', top: 0, left: 0, pointerEvents: active ? 'auto' : 'none', cursor: active ? (shape === 'region' ? 'crosshair' : 'none') : undefined }}
         onPointerDown={handleDown}
         onPointerMove={handleMove}
         onPointerUp={handleUp}
         onPointerLeave={() => setHover(null)}
       />
-      {active && hover && (
-        // Preview follows the cursor for both tools. Circle diameter and square
-        // edge are both brushSize (= 2 x radius), so the two tools stay the same
-        // visual size when switching.
+      {/* Dab preview for brush (circle) and square (rectangle) — circle diameter
+          and square edge are both brushSize (= 2 x radius), so switching keeps the
+          same visual size. */}
+      {active && hover && shape !== 'region' && (
         <div
           className="fog-brush-preview"
           style={{
@@ -149,6 +164,23 @@ export function FogMaskCanvas({
             border: '1px solid rgba(255,255,255,0.9)',
             boxShadow: '0 0 0 1px rgba(0,0,0,0.6)',
             filter: feather > 0 ? `blur(${feather / 4}px)` : undefined,
+          }}
+        />
+      )}
+      {/* Region rubber-band while dragging corner to corner. */}
+      {active && hover && shape === 'region' && drawing.current && start.current && (
+        <div
+          className="fog-region-preview"
+          style={{
+            position: 'absolute',
+            left: Math.min(start.current.x, hover.x),
+            top: Math.min(start.current.y, hover.y),
+            width: Math.abs(hover.x - start.current.x),
+            height: Math.abs(hover.y - start.current.y),
+            pointerEvents: 'none',
+            border: '1px dashed rgba(255,255,255,0.9)',
+            boxShadow: '0 0 0 1px rgba(0,0,0,0.6)',
+            background: 'rgba(255,255,255,0.08)',
           }}
         />
       )}

@@ -4,7 +4,9 @@
 import { useTranslation } from 'react-i18next';
 
 export type FogToolMode = 'reveal' | 'cover';
-export type FogToolShape = 'brush' | 'rectangle';
+// brush = round dab, square = rectangular dab (both paint while dragging),
+// region = drag corner-to-corner to fill a rectangle.
+export type FogToolShape = 'brush' | 'square' | 'region';
 
 export interface FogToolsProps {
   brushSize: number;
@@ -29,9 +31,13 @@ export function FogTools({
           aria-pressed={shape === 'brush'} onClick={() => onShapeChange('brush')}>
           {t('fog.brush', 'Pinsel')}
         </button>
-        <button type="button" className={`fog-tools__btn${shape === 'rectangle' ? ' active' : ''}`}
-          aria-pressed={shape === 'rectangle'} onClick={() => onShapeChange('rectangle')}>
-          {t('fog.rectangle', 'Rechteck')}
+        <button type="button" className={`fog-tools__btn${shape === 'square' ? ' active' : ''}`}
+          aria-pressed={shape === 'square'} onClick={() => onShapeChange('square')}>
+          {t('fog.square', 'Rechteck')}
+        </button>
+        <button type="button" className={`fog-tools__btn${shape === 'region' ? ' active' : ''}`}
+          aria-pressed={shape === 'region'} onClick={() => onShapeChange('region')}>
+          {t('fog.region', 'Bereich')}
         </button>
       </div>
 
