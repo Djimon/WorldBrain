@@ -37,6 +37,11 @@ interface Props {
   /** Fog layer currently selected for painting (from the LayerPanel). When set,
    *  the map enters fog-paint on that layer and shows the fog toolbar. */
   editFogLayerId?: string | null;
+  /** Bumped by the parent to make the map reload its layers live (no remount). */
+  reloadKey?: number;
+  /** Notifies the parent that layers changed here (e.g. a fog stroke) so other
+   *  views (LayerPanel) can refresh. */
+  onLayersChanged?: () => void;
 }
 
 function parsePinGeometry(json: string): { x: number; y: number; notes?: string; condition?: unknown } {
@@ -459,14 +464,14 @@ function RadiusOverlay({
   );
 }
 
-export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity, editFogLayerId = null }: Props) {
+export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity, editFogLayerId = null, reloadKey = 0, onLayersChanged }: Props) {
   const { t } = useTranslation('map');
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [imageLayers, setImageLayers] = useState<MapLayerRow[]>([]);
   const [fogLayers, setFogLayers] = useState<MapLayerRow[]>([]);
   const [fogBrush, setFogBrush] = useState(40);
   const [fogFeather, setFogFeather] = useState(8);
-  const [fogMode, setFogMode] = useState<FogToolMode>('cover');
+  const [fogMode, setFogMode] = useState<FogToolMode>('reveal');
   const [fogShape, setFogShape] = useState<FogToolShape>('brush');
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
   const [markers, setMarkers] = useState<MarkerRow[]>([]);
@@ -545,11 +550,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     getMarkersForMap(database, mapId).then(setMarkers).catch(console.error);
   }
 
-  useEffect(() => {
-    getMap(database, mapId).then((m) => {
-      if (!m) return;
-      if (m.image_width_px) setImgSize({ w: m.image_width_px, h: m.image_height_px });
-    }).catch(console.error);
+  function reloadLayers() {
     listLayers(database, mapId).then((layers) => {
       const visibleImages = layers
         .filter((l) => l.layer_type === 'image' && l.visible)
@@ -559,6 +560,19 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       setFogLayers(layers
         .filter((l) => l.layer_type === 'fog' && l.visible)
         .sort((a, b) => a.z_order - b.z_order));
+    }).catch(console.error);
+  }
+
+  // Layers reload on their own signal (reloadKey) so opacity/visibility/add
+  // changes made in the LayerPanel show up live here without a remount.
+  useEffect(() => {
+    reloadLayers();
+  }, [database, mapId, reloadKey]);
+
+  useEffect(() => {
+    getMap(database, mapId).then((m) => {
+      if (!m) return;
+      if (m.image_width_px) setImgSize({ w: m.image_width_px, h: m.image_height_px });
     }).catch(console.error);
     reloadMarkers();
     getActivatedCells(database, sessionId, mapId)
@@ -598,7 +612,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
 
   function handleFogStrokeEnd(layerId: string, maskDataUrl: string) {
     setFogLayers((prev) => prev.map((l) => (l.id === layerId ? { ...l, mask_data: maskDataUrl } : l)));
-    updateLayer(database, layerId, { mask_data: maskDataUrl }).catch(console.error);
+    updateLayer(database, layerId, { mask_data: maskDataUrl }).then(() => onLayersChanged?.()).catch(console.error);
   }
 
   // NOTE: onWheel as React synthetic handler works in Tauri (no outer scroll container).
@@ -939,7 +953,10 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             />
           ))}
           {imgSize.w > 0 && fogLayers.map((layer) => (
-            <div key={layer.id} style={{ position: 'absolute', top: 0, left: 0, opacity: layer.opacity }}>
+            // DM editing view dims fog to ~half so the map stays visible while
+            // painting; the mask itself is full coverage (players see it opaque
+            // via the player-map export path).
+            <div key={layer.id} style={{ position: 'absolute', top: 0, left: 0, opacity: layer.opacity * 0.5 }}>
               <FogMaskCanvas
                 layerId={layer.id}
                 maskData={layer.mask_data}

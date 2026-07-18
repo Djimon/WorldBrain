@@ -117,9 +117,10 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   const [calendarNewTitle, setCalendarNewTitle] = useState('');
   const [evalResult, setEvalResult] = useState<string | null>(null);
   const [mapImporting, setMapImporting] = useState(false);
-  // Bumped after adding a layer -> remounts MapViewer + LayerPanel so both
-  // reload by map_id (markers/grid/cells/layers all re-render, nothing lost).
-  const [layerRefresh, setLayerRefresh] = useState(0);
+  // Bumped whenever layers change (add / opacity / visibility / reorder / fog
+  // stroke) -> MapViewer and LayerPanel reload their layer list live, no remount
+  // (view/zoom preserved; markers/grid/cells untouched).
+  const [layerReloadKey, setLayerReloadKey] = useState(0);
   // Fog layer currently selected for painting (shared: LayerPanel selects it,
   // MapViewer paints it).
   const [editingFogLayerId, setEditingFogLayerId] = useState<string | null>(null);
@@ -264,14 +265,14 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     if (typeof selected !== 'string') return;
     const name = selected.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? 'Bild-Layer';
     await importImageLayer(database, { map_id: selectedMapId, srcPath: selected, projectDir, name });
-    setLayerRefresh((n) => n + 1);
+    setLayerReloadKey((n) => n + 1);
   }
 
   async function handleAddFogLayer() {
     if (!selectedMapId) return;
     const { id } = await createFogLayer(database, { map_id: selectedMapId, name: 'Fog' });
     setEditingFogLayerId(id); // select the new fog layer for painting right away
-    setLayerRefresh((n) => n + 1);
+    setLayerReloadKey((n) => n + 1);
   }
 
   function runEvaluation(kind: 'mystery' | 'role' | 'quest') {
@@ -364,7 +365,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
       case 'maps':
         return (
           <div className="workspace-area" style={{ overflow: 'hidden' }}>
-            <div className="workspace-area__sidebar">
+            <div className="workspace-area__sidebar maps-sidebar">
               <h3>{t('maps')}</h3>
               <button
                 className="emd__create-btn"
@@ -396,25 +397,36 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                   {t('noMaps')}
                 </p>
               )}
+              {selectedMapId && (
+                <div className="maps-layer-section">
+                  <h3 className="maps-layer-section__title">{t('layers', { defaultValue: 'Ebenen' })}</h3>
+                  <LayerPanel
+                    key={`lp-${selectedMapId}`}
+                    database={database}
+                    mapId={selectedMapId}
+                    editingFogLayerId={editingFogLayerId}
+                    onEditFogLayer={(id) => setEditingFogLayerId((cur) => (cur === id ? null : id))}
+                    onAddImageLayer={() => void handleAddImageLayer()}
+                    onAddFogLayer={() => void handleAddFogLayer()}
+                    reloadKey={layerReloadKey}
+                    onLayersChanged={() => setLayerReloadKey((n) => n + 1)}
+                  />
+                </div>
+              )}
             </div>
-            <div style={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
               {selectedMapId ? (
-                <>
-                  <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                    <MapViewer key={`mv-${selectedMapId}-${layerRefresh}`} mapId={selectedMapId} sessionId={projectId} database={database} showCoordinates onNavigateToEntity={navigateToEntity} editFogLayerId={editingFogLayerId} />
-                  </div>
-                  <div className="maps-layer-dock">
-                    <LayerPanel
-                      key={`lp-${selectedMapId}-${layerRefresh}`}
-                      database={database}
-                      mapId={selectedMapId}
-                      editingFogLayerId={editingFogLayerId}
-                      onEditFogLayer={(id) => setEditingFogLayerId((cur) => (cur === id ? null : id))}
-                      onAddImageLayer={() => void handleAddImageLayer()}
-                      onAddFogLayer={() => void handleAddFogLayer()}
-                    />
-                  </div>
-                </>
+                <MapViewer
+                  key={`mv-${selectedMapId}`}
+                  mapId={selectedMapId}
+                  sessionId={projectId}
+                  database={database}
+                  showCoordinates
+                  onNavigateToEntity={navigateToEntity}
+                  editFogLayerId={editingFogLayerId}
+                  reloadKey={layerReloadKey}
+                  onLayersChanged={() => setLayerReloadKey((n) => n + 1)}
+                />
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)' }}>
                   Karte aus der Liste wählen oder importieren

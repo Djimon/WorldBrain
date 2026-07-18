@@ -23,11 +23,15 @@ export interface LayerPanelProps {
   editingFogLayerId?: string | null;
   /** Toggle a fog layer as the paint target (MapViewer paints it). */
   onEditFogLayer?: (layerId: string) => void;
+  /** Bumped by the parent to reload the list live (no remount). */
+  reloadKey?: number;
+  /** Notifies the parent that layers changed so other views (MapViewer) refresh. */
+  onLayersChanged?: () => void;
 }
 
 const LAYER_TYPE_ICON: Record<string, string> = { image: '🖼️', fog: '🌫️', token: '🎯' };
 
-export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, editingFogLayerId, onEditFogLayer }: LayerPanelProps) {
+export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, editingFogLayerId, onEditFogLayer, reloadKey = 0, onLayersChanged }: LayerPanelProps) {
   const { t } = useTranslation();
   const [layers, setLayers] = useState<MapLayerRow[]>([]);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -40,26 +44,26 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, ed
 
   useEffect(() => {
     reload();
-  }, [database, mapId]);
+  }, [database, mapId, reloadKey]);
 
   const sorted = [...layers].sort((a, b) => b.z_order - a.z_order);
 
   function handleOpacityChange(layer: MapLayerRow, value: number) {
     const opacity = value / 100;
     setLayers((prev) => prev.map((l) => (l.id === layer.id ? { ...l, opacity } : l)));
-    updateLayer(database, layer.id, { opacity }).catch(console.error);
+    updateLayer(database, layer.id, { opacity }).then(() => onLayersChanged?.()).catch(console.error);
   }
 
   function handleToggleVisible(layer: MapLayerRow) {
     const visible = !layer.visible;
     setLayers((prev) => prev.map((l) => (l.id === layer.id ? { ...l, visible: visible ? 1 : 0 } : l)));
-    updateLayer(database, layer.id, { visible }).catch(console.error);
+    updateLayer(database, layer.id, { visible }).then(() => onLayersChanged?.()).catch(console.error);
   }
 
   function handleTogglePlayerVisible(layer: MapLayerRow) {
     const player_visible = !layer.player_visible;
     setLayers((prev) => prev.map((l) => (l.id === layer.id ? { ...l, player_visible: player_visible ? 1 : 0 } : l)));
-    updateLayer(database, layer.id, { player_visible }).catch(console.error);
+    updateLayer(database, layer.id, { player_visible }).then(() => onLayersChanged?.()).catch(console.error);
   }
 
   function handleMove(layerId: string, direction: -1 | 1) {
@@ -68,12 +72,12 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, ed
     if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return;
     const reordered = [...sorted];
     [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
-    reorderLayers(database, mapId, reordered.map((l) => l.id)).then(reload).catch(console.error);
+    reorderLayers(database, mapId, reordered.map((l) => l.id)).then(reload).then(() => onLayersChanged?.()).catch(console.error);
   }
 
   function commitDelete(layerId: string) {
     setDeleteConfirmId(null);
-    deleteLayer(database, layerId).then(reload).catch(console.error);
+    deleteLayer(database, layerId).then(reload).then(() => onLayersChanged?.()).catch(console.error);
   }
 
   function startEditName(layer: MapLayerRow) {
