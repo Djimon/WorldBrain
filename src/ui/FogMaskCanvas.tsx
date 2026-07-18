@@ -132,7 +132,10 @@ export function FogMaskCanvas({
         onPointerUp={handleUp}
         onPointerLeave={() => setHover(null)}
       />
-      {active && hover && shape === 'brush' && (
+      {active && hover && (
+        // Preview follows the cursor for both tools. Circle diameter and square
+        // edge are both brushSize (= 2 x radius), so the two tools stay the same
+        // visual size when switching.
         <div
           className="fog-brush-preview"
           style={{
@@ -141,7 +144,7 @@ export function FogMaskCanvas({
             top: hover.y - brushSize / 2,
             width: brushSize,
             height: brushSize,
-            borderRadius: '50%',
+            borderRadius: shape === 'brush' ? '50%' : 0,
             pointerEvents: 'none',
             border: '1px solid rgba(255,255,255,0.9)',
             boxShadow: '0 0 0 1px rgba(0,0,0,0.6)',
