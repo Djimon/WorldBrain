@@ -134,11 +134,11 @@ const OPAQUE_1PX_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCA
 
 /** Builds a fully-covering (opaque) mask sized to the map, or a 1x1 fallback. */
 async function buildFullCoverMask(db: DatabaseLike, mapId: string): Promise<string> {
-  try {
-    const rows = await db.select<{ w: number; h: number }>('SELECT image_width_px AS w, image_height_px AS h FROM maps WHERE id = ?', [mapId]);
-    const w = rows[0]?.w;
-    const h = rows[0]?.h;
-    if (w && h && typeof document !== 'undefined') {
+  const rows = await db.select<{ w: number; h: number }>('SELECT image_width_px AS w, image_height_px AS h FROM maps WHERE id = ?', [mapId]);
+  const w = rows[0]?.w;
+  const h = rows[0]?.h;
+  if (w && h && typeof document !== 'undefined') {
+    try {
       const canvas = document.createElement('canvas');
       canvas.width = w;
       canvas.height = h;
@@ -148,9 +148,9 @@ async function buildFullCoverMask(db: DatabaseLike, mapId: string): Promise<stri
         ctx.fillRect(0, 0, w, h);
         return canvas.toDataURL('image/png');
       }
+    } catch {
+      // canvas 2D backend unavailable — fall through to the placeholder
     }
-  } catch {
-    // fall through to the placeholder
   }
   return OPAQUE_1PX_PNG;
 }
