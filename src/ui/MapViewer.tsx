@@ -338,7 +338,7 @@ function PinTree({ markers, editingId, onSelect, panelCollapsed, onTogglePanel, 
     <div className="map-pin-tree">
       <div className="map-pin-tree__resize-handle" onMouseDown={onResizeStart} />
       <div className="map-pin-editor__header">
-        <span>Pins ({markers.length})</span>
+        <span>Pins ({markers.filter((m) => m.kind !== 'folder-anchor').length})</span>
         <button className="map-pin-tree__new-folder-btn" title="Neuer Ordner"
           onClick={() => setNewFolderInput(true)}>📁+</button>
         <button onClick={onTogglePanel} title="Einklappen">◀</button>
@@ -1044,7 +1044,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               onCellContextMenu={handleCellContextMenu}
             />
           )}
-          {markers.map((m) => {
+          {markers.filter((m) => m.kind !== 'folder-anchor').map((m) => {
             const geo = parsePinGeometry(m.geometry_json);
             const isSelected = selectedPinId === m.id;
             const isMoving = movingPinId === m.id;
