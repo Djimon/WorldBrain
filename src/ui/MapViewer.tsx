@@ -1282,17 +1282,24 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
 
       {/* Right sidebar — PINS / TOKEN tabs; pin tree resizable + collapsible */}
       <div style={{ width: pinTreeCollapsed ? 32 : pinTreeWidth, flexShrink: 0, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        {!pinTreeCollapsed && (
-          <div className="map-side-tabs" role="tablist">
-            <button type="button" role="tab" aria-selected={rightTab === 'pins'}
-              className={`map-side-tabs__tab${rightTab === 'pins' ? ' active' : ''}`}
-              onClick={() => setRightTab('pins')}>{t('mapSideTabs.pins', 'Pins')}</button>
-            <button type="button" role="tab" aria-selected={rightTab === 'tokens'}
-              className={`map-side-tabs__tab${rightTab === 'tokens' ? ' active' : ''}`}
-              onClick={() => setRightTab('tokens')}>{t('mapSideTabs.tokens', 'Token')}</button>
+        {pinTreeCollapsed ? (
+          <div className="map-side-collapsed">
+            <button type="button" className="map-side-collapsed__tab" title={t('mapSideTabs.pins', 'Pins')}
+              onClick={() => { setRightTab('pins'); setPinTreeCollapsed(false); }}>{t('mapSideTabs.pins', 'Pins')}</button>
+            <button type="button" className="map-side-collapsed__tab" title={t('mapSideTabs.tokens', 'Token')}
+              onClick={() => { setRightTab('tokens'); setPinTreeCollapsed(false); }}>{t('mapSideTabs.tokens', 'Token')}</button>
           </div>
-        )}
-        {(rightTab === 'tokens' && !pinTreeCollapsed) ? (
+        ) : (
+        <>
+        <div className="maps-sidebar-tabs__list" role="tablist">
+          <button type="button" role="tab" aria-selected={rightTab === 'pins'}
+            className={`maps-sidebar-tabs__tab${rightTab === 'pins' ? ' maps-sidebar-tabs__tab--active' : ''}`}
+            onClick={() => setRightTab('pins')}>{t('mapSideTabs.pins', 'Pins')}</button>
+          <button type="button" role="tab" aria-selected={rightTab === 'tokens'}
+            className={`maps-sidebar-tabs__tab${rightTab === 'tokens' ? ' maps-sidebar-tabs__tab--active' : ''}`}
+            onClick={() => setRightTab('tokens')}>{t('mapSideTabs.tokens', 'Token')}</button>
+        </div>
+        {rightTab === 'tokens' ? (
           <div className="map-token-list">
             {tokens.length === 0 && (
               <div className="map-token-list__empty">{t('mapSideTabs.noTokens', 'Keine Tokens. Token-Werkzeug + Klick auf die Karte.')}</div>
@@ -1317,8 +1324,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           markers={markers}
           editingId={editingPin?.id ?? null}
           onSelect={openPinEditor}
-          panelCollapsed={pinTreeCollapsed}
-          onTogglePanel={() => setPinTreeCollapsed((v) => !v)}
+          panelCollapsed={false}
+          onTogglePanel={() => setPinTreeCollapsed(true)}
           entities={entities}
           onGroupRename={handleGroupRename}
           onPinMove={(markerId, newGroup) => {
@@ -1335,6 +1342,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           }}
           onResizeStart={handlePinResizeStart}
         />
+        )}
+        </>
         )}
       </div>
 
