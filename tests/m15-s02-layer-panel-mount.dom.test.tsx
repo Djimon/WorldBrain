@@ -9,7 +9,7 @@
 // AP-008 (RTL): anchored queries (role / class / testid), no translated UI text.
 // AP-001: database typed as DatabaseLike, no unknown casts in assertions.
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DatabaseLike } from '../src/services/entity-service';
 
@@ -101,13 +101,12 @@ describe('#294: maps area mounts the LayerPanel for the selected map', () => {
     });
     expect(h.listLayers).toHaveBeenCalledWith(h.fakeDb, 'map-1');
 
-    // Its controls are reachable: the layer row and its opacity slider render.
-    expect(view.container.querySelector('.layer-panel__row[aria-label="Grundkarte"]')).toBeInTheDocument();
-    expect(screen.getByRole('slider')).toBeInTheDocument();
-    // Row header carries a type chip (visible even when collapsed).
-    const typeChip = view.container.querySelector('.layer-panel__row[aria-label="Grundkarte"] .layer-panel__type--image');
-    expect(typeChip).toBeInTheDocument();
-    expect(typeChip?.textContent?.trim()).toBe('Bild');
+    // The layer row renders (addressed by data-layer-id; rows have no name/chip).
+    const row = view.container.querySelector('[data-layer-id="layer-1"]') as HTMLElement;
+    expect(row).toBeInTheDocument();
+    // Rows default collapsed — expand to reach the controls, then the slider shows.
+    fireEvent.click(within(row).getByRole('button', { name: /^details$/i }));
+    expect(within(row).getByRole('slider')).toBeInTheDocument();
     // Panel sits in the maps sidebar layer section, alongside the (stubbed) MapViewer.
     expect(panel.closest('.maps-layer-section')).toBeInTheDocument();
     expect(screen.getByTestId('stub-MapViewer')).toBeInTheDocument();

@@ -118,6 +118,8 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   const [calendarNewTitle, setCalendarNewTitle] = useState('');
   const [evalResult, setEvalResult] = useState<string | null>(null);
   const [mapImporting, setMapImporting] = useState(false);
+  // Resizable maps sidebar (same drag pattern as MapViewer's pin tree).
+  const [mapsSidebarWidth, setMapsSidebarWidth] = useState(240);
   // Bumped whenever layers change (add / opacity / visibility / reorder / fog
   // stroke) -> MapViewer and LayerPanel reload their layer list live, no remount
   // (view/zoom preserved; markers/grid/cells untouched).
@@ -271,6 +273,20 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     setLayerReloadKey((n) => n + 1);
   }
 
+  // Drag the splitter to resize the maps sidebar.
+  function handleMapsSidebarResize(e: React.MouseEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = mapsSidebarWidth;
+    const onMove = (ev: MouseEvent) => setMapsSidebarWidth(Math.max(180, Math.min(480, startW + (ev.clientX - startX))));
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+
   // #298: token art upload — opens the Tauri dialog, copies the image via the
   // shared asset flow, returns the asset id for the TokenEditor to store.
   async function handlePickTokenArt(): Promise<string | null> {
@@ -378,7 +394,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
       case 'maps':
         return (
           <div className="workspace-area" style={{ overflow: 'hidden' }}>
-            <div className="workspace-area__sidebar maps-sidebar">
+            <div className="workspace-area__sidebar maps-sidebar" style={{ width: mapsSidebarWidth }}>
               <MapsSidebarTabs
                 selectedMapId={selectedMapId}
                 mapsTabContent={
@@ -441,6 +457,12 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 }
               />
             </div>
+            <div
+              className="maps-sidebar__resize-handle"
+              role="separator"
+              aria-orientation="vertical"
+              onMouseDown={handleMapsSidebarResize}
+            />
             <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
               {selectedMapId ? (
                 <MapViewer

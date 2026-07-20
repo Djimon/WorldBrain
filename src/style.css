@@ -3137,6 +3137,16 @@ input {
   min-width: 0;
 }
 
+/* Splitter to resize the maps sidebar (mirrors the pin-tree resize handle). */
+.maps-sidebar__resize-handle {
+  flex: 0 0 auto;
+  width: 5px;
+  align-self: stretch;
+  cursor: col-resize;
+  background: transparent;
+}
+.maps-sidebar__resize-handle:hover { background: var(--color-accent); opacity: 0.4; }
+
 /* Maps sidebar tabs (#297): Karten / Ebenen */
 .maps-sidebar-tabs {
   display: flex;
@@ -3193,161 +3203,91 @@ input {
   margin: var(--space-2) 0 0;
 }
 
-.layer-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-2) 0;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.layer-panel__toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.layer-panel__toolbar button {
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-alt, var(--color-background));
-  color: var(--color-text);
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
-.layer-panel__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.layer-panel__row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-background);
-  font-size: 0.8rem;
-  min-width: 0;
-  box-sizing: border-box;
-}
-
+/* Root cause fix: `.workspace-area__sidebar ul li button { width:100% }` (the
+   maps-list button style) leaks onto the layer-panel buttons because the panel
+   also lives in a ul>li>button inside the sidebar. That forced the collapse
+   arrow to full width, pushing the type label + indicator onto the next line.
+   Higher-specificity override makes the arrow content-sized so the header flows
+   inline: [arrow] [type] [indicator]. */
+/* Header row: [arrow] [name grows, left] [indicator] [type chip, right]. */
 .layer-panel__row-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 0;
 }
-
-.layer-panel__collapse {
+.layer-panel__row-header .layer-panel__collapse {
+  width: auto;
   flex: 0 0 auto;
-  width: 18px;
-  padding: 0;
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 0.7rem;
+  padding: 0 2px;
+  text-align: center;
 }
-
-.layer-panel__row-header .layer-panel__name {
+.layer-panel__name-display {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
 }
+.layer-panel__hidden-indicator { flex: 0 0 auto; }
 
+/* Type pill — colored text + matching border, right side, non-shrinking. */
 .layer-panel__type {
   flex: 0 0 auto;
-  font-size: 0.62rem;
+  padding: 1px 7px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.6rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--color-text-muted);
+  line-height: 1.5;
   white-space: nowrap;
 }
 .layer-panel__type--image { color: #6ea8fe; }
 .layer-panel__type--fog { color: #b0b8c4; }
 .layer-panel__type--token { color: #e0a15a; }
 
-/* Collapsed row: type label centered in the row, name hidden — the layer kind
-   stays readable at a glance without expanding. */
-.layer-panel__row.collapsed .layer-panel__type {
-  flex: 1 1 auto;
-  text-align: center;
-}
-.layer-panel__row.collapsed .layer-panel__name { display: none; }
-
-.layer-panel__controls {
+/* Add-layer toolbar: buttons side by side when there's room, wrapping to
+   stacked full-width rows when the sidebar is narrow. */
+.layer-panel__toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 4px var(--space-2);
+  gap: 6px;
 }
-
-.layer-panel__opacity input[type="range"] {
-  width: 100%;
-}
-
-.layer-panel__name {
-  min-width: 0;
-  font-weight: 600;
-  cursor: text;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.layer-panel__opacity {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--color-text-muted);
-}
-
-.layer-panel__row button {
-  padding: 2px 8px;
+.layer-panel__toolbar button {
+  flex: 1 1 auto;
+  min-width: 110px;
+  padding: 4px 8px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   white-space: nowrap;
 }
+.layer-panel__toolbar button:hover { border-color: var(--color-accent); }
 
-.layer-panel__row button:hover {
-  border-color: var(--color-accent);
-}
-
-.layer-panel__hidden-indicator {
+/* Name input at the top of an expanded row's controls. */
+.layer-panel__name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   font-size: 0.7rem;
   color: var(--color-text-muted);
-  font-style: italic;
 }
-
-.layer-panel__delete-confirm {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--color-status-failure, #b43c3c);
+.layer-panel__name-field input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  color: var(--color-text);
+  font-size: 0.85rem;
 }
-
-.layer-panel__row.editing {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 1px var(--color-accent) inset;
-}
-
-.layer-panel__row button.active {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: #fff;
-}
+.layer-panel__name-field input:focus { border-color: var(--color-accent); outline: none; }
 
 /* ── Fog paint toolbar (#276) ─────────────────────────────────────────────── */
 .fog-tools {

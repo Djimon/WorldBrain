@@ -37,8 +37,6 @@ export interface LayerPanelProps {
 
 export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, editingFogLayerId, onEditFogLayer, reloadKey = 0, onLayersChanged, movingLayerId, onMoveLayer, onLayerDeleted }: LayerPanelProps) {
   const { t } = useTranslation();
-  // Type label shown as a chip in the row header — stays visible when the row
-  // is collapsed, so the layer kind is always readable.
   const layerTypeLabel: Record<string, string> = {
     image: t('layerPanel.type.image', 'Bild'),
     fog: t('layerPanel.type.fog', 'Fog'),
@@ -46,12 +44,13 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, ed
   };
   const [layers, setLayers] = useState<MapLayerRow[]>([]);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [editingNameId, setEditingNameId] = useState<string | null>(null);
-  const [draftName, setDraftName] = useState('');
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Rows default to COLLAPSED: expanded only if the id is in this set (keyed by
+  // id -> survives live reloads; new layers stay collapsed).
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const isExpanded = (id: string) => expanded.has(id);
 
-  function toggleCollapsed(id: string) {
-    setCollapsed((prev) => {
+  function toggleExpanded(id: string) {
+    setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
@@ -66,7 +65,11 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, ed
     reload();
   }, [database, mapId, reloadKey]);
 
-  const sorted = [...layers].sort((a, b) => b.z_order - a.z_order);
+  // Token layers are systemic (exactly one per map, auto-created with the first
+  // token) — like the pin/marker layer, they are not user-managed here.
+  const sorted = [...layers]
+    .filter((l) => l.layer_type !== 'token')
+    .sort((a, b) => b.z_order - a.z_order);
 
   function handleOpacityChange(layer: MapLayerRow, value: number) {
     const opacity = value / 100;
@@ -95,63 +98,59 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, ed
     reorderLayers(database, mapId, reordered.map((l) => l.id)).then(reload).then(() => onLayersChanged?.()).catch(console.error);
   }
 
+  function handleNameChange(layer: MapLayerRow, name: string) {
+    setLayers((prev) => prev.map((l) => (l.id === layer.id ? { ...l, name } : l)));
+  }
+
+  function persistName(layer: MapLayerRow) {
+    updateLayer(database, layer.id, { name: layer.name ?? '' }).then(() => onLayersChanged?.()).catch(console.error);
+  }
+
   function commitDelete(layerId: string) {
     setDeleteConfirmId(null);
     deleteLayer(database, layerId).then(reload).then(() => { onLayerDeleted?.(layerId); onLayersChanged?.(); }).catch(console.error);
   }
 
-  function startEditName(layer: MapLayerRow) {
-    setEditingNameId(layer.id);
-    setDraftName(layer.name ?? '');
-  }
-
-  function commitName(layer: MapLayerRow) {
-    setEditingNameId(null);
-    setLayers((prev) => prev.map((l) => (l.id === layer.id ? { ...l, name: draftName } : l)));
-    updateLayer(database, layer.id, { name: draftName }).catch(console.error);
-  }
-
   return (
     <div className="layer-panel">
       <div className="layer-panel__toolbar">
-        <button type="button" onClick={() => onAddImageLayer?.()}>{t('layerPanel.addImage', 'Bild-Layer hinzufügen')}</button>
-        <button type="button" onClick={() => onAddFogLayer?.()}>{t('layerPanel.addFog', 'Fog-Layer hinzufügen')}</button>
+        <button type="button" onClick={() => onAddImageLayer?.()}>{t('layerPanel.addImage', '+ Map Layer')}</button>
+        <button type="button" onClick={() => onAddFogLayer?.()}>{t('layerPanel.addFog', '+ Fog Layer')}</button>
       </div>
       <ul className="layer-panel__list">
         {sorted.map((layer) => (
-          <li key={layer.id} className={`layer-panel__row${editingFogLayerId === layer.id || movingLayerId === layer.id ? ' editing' : ''}${collapsed.has(layer.id) ? ' collapsed' : ''}`} aria-label={layer.name ?? ''}>
+          <li key={layer.id} data-layer-id={layer.id} data-layer-type={layer.layer_type} className={`layer-panel__row${editingFogLayerId === layer.id || movingLayerId === layer.id ? ' editing' : ''}${isExpanded(layer.id) ? '' : ' collapsed'}`}>
             <div className="layer-panel__row-header">
               <button
                 type="button"
                 className="layer-panel__collapse"
-                aria-expanded={!collapsed.has(layer.id)}
+                aria-expanded={isExpanded(layer.id)}
                 aria-label={t('layerPanel.toggleDetails', 'Details')}
-                onClick={() => toggleCollapsed(layer.id)}
+                onClick={() => toggleExpanded(layer.id)}
               >
-                {collapsed.has(layer.id) ? '▶' : '▼'}
+                {isExpanded(layer.id) ? '▼' : '▶'}
               </button>
+              <span className="layer-panel__name-display">{layer.name}</span>
+              {!layer.visible && (
+                <span className="layer-panel__hidden-indicator" title={t('layerPanel.hiddenIndicator', 'Ausgeblendet')}>🚫</span>
+              )}
               <span className={`layer-panel__type layer-panel__type--${layer.layer_type}`}>
                 {layerTypeLabel[layer.layer_type] ?? layer.layer_type}
               </span>
-              {editingNameId === layer.id ? (
-                <input
-                  className="layer-panel__name-input"
-                  aria-label={t('layerPanel.name', 'Name')}
-                  value={draftName}
-                  onChange={(e) => setDraftName(e.target.value)}
-                  onBlur={() => commitName(layer)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') commitName(layer); }}
-                  autoFocus
-                />
-              ) : (
-                <span className="layer-panel__name" onDoubleClick={() => startEditName(layer)}>{layer.name}</span>
-              )}
-              {!layer.visible && (
-                <span className="layer-panel__hidden-indicator">{t('layerPanel.hiddenIndicator', 'Ausgeblendet')}</span>
-              )}
             </div>
-            {!collapsed.has(layer.id) && (
+            {isExpanded(layer.id) && (
               <div className="layer-panel__controls">
+                <label className="layer-panel__name-field">
+                  {t('layerPanel.name', 'Name')}
+                  <input
+                    type="text"
+                    value={layer.name ?? ''}
+                    placeholder={t('layerPanel.namePlaceholder', 'Ebenenname')}
+                    onChange={(e) => handleNameChange(layer, e.target.value)}
+                    onBlur={() => persistName(layer)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                  />
+                </label>
                 <label className="layer-panel__opacity">
                   {t('layerPanel.opacity', 'Deckkraft')}
                   <input
