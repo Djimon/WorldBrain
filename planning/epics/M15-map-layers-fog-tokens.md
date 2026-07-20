@@ -154,6 +154,25 @@ Verifizierter Status aus git. Die Stories-Tabelle bildet Plan/Scope ab, NICHT de
 - Hinweis: Schema für `map_layers`/`map_tokens`/`map_folders` existiert bereits (landete vor
   den Services).
 
+## Amendment 2026-07-20 — Token = Map-eigenes Konstrukt (Requirement)
+
+Klarstellung des Users, korrigiert **D4**:
+
+- **Token ist ein rein Map-eigenes Design-Element** und hat NICHTS in der Wissens-/Lore-Datenbank
+  (Entities) zu suchen. `map_tokens.entity_id` **entfaellt** (D4 war hier falsch). Name = Freitext
+  (`label`). Betrifft geliefertes S06/S07 (#278/#279) -> Rework in **#298**.
+- **Bildbasierte Render-Modi** (Upload waehlt den Modus):
+  - `token` — Bild mit runder **Maske + farbigem Rahmen**; Ausschnitt unter der Maske verschiebbar
+    (`art_offset_x/y`), `ring_color` = Rahmenfarbe.
+  - `plain` — **ganzes Bild** als Artwork (Monster/Encounter/echte Figuren), keine Maske.
+  - Neue Spalten: `art_asset_id`, `render_style` (`'token'|'plain'`), `art_offset_x/y`.
+  Story: **#298** (M15, `area: maps`).
+- **Zwei Token-Klassen ueber ein Feld je Token** (keine getrennten Layer): Spieler-Token vs
+  DM-Token (Monster/NPC). Bewegungsrechte fuer Multiplayer als **`controller`** (`'dm'` Default |
+  `'players'`) + optional **`owner_player_id`** (nur dieser Spieler; DM immer). NICHT jetzt umsetzen —
+  Datenmodell + server-seitige Durchsetzung (EPIC-016 Decision 8) als Story **#299** im Milestone
+  **M10 - Multiplayer**. #298 (M15) und #299 (M10) sind gegenseitig verlinkt.
+
 ## Constraints propagated into every Story AC (verbatim)
 
 - AP-001: `database` prop typed as `DatabaseLike` (from `entity-service.ts`); no `unknown` or `as never` casts at call sites.
