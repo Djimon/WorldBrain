@@ -3255,19 +3255,20 @@ input {
   flex-wrap: wrap;
   gap: 6px;
 }
+/* Same look as the "+ Karte importieren" button (.emd__create-btn). */
 .layer-panel__toolbar button {
   flex: 1 1 auto;
   min-width: 110px;
-  padding: 4px 8px;
-  border: 1px solid var(--color-border);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-accent);
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
+  background: transparent;
+  color: var(--color-accent);
   cursor: pointer;
   font-size: 0.8rem;
   white-space: nowrap;
 }
-.layer-panel__toolbar button:hover { border-color: var(--color-accent); }
+.layer-panel__toolbar button:hover { background: var(--color-accent); color: #fff; }
 
 /* Name input at the top of an expanded row's controls. */
 .layer-panel__name-field {
