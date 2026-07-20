@@ -173,6 +173,16 @@ Klarstellung des Users, korrigiert **D4**:
   Datenmodell + server-seitige Durchsetzung (EPIC-016 Decision 8) als Story **#299** im Milestone
   **M10 - Multiplayer**. #298 (M15) und #299 (M10) sind gegenseitig verlinkt.
 
+**#298 DONE 2026-07-20:** Schema `map_tokens` — `entity_id` raus, `art_asset_id`/`render_style`
+(`'token'|'plain'`)/`art_offset_x`/`art_offset_y` rein (map-schema + idempotente ALTERs in db-init).
+Service entkoppelt (kein `entity_id` mehr; create/update mit Art-Feldern). `MapToken`: token-Modus =
+Bild in runder Maske + Rahmen (`object-fit:cover` + `objectPosition` aus art_offset in %), plain-Modus =
+ganzes Artwork ohne Ring, Initiale-Platzhalter ohne Bild. `TokenEditor`: Entity-Picker raus; Bild-Upload
+(Tauri-Dialog via `onPickTokenArt`-Callback aus WorkspaceShell -> `copyMapAsset`), Modus-Umschalter,
+Crop-Drag (nur token-Modus, live, persistiert %-Offset). Tests: `m15-s08-token-render-modes` (12) +
+angepasste s06/s07. tsc 0, lint 0, keine Regression. Offene Detail-Entscheidungen (Zoom unter Maske,
+Default-Modus, plain-Footprint) bleiben #298 Open-Decisions.
+
 ## Constraints propagated into every Story AC (verbatim)
 
 - AP-001: `database` prop typed as `DatabaseLike` (from `entity-service.ts`); no `unknown` or `as never` casts at call sites.

@@ -271,6 +271,16 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     setLayerReloadKey((n) => n + 1);
   }
 
+  // #298: token art upload — opens the Tauri dialog, copies the image via the
+  // shared asset flow, returns the asset id for the TokenEditor to store.
+  async function handlePickTokenArt(): Promise<string | null> {
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const selected = await open({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
+    if (typeof selected !== 'string') return null;
+    const { copyMapAsset } = await import('../services/map-asset');
+    return copyMapAsset(selected, projectDir, `token-${crypto.randomUUID()}`);
+  }
+
   async function handleAddFogLayer() {
     if (!selectedMapId) return;
     const { id } = await createFogLayer(database, { map_id: selectedMapId, name: 'Fog' });
@@ -444,6 +454,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                   moveLayerId={movingLayerId}
                   reloadKey={layerReloadKey}
                   onLayersChanged={() => setLayerReloadKey((n) => n + 1)}
+                  onPickTokenArt={handlePickTokenArt}
                 />
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)' }}>

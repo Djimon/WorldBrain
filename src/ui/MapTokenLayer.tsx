@@ -1,16 +1,19 @@
-// M15-S07: Token render (#279) — a single token drawn in the map's
-// CSS-transform container, above pins. Presentational only: portrait + ring +
-// name pill + optional counter badge + status-chip arc. Drag/persist is wired
-// by MapViewer (moveToken). Token size scales inversely with map zoom
-// (scale(1/scale)) like pins, so it stays legible.
+// M15-S07/#298: Token render — a single token in the map's CSS-transform
+// container, above pins. A token is a map-local design element (NO entity
+// link). Its art comes from an uploaded image:
+//   render_style 'token' -> image in a round mask + colored frame; the crop is
+//                           pannable via art_offset_x/y (percent, objectPosition).
+//   render_style 'plain' -> the full artwork, no mask (monster/encounter art).
+// No art yet -> initial-letter placeholder. Presentational only; drag/persist
+// is wired by MapViewer. Scales scale(1/scale) like pins to stay legible.
 import type { MapTokenRow } from '../services/map-token-service';
 
 export interface MapTokenProps {
   token: MapTokenRow;
-  /** Resolved title of the linked entity (fallback name source when no label). */
-  entityTitle?: string;
   scale: number;
   selected?: boolean;
+  /** Resolves an asset id to a src URL (getAssetUrl). Omitted in pure tests. */
+  resolveAssetUrl?: (assetId: string) => string;
   onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp?: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -19,21 +22,25 @@ export interface MapTokenProps {
 
 const DEFAULT_RING = 'var(--color-accent, #6ea8fe)';
 
-export function tokenName(token: MapTokenRow, entityTitle?: string): string {
-  return token.label || entityTitle || 'Token';
+export function tokenName(token: MapTokenRow): string {
+  return token.label || 'Token';
 }
 
 export function MapToken({
-  token, entityTitle, scale, selected = false,
+  token, scale, selected = false, resolveAssetUrl,
   onPointerDown, onPointerMove, onPointerUp, onSelect,
 }: MapTokenProps) {
-  const name = tokenName(token, entityTitle);
+  const name = tokenName(token);
   const initial = name.trim().charAt(0).toUpperCase() || '?';
   const ring = token.ring_color || DEFAULT_RING;
+  const artSrc = token.art_asset_id && resolveAssetUrl ? resolveAssetUrl(token.art_asset_id) : null;
+  const objectPosition = `${50 + token.art_offset_x}% ${50 + token.art_offset_y}%`;
+
   return (
     <div
       data-token-id={token.id}
-      className={`map-token${selected ? ' map-token--selected' : ''}`}
+      data-render-style={token.render_style}
+      className={`map-token map-token--${token.render_style}${selected ? ' map-token--selected' : ''}`}
       style={{
         position: 'absolute',
         left: token.x,
@@ -60,9 +67,25 @@ export function MapToken({
           ))}
         </div>
       )}
-      <div className="map-token__ring" style={{ borderColor: ring }}>
-        <div className="map-token__portrait" style={{ background: ring }}>{initial}</div>
-      </div>
+
+      {token.render_style === 'plain' && artSrc ? (
+        <img className="map-token__art-plain" src={artSrc} alt={name} draggable={false} />
+      ) : (
+        <div className="map-token__ring" style={{ borderColor: ring }}>
+          {artSrc ? (
+            <img
+              className="map-token__art"
+              src={artSrc}
+              alt={name}
+              draggable={false}
+              style={{ objectFit: 'cover', width: '100%', height: '100%', objectPosition }}
+            />
+          ) : (
+            <div className="map-token__portrait" style={{ background: ring }}>{initial}</div>
+          )}
+        </div>
+      )}
+
       {token.counter_value != null && (
         <span className="map-token__counter" title={token.counter_label || undefined}>
           {token.counter_value}

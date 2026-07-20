@@ -49,6 +49,8 @@ interface Props {
   /** Image layer currently in move mode (from the LayerPanel). When set, that
    *  layer is draggable on the map to reposition it. */
   moveLayerId?: string | null;
+  /** Opens the Tauri file dialog, copies the image, returns the token art asset id. */
+  onPickTokenArt?: () => Promise<string | null>;
 }
 
 function parsePinGeometry(json: string): { x: number; y: number; notes?: string; condition?: unknown } {
@@ -471,7 +473,7 @@ function RadiusOverlay({
   );
 }
 
-export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity, editFogLayerId = null, reloadKey = 0, onLayersChanged, moveLayerId = null }: Props) {
+export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity, editFogLayerId = null, reloadKey = 0, onLayersChanged, moveLayerId = null, onPickTokenArt }: Props) {
   const { t } = useTranslation('map');
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [imageLayers, setImageLayers] = useState<MapLayerRow[]>([]);
@@ -749,7 +751,14 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   async function saveTokenEdit(patch: TokenEditPatch) {
     if (!editingToken) return;
     const id = editingToken.id;
-    await updateToken(database, id, { label: patch.label, ring_color: patch.ring_color, entity_id: patch.entity_id });
+    await updateToken(database, id, {
+      label: patch.label,
+      ring_color: patch.ring_color,
+      art_asset_id: patch.art_asset_id,
+      render_style: patch.render_style,
+      art_offset_x: patch.art_offset_x,
+      art_offset_y: patch.art_offset_y,
+    });
     await setCounter(database, id, { counter_label: patch.counter_label, counter_value: patch.counter_value });
     await setStatusChips(database, id, patch.status_chips);
     setEditingToken(null);
@@ -1178,7 +1187,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             <MapToken
               key={tk.id}
               token={tk}
-              entityTitle={entities.find((ent) => ent.id === tk.entity_id)?.title}
+              resolveAssetUrl={getAssetUrl}
               scale={scale}
               selected={selectedTokenId === tk.id}
               onPointerDown={(e) => handleTokenPointerDown(tk, e)}
@@ -1363,7 +1372,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       {editingToken && (
         <TokenEditor
           token={editingToken}
-          entities={entities}
+          onPickArt={onPickTokenArt ?? (async () => null)}
+          resolveAssetUrl={getAssetUrl}
           onSave={(patch) => void saveTokenEdit(patch)}
           onDelete={() => void deleteEditingToken()}
           onClose={() => setEditingToken(null)}

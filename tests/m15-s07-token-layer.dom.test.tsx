@@ -14,7 +14,8 @@ import type { MapTokenRow } from '../src/services/map-token-service';
 
 function makeToken(overrides: Partial<MapTokenRow> = {}): MapTokenRow {
   return {
-    id: 'token_1', layer_id: 'lyr_1', map_id: 'map-1', entity_id: null,
+    id: 'token_1', layer_id: 'lyr_1', map_id: 'map-1',
+    art_asset_id: null, render_style: 'token', art_offset_x: 0, art_offset_y: 0,
     label: 'Grünhaut', x: 100, y: 120, ring_color: '#ff0000',
     counter_label: null, counter_value: null, status_chips: [],
     session_id: null, created_at: '',
@@ -36,9 +37,9 @@ describe('M15-S07 (component): MapToken render', () => {
     expect(screen.getByText(/^Grünhaut$/)).toBeInTheDocument();
   });
 
-  it('uses the linked entity title as name when the token has no label', () => {
-    render(<MapToken {...baseProps({ token: makeToken({ label: null }), entityTitle: 'Goblin-König' })} />);
-    expect(screen.getByText(/^Goblin-König$/)).toBeInTheDocument();
+  it('falls back to a generic name when the token has no label (no entity link)', () => {
+    render(<MapToken {...baseProps({ token: makeToken({ label: null }) })} />);
+    expect(screen.getByText(/^Token$/)).toBeInTheDocument();
   });
 
   it('renders a counter badge only when counter_value is set', () => {
@@ -148,7 +149,7 @@ describe('M15-S07 (integration): tokens in MapViewer', () => {
     });
     fireEvent.click(tok);
     expect(await screen.findByRole('dialog', { name: /^token bearbeiten$/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/ringfarbe/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/rahmenfarbe/i)).toBeInTheDocument();
   });
 
   it('the Token tool + a map click creates a token via createToken', async () => {

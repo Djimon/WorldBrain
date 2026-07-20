@@ -11,11 +11,19 @@ export interface StatusChip {
   text?: string;
 }
 
+// #298: a token is a map-local design element (NO entity/lore link). Its art
+// comes from an uploaded image. render_style 'token' = image in a round mask +
+// frame (crop pannable via art_offset percent); 'plain' = full artwork.
+export type TokenRenderStyle = 'token' | 'plain';
+
 export interface MapTokenRow {
   id: string;
   layer_id: string;
   map_id: string;
-  entity_id: string | null;
+  art_asset_id: string | null;
+  render_style: TokenRenderStyle;
+  art_offset_x: number;
+  art_offset_y: number;
   label: string | null;
   x: number;
   y: number;
@@ -30,7 +38,8 @@ export interface MapTokenRow {
 export interface CreateTokenParams {
   layer_id?: string;
   map_id: string;
-  entity_id?: string;
+  art_asset_id?: string;
+  render_style?: TokenRenderStyle;
   label?: string;
   x: number;
   y: number;
@@ -41,7 +50,10 @@ export interface CreateTokenParams {
 export interface UpdateTokenPatch {
   label?: string;
   ring_color?: string | null;
-  entity_id?: string | null;
+  art_asset_id?: string | null;
+  render_style?: TokenRenderStyle;
+  art_offset_x?: number;
+  art_offset_y?: number;
 }
 
 // Raw DB row (status_chips_json string) before decoding into MapTokenRow.
@@ -76,8 +88,8 @@ export async function createToken(db: DatabaseLike, params: CreateTokenParams): 
   const layerId = params.layer_id ?? (await ensureTokenLayer(db, params.map_id));
   const id = `token_${crypto.randomUUID()}`;
   await db.execute(
-    'INSERT INTO map_tokens (id, layer_id, map_id, entity_id, label, x, y, ring_color, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, layerId, params.map_id, params.entity_id ?? null, params.label ?? null, params.x, params.y, params.ring_color ?? null, params.session_id ?? null],
+    'INSERT INTO map_tokens (id, layer_id, map_id, art_asset_id, render_style, label, x, y, ring_color, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, layerId, params.map_id, params.art_asset_id ?? null, params.render_style ?? 'token', params.label ?? null, params.x, params.y, params.ring_color ?? null, params.session_id ?? null],
   );
   return { id };
 }
@@ -118,13 +130,16 @@ export async function setStatusChips(db: DatabaseLike, id: string, chips: Status
   await db.execute('UPDATE map_tokens SET status_chips_json = ? WHERE id = ?', [JSON.stringify(chips), id]);
 }
 
-/** Patches label/ring_color/entity_id on a token. */
+/** Patches label/ring_color/art fields on a token. */
 export async function updateToken(db: DatabaseLike, id: string, patch: UpdateTokenPatch): Promise<void> {
   const fields: string[] = [];
   const args: unknown[] = [];
   if (patch.label !== undefined) { fields.push('label = ?'); args.push(patch.label); }
   if (patch.ring_color !== undefined) { fields.push('ring_color = ?'); args.push(patch.ring_color); }
-  if (patch.entity_id !== undefined) { fields.push('entity_id = ?'); args.push(patch.entity_id); }
+  if (patch.art_asset_id !== undefined) { fields.push('art_asset_id = ?'); args.push(patch.art_asset_id); }
+  if (patch.render_style !== undefined) { fields.push('render_style = ?'); args.push(patch.render_style); }
+  if (patch.art_offset_x !== undefined) { fields.push('art_offset_x = ?'); args.push(patch.art_offset_x); }
+  if (patch.art_offset_y !== undefined) { fields.push('art_offset_y = ?'); args.push(patch.art_offset_y); }
   if (fields.length === 0) return;
   args.push(id);
   await db.execute(`UPDATE map_tokens SET ${fields.join(', ')} WHERE id = ?`, args);
