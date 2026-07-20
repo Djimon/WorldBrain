@@ -128,7 +128,13 @@ Verifizierter Status aus git. Die Stories-Tabelle bildet Plan/Scope ab, NICHT de
   V1-Grenze — nicht Teil von #276.
 - S05 #277 (Folders): NICHT implementiert — RED-Tests, `map-folder-service` komplett Stubs,
   `MapFolderTree.tsx` unmounted.
-- S06 #278 (Tokens): NICHT implementiert — RED-Tests, `map-token-service` komplett Stubs.
+- S06 #278 (Tokens): DONE 2026-07-20 — `map-token-service` implementiert (createToken +
+  Auto-Token-Layer via neuem `map-layer-service.createTokenLayer` z_order=max+1, listTokens
+  mit Session-Scoping (kein sessionId=nur Base session_id NULL; mit sessionId=Base+Session),
+  moveToken/setCounter/setStatusChips/updateToken/deleteToken, status_chips_json JSON.parse
+  mit Safe-Fallback []). Schema `map_tokens` bestand bereits (applyMapSchema, CREATE IF NOT
+  EXISTS -> Runtime legt Tabelle beim naechsten Init an, kein ALTER). Tests
+  `m15-s06-map-tokens` 10/10, tsc 0, lint 0. Token-Render/Drag-UI = S07 (#279).
 - S07 #279 (Token-UI/Export): NICHT gestartet.
 - Hinweis: Schema für `map_layers`/`map_tokens`/`map_folders` existiert bereits (landete vor
   den Services).
