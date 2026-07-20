@@ -510,6 +510,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [entities, setEntities] = useState<{ id: string; type: string; title: string }[]>([]);
   const [pinTreeCollapsed, setPinTreeCollapsed] = useState(false);
   const [pinTreeWidth, setPinTreeWidth] = useState(220);
+  const [rightTab, setRightTab] = useState<'pins' | 'tokens'>('pins');
   const [cellMenu, setCellMenu] = useState<{ x: number; y: number; cellKey: string } | null>(null);
   const [rulerP1, setRulerP1] = useState<RulerPoint | null>(null);
   const [rulerP2, setRulerP2] = useState<RulerPoint | null>(null);
@@ -1279,8 +1280,39 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         {mode === 'radius' && rulerP1 && !rulerP2 && <div className="map-viewer__hint">Radius ziehen…</div>}
       </div>
 
-      {/* Pin tree — always visible, resizable */}
-      <div style={{ width: pinTreeCollapsed ? 32 : pinTreeWidth, flexShrink: 0, position: 'relative' }}>
+      {/* Right sidebar — PINS / TOKEN tabs; pin tree resizable + collapsible */}
+      <div style={{ width: pinTreeCollapsed ? 32 : pinTreeWidth, flexShrink: 0, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {!pinTreeCollapsed && (
+          <div className="map-side-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={rightTab === 'pins'}
+              className={`map-side-tabs__tab${rightTab === 'pins' ? ' active' : ''}`}
+              onClick={() => setRightTab('pins')}>{t('mapSideTabs.pins', 'Pins')}</button>
+            <button type="button" role="tab" aria-selected={rightTab === 'tokens'}
+              className={`map-side-tabs__tab${rightTab === 'tokens' ? ' active' : ''}`}
+              onClick={() => setRightTab('tokens')}>{t('mapSideTabs.tokens', 'Token')}</button>
+          </div>
+        )}
+        {(rightTab === 'tokens' && !pinTreeCollapsed) ? (
+          <div className="map-token-list">
+            {tokens.length === 0 && (
+              <div className="map-token-list__empty">{t('mapSideTabs.noTokens', 'Keine Tokens. Token-Werkzeug + Klick auf die Karte.')}</div>
+            )}
+            {tokens.map((tk) => (
+              <div key={tk.id} className={`map-token-list__row${selectedTokenId === tk.id ? ' active' : ''}`}>
+                <button type="button" className="map-token-list__name"
+                  onClick={() => { setSelectedTokenId(tk.id); setEditingToken(tk); }}>
+                  {tk.label || t('mapSideTabs.unnamedToken', 'Token')}
+                </button>
+                <button type="button" className="map-token-list__del" title={t('delete', 'Löschen')}
+                  onClick={() => {
+                    if (editingToken?.id === tk.id) setEditingToken(null);
+                    setSelectedTokenId((cur) => (cur === tk.id ? null : cur));
+                    deleteToken(database, tk.id).then(reloadTokens).catch(console.error);
+                  }}>✕</button>
+              </div>
+            ))}
+          </div>
+        ) : (
         <PinTree
           markers={markers}
           editingId={editingPin?.id ?? null}
@@ -1303,6 +1335,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           }}
           onResizeStart={handlePinResizeStart}
         />
+        )}
       </div>
 
       {/* Pin editor */}
