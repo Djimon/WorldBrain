@@ -119,6 +119,8 @@ Review against: Story AC · architecture · `ANTI_PATTERNS.md` (any instance = a
 
 **Epic-vs-code deviation:** Check `git log` first — UX-sprint decisions often live only in the commit message, never reaching the Epic. Intentional → record it in the Epic instead of filing a finding. Unclear → ask, don't guess.
 
+**Issue creation:** always use github labels and link fixes/bugs to gh Milestone!
+
 ---
 
 ## Interaction Rules
