@@ -186,8 +186,10 @@ Default-Modus, plain-Footprint) bleiben #298 Open-Decisions.
 ## Decision 2026-07-20 — Status-Chip Icon-Sets (#300, Design geklaert)
 
 Praezisiert D4 ("plugin/user icon set"):
-- Kleines **mitgeliefertes Default-Set** + grosse Mengen **via Plugin** (Plugins registrieren
-  eigene Icon-Sets). Icon-Technik: **SVG/PNG oder Icon-Font**.
+- **Icon-Set-Registry** (Core + Plugin, analog `relation-type-registry` / `plugin-entity-service`) —
+  KEIN Fake-Default-Plugin. Default-Set = Core, fest im App-Code registriert (laeuft ohne Plugin);
+  Plugins registrieren zusaetzliche Sets ueber dieselbe API. Icon-Technik: **SVG/PNG oder Icon-Font**.
+- **Default-Set V1:** poisoned, armour-break, bleeding, asleep, stunned, blinded.
 - **Picker** = Grid-Popover mit Gruppen (default / plugin_name / ...), Reiter nur als
   Scroll-Sprung-Anker, Trennlinie + Gruppenname je Gruppe.
 - **Render:** `token`-Modus -> Bogen ueber dem Token (waechst bis Vollkreis); `plain`-Modus ->
