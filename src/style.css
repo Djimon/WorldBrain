@@ -1398,17 +1398,16 @@ input {
   top: 12px;
   right: 12px;
   width: 260px;
-  max-height: calc(100% - 24px);
-  overflow-y: auto;
+  /* Auto-grow with content — no inner scrollbar (e.g. when adding chips). */
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-  padding: 12px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  padding: var(--space-3);
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .token-editor__header {
@@ -1425,34 +1424,76 @@ input {
   font-size: 14px;
 }
 
-.token-editor__field {
+.token-editor__field,
+.token-editor__art,
+.token-editor__counter,
+.token-editor__chips {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  font-size: 12px;
+  gap: var(--space-1);
+  font-size: 0.75rem;
   color: var(--color-text-muted);
 }
 
-.token-editor__field input,
-.token-editor__field select {
-  padding: 4px 6px;
-}
-
-.token-editor__art {
+.token-editor__art,
+.token-editor__counter,
+.token-editor__chips {
   border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 6px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
 }
-.token-editor__art legend { font-size: 11px; color: var(--color-text-muted); padding: 0 4px; }
+.token-editor__art legend,
+.token-editor__counter legend,
+.token-editor__chips legend {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  padding: 0 var(--space-1);
+}
 
-.token-editor__mode { display: flex; gap: 4px; }
-.token-editor__mode-btn { flex: 1; cursor: pointer; font-size: 12px; padding: 4px 6px; }
-.token-editor__mode-btn.active { background: var(--color-accent); color: #fff; }
+/* Inputs/selects follow the app's form-input convention. */
+.token-editor input[type="text"],
+.token-editor input[type="number"],
+.token-editor select {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+.token-editor input:focus,
+.token-editor select:focus { border-color: var(--color-accent); outline: none; }
+.token-editor input[type="color"] {
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
 
-.token-editor__upload { cursor: pointer; font-size: 12px; padding: 4px 6px; }
+/* Buttons follow the app button convention (surface + border, accent hover). */
+.token-editor button {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.token-editor button:hover { border-color: var(--color-accent); }
+.token-editor__close { padding: 0; border: none; }
+
+.token-editor__mode { display: flex; gap: var(--space-1); }
+.token-editor__mode-btn { flex: 1 1 auto; }
+.token-editor__mode-btn.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+
+.token-editor__upload { align-self: flex-start; }
 
 .token-editor__crop {
   width: 140px;
@@ -1462,51 +1503,32 @@ input {
   border: 2px solid var(--color-border);
   cursor: move;
   touch-action: none;
-  margin: 4px auto 0;
+  margin: var(--space-1) auto 0;
 }
 .token-editor__crop img { display: block; }
 
 .token-editor__plain-preview { text-align: center; }
 .token-editor__plain-preview img { max-width: 100%; max-height: 140px; display: inline-block; }
 
-.token-editor__counter,
-.token-editor__chips {
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 6px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.token-editor__counter legend,
-.token-editor__chips legend {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  padding: 0 4px;
-}
-
 .token-editor__chip-row {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: center;
 }
+/* Icon field is narrow; the text field takes the rest. */
+.token-editor__chip-row input[type="text"]:first-of-type { flex: 0 0 46px; text-align: center; }
+.token-editor__chip-row input[type="text"] { flex: 1 1 auto; min-width: 0; }
+.token-editor__chip-row button { flex: 0 0 auto; padding: 4px 6px; }
 
-.token-editor__chip-row input[type="text"] { flex: 1; min-width: 0; }
-
-.token-editor__add-chip {
-  align-self: flex-start;
-  font-size: 12px;
-  cursor: pointer;
-}
+.token-editor__add-chip { align-self: flex-start; }
 
 .token-editor__actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   justify-content: space-between;
 }
-
-.token-editor__delete { color: var(--color-status-failure, #c0392b); }
+.token-editor__save { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
+.token-editor__delete { border-color: var(--color-status-failure, #c0392b); color: var(--color-status-failure, #c0392b); }
 
 /* ── Pin tree sidebar ── */
 .map-pin-tree {
