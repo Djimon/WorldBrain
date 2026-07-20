@@ -1584,7 +1584,24 @@ input {
   min-height: 0;
 }
 .map-token-list__empty { font-size: 0.8rem; color: var(--color-text-muted); padding: var(--space-2); }
-.map-token-list__row { display: flex; align-items: center; gap: 4px; }
+.map-token-list__row { display: flex; align-items: center; gap: 6px; }
+/* Indicator before the name: shape = render style (circle token / square plain),
+   fill = ring color for token mode. */
+.map-token-list__swatch {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+}
+.map-token-list__swatch--token {
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+.map-token-list__swatch--plain {
+  border-radius: 2px;
+  border: 2px solid var(--color-text-muted);
+  background: transparent;
+}
 .map-token-list__name {
   flex: 1 1 auto;
   text-align: left;

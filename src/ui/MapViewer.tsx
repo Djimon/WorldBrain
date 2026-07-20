@@ -1306,6 +1306,11 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             )}
             {tokens.map((tk) => (
               <div key={tk.id} className={`map-token-list__row${selectedTokenId === tk.id ? ' active' : ''}`}>
+                <span
+                  className={`map-token-list__swatch map-token-list__swatch--${tk.render_style}`}
+                  style={tk.render_style === 'token' ? { background: tk.ring_color || 'var(--color-accent)' } : undefined}
+                  title={tk.render_style === 'token' ? t('mapSideTabs.tokenCircle', 'Token (Kreis)') : t('mapSideTabs.tokenPlain', 'Plain (Bild)')}
+                />
                 <button type="button" className="map-token-list__name"
                   onClick={() => { setSelectedTokenId(tk.id); setEditingToken(tk); }}>
                   {tk.label || t('mapSideTabs.unnamedToken', 'Token')}
