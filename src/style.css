@@ -1392,18 +1392,27 @@ input {
 }
 .map-token--selected .map-token__art-plain { outline: 2px solid var(--color-accent-strong); }
 
-/* Resize handle (#301) — bottom-right of a selected token, drag to scale. */
+/* Resize handle (#301) — bottom-right of a selected token, drag to scale.
+   Diagonal double-arrow glyph = universal resize affordance. */
 .map-token__resize {
   position: absolute;
-  right: -5px;
-  bottom: -5px;
-  width: 11px;
-  height: 11px;
-  border-radius: 2px;
+  right: -8px;
+  bottom: -8px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
   background: var(--color-accent);
+  color: #fff;
   border: 1px solid #fff;
+  font-size: 10px;
+  line-height: 1;
   cursor: nwse-resize;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
   z-index: 7;
+  user-select: none;
 }
 
 /* ── Token editor panel (M15-S07) ── */

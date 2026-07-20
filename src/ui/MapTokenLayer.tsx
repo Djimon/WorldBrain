@@ -107,7 +107,9 @@ export function MapToken({
           title="Größe ziehen"
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => { e.stopPropagation(); onResizeStart?.(e); }}
-        />
+        >
+          ⤡
+        </div>
       )}
     </div>
   );
