@@ -183,6 +183,20 @@ Crop-Drag (nur token-Modus, live, persistiert %-Offset). Tests: `m15-s08-token-r
 angepasste s06/s07. tsc 0, lint 0, keine Regression. Offene Detail-Entscheidungen (Zoom unter Maske,
 Default-Modus, plain-Footprint) bleiben #298 Open-Decisions.
 
+## Decision 2026-07-20 — Status-Chip Icon-Sets (#300, Design geklaert)
+
+Praezisiert D4 ("plugin/user icon set"):
+- Kleines **mitgeliefertes Default-Set** + grosse Mengen **via Plugin** (Plugins registrieren
+  eigene Icon-Sets). Icon-Technik: **SVG/PNG oder Icon-Font**.
+- **Picker** = Grid-Popover mit Gruppen (default / plugin_name / ...), Reiter nur als
+  Scroll-Sprung-Anker, Trennlinie + Gruppenname je Gruppe.
+- **Render:** `token`-Modus -> Bogen ueber dem Token (waechst bis Vollkreis); `plain`-Modus ->
+  Chips nebeneinander an der oberen Bildkante, zentriert. Chip-Groesse skaliert mit Token-`scale`.
+- **Default-Kontrast:** Default-Icons weiss + schwarzer Stroke/Schatten; `color` optional fuer
+  eigene Faerbung.
+- Multiplayer (spaeter, #299): Spieler duerfen Chips/Tokens setzen; "in Benutzung"-Umrandung
+  in Spielerfarbe als Presence-Signal.
+
 ## Constraints propagated into every Story AC (verbatim)
 
 - AP-001: `database` prop typed as `DatabaseLike` (from `entity-service.ts`); no `unknown` or `as never` casts at call sites.
