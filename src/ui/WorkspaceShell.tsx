@@ -35,6 +35,7 @@ import { SnapshotManager } from './SnapshotManager';
 import { UpdateNotification } from './UpdateNotification';
 import { MapViewer } from './MapViewer';
 import { LayerPanel } from './LayerPanel';
+import { MapsSidebarTabs } from './MapsSidebarTabs';
 import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
@@ -368,59 +369,67 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
         return (
           <div className="workspace-area" style={{ overflow: 'hidden' }}>
             <div className="workspace-area__sidebar maps-sidebar">
-              <h3>{t('maps')}</h3>
-              <button
-                className="emd__create-btn"
-                style={{ width: '100%', marginBottom: 'var(--space-2)' }}
-                onClick={() => void handleMapImport()}
-                disabled={mapImporting}
-              >
-                {mapImporting ? '⏳ Importiere…' : '+ Karte importieren'}
-              </button>
-              {mapImporting && (
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', padding: 'var(--space-1) var(--space-2)', background: 'var(--color-surface-alt)', borderRadius: 'var(--radius-sm)', marginBottom: 'var(--space-2)' }}>
-                  Bild wird kopiert und vorbereitet…
-                </div>
-              )}
-              <ul>
-                {maps.map((m) => (
-                  <li key={m.id}>
+              <MapsSidebarTabs
+                selectedMapId={selectedMapId}
+                mapsTabContent={
+                  <>
+                    <h3>{t('maps')}</h3>
                     <button
-                      className={`emd__item${selectedMapId === m.id ? ' emd__item--active' : ''}`}
-                      onClick={() => setSelectedMapId(m.id)}
+                      className="emd__create-btn"
+                      style={{ width: '100%', marginBottom: 'var(--space-2)' }}
+                      onClick={() => void handleMapImport()}
+                      disabled={mapImporting}
                     >
-                      <span className="emd__item-title">{m.title}</span>
+                      {mapImporting ? '⏳ Importiere…' : '+ Karte importieren'}
                     </button>
-                  </li>
-                ))}
-              </ul>
-              {maps.length === 0 && (
-                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: 'var(--space-2)' }}>
-                  {t('noMaps')}
-                </p>
-              )}
-              {selectedMapId && (
-                <div className="maps-layer-section">
-                  <h3 className="maps-layer-section__title">{t('layers', { defaultValue: 'Ebenen' })}</h3>
-                  <LayerPanel
-                    key={`lp-${selectedMapId}`}
-                    database={database}
-                    mapId={selectedMapId}
-                    editingFogLayerId={editingFogLayerId}
-                    onEditFogLayer={(id) => { setMovingLayerId(null); setEditingFogLayerId((cur) => (cur === id ? null : id)); }}
-                    movingLayerId={movingLayerId}
-                    onMoveLayer={(id) => { setEditingFogLayerId(null); setMovingLayerId((cur) => (cur === id ? null : id)); }}
-                    onAddImageLayer={() => void handleAddImageLayer()}
-                    onAddFogLayer={() => void handleAddFogLayer()}
-                    onLayerDeleted={(id) => {
-                      setEditingFogLayerId((cur) => (cur === id ? null : cur));
-                      setMovingLayerId((cur) => (cur === id ? null : cur));
-                    }}
-                    reloadKey={layerReloadKey}
-                    onLayersChanged={() => setLayerReloadKey((n) => n + 1)}
-                  />
-                </div>
-              )}
+                    {mapImporting && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', padding: 'var(--space-1) var(--space-2)', background: 'var(--color-surface-alt)', borderRadius: 'var(--radius-sm)', marginBottom: 'var(--space-2)' }}>
+                        Bild wird kopiert und vorbereitet…
+                      </div>
+                    )}
+                    <ul>
+                      {maps.map((m) => (
+                        <li key={m.id}>
+                          <button
+                            className={`emd__item${selectedMapId === m.id ? ' emd__item--active' : ''}`}
+                            onClick={() => setSelectedMapId(m.id)}
+                          >
+                            <span className="emd__item-title">{m.title}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    {maps.length === 0 && (
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: 'var(--space-2)' }}>
+                        {t('noMaps')}
+                      </p>
+                    )}
+                  </>
+                }
+                layersTabContent={
+                  selectedMapId && (
+                    <div className="maps-layer-section">
+                      <LayerPanel
+                        key={`lp-${selectedMapId}`}
+                        database={database}
+                        mapId={selectedMapId}
+                        editingFogLayerId={editingFogLayerId}
+                        onEditFogLayer={(id) => { setMovingLayerId(null); setEditingFogLayerId((cur) => (cur === id ? null : id)); }}
+                        movingLayerId={movingLayerId}
+                        onMoveLayer={(id) => { setEditingFogLayerId(null); setMovingLayerId((cur) => (cur === id ? null : id)); }}
+                        onAddImageLayer={() => void handleAddImageLayer()}
+                        onAddFogLayer={() => void handleAddFogLayer()}
+                        onLayerDeleted={(id) => {
+                          setEditingFogLayerId((cur) => (cur === id ? null : cur));
+                          setMovingLayerId((cur) => (cur === id ? null : cur));
+                        }}
+                        reloadKey={layerReloadKey}
+                        onLayersChanged={() => setLayerReloadKey((n) => n + 1)}
+                      />
+                    </div>
+                  )
+                }
+              />
             </div>
             <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
               {selectedMapId ? (

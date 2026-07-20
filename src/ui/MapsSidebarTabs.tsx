@@ -10,7 +10,9 @@
 // live-project services), same reasoning as the M14-S06 (#261) and M14-S13
 // (#268) scope notes. This component owns and is tested for the actual tab
 // behavior the AC requires.
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface MapsSidebarTabsProps {
   selectedMapId: string | null;
@@ -18,6 +20,46 @@ export interface MapsSidebarTabsProps {
   layersTabContent: ReactNode;
 }
 
-export function MapsSidebarTabs(_props: MapsSidebarTabsProps): never {
-  throw new Error('not implemented');
+type Tab = 'maps' | 'layers';
+
+export function MapsSidebarTabs({ selectedMapId, mapsTabContent, layersTabContent }: MapsSidebarTabsProps) {
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<Tab>('maps');
+  const prevMapId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (selectedMapId !== prevMapId.current) {
+      setActiveTab(selectedMapId ? 'layers' : 'maps');
+      prevMapId.current = selectedMapId;
+    }
+  }, [selectedMapId]);
+
+  return (
+    <div className="maps-sidebar-tabs">
+      <div role="tablist" className="maps-sidebar-tabs__list">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'maps'}
+          className={`maps-sidebar-tabs__tab${activeTab === 'maps' ? ' maps-sidebar-tabs__tab--active' : ''}`}
+          onClick={() => setActiveTab('maps')}
+        >
+          {t('mapsSidebarTabs.maps', 'Karten')}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'layers'}
+          className={`maps-sidebar-tabs__tab${activeTab === 'layers' ? ' maps-sidebar-tabs__tab--active' : ''}`}
+          disabled={!selectedMapId}
+          onClick={() => setActiveTab('layers')}
+        >
+          {t('mapsSidebarTabs.layers', 'Ebenen')}
+        </button>
+      </div>
+      <div className="maps-sidebar-tabs__panel">
+        {activeTab === 'maps' ? mapsTabContent : layersTabContent}
+      </div>
+    </div>
+  );
 }
