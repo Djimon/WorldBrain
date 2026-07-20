@@ -3133,6 +3133,8 @@ input {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 /* Maps sidebar tabs (#297): Karten / Ebenen */
@@ -3177,7 +3179,9 @@ input {
 
 .maps-sidebar-tabs__panel {
   min-height: 0;
+  min-width: 0;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .maps-layer-section {
@@ -3194,10 +3198,13 @@ input {
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-2) 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .layer-panel__toolbar {
   display: flex;
+  flex-direction: column;
   gap: var(--space-2);
 }
 
@@ -3229,12 +3236,15 @@ input {
   border-radius: var(--radius-sm);
   background: var(--color-background);
   font-size: 0.8rem;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .layer-panel__row-header {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .layer-panel__collapse {
@@ -3285,9 +3295,12 @@ input {
 }
 
 .layer-panel__name {
-  min-width: 90px;
+  min-width: 0;
   font-weight: 600;
   cursor: text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .layer-panel__opacity {

@@ -16,3 +16,11 @@ Presentation-only polish of `LayerPanel` (M15). No service/schema/data-model cha
 - 2026-07-20 — CSS fuer `MapsSidebarTabs` (#297) ergaenzt (hatte keins): Tab-Leiste
   (Karten/Ebenen) mit aktivem Unterstrich, Hover, disabled-State, scrollbarem Panel.
   `.maps-layer-section` Top-Border/Margin entfernt (Trennung kommt jetzt von der Tab-Leiste).
+- 2026-07-20 — Root-Cause Horizontal-Overflow gefixt. Symptom: Typ-Label rechts
+  abgeschnitten + horizontaler Scrollbalken. Ursache war NICHT der Chip, sondern
+  Ueberbreite: die zwei langen Toolbar-Buttons ("Bild-Layer/Fog-Layer hinzufuegen")
+  nebeneinander (`display:flex` ohne Shrink) setzten die min-content-Breite ueber die
+  schmale Tab-Spalte -> alle Zeilen dehnten sich mit -> das zentrierte Label landete in
+  der Mitte der ueberbreiten Zeile = rechts ausserhalb. Fix: Toolbar vertikal gestapelt;
+  `min-width:0`-Kette (layer-panel/row/row-header) damit Flex-Kinder schrumpfen duerfen;
+  Name shrinkbar + Ellipsis (statt min-width 90); `overflow-x:hidden` auf Sidebar + Tab-Panel.
