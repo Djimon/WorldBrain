@@ -2,6 +2,10 @@
 import { useTranslation } from 'react-i18next';
 import { getMap, getAssetUrl, loadGridSettings, saveGridSettings } from '../services/map-service';
 import { listLayers, updateLayer } from '../services/map-layer-service';
+import { listTokens, createToken, moveToken, updateToken, setCounter, setStatusChips, deleteToken } from '../services/map-token-service';
+import type { MapTokenRow } from '../services/map-token-service';
+import { MapToken } from './MapTokenLayer';
+import { TokenEditor, type TokenEditPatch } from './TokenEditor';
 import type { MapLayerRow } from '../services/map-layer-service';
 import { FogTools, type FogToolMode, type FogToolShape } from './FogTools';
 import { FogMaskCanvas } from './FogMaskCanvas';
@@ -24,7 +28,7 @@ const VISIBILITY_OPTIONS: { key: string; label: string }[] = [
   { key: 'hidden_until_condition', label: 'Bedingung…' },
 ];
 
-type Mode = 'navigate' | 'pin' | 'move-pin' | 'grid' | 'measure' | 'radius' | 'fog' | 'move-layer';
+type Mode = 'navigate' | 'pin' | 'move-pin' | 'grid' | 'measure' | 'radius' | 'fog' | 'move-layer' | 'token';
 
 const PIN_SIZE_PX: Record<string, number> = { S: 18, M: 26, L: 38 };
 
@@ -45,6 +49,8 @@ interface Props {
   /** Image layer currently in move mode (from the LayerPanel). When set, that
    *  layer is draggable on the map to reposition it. */
   moveLayerId?: string | null;
+  /** Opens the Tauri file dialog, copies the image, returns the token art asset id. */
+  onPickTokenArt?: () => Promise<string | null>;
 }
 
 function parsePinGeometry(json: string): { x: number; y: number; notes?: string; condition?: unknown } {
@@ -341,7 +347,6 @@ function PinTree({ markers, editingId, onSelect, panelCollapsed, onTogglePanel, 
         <span>Pins ({markers.filter((m) => m.kind !== 'folder-anchor').length})</span>
         <button className="map-pin-tree__new-folder-btn" title="Neuer Ordner"
           onClick={() => setNewFolderInput(true)}>📁+</button>
-        <button onClick={onTogglePanel} title="Einklappen">◀</button>
       </div>
 
       {newFolderInput && (
@@ -467,7 +472,7 @@ function RadiusOverlay({
   );
 }
 
-export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity, editFogLayerId = null, reloadKey = 0, onLayersChanged, moveLayerId = null }: Props) {
+export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity, editFogLayerId = null, reloadKey = 0, onLayersChanged, moveLayerId = null, onPickTokenArt }: Props) {
   const { t } = useTranslation('map');
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [imageLayers, setImageLayers] = useState<MapLayerRow[]>([]);
@@ -478,6 +483,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [fogShape, setFogShape] = useState<FogToolShape>('brush');
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
   const [markers, setMarkers] = useState<MarkerRow[]>([]);
+  const [tokens, setTokens] = useState<MapTokenRow[]>([]);
+  const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
+  const [editingToken, setEditingToken] = useState<MapTokenRow | null>(null);
   const [cells, setCells] = useState<Map<string, number>>(new Map());
   const [gridSettings, setGridSettings] = useState<GridSettings>(DEFAULT_GRID_SETTINGS);
   const [scale, setScale] = useState(1);
@@ -501,6 +509,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [entities, setEntities] = useState<{ id: string; type: string; title: string }[]>([]);
   const [pinTreeCollapsed, setPinTreeCollapsed] = useState(false);
   const [pinTreeWidth, setPinTreeWidth] = useState(220);
+  const [rightTab, setRightTab] = useState<'pins' | 'tokens'>('pins');
   const [cellMenu, setCellMenu] = useState<{ x: number; y: number; cellKey: string } | null>(null);
   const [rulerP1, setRulerP1] = useState<RulerPoint | null>(null);
   const [rulerP2, setRulerP2] = useState<RulerPoint | null>(null);
@@ -527,6 +536,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
 
   const dragStart = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
   const layerDrag = useRef<{ mx: number; my: number; ox: number; oy: number; last: { x: number; y: number } } | null>(null);
+  const tokenDrag = useRef<{ id: string; moved: boolean } | null>(null);
+  const suppressTokenClick = useRef(false);
+  const tokenScaleDrag = useRef<{ id: string; startScale: number; startX: number; last: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const measureBtnRef = useRef<HTMLButtonElement>(null);
@@ -554,6 +566,10 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     getMarkersForMap(database, mapId).then(setMarkers).catch(console.error);
   }
 
+  function reloadTokens() {
+    listTokens(database, mapId, sessionId).then(setTokens).catch(console.error);
+  }
+
   function reloadLayers() {
     listLayers(database, mapId).then((layers) => {
       const visibleImages = layers
@@ -579,6 +595,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       if (m.image_width_px) setImgSize({ w: m.image_width_px, h: m.image_height_px });
     }).catch(console.error);
     reloadMarkers();
+    reloadTokens();
     getActivatedCells(database, sessionId, mapId)
       .then((rows) => setCells(new Map(rows.map((r) => [r.cell_key, r.state]))))
       .catch(console.error);
@@ -698,6 +715,90 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
 
   function handleMouseUp() { setDragging(false); dragStart.current = null; }
 
+  // Direct token drag: pointer down on a token, move, up -> persist via moveToken.
+  function handleTokenPointerDown(token: MapTokenRow, e: React.PointerEvent<HTMLDivElement>) {
+    if (mode !== 'navigate') return;
+    e.stopPropagation();
+    tokenDrag.current = { id: token.id, moved: false };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* jsdom */ }
+  }
+
+  function handleTokenPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!tokenDrag.current) return;
+    tokenDrag.current.moved = true;
+    const { x, y } = toMapCoords(e.clientX, e.clientY);
+    const id = tokenDrag.current.id;
+    setTokens((prev) => prev.map((tk) => (tk.id === id ? { ...tk, x, y } : tk)));
+  }
+
+  function handleTokenPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (!tokenDrag.current) return;
+    const { id, moved } = tokenDrag.current;
+    tokenDrag.current = null;
+    if (!moved) return; // a plain click — selection handled in onClick
+    suppressTokenClick.current = true; // swallow the click that follows a drag
+    const { x, y } = toMapCoords(e.clientX, e.clientY);
+    moveToken(database, id, Math.round(x), Math.round(y)).then(reloadTokens).catch(console.error);
+  }
+
+  function handleTokenClick(token: MapTokenRow, e: React.MouseEvent<HTMLDivElement>) {
+    e.stopPropagation();
+    if (suppressTokenClick.current) { suppressTokenClick.current = false; return; }
+    if (mode !== 'navigate') return;
+    setSelectedTokenId(token.id);
+    setEditingToken(token);
+  }
+
+  // Drag the corner handle of a selected token to scale it (#301). Horizontal
+  // drag distance maps to a size factor, clamped; persisted on release.
+  function handleTokenResizeStart(token: MapTokenRow, e: React.MouseEvent<HTMLDivElement>) {
+    e.preventDefault();
+    tokenScaleDrag.current = { id: token.id, startScale: token.scale || 1, startX: e.clientX, last: token.scale || 1 };
+    const onMove = (ev: MouseEvent) => {
+      const d = tokenScaleDrag.current;
+      if (!d) return;
+      const ns = Math.max(0.25, Math.min(4, d.startScale + (ev.clientX - d.startX) / 80));
+      d.last = ns;
+      setTokens((prev) => prev.map((t) => (t.id === d.id ? { ...t, scale: ns } : t)));
+    };
+    const onUp = () => {
+      const d = tokenScaleDrag.current;
+      tokenScaleDrag.current = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (d) updateToken(database, d.id, { scale: Math.round(d.last * 100) / 100 }).then(reloadTokens).catch(console.error);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+
+  async function saveTokenEdit(patch: TokenEditPatch) {
+    if (!editingToken) return;
+    const id = editingToken.id;
+    await updateToken(database, id, {
+      label: patch.label,
+      ring_color: patch.ring_color,
+      art_asset_id: patch.art_asset_id,
+      render_style: patch.render_style,
+      art_offset_x: patch.art_offset_x,
+      art_offset_y: patch.art_offset_y,
+    });
+    await setCounter(database, id, { counter_label: patch.counter_label, counter_value: patch.counter_value });
+    await setStatusChips(database, id, patch.status_chips);
+    setEditingToken(null);
+    reloadTokens();
+    onLayersChanged?.();
+  }
+
+  async function deleteEditingToken() {
+    if (!editingToken) return;
+    const id = editingToken.id;
+    setEditingToken(null);
+    setSelectedTokenId((cur) => (cur === id ? null : cur));
+    await deleteToken(database, id);
+    reloadTokens();
+  }
+
   async function handleMapClick(e: React.MouseEvent) {
     if (!containerRef.current) return;
     const pos = toMapCoords(e.clientX, e.clientY);
@@ -727,6 +828,20 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       });
       setMode('navigate');
       reloadMarkers();
+      return;
+    }
+
+    if (mode === 'token') {
+      // Ad-hoc token as base placement (session_id NULL); entity link set later
+      // in the editor. Token layer is auto-created by the service on first use.
+      const { id } = await createToken(database, { map_id: mapId, x: Math.round(pos.x), y: Math.round(pos.y) });
+      setMode('navigate');
+      const list = await listTokens(database, mapId, sessionId);
+      setTokens(list);
+      const created = list.find((tk) => tk.id === id) ?? null;
+      setSelectedTokenId(id);
+      setEditingToken(created);
+      onLayersChanged?.();
       return;
     }
 
@@ -835,7 +950,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const sessionVarDefs: VarDef[] = sessionVarsRaw
     .filter((v) => VALID_VAR_TYPES.has(v.type))
     .map((v) => ({ id: v.id, label: v.label, type: v.type as VarDef['type'] }));
-  const cursor = mode === 'pin' ? 'crosshair' : mode === 'grid' ? 'cell' : (mode === 'measure' || mode === 'radius' || mode === 'fog') ? 'crosshair' : mode === 'move-layer' ? 'move' : dragging ? 'grabbing' : 'grab';
+  const cursor = (mode === 'pin' || mode === 'token') ? 'crosshair' : mode === 'grid' ? 'cell' : (mode === 'measure' || mode === 'radius' || mode === 'fog') ? 'crosshair' : mode === 'move-layer' ? 'move' : dragging ? 'grabbing' : 'grab';
 
   if (!imgSrc) return <div className="map-empty">Kein Kartenbild — Karte importieren um zu beginnen.</div>;
 
@@ -846,6 +961,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         <div className="map-toolbar__group">
           <button className={`map-tool-btn${mode === 'navigate' ? ' active' : ''}`} onClick={() => setMode('navigate')} title={t('all')}>🗺</button>
           <button className={`map-tool-btn${mode === 'pin' ? ' active' : ''}`} onClick={() => setMode('pin')} title="Pin setzen">📍</button>
+          <button className={`map-tool-btn${mode === 'token' ? ' active' : ''}`} onClick={() => setMode('token')} title={t('token.place', 'Token setzen')}>🧙</button>
           {/* Grid paint tool group — flyout with cell states */}
           <div className="map-tool-group" style={{ position: 'relative' }}>
             {(() => {
@@ -944,6 +1060,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       {/* Map canvas */}
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#111', cursor }}
         ref={containerRef}
+        data-map-canvas
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -1090,6 +1207,21 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             );
           })}
 
+          {tokens.map((tk) => (
+            <MapToken
+              key={tk.id}
+              token={tk}
+              resolveAssetUrl={getAssetUrl}
+              scale={scale}
+              selected={selectedTokenId === tk.id}
+              onPointerDown={(e) => handleTokenPointerDown(tk, e)}
+              onPointerMove={handleTokenPointerMove}
+              onPointerUp={handleTokenPointerUp}
+              onSelect={(e) => handleTokenClick(tk, e)}
+              onResizeStart={(e) => handleTokenResizeStart(tk, e)}
+            />
+          ))}
+
           {ghostPos && (mode === 'pin' || (mode === 'move-pin' && movingPinId)) && (
             <div className="map-pin map-pin--ghost"
               style={{
@@ -1138,6 +1270,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
 
         {showCoordinates && coords && <div className="map-viewer__coords">{coords.x} × {coords.y}</div>}
         {mode === 'pin' && <div className="map-viewer__hint">Klick auf Karte → Pin setzen</div>}
+        {mode === 'token' && <div className="map-viewer__hint">{t('token.placeHint', 'Klick auf Karte → Token setzen')}</div>}
         {mode === 'move-pin' && <div className="map-viewer__hint">Klick auf Karte → Pin hierhin verschieben · ESC abbrechen</div>}
         {mode === 'grid' && <div className="map-viewer__hint">Linksklick/halten: malen · Rechtsklick: Zustand · {cells.size} Zellen</div>}
         {mode === 'measure' && !rulerP1 && <div className="map-viewer__hint">Startpunkt klicken…</div>}
@@ -1146,14 +1279,59 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         {mode === 'radius' && rulerP1 && !rulerP2 && <div className="map-viewer__hint">Radius ziehen…</div>}
       </div>
 
-      {/* Pin tree — always visible, resizable */}
-      <div style={{ width: pinTreeCollapsed ? 32 : pinTreeWidth, flexShrink: 0, position: 'relative' }}>
+      {/* Right sidebar — PINS / TOKEN tabs; pin tree resizable + collapsible */}
+      <div style={{ width: pinTreeCollapsed ? 32 : pinTreeWidth, flexShrink: 0, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--color-surface-alt)', borderLeft: '1px solid var(--color-border)' }}>
+        {pinTreeCollapsed ? (
+          <div className="map-side-collapsed">
+            <button type="button" className="map-side-collapsed__tab" title={t('mapSideTabs.pins', 'Pins')}
+              onClick={() => { setRightTab('pins'); setPinTreeCollapsed(false); }}>{t('mapSideTabs.pins', 'Pins')}</button>
+            <button type="button" className="map-side-collapsed__tab" title={t('mapSideTabs.tokens', 'Token')}
+              onClick={() => { setRightTab('tokens'); setPinTreeCollapsed(false); }}>{t('mapSideTabs.tokens', 'Token')}</button>
+          </div>
+        ) : (
+        <>
+        <div className="maps-sidebar-tabs__list" role="tablist">
+          <button type="button" role="tab" aria-selected={rightTab === 'pins'}
+            className={`maps-sidebar-tabs__tab${rightTab === 'pins' ? ' maps-sidebar-tabs__tab--active' : ''}`}
+            onClick={() => setRightTab('pins')}>{t('mapSideTabs.pins', 'Pins')}</button>
+          <button type="button" role="tab" aria-selected={rightTab === 'tokens'}
+            className={`maps-sidebar-tabs__tab${rightTab === 'tokens' ? ' maps-sidebar-tabs__tab--active' : ''}`}
+            onClick={() => setRightTab('tokens')}>{t('mapSideTabs.tokens', 'Token')}</button>
+          <button type="button" className="map-side-collapse-btn" title={t('collapse', 'Einklappen')}
+            onClick={() => setPinTreeCollapsed(true)}>◀</button>
+        </div>
+        {rightTab === 'tokens' ? (
+          <div className="map-token-list">
+            {tokens.length === 0 && (
+              <div className="map-token-list__empty">{t('mapSideTabs.noTokens', 'Keine Tokens. Token-Werkzeug + Klick auf die Karte.')}</div>
+            )}
+            {tokens.map((tk) => (
+              <div key={tk.id} className={`map-token-list__row${selectedTokenId === tk.id ? ' active' : ''}`}>
+                <span
+                  className={`map-token-list__swatch map-token-list__swatch--${tk.render_style}`}
+                  style={tk.render_style === 'token' ? { background: tk.ring_color || 'var(--color-accent)' } : undefined}
+                  title={tk.render_style === 'token' ? t('mapSideTabs.tokenCircle', 'Token (Kreis)') : t('mapSideTabs.tokenPlain', 'Plain (Bild)')}
+                />
+                <button type="button" className="map-token-list__name"
+                  onClick={() => { setSelectedTokenId(tk.id); setEditingToken(tk); }}>
+                  {tk.label || t('mapSideTabs.unnamedToken', 'Token')}
+                </button>
+                <button type="button" className="map-token-list__del" title={t('delete', 'Löschen')}
+                  onClick={() => {
+                    if (editingToken?.id === tk.id) setEditingToken(null);
+                    setSelectedTokenId((cur) => (cur === tk.id ? null : cur));
+                    deleteToken(database, tk.id).then(reloadTokens).catch(console.error);
+                  }}>✕</button>
+              </div>
+            ))}
+          </div>
+        ) : (
         <PinTree
           markers={markers}
           editingId={editingPin?.id ?? null}
           onSelect={openPinEditor}
-          panelCollapsed={pinTreeCollapsed}
-          onTogglePanel={() => setPinTreeCollapsed((v) => !v)}
+          panelCollapsed={false}
+          onTogglePanel={() => setPinTreeCollapsed(true)}
           entities={entities}
           onGroupRename={handleGroupRename}
           onPinMove={(markerId, newGroup) => {
@@ -1170,6 +1348,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           }}
           onResizeStart={handlePinResizeStart}
         />
+        )}
+        </>
+        )}
       </div>
 
       {/* Pin editor */}
@@ -1258,6 +1439,18 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             <button className="btn" style={{ color: 'var(--color-status-failure)' }} onClick={() => void deletePin(editingPin.id)}>Löschen</button>
           </div>
         </div>
+      )}
+
+      {/* Token editor — rendered panel (AP-003: no prompt/alert/confirm) */}
+      {editingToken && (
+        <TokenEditor
+          token={editingToken}
+          onPickArt={onPickTokenArt ?? (async () => null)}
+          resolveAssetUrl={getAssetUrl}
+          onSave={(patch) => void saveTokenEdit(patch)}
+          onDelete={() => void deleteEditingToken()}
+          onClose={() => setEditingToken(null)}
+        />
       )}
 
       {/* Cell context menu — outside transform */}

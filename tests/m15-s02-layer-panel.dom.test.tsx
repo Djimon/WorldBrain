@@ -1,16 +1,14 @@
 // M15-S02: Layer-Panel UI — Stack, Opacity, Show/Hide, z-Order, Player-Visible
 // See: https://github.com/Djimon/WorldBrain/issues/274
 //
-// Note (reorder): see LayerPanel.tsx's header comment — reorder is tested
-// via accessible move-up/move-down buttons, not raw pointer-drag simulation
-// (impractical/flaky in jsdom; the AC's actual requirement, reorderLayers
-// persisting the new order, is fully exercised this way).
+// Rows have no name/type label (removed 2026-07-20) — they are addressed by
+// data-layer-id. Rows default to COLLAPSED; controls live behind the "Details"
+// toggle, so control tests expand the row first.
 //
 // AP-001: database prop typed as DatabaseLike; no unknown/as-never casts.
 // AP-003: no prompt()/alert()/confirm() — asserted via source scan; delete
 // uses a rendered inline confirm row instead.
-// AP-008 (RTL): anchored queries; getAllBy*/within where per-row controls
-// could collide across rows.
+// AP-008 (RTL): within(row) scoping so per-row controls cannot collide.
 
 import { readFileSync } from 'node:fs';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -33,98 +31,99 @@ vi.mock('../src/services/map-layer-service', () => ({
 
 const mockDb = { execute: vi.fn(), select: vi.fn() };
 
+function renderPanel() {
+  const view = render(<LayerPanel database={mockDb} mapId="map-1" />);
+  return view;
+}
+
+async function getRow(container: HTMLElement, layerId: string): Promise<HTMLElement> {
+  return waitFor(() => {
+    const el = container.querySelector(`[data-layer-id="${layerId}"]`);
+    if (!el) throw new Error(`row ${layerId} not rendered`);
+    return el as HTMLElement;
+  });
+}
+
+// Rows default collapsed — expand to reach the controls.
+function expandRow(row: HTMLElement) {
+  fireEvent.click(within(row).getByRole('button', { name: /^details$/i }));
+}
+
 describe('M15-S02 layer panel', () => {
-  describe('one row per layer, ordered by z_order descending (top layer first)', () => {
-    it('renders rows in the order Fog A, Overlay, Base', async () => {
-      render(<LayerPanel database={mockDb} mapId="map-1" />);
-      await waitFor(() => expect(screen.getAllByRole('listitem').length).toBe(3));
-      const rows = screen.getAllByRole('listitem');
-      expect(rows.map((r) => r.textContent)).toEqual([
-        expect.stringContaining('Fog A'),
-        expect.stringContaining('Overlay'),
-        expect.stringContaining('Base'),
-      ]);
-    });
+  it('renders one row per layer, ordered by z_order descending (top first)', async () => {
+    const { container } = renderPanel();
+    await waitFor(() => expect(screen.getAllByRole('listitem').length).toBe(3));
+    const ids = Array.from(container.querySelectorAll('[data-layer-id]')).map((el) => el.getAttribute('data-layer-id'));
+    expect(ids).toEqual(['layer_top', 'layer_mid', 'layer_bottom']);
   });
 
-  describe('opacity slider wired to updateLayer', () => {
-    it('changing the opacity slider for a row calls updateLayer with a 0-1 opacity', async () => {
-      const { updateLayer } = await import('../src/services/map-layer-service');
-      render(<LayerPanel database={mockDb} mapId="map-1" />);
-      const row = await screen.findByRole('listitem', { name: /overlay/i });
-      const slider = within(row).getByRole('slider', { name: /^deckkraft$/i });
-      fireEvent.change(slider, { target: { value: '50' } });
-      await waitFor(() => expect(updateLayer).toHaveBeenCalledWith(mockDb, 'layer_mid', expect.objectContaining({ opacity: 0.5 })));
-    });
+  it('changing the opacity slider for a row calls updateLayer with a 0-1 opacity', async () => {
+    const { updateLayer } = await import('../src/services/map-layer-service');
+    const { container } = renderPanel();
+    const row = await getRow(container, 'layer_mid');
+    expandRow(row);
+    fireEvent.change(within(row).getByRole('slider', { name: /^deckkraft$/i }), { target: { value: '50' } });
+    await waitFor(() => expect(updateLayer).toHaveBeenCalledWith(mockDb, 'layer_mid', expect.objectContaining({ opacity: 0.5 })));
   });
 
-  describe('show/hide toggle', () => {
-    it('toggling visible off calls updateLayer(visible:false) and shows a hidden indicator', async () => {
-      const { updateLayer } = await import('../src/services/map-layer-service');
-      render(<LayerPanel database={mockDb} mapId="map-1" />);
-      const row = await screen.findByRole('listitem', { name: /overlay/i });
-      fireEvent.click(within(row).getByRole('button', { name: /^ausblenden$/i }));
-      await waitFor(() => expect(updateLayer).toHaveBeenCalledWith(mockDb, 'layer_mid', expect.objectContaining({ visible: false })));
-    });
+  it('toggling visible off calls updateLayer(visible:false)', async () => {
+    const { updateLayer } = await import('../src/services/map-layer-service');
+    const { container } = renderPanel();
+    const row = await getRow(container, 'layer_mid');
+    expandRow(row);
+    fireEvent.click(within(row).getByRole('button', { name: /^ausblenden$/i }));
+    await waitFor(() => expect(updateLayer).toHaveBeenCalledWith(mockDb, 'layer_mid', expect.objectContaining({ visible: false })));
   });
 
-  describe('player-visible toggle', () => {
-    it('a player-visible toggle exists per row and calls updateLayer(player_visible:...)', async () => {
-      const { updateLayer } = await import('../src/services/map-layer-service');
-      render(<LayerPanel database={mockDb} mapId="map-1" />);
-      const row = await screen.findByRole('listitem', { name: /fog a/i });
-      fireEvent.click(within(row).getByRole('button', { name: /^spielersichtbar$/i }));
-      await waitFor(() => expect(updateLayer).toHaveBeenCalledWith(mockDb, 'layer_top', expect.objectContaining({ player_visible: true })));
-    });
+  it('a player-visible toggle exists per row and calls updateLayer(player_visible:...)', async () => {
+    const { updateLayer } = await import('../src/services/map-layer-service');
+    const { container } = renderPanel();
+    const row = await getRow(container, 'layer_top');
+    expandRow(row);
+    fireEvent.click(within(row).getByRole('button', { name: /^spielersichtbar$/i }));
+    await waitFor(() => expect(updateLayer).toHaveBeenCalledWith(mockDb, 'layer_top', expect.objectContaining({ player_visible: true })));
   });
 
-  describe('reorder persists the new order via reorderLayers', () => {
-    it('moving "Overlay" up calls reorderLayers with the new z_order-descending id list', async () => {
-      const { reorderLayers } = await import('../src/services/map-layer-service');
-      render(<LayerPanel database={mockDb} mapId="map-1" />);
-      const row = await screen.findByRole('listitem', { name: /overlay/i });
-      fireEvent.click(within(row).getByRole('button', { name: /^nach oben$/i }));
-      await waitFor(() =>
-        expect(reorderLayers).toHaveBeenCalledWith(mockDb, 'map-1', ['layer_mid', 'layer_top', 'layer_bottom']),
-      );
-    });
+  it('moving a layer up calls reorderLayers with the new z_order-descending id list', async () => {
+    const { reorderLayers } = await import('../src/services/map-layer-service');
+    const { container } = renderPanel();
+    const row = await getRow(container, 'layer_mid');
+    expandRow(row);
+    fireEvent.click(within(row).getByRole('button', { name: /^nach oben$/i }));
+    await waitFor(() =>
+      expect(reorderLayers).toHaveBeenCalledWith(mockDb, 'map-1', ['layer_mid', 'layer_top', 'layer_bottom']),
+    );
   });
 
-  describe('delete uses a rendered inline confirm row, not window.confirm', () => {
-    it('clicking delete shows an inline confirm row before calling deleteLayer', async () => {
-      const { deleteLayer } = await import('../src/services/map-layer-service');
-      render(<LayerPanel database={mockDb} mapId="map-1" />);
-      const row = await screen.findByRole('listitem', { name: /overlay/i });
-      fireEvent.click(within(row).getByRole('button', { name: /^löschen$/i }));
-      expect(deleteLayer).not.toHaveBeenCalled();
-      const confirmBtn = await within(row).findByRole('button', { name: /^ja, löschen$/i });
-      fireEvent.click(confirmBtn);
-      await waitFor(() => expect(deleteLayer).toHaveBeenCalledWith(mockDb, 'layer_mid'));
-    });
+  it('delete shows an inline confirm row before calling deleteLayer', async () => {
+    const { deleteLayer } = await import('../src/services/map-layer-service');
+    const { container } = renderPanel();
+    const row = await getRow(container, 'layer_mid');
+    expandRow(row);
+    fireEvent.click(within(row).getByRole('button', { name: /^löschen$/i }));
+    expect(deleteLayer).not.toHaveBeenCalled();
+    fireEvent.click(await within(row).findByRole('button', { name: /^ja, löschen$/i }));
+    await waitFor(() => expect(deleteLayer).toHaveBeenCalledWith(mockDb, 'layer_mid'));
   });
 
-  describe('add-layer entry points', () => {
-    it('"Bild-Layer hinzufügen" calls onAddImageLayer', async () => {
-      const onAddImageLayer = vi.fn();
-      render(<LayerPanel database={mockDb} mapId="map-1" onAddImageLayer={onAddImageLayer} />);
-      await waitFor(() => expect(screen.getAllByRole('listitem').length).toBe(3));
-      fireEvent.click(screen.getByRole('button', { name: /^bild-layer hinzufügen$/i }));
-      expect(onAddImageLayer).toHaveBeenCalled();
-    });
-
-    it('"Fog-Layer hinzufügen" calls onAddFogLayer', async () => {
-      const onAddFogLayer = vi.fn();
-      render(<LayerPanel database={mockDb} mapId="map-1" onAddFogLayer={onAddFogLayer} />);
-      await waitFor(() => expect(screen.getAllByRole('listitem').length).toBe(3));
-      fireEvent.click(screen.getByRole('button', { name: /^fog-layer hinzufügen$/i }));
-      expect(onAddFogLayer).toHaveBeenCalled();
-    });
+  it('"Bild-Layer hinzufügen" calls onAddImageLayer', async () => {
+    const onAddImageLayer = vi.fn();
+    render(<LayerPanel database={mockDb} mapId="map-1" onAddImageLayer={onAddImageLayer} />);
+    await waitFor(() => expect(screen.getAllByRole('listitem').length).toBe(3));
+    fireEvent.click(screen.getByRole('button', { name: /^\+ map layer$/i }));
+    expect(onAddImageLayer).toHaveBeenCalled();
   });
 
-  describe('no prompt()/alert()/confirm() (AP-003)', () => {
-    it('LayerPanel.tsx does not call prompt/alert/confirm', () => {
-      const src = readFileSync('src/ui/LayerPanel.tsx', 'utf-8');
-      expect(src).not.toMatch(/\b(prompt|alert|confirm)\s*\(/);
-    });
+  it('"Fog-Layer hinzufügen" calls onAddFogLayer', async () => {
+    const onAddFogLayer = vi.fn();
+    render(<LayerPanel database={mockDb} mapId="map-1" onAddFogLayer={onAddFogLayer} />);
+    await waitFor(() => expect(screen.getAllByRole('listitem').length).toBe(3));
+    fireEvent.click(screen.getByRole('button', { name: /^\+ fog layer$/i }));
+    expect(onAddFogLayer).toHaveBeenCalled();
+  });
+
+  it('LayerPanel.tsx does not call prompt/alert/confirm (AP-003)', () => {
+    const src = readFileSync('src/ui/LayerPanel.tsx', 'utf-8');
+    expect(src).not.toMatch(/\b(prompt|alert|confirm)\s*\(/);
   });
 });

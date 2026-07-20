@@ -4,7 +4,7 @@
 //
 // AP-008 (RTL): anchored queries. AP-001: DatabaseLike, no unknown casts.
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 // ---- MapViewer drag persists the new offset --------------------------------
@@ -67,9 +67,14 @@ describe('MapViewer move-layer drag', () => {
 describe('LayerPanel move button', () => {
   it('shows a move button on an image layer and toggles it via onMoveLayer', async () => {
     const onMoveLayer = vi.fn();
-    render(<LayerPanel database={mockDb as never} mapId="map-1" onMoveLayer={onMoveLayer} />);
-    const btn = await screen.findByRole('button', { name: /^verschieben$/i });
-    fireEvent.click(btn);
+    const { container } = render(<LayerPanel database={mockDb as never} mapId="map-1" onMoveLayer={onMoveLayer} />);
+    const row = await waitFor(() => {
+      const el = container.querySelector('[data-layer-id="img1"]');
+      if (!el) throw new Error('row not rendered');
+      return el as HTMLElement;
+    });
+    fireEvent.click(within(row).getByRole('button', { name: /^details$/i })); // rows default collapsed
+    fireEvent.click(within(row).getByRole('button', { name: /^verschieben$/i }));
     expect(onMoveLayer).toHaveBeenCalledWith('img1');
   });
 });

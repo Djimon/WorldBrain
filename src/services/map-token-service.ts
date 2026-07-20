@@ -3,6 +3,7 @@
 // with layer_type='token' -- creating the first token on a map with no
 // token layer creates that layer first (z_order = max+1).
 import type { DatabaseLike } from './entity-service';
+import { createTokenLayer, listLayers } from './map-layer-service';
 
 export interface StatusChip {
   icon: string;
@@ -10,11 +11,20 @@ export interface StatusChip {
   text?: string;
 }
 
+// #298: a token is a map-local design element (NO entity/lore link). Its art
+// comes from an uploaded image. render_style 'token' = image in a round mask +
+// frame (crop pannable via art_offset percent); 'plain' = full artwork.
+export type TokenRenderStyle = 'token' | 'plain';
+
 export interface MapTokenRow {
   id: string;
   layer_id: string;
   map_id: string;
-  entity_id: string | null;
+  art_asset_id: string | null;
+  render_style: TokenRenderStyle;
+  art_offset_x: number;
+  art_offset_y: number;
+  scale: number;
   label: string | null;
   x: number;
   y: number;
@@ -29,7 +39,8 @@ export interface MapTokenRow {
 export interface CreateTokenParams {
   layer_id?: string;
   map_id: string;
-  entity_id?: string;
+  art_asset_id?: string;
+  render_style?: TokenRenderStyle;
   label?: string;
   x: number;
   y: number;
@@ -39,48 +50,105 @@ export interface CreateTokenParams {
 
 export interface UpdateTokenPatch {
   label?: string;
-  ring_color?: string;
-  entity_id?: string;
+  ring_color?: string | null;
+  art_asset_id?: string | null;
+  render_style?: TokenRenderStyle;
+  art_offset_x?: number;
+  art_offset_y?: number;
+  scale?: number;
+}
+
+// Raw DB row (status_chips_json string) before decoding into MapTokenRow.
+interface MapTokenDbRow extends Omit<MapTokenRow, 'status_chips'> {
+  status_chips_json: string;
+}
+
+// AP-006 exception: JSON.parse of DB *_json → safe fallback [] on malformed data.
+function parseChips(json: string): StatusChip[] {
+  try {
+    const parsed = JSON.parse(json);
+    return Array.isArray(parsed) ? (parsed as StatusChip[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Finds a map's token layer, or creates one (z_order = max+1) if none exists. */
+async function ensureTokenLayer(db: DatabaseLike, mapId: string): Promise<string> {
+  const layers = await listLayers(db, mapId);
+  const existing = layers.find((l) => l.layer_type === 'token');
+  if (existing) return existing.id;
+  const { id } = await createTokenLayer(db, { map_id: mapId });
+  return id;
 }
 
 /**
  * Creates a token. If the map has no `layer_type='token'` layer yet, one is
  * created first (z_order = max+1) and the new token is placed on it.
  */
-export async function createToken(_db: DatabaseLike, _params: CreateTokenParams): Promise<{ id: string }> {
-  throw new Error('not implemented');
+export async function createToken(db: DatabaseLike, params: CreateTokenParams): Promise<{ id: string }> {
+  const layerId = params.layer_id ?? (await ensureTokenLayer(db, params.map_id));
+  const id = `token_${crypto.randomUUID()}`;
+  await db.execute(
+    'INSERT INTO map_tokens (id, layer_id, map_id, art_asset_id, render_style, label, x, y, ring_color, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, layerId, params.map_id, params.art_asset_id ?? null, params.render_style ?? 'token', params.label ?? null, params.x, params.y, params.ring_color ?? null, params.session_id ?? null],
+  );
+  return { id };
 }
 
-/** Lists a map's tokens, optionally scoped to a session (session_id = NULL means base placement). */
-export async function listTokens(_db: DatabaseLike, _mapId: string, _sessionId?: string): Promise<MapTokenRow[]> {
-  throw new Error('not implemented');
+/**
+ * Lists a map's tokens. With `sessionId`: base placements (session_id NULL)
+ * plus that session's tokens. Without: base placements only.
+ */
+export async function listTokens(db: DatabaseLike, mapId: string, sessionId?: string): Promise<MapTokenRow[]> {
+  const rows = sessionId === undefined
+    ? await db.select<MapTokenDbRow>('SELECT * FROM map_tokens WHERE map_id = ? AND session_id IS NULL', [mapId])
+    : await db.select<MapTokenDbRow>('SELECT * FROM map_tokens WHERE map_id = ? AND (session_id IS NULL OR session_id = ?)', [mapId, sessionId]);
+  return rows.map(({ status_chips_json, ...rest }) => ({ ...rest, status_chips: parseChips(status_chips_json) }));
 }
 
 /** Moves a token to new x/y coordinates (in place, no position history). */
-export async function moveToken(_db: DatabaseLike, _id: string, _x: number, _y: number): Promise<void> {
-  throw new Error('not implemented');
+export async function moveToken(db: DatabaseLike, id: string, x: number, y: number): Promise<void> {
+  await db.execute('UPDATE map_tokens SET x = ?, y = ? WHERE id = ?', [x, y, id]);
 }
 
 /** Sets the token's one counter (label and/or value). */
 export async function setCounter(
-  _db: DatabaseLike,
-  _id: string,
-  _counter: { counter_label?: string; counter_value?: number },
+  db: DatabaseLike,
+  id: string,
+  counter: { counter_label?: string | null; counter_value?: number | null },
 ): Promise<void> {
-  throw new Error('not implemented');
+  const fields: string[] = [];
+  const args: unknown[] = [];
+  if (counter.counter_label !== undefined) { fields.push('counter_label = ?'); args.push(counter.counter_label); }
+  if (counter.counter_value !== undefined) { fields.push('counter_value = ?'); args.push(counter.counter_value); }
+  if (fields.length === 0) return;
+  args.push(id);
+  await db.execute(`UPDATE map_tokens SET ${fields.join(', ')} WHERE id = ?`, args);
 }
 
 /** Sets the token's status chips (replaces the full array). */
-export async function setStatusChips(_db: DatabaseLike, _id: string, _chips: StatusChip[]): Promise<void> {
-  throw new Error('not implemented');
+export async function setStatusChips(db: DatabaseLike, id: string, chips: StatusChip[]): Promise<void> {
+  await db.execute('UPDATE map_tokens SET status_chips_json = ? WHERE id = ?', [JSON.stringify(chips), id]);
 }
 
-/** Patches label/ring_color/entity_id on a token. */
-export async function updateToken(_db: DatabaseLike, _id: string, _patch: UpdateTokenPatch): Promise<void> {
-  throw new Error('not implemented');
+/** Patches label/ring_color/art fields on a token. */
+export async function updateToken(db: DatabaseLike, id: string, patch: UpdateTokenPatch): Promise<void> {
+  const fields: string[] = [];
+  const args: unknown[] = [];
+  if (patch.label !== undefined) { fields.push('label = ?'); args.push(patch.label); }
+  if (patch.ring_color !== undefined) { fields.push('ring_color = ?'); args.push(patch.ring_color); }
+  if (patch.art_asset_id !== undefined) { fields.push('art_asset_id = ?'); args.push(patch.art_asset_id); }
+  if (patch.render_style !== undefined) { fields.push('render_style = ?'); args.push(patch.render_style); }
+  if (patch.art_offset_x !== undefined) { fields.push('art_offset_x = ?'); args.push(patch.art_offset_x); }
+  if (patch.art_offset_y !== undefined) { fields.push('art_offset_y = ?'); args.push(patch.art_offset_y); }
+  if (patch.scale !== undefined) { fields.push('scale = ?'); args.push(patch.scale); }
+  if (fields.length === 0) return;
+  args.push(id);
+  await db.execute(`UPDATE map_tokens SET ${fields.join(', ')} WHERE id = ?`, args);
 }
 
 /** Deletes a token. */
-export async function deleteToken(_db: DatabaseLike, _id: string): Promise<void> {
-  throw new Error('not implemented');
+export async function deleteToken(db: DatabaseLike, id: string): Promise<void> {
+  await db.execute('DELETE FROM map_tokens WHERE id = ?', [id]);
 }

@@ -1299,6 +1299,346 @@ input {
   z-index: 6;
 }
 
+/* ── Map tokens (M15-S07) ── */
+.map-token {
+  position: absolute;
+  cursor: pointer;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  user-select: none;
+  pointer-events: all;
+  /* counter-scale (1/scale) applied inline via style prop */
+}
+
+.map-token__ring {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid var(--color-accent);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.map-token__portrait {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 18px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+}
+
+.map-token__name {
+  font-size: 11px;
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.map-token__counter {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--color-accent-strong, #c0392b);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+
+.map-token__chips {
+  position: absolute;
+  top: -14px;
+  display: flex;
+  gap: 2px;
+  z-index: 6;
+}
+
+.map-token__chip {
+  font-size: 12px;
+  line-height: 1;
+  background: var(--color-surface);
+  border-radius: 50%;
+  padding: 1px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.map-token--selected .map-token__ring {
+  box-shadow: 0 0 0 2px var(--color-accent-strong), 0 1px 4px rgba(0,0,0,0.6);
+}
+
+.map-token__art { display: block; }
+
+.map-token__art-plain {
+  display: block;
+  max-width: 96px;
+  max-height: 96px;
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,0.6));
+}
+.map-token--selected .map-token__art-plain { outline: 2px solid var(--color-accent-strong); }
+
+/* Resize handle (#301) — bottom-right of a selected token, drag to scale.
+   Diagonal double-arrow glyph = universal resize affordance. */
+.map-token__resize {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  border: 1px solid #fff;
+  font-size: 10px;
+  line-height: 1;
+  cursor: nwse-resize;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  z-index: 7;
+  user-select: none;
+}
+
+/* ── Token editor panel (M15-S07) ── */
+.token-editor {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 260px;
+  /* Auto-grow with content — no inner scrollbar (e.g. when adding chips). */
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  padding: var(--space-3);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.token-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.token-editor__close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.token-editor__field,
+.token-editor__art,
+.token-editor__counter,
+.token-editor__chips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.token-editor__art,
+.token-editor__counter,
+.token-editor__chips {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+}
+.token-editor__art legend,
+.token-editor__counter legend,
+.token-editor__chips legend {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  padding: 0 var(--space-1);
+}
+
+/* Inputs/selects follow the app's form-input convention. */
+.token-editor input[type="text"],
+.token-editor input[type="number"],
+.token-editor select {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+.token-editor input:focus,
+.token-editor select:focus { border-color: var(--color-accent); outline: none; }
+.token-editor input[type="color"] {
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+/* Buttons follow the app button convention (surface + border, accent hover). */
+.token-editor button {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.token-editor button:hover { border-color: var(--color-accent); }
+.token-editor__close { padding: 0; border: none; }
+
+.token-editor__mode { display: flex; gap: var(--space-1); }
+.token-editor__mode-btn { flex: 1 1 auto; }
+.token-editor__mode-btn.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+
+.token-editor__upload { align-self: flex-start; }
+
+.token-editor__crop {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--color-border);
+  cursor: move;
+  touch-action: none;
+  margin: var(--space-1) auto 0;
+}
+.token-editor__crop img { display: block; }
+
+.token-editor__plain-preview { text-align: center; }
+.token-editor__plain-preview img { max-width: 100%; max-height: 140px; display: inline-block; }
+
+.token-editor__chip-row {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+/* Icon field is narrow; the text field takes the rest. */
+.token-editor__chip-row input[type="text"]:first-of-type { flex: 0 0 46px; text-align: center; }
+.token-editor__chip-row input[type="text"] { flex: 1 1 auto; min-width: 0; }
+.token-editor__chip-row button { flex: 0 0 auto; padding: 4px 6px; }
+
+.token-editor__add-chip { align-self: flex-start; }
+
+.token-editor__actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+.token-editor__save { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
+.token-editor__delete { border-color: var(--color-status-failure, #c0392b); color: var(--color-status-failure, #c0392b); }
+
+/* ── Right map sidebar: PINS / TOKEN tabs (#302) ──
+   Expanded tabs reuse the .maps-sidebar-tabs__* style (same as Karten/Ebenen). */
+.map-side-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+.map-side-collapsed__tab {
+  writing-mode: vertical-rl;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 4px 2px;
+}
+.map-side-collapsed__tab:hover { color: var(--color-accent); }
+
+.map-side-collapse-btn {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0 6px;
+}
+.map-side-collapse-btn:hover { color: var(--color-accent); }
+
+.map-token-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  overflow-y: auto;
+  min-height: 0;
+}
+.map-token-list__empty { font-size: 0.8rem; color: var(--color-text-muted); padding: var(--space-2); }
+.map-token-list__row { display: flex; align-items: center; gap: 6px; }
+/* Indicator before the name: shape = render style (circle token / square plain),
+   fill = ring color for token mode. */
+.map-token-list__swatch {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+}
+.map-token-list__swatch--token {
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+.map-token-list__swatch--plain {
+  border-radius: 2px;
+  border: 2px solid var(--color-text-muted);
+  background: transparent;
+}
+.map-token-list__name {
+  flex: 1 1 auto;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-token-list__name:hover { background: var(--color-background); }
+.map-token-list__row.active .map-token-list__name { background: var(--color-accent); color: #fff; }
+.map-token-list__del {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.map-token-list__del:hover { color: var(--color-status-failure, #c0392b); }
+
 /* ── Pin tree sidebar ── */
 .map-pin-tree {
   width: 100%;
@@ -2924,142 +3264,178 @@ input {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+}
+
+/* Splitter to resize the maps sidebar (mirrors the pin-tree resize handle). */
+.maps-sidebar__resize-handle {
+  flex: 0 0 auto;
+  width: 5px;
+  align-self: stretch;
+  cursor: col-resize;
+  background: transparent;
+}
+.maps-sidebar__resize-handle:hover { background: var(--color-accent); opacity: 0.4; }
+
+/* Maps sidebar tabs (#297): Karten / Ebenen */
+.maps-sidebar-tabs {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.maps-sidebar-tabs__list {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-2);
+}
+
+.maps-sidebar-tabs__tab {
+  flex: 1 1 auto;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.maps-sidebar-tabs__tab:hover:not(:disabled) {
+  color: var(--color-text);
+}
+
+.maps-sidebar-tabs__tab--active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.maps-sidebar-tabs__tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.maps-sidebar-tabs__panel {
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .maps-layer-section {
-  margin-top: var(--space-3);
-  border-top: 1px solid var(--color-border);
+  /* Separation is now provided by the tab strip above; no top border needed. */
+  margin-top: 0;
 }
 
 .maps-layer-section__title {
   margin: var(--space-2) 0 0;
 }
 
-.layer-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-2) 0;
-}
-
-.layer-panel__toolbar {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.layer-panel__toolbar button {
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-alt, var(--color-background));
-  color: var(--color-text);
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
-.layer-panel__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.layer-panel__row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-background);
-  font-size: 0.8rem;
-}
-
+/* Root cause fix: `.workspace-area__sidebar ul li button { width:100% }` (the
+   maps-list button style) leaks onto the layer-panel buttons because the panel
+   also lives in a ul>li>button inside the sidebar. That forced the collapse
+   arrow to full width, pushing the type label + indicator onto the next line.
+   Higher-specificity override makes the arrow content-sized so the header flows
+   inline: [arrow] [type] [indicator]. */
+/* Header row: [arrow] [name grows, left] [indicator] [type chip, right]. */
 .layer-panel__row-header {
   display: flex;
   align-items: center;
   gap: 6px;
 }
-
-.layer-panel__collapse {
+.layer-panel__row-header .layer-panel__collapse {
+  width: auto;
   flex: 0 0 auto;
-  width: 18px;
-  padding: 0;
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 0.7rem;
+  padding: 0 2px;
+  text-align: center;
 }
-
-.layer-panel__row-header .layer-panel__name {
+.layer-panel__name-display {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
 }
+.layer-panel__hidden-indicator { flex: 0 0 auto; }
 
-.layer-panel__controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px var(--space-2);
-}
-
-.layer-panel__opacity input[type="range"] {
-  width: 100%;
-}
-
-.layer-panel__name {
-  min-width: 90px;
-  font-weight: 600;
-  cursor: text;
-}
-
-.layer-panel__opacity {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--color-text-muted);
-}
-
-.layer-panel__row button {
-  padding: 2px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
-  cursor: pointer;
-  font-size: 0.75rem;
+/* Type pill — colored text + matching border, right side, non-shrinking. */
+.layer-panel__type {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
   white-space: nowrap;
 }
+.layer-panel__type--image { color: #6ea8fe; }
+.layer-panel__type--fog { color: #b0b8c4; }
+.layer-panel__type--token { color: #e0a15a; }
 
-.layer-panel__row button:hover {
-  border-color: var(--color-accent);
+/* Add-layer toolbar: buttons side by side when there's room, wrapping to
+   stacked full-width rows when the sidebar is narrow. */
+.layer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  min-width: 0;
 }
 
-.layer-panel__hidden-indicator {
+/* More breathing room + a separator between the add-buttons and the layer list. */
+.layer-panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.layer-panel .layer-panel__list { gap: var(--space-2); }
+.layer-panel__row { padding: 3px 4px; border-radius: var(--radius-sm); }
+.layer-panel__row-header { line-height: 1.6; }
+.layer-panel__row.editing { background: var(--color-surface-alt, transparent); }
+/* Same look as the "+ Karte importieren" button (.emd__create-btn). */
+.layer-panel__toolbar button {
+  flex: 1 1 auto;
+  min-width: 110px;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.layer-panel__toolbar button:hover { background: var(--color-accent); color: #fff; }
+
+/* Name input at the top of an expanded row's controls. */
+.layer-panel__name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   font-size: 0.7rem;
   color: var(--color-text-muted);
-  font-style: italic;
 }
-
-.layer-panel__delete-confirm {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--color-status-failure, #b43c3c);
+.layer-panel__name-field input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  color: var(--color-text);
+  font-size: 0.85rem;
 }
-
-.layer-panel__row.editing {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 1px var(--color-accent) inset;
-}
-
-.layer-panel__row button.active {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: #fff;
-}
+.layer-panel__name-field input:focus { border-color: var(--color-accent); outline: none; }
 
 /* ── Fog paint toolbar (#276) ─────────────────────────────────────────────── */
 .fog-tools {

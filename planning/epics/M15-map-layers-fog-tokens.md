@@ -128,10 +128,76 @@ Verifizierter Status aus git. Die Stories-Tabelle bildet Plan/Scope ab, NICHT de
   V1-Grenze — nicht Teil von #276.
 - S05 #277 (Folders): NICHT implementiert — RED-Tests, `map-folder-service` komplett Stubs,
   `MapFolderTree.tsx` unmounted.
-- S06 #278 (Tokens): NICHT implementiert — RED-Tests, `map-token-service` komplett Stubs.
-- S07 #279 (Token-UI/Export): NICHT gestartet.
+- S06 #278 (Tokens): DONE 2026-07-20 — `map-token-service` implementiert (createToken +
+  Auto-Token-Layer via neuem `map-layer-service.createTokenLayer` z_order=max+1, listTokens
+  mit Session-Scoping (kein sessionId=nur Base session_id NULL; mit sessionId=Base+Session),
+  moveToken/setCounter/setStatusChips/updateToken/deleteToken, status_chips_json JSON.parse
+  mit Safe-Fallback []). Schema `map_tokens` bestand bereits (applyMapSchema, CREATE IF NOT
+  EXISTS -> Runtime legt Tabelle beim naechsten Init an, kein ALTER). Tests
+  `m15-s06-map-tokens` 10/10, tsc 0, lint 0. Token-Render/Drag-UI = S07 (#279).
+- S07 #279 (Token-UI/Export): DONE 2026-07-20. Render: `MapTokenLayer.tsx`
+  (`MapToken` = runde Portrait-Platzhalter-Initiale + farbiger Ring + Namens-Pille
+  + Counter-Badge (nur wenn counter_value gesetzt) + Status-Chip-Bogen; skaliert
+  `scale(1/scale)` wie Pins). Interaktion in MapViewer: Tokens laden via `listTokens`,
+  Direkt-Drag (pointer down/move/up) -> `moveToken`; "Token"-Tool (🧙) + Kartenklick
+  legt Ad-hoc-Token als Base-Placement an (`createToken`, Token-Layer auto). Editor:
+  `TokenEditor.tsx` (gerendertes Panel, KEIN prompt/alert/confirm) fuer Name/Entitaet/
+  Ringfarbe/Counter/Chips add-remove -> updateToken/setCounter/setStatusChips. Player-
+  Export: `generatePlayerMapHtml` erweitert (optionale `layers`/`tokens`, nur
+  `player_visible=1`, Fog nur wenn `visible=1`, Tokens nur auf player-visible Token-Layer,
+  alle Strings via `escHtml` escaped, CSP-Meta ergaenzt) -- ABWAERTSKOMPATIBEL (markers
+  optional). HINWEIS: `generatePlayerMapHtml` hat aktuell KEINEN UI-Caller (Export-UI war
+  nie gemountet, Vorzustand) -> Extension auf Funktionsebene, wie das Feature heute existiert.
+  Portrait: kein Entity-Bildfeld im Schema -> Initiale-Platzhalter. Tests:
+  `m15-s07-token-layer` (11) + `m15-s07-player-export-tokens` (6), tsc 0, lint 0, keine
+  Regression (fog/layer/m5-s17). Additiv: Pins/Grid/Fog/Maps unberuehrt.
 - Hinweis: Schema für `map_layers`/`map_tokens`/`map_folders` existiert bereits (landete vor
   den Services).
+
+## Amendment 2026-07-20 — Token = Map-eigenes Konstrukt (Requirement)
+
+Klarstellung des Users, korrigiert **D4**:
+
+- **Token ist ein rein Map-eigenes Design-Element** und hat NICHTS in der Wissens-/Lore-Datenbank
+  (Entities) zu suchen. `map_tokens.entity_id` **entfaellt** (D4 war hier falsch). Name = Freitext
+  (`label`). Betrifft geliefertes S06/S07 (#278/#279) -> Rework in **#298**.
+- **Bildbasierte Render-Modi** (Upload waehlt den Modus):
+  - `token` — Bild mit runder **Maske + farbigem Rahmen**; Ausschnitt unter der Maske verschiebbar
+    (`art_offset_x/y`), `ring_color` = Rahmenfarbe.
+  - `plain` — **ganzes Bild** als Artwork (Monster/Encounter/echte Figuren), keine Maske.
+  - Neue Spalten: `art_asset_id`, `render_style` (`'token'|'plain'`), `art_offset_x/y`.
+  Story: **#298** (M15, `area: maps`).
+- **Zwei Token-Klassen ueber ein Feld je Token** (keine getrennten Layer): Spieler-Token vs
+  DM-Token (Monster/NPC). Bewegungsrechte fuer Multiplayer als **`controller`** (`'dm'` Default |
+  `'players'`) + optional **`owner_player_id`** (nur dieser Spieler; DM immer). NICHT jetzt umsetzen —
+  Datenmodell + server-seitige Durchsetzung (EPIC-016 Decision 8) als Story **#299** im Milestone
+  **M10 - Multiplayer**. #298 (M15) und #299 (M10) sind gegenseitig verlinkt.
+
+**#298 DONE 2026-07-20:** Schema `map_tokens` — `entity_id` raus, `art_asset_id`/`render_style`
+(`'token'|'plain'`)/`art_offset_x`/`art_offset_y` rein (map-schema + idempotente ALTERs in db-init).
+Service entkoppelt (kein `entity_id` mehr; create/update mit Art-Feldern). `MapToken`: token-Modus =
+Bild in runder Maske + Rahmen (`object-fit:cover` + `objectPosition` aus art_offset in %), plain-Modus =
+ganzes Artwork ohne Ring, Initiale-Platzhalter ohne Bild. `TokenEditor`: Entity-Picker raus; Bild-Upload
+(Tauri-Dialog via `onPickTokenArt`-Callback aus WorkspaceShell -> `copyMapAsset`), Modus-Umschalter,
+Crop-Drag (nur token-Modus, live, persistiert %-Offset). Tests: `m15-s08-token-render-modes` (12) +
+angepasste s06/s07. tsc 0, lint 0, keine Regression. Offene Detail-Entscheidungen (Zoom unter Maske,
+Default-Modus, plain-Footprint) bleiben #298 Open-Decisions.
+
+## Decision 2026-07-20 — Status-Chip Icon-Sets (#300, Design geklaert)
+
+Praezisiert D4 ("plugin/user icon set"):
+- **Icon-Set-Registry** (Core + Plugin, analog `relation-type-registry` / `plugin-entity-service`) —
+  KEIN Fake-Default-Plugin. Default-Set = Core, fest im App-Code registriert (laeuft ohne Plugin);
+  Plugins registrieren zusaetzliche Sets ueber dieselbe API. Icon-Technik: **SVG/PNG oder Icon-Font**.
+- **Default-Set V1:** poisoned, armour-break, bleeding, asleep, stunned, blinded.
+- **Picker** = Grid-Popover mit Gruppen (default / plugin_name / ...), Reiter nur als
+  Scroll-Sprung-Anker, Trennlinie + Gruppenname je Gruppe.
+- **Render:** `token`-Modus -> Bogen ueber dem Token (waechst bis Vollkreis); `plain`-Modus ->
+  Chips nebeneinander an der oberen Bildkante, zentriert. Chip-Groesse skaliert mit Token-`scale`.
+- **Default-Kontrast:** Default-Icons weiss + schwarzer Stroke/Schatten; `color` optional fuer
+  eigene Faerbung.
+- Multiplayer (spaeter, #299): Spieler duerfen Chips/Tokens setzen; "in Benutzung"-Umrandung
+  in Spielerfarbe als Presence-Signal.
 
 ## Constraints propagated into every Story AC (verbatim)
 

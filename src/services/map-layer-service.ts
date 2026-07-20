@@ -122,6 +122,26 @@ export async function importImageLayer(db: DatabaseLike, params: ImportImageLaye
   return { id };
 }
 
+export interface CreateTokenLayerParams {
+  map_id: string;
+  name?: string;
+}
+
+/**
+ * M15-S06 (#278): creates a `token` layer at `z_order = max(existing) + 1`.
+ * Token placement lives in map-token-service; this owns the map_layers row so
+ * all layer writes stay in one module. Purely additive.
+ */
+export async function createTokenLayer(db: DatabaseLike, params: CreateTokenLayerParams): Promise<{ id: string }> {
+  const z = await nextZOrder(db, params.map_id);
+  const id = `layer_${crypto.randomUUID()}`;
+  await db.execute(
+    'INSERT INTO map_layers (id, map_id, layer_type, name, opacity, z_order) VALUES (?, ?, ?, ?, ?, ?)',
+    [id, params.map_id, 'token', params.name ?? null, 1, z],
+  );
+  return { id };
+}
+
 export interface CreateFogLayerParams {
   map_id: string;
   name?: string;
