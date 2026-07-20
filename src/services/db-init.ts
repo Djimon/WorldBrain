@@ -89,6 +89,7 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN render_style TEXT NOT NULL DEFAULT 'token'`).catch(() => {});
   await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN art_offset_x REAL NOT NULL DEFAULT 0`).catch(() => {});
   await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN art_offset_y REAL NOT NULL DEFAULT 0`).catch(() => {});
+  await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN scale REAL NOT NULL DEFAULT 1`).catch(() => {});
   applySavedViewsSchema(db as unknown as Parameters<typeof applySavedViewsSchema>[0]);
   await applySearchSchema(adapter);
   applySessionSchema(db as unknown as Parameters<typeof applySessionSchema>[0]);

@@ -24,6 +24,7 @@ export interface MapTokenRow {
   render_style: TokenRenderStyle;
   art_offset_x: number;
   art_offset_y: number;
+  scale: number;
   label: string | null;
   x: number;
   y: number;
@@ -54,6 +55,7 @@ export interface UpdateTokenPatch {
   render_style?: TokenRenderStyle;
   art_offset_x?: number;
   art_offset_y?: number;
+  scale?: number;
 }
 
 // Raw DB row (status_chips_json string) before decoding into MapTokenRow.
@@ -140,6 +142,7 @@ export async function updateToken(db: DatabaseLike, id: string, patch: UpdateTok
   if (patch.render_style !== undefined) { fields.push('render_style = ?'); args.push(patch.render_style); }
   if (patch.art_offset_x !== undefined) { fields.push('art_offset_x = ?'); args.push(patch.art_offset_x); }
   if (patch.art_offset_y !== undefined) { fields.push('art_offset_y = ?'); args.push(patch.art_offset_y); }
+  if (patch.scale !== undefined) { fields.push('scale = ?'); args.push(patch.scale); }
   if (fields.length === 0) return;
   args.push(id);
   await db.execute(`UPDATE map_tokens SET ${fields.join(', ')} WHERE id = ?`, args);

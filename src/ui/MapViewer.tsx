@@ -538,6 +538,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const layerDrag = useRef<{ mx: number; my: number; ox: number; oy: number; last: { x: number; y: number } } | null>(null);
   const tokenDrag = useRef<{ id: string; moved: boolean } | null>(null);
   const suppressTokenClick = useRef(false);
+  const tokenScaleDrag = useRef<{ id: string; startScale: number; startX: number; last: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const measureBtnRef = useRef<HTMLButtonElement>(null);
@@ -746,6 +747,29 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     if (mode !== 'navigate') return;
     setSelectedTokenId(token.id);
     setEditingToken(token);
+  }
+
+  // Drag the corner handle of a selected token to scale it (#301). Horizontal
+  // drag distance maps to a size factor, clamped; persisted on release.
+  function handleTokenResizeStart(token: MapTokenRow, e: React.MouseEvent<HTMLDivElement>) {
+    e.preventDefault();
+    tokenScaleDrag.current = { id: token.id, startScale: token.scale || 1, startX: e.clientX, last: token.scale || 1 };
+    const onMove = (ev: MouseEvent) => {
+      const d = tokenScaleDrag.current;
+      if (!d) return;
+      const ns = Math.max(0.25, Math.min(4, d.startScale + (ev.clientX - d.startX) / 80));
+      d.last = ns;
+      setTokens((prev) => prev.map((t) => (t.id === d.id ? { ...t, scale: ns } : t)));
+    };
+    const onUp = () => {
+      const d = tokenScaleDrag.current;
+      tokenScaleDrag.current = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (d) updateToken(database, d.id, { scale: Math.round(d.last * 100) / 100 }).then(reloadTokens).catch(console.error);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   }
 
   async function saveTokenEdit(patch: TokenEditPatch) {
@@ -1194,6 +1218,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               onPointerMove={handleTokenPointerMove}
               onPointerUp={handleTokenPointerUp}
               onSelect={(e) => handleTokenClick(tk, e)}
+              onResizeStart={(e) => handleTokenResizeStart(tk, e)}
             />
           ))}
 

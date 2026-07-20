@@ -38,7 +38,7 @@ describe('M15-S06 map_tokens schema & service', () => {
       try {
         const cols = (db.prepare('PRAGMA table_info(map_tokens)').all() as Array<{ name: string }>).map((c) => c.name);
         expect(cols.sort()).toEqual(
-          ['id', 'layer_id', 'map_id', 'art_asset_id', 'render_style', 'art_offset_x', 'art_offset_y', 'label', 'x', 'y', 'ring_color', 'counter_label', 'counter_value', 'status_chips_json', 'session_id', 'created_at'].sort(),
+          ['id', 'layer_id', 'map_id', 'art_asset_id', 'render_style', 'art_offset_x', 'art_offset_y', 'scale', 'label', 'x', 'y', 'ring_color', 'counter_label', 'counter_value', 'status_chips_json', 'session_id', 'created_at'].sort(),
         );
       } finally {
         db.close();

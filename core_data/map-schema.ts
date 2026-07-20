@@ -49,6 +49,7 @@ export function applyMapSchema(db: MapDb): void {
       render_style TEXT NOT NULL DEFAULT 'token',
       art_offset_x REAL NOT NULL DEFAULT 0,
       art_offset_y REAL NOT NULL DEFAULT 0,
+      scale REAL NOT NULL DEFAULT 1,
       label TEXT,
       x REAL NOT NULL,
       y REAL NOT NULL,
