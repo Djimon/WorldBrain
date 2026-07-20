@@ -3351,11 +3351,27 @@ input {
 
 /* Add-layer toolbar: buttons side by side when there's room, wrapping to
    stacked full-width rows when the sidebar is narrow. */
+.layer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  min-width: 0;
+}
+
+/* More breathing room + a separator between the add-buttons and the layer list. */
 .layer-panel__toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
 }
+
+.layer-panel .layer-panel__list { gap: var(--space-2); }
+.layer-panel__row { padding: 3px 4px; border-radius: var(--radius-sm); }
+.layer-panel__row-header { line-height: 1.6; }
+.layer-panel__row.editing { background: var(--color-surface-alt, transparent); }
 /* Same look as the "+ Karte importieren" button (.emd__create-btn). */
 .layer-panel__toolbar button {
   flex: 1 1 auto;
