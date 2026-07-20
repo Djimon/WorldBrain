@@ -1575,6 +1575,17 @@ input {
 }
 .map-side-collapsed__tab:hover { color: var(--color-accent); }
 
+.map-side-collapse-btn {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0 6px;
+}
+.map-side-collapse-btn:hover { color: var(--color-accent); }
+
 .map-token-list {
   display: flex;
   flex-direction: column;

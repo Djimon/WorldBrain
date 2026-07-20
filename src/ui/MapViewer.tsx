@@ -347,7 +347,6 @@ function PinTree({ markers, editingId, onSelect, panelCollapsed, onTogglePanel, 
         <span>Pins ({markers.filter((m) => m.kind !== 'folder-anchor').length})</span>
         <button className="map-pin-tree__new-folder-btn" title="Neuer Ordner"
           onClick={() => setNewFolderInput(true)}>📁+</button>
-        <button onClick={onTogglePanel} title="Einklappen">◀</button>
       </div>
 
       {newFolderInput && (
@@ -1281,7 +1280,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       </div>
 
       {/* Right sidebar — PINS / TOKEN tabs; pin tree resizable + collapsible */}
-      <div style={{ width: pinTreeCollapsed ? 32 : pinTreeWidth, flexShrink: 0, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ width: pinTreeCollapsed ? 32 : pinTreeWidth, flexShrink: 0, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--color-surface-alt)', borderLeft: '1px solid var(--color-border)' }}>
         {pinTreeCollapsed ? (
           <div className="map-side-collapsed">
             <button type="button" className="map-side-collapsed__tab" title={t('mapSideTabs.pins', 'Pins')}
@@ -1298,6 +1297,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           <button type="button" role="tab" aria-selected={rightTab === 'tokens'}
             className={`maps-sidebar-tabs__tab${rightTab === 'tokens' ? ' maps-sidebar-tabs__tab--active' : ''}`}
             onClick={() => setRightTab('tokens')}>{t('mapSideTabs.tokens', 'Token')}</button>
+          <button type="button" className="map-side-collapse-btn" title={t('collapse', 'Einklappen')}
+            onClick={() => setPinTreeCollapsed(true)}>◀</button>
         </div>
         {rightTab === 'tokens' ? (
           <div className="map-token-list">
