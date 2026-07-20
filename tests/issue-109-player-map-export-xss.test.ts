@@ -32,6 +32,16 @@ describe('issue-109 XSS in player map export', () => {
     expect(html).not.toContain('<script>alert(2)</script>');
   });
 
+  it('neutralizes </script> variants (space/newline) in the JSON payload', async () => {
+    const { generatePlayerMapHtml } = await getExport();
+    // The HTML parser closes a <script> at "</script" + space/tab/newline/>/ —
+    // not only "</script>". A payload that breaks out this way is real XSS.
+    const xssMarker = { id: 'mk1', map_id: 'map-1', kind: 'pin', geometry_json: '{}', label_text: '</script ><img src=x onerror=alert(1)>', entity_id: null, visibility: 'public' };
+    const html = generatePlayerMapHtml({ map: baseMap, markers: [xssMarker], context: playerCtx });
+    // No literal '<' from user data may survive inside the script payload.
+    expect(html).not.toContain('</script ><img');
+  });
+
   it('source does not use raw template literal for title or label_text', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('src/services/player-map-export.ts', 'utf8');

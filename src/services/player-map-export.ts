@@ -1,6 +1,6 @@
 import { resolveMarkerVisibility, type VisibilityContext } from './map-marker-visibility';
 
-function escHtml(s: string): string {
+function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
@@ -86,7 +86,11 @@ export function generatePlayerMapHtml({ map, markers = [], context, layers = [],
   const exportedTokens = tokens.filter(tk => playerTokenLayerIds.has(tk.layer_id));
 
   function escJson(obj: unknown): string {
-    return JSON.stringify(obj).replace(/<\/script>/gi, '<\\/script>');
+    // Embed JSON safely inside <script>: escape every '<' to its JS unicode
+    // form. Neutralizes ALL </script variants (the HTML parser closes a script
+    // at "</script" + space/tab/newline/>/, not only "</script>"), so a raw
+    // '<' from user data can never break out of the payload. Renders identically.
+    return JSON.stringify(obj).replace(/</g, '\\u003c');
   }
 
   function tokenName(tk: TokenData): string {
@@ -101,21 +105,21 @@ export function generatePlayerMapHtml({ map, markers = [], context, layers = [],
   })));
 
   const markerListHtml = visibleMarkers.map(m =>
-    `<li data-marker-id="${escHtml(m.id)}">${escHtml(m.label_text)}</li>`
+    `<li data-marker-id="${escapeHtml(m.id)}">${escapeHtml(m.label_text)}</li>`
   ).join('\n');
 
   const layerListHtml = exportedLayers.map(l =>
-    `<li data-layer-id="${escHtml(l.id)}" data-layer-type="${escHtml(l.layer_type)}"></li>`
+    `<li data-layer-id="${escapeHtml(l.id)}" data-layer-type="${escapeHtml(l.layer_type)}"></li>`
   ).join('\n');
 
   const tokenListHtml = exportedTokens.map(tk => {
     const chips = parseChips(tk.status_chips_json)
-      .map(c => `<span class="token-chip" title="${escHtml(c.text ?? c.icon)}">${escHtml(c.icon)}</span>`)
+      .map(c => `<span class="token-chip" title="${escapeHtml(c.text ?? c.icon)}">${escapeHtml(c.icon)}</span>`)
       .join('');
     const counter = tk.counter_value != null
-      ? `<span class="token-counter" title="${escHtml(tk.counter_label ?? '')}">${escHtml(String(tk.counter_value))}</span>`
+      ? `<span class="token-counter" title="${escapeHtml(tk.counter_label ?? '')}">${escapeHtml(String(tk.counter_value))}</span>`
       : '';
-    return `<li data-token-id="${escHtml(tk.id)}" data-x="${tk.x}" data-y="${tk.y}"><span class="token-name">${escHtml(tokenName(tk))}</span>${counter}${chips}</li>`;
+    return `<li data-token-id="${escapeHtml(tk.id)}" data-x="${tk.x}" data-y="${tk.y}"><span class="token-name">${escapeHtml(tokenName(tk))}</span>${counter}${chips}</li>`;
   }).join('\n');
 
   const tokensJson = escJson(exportedTokens.map(tk => ({
@@ -134,12 +138,12 @@ export function generatePlayerMapHtml({ map, markers = [], context, layers = [],
 
   return `<!DOCTYPE html>
 <html>
-<head><title>${escHtml(map.title)}</title>
+<head><title>${escapeHtml(map.title)}</title>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: asset:">
 <style>body{margin:0;font-family:sans-serif}#map{position:relative;display:inline-block}</style>
 </head>
 <body>
-<h1>${escHtml(map.title)}</h1>
+<h1>${escapeHtml(map.title)}</h1>
 <div id="map" data-width="${map.image_width_px}" data-height="${map.image_height_px}">
   <ul id="layers">${layerListHtml}</ul>
   <ul id="markers">${markerListHtml}</ul>
