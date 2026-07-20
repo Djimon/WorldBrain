@@ -40,8 +40,8 @@ export interface CreateTokenParams {
 
 export interface UpdateTokenPatch {
   label?: string;
-  ring_color?: string;
-  entity_id?: string;
+  ring_color?: string | null;
+  entity_id?: string | null;
 }
 
 // Raw DB row (status_chips_json string) before decoding into MapTokenRow.
@@ -102,7 +102,7 @@ export async function moveToken(db: DatabaseLike, id: string, x: number, y: numb
 export async function setCounter(
   db: DatabaseLike,
   id: string,
-  counter: { counter_label?: string; counter_value?: number },
+  counter: { counter_label?: string | null; counter_value?: number | null },
 ): Promise<void> {
   const fields: string[] = [];
   const args: unknown[] = [];

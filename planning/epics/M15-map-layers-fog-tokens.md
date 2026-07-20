@@ -135,7 +135,22 @@ Verifizierter Status aus git. Die Stories-Tabelle bildet Plan/Scope ab, NICHT de
   mit Safe-Fallback []). Schema `map_tokens` bestand bereits (applyMapSchema, CREATE IF NOT
   EXISTS -> Runtime legt Tabelle beim naechsten Init an, kein ALTER). Tests
   `m15-s06-map-tokens` 10/10, tsc 0, lint 0. Token-Render/Drag-UI = S07 (#279).
-- S07 #279 (Token-UI/Export): NICHT gestartet.
+- S07 #279 (Token-UI/Export): DONE 2026-07-20. Render: `MapTokenLayer.tsx`
+  (`MapToken` = runde Portrait-Platzhalter-Initiale + farbiger Ring + Namens-Pille
+  + Counter-Badge (nur wenn counter_value gesetzt) + Status-Chip-Bogen; skaliert
+  `scale(1/scale)` wie Pins). Interaktion in MapViewer: Tokens laden via `listTokens`,
+  Direkt-Drag (pointer down/move/up) -> `moveToken`; "Token"-Tool (🧙) + Kartenklick
+  legt Ad-hoc-Token als Base-Placement an (`createToken`, Token-Layer auto). Editor:
+  `TokenEditor.tsx` (gerendertes Panel, KEIN prompt/alert/confirm) fuer Name/Entitaet/
+  Ringfarbe/Counter/Chips add-remove -> updateToken/setCounter/setStatusChips. Player-
+  Export: `generatePlayerMapHtml` erweitert (optionale `layers`/`tokens`, nur
+  `player_visible=1`, Fog nur wenn `visible=1`, Tokens nur auf player-visible Token-Layer,
+  alle Strings via `escHtml` escaped, CSP-Meta ergaenzt) -- ABWAERTSKOMPATIBEL (markers
+  optional). HINWEIS: `generatePlayerMapHtml` hat aktuell KEINEN UI-Caller (Export-UI war
+  nie gemountet, Vorzustand) -> Extension auf Funktionsebene, wie das Feature heute existiert.
+  Portrait: kein Entity-Bildfeld im Schema -> Initiale-Platzhalter. Tests:
+  `m15-s07-token-layer` (11) + `m15-s07-player-export-tokens` (6), tsc 0, lint 0, keine
+  Regression (fog/layer/m5-s17). Additiv: Pins/Grid/Fog/Maps unberuehrt.
 - Hinweis: Schema für `map_layers`/`map_tokens`/`map_folders` existiert bereits (landete vor
   den Services).
 
