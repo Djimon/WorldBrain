@@ -104,6 +104,10 @@ describe('#294: maps area mounts the LayerPanel for the selected map', () => {
     // Its controls are reachable: the layer row and its opacity slider render.
     expect(view.container.querySelector('.layer-panel__row[aria-label="Grundkarte"]')).toBeInTheDocument();
     expect(screen.getByRole('slider')).toBeInTheDocument();
+    // Row header carries a type chip (visible even when collapsed).
+    const typeChip = view.container.querySelector('.layer-panel__row[aria-label="Grundkarte"] .layer-panel__type--image');
+    expect(typeChip).toBeInTheDocument();
+    expect(typeChip?.textContent?.trim()).toBe('Bild');
     // Panel sits in the maps sidebar layer section, alongside the (stubbed) MapViewer.
     expect(panel.closest('.maps-layer-section')).toBeInTheDocument();
     expect(screen.getByTestId('stub-MapViewer')).toBeInTheDocument();

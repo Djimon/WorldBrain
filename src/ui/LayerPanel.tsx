@@ -35,10 +35,15 @@ export interface LayerPanelProps {
   onLayerDeleted?: (layerId: string) => void;
 }
 
-const LAYER_TYPE_ICON: Record<string, string> = { image: '🖼️', fog: '🌫️', token: '🎯' };
-
 export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, editingFogLayerId, onEditFogLayer, reloadKey = 0, onLayersChanged, movingLayerId, onMoveLayer, onLayerDeleted }: LayerPanelProps) {
   const { t } = useTranslation();
+  // Type label shown as a chip in the row header — stays visible when the row
+  // is collapsed, so the layer kind is always readable.
+  const layerTypeLabel: Record<string, string> = {
+    image: t('layerPanel.type.image', 'Bild'),
+    fog: t('layerPanel.type.fog', 'Fog'),
+    token: t('layerPanel.type.token', 'Token'),
+  };
   const [layers, setLayers] = useState<MapLayerRow[]>([]);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
@@ -125,7 +130,9 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, ed
               >
                 {collapsed.has(layer.id) ? '▶' : '▼'}
               </button>
-              <span className="layer-panel__icon">{LAYER_TYPE_ICON[layer.layer_type] ?? '📄'}</span>
+              <span className={`layer-panel__type layer-panel__type--${layer.layer_type}`}>
+                {layerTypeLabel[layer.layer_type] ?? layer.layer_type}
+              </span>
               {editingNameId === layer.id ? (
                 <input
                   className="layer-panel__name-input"

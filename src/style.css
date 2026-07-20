@@ -3207,6 +3207,23 @@ input {
   flex: 1 1 auto;
 }
 
+.layer-panel__type {
+  flex: 0 0 auto;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  line-height: 1.4;
+}
+.layer-panel__type--image { color: #6ea8fe; border-color: #6ea8fe; }
+.layer-panel__type--fog { color: #b0b8c4; border-color: #7a8494; }
+.layer-panel__type--token { color: #e0a15a; border-color: #e0a15a; }
+
 .layer-panel__controls {
   display: flex;
   flex-wrap: wrap;
