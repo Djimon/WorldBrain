@@ -60,9 +60,24 @@ attempt EQ / balance / crossfade on YouTube — the IFrame API cannot. We confir
 - **D5 — A link (incl. a playlist URL) is ONE clip/track.** The system does not decompose playlists; one button = one source.
 - **D6 — 3-band EQ scale.** Bass/mid/high as Biquad filters (lowshelf/peaking/highshelf), user range ±12 dB, centre = flat. (UI wording TBD in S06; internal is dB.)
 - **D7 — Scene = full-board snapshot.** A Scene stores all channels, their clips, and mixer settings. Switching a Scene swaps the whole board. Config persists; live playback state is transient runtime.
-- **D8 — YouTube-in-Tauri is a risk, spiked first (S01).** Djinni runs on a real https origin inside Owlbear;
-  our Tauri WebView (`tauri://`/localhost) may hit IFrame embedding / referrer / autoplay restrictions.
-  S01 proves load + volume-ramp + autoplay before the YouTube tier (S05) is built. S05 is blocked on S01.
+- **D8 — YouTube-in-Tauri: Risiko GEKLÄRT, Spike #280 abgeschlossen → GO.** Ursprüngliche Sorge: Djinni läuft
+  auf einer echten https-Origin in Owlbear, unsere Tauri-WebView (`tauri://`/localhost) könnte an
+  IFrame-Embedding-/Referrer-/Autoplay-Restriktionen scheitern. **Verifiziert in echtem WebView2 (UA `Edg/150`),
+  Reports in `planning/research/`:**
+  - `audio-youtube-tauri-spike.md`: IFrame-API lädt und spielt, **keine** Referrer-/Origin-/CSP-Fehler,
+    saubere Play/Pause-States. **Unmuted Autoplay gelingt OHNE User-Geste** → für den Link-Tier ist
+    **kein Autoplay-Overlay / kein `can-autoplay`** nötig.
+  - `audio-hidden-playback-tauri-spike.md`: Wiedergabe läuft bei `display:none`, `visibility:hidden` und
+    Off-screen ununterbrochen weiter. **`display:none` ist die empfohlene Hide-Variante.**
+  - `audio-spotify-tauri-spike.md`: bestätigt Spotify-nicht-V1 **technisch** — das öffentliche Embed hat
+    `controller.setVolume === undefined`, also nicht mal Volume/Fade. Nur hart an/aus.
+  - **Noch offen, bei S13-Umsetzung mitverifizieren (kein zweiter Spike):** `setVolume`-Rampe (Fade-Basis)
+    und Playlist-als-eine-durchgehende-Quelle (`loadPlaylist`) wurden im Spike nicht bestätigt.
+  - **CSP:** aktuell `"csp": null` → keine Anpassung nötig. Wird später eine CSP eingezogen, müssen
+    `frame-src`/`connect-src` youtube.com / youtube-nocookie.com / ytimg.com erlauben.
+  - **Abgrenzung Autoplay:** Der Befund gilt für **IFrame-/Media-Autoplay**. Der `AudioContext` des lokalen
+    Web-Audio-Tiers (S12) ist ein **anderer** Mechanismus und wurde NICHT getestet — bei S10/S12 prüfen, ob
+    er `running` oder `suspended` startet; nur bei `suspended` ein Resume-Gate bauen.
 
 ## Data model (pinned for S03)
 
@@ -85,8 +100,9 @@ attempt EQ / balance / crossfade on YouTube — the IFrame API cannot. We confir
 | M15-S15 | #286 | story | p1 | Scenes: save/load/switch full-board snapshots |
 | M15-S16 | #287 | story | p1 | Clip editor: source (file/link), base volume, icon/color/label, loop |
 
-**Dependency axis:** S09 (spike) gates S13. S10 (window) + S11 (model) foundational.
-S12 needs S11. S13 needs S11, **blocked on S09**. S14 needs S10+S11+S12. S15/S16 need S11+S14.
+**Dependency axis:** ~~S09 (spike) gates S13~~ → **S09 (#280) abgeschlossen 2026-07, GO; S13 (#284) dadurch
+entsperrt und auf `status: ready`.** S10 (window) + S11 (model) foundational. S12 needs S11.
+S13 needs S11. S14 needs S10+S11+S12. S15/S16 need S11+S14.
 
 Note: story numbers continue M15's sequence (S01–S08 belong to EPIC-023 maps); these are S09–S16.
 
