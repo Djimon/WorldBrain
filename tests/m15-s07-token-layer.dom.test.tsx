@@ -7,10 +7,21 @@
 
 import { readFileSync } from 'node:fs';
 import type { ComponentProps } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MapToken } from '../src/ui/MapTokenLayer';
 import type { MapTokenRow } from '../src/services/map-token-service';
+
+// #300: chip icons resolve through the icon-set registry (set_id:icon_key)
+// instead of being rendered as a literal string.
+vi.mock('../src/services/icon-set-registry', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/services/icon-set-registry')>();
+  return {
+    ...actual,
+    getIcon: vi.fn((ref: string) =>
+      ref === 'core:poisoned' ? { key: 'poisoned', glyph: '☠', label: 'Poisoned' } : undefined),
+  };
+});
 
 function makeToken(overrides: Partial<MapTokenRow> = {}): MapTokenRow {
   return {
@@ -63,6 +74,81 @@ describe('M15-S07 (component): MapToken render', () => {
     render(<MapToken {...baseProps({ scale: 2 })} />);
     const el = document.querySelector('[data-token-id="token_1"]') as HTMLElement;
     expect(el.style.transform).toContain('scale(0.5)');
+  });
+});
+
+describe('#300 chip icons resolve via the icon-set registry', () => {
+  function baseProps(overrides: Partial<ComponentProps<typeof MapToken>> = {}) {
+    return { token: makeToken(), scale: 1, ...overrides };
+  }
+
+  it('renders the resolved glyph for a "set_id:icon_key" chip icon, not the literal ref string', () => {
+    render(<MapToken {...baseProps({ token: makeToken({ status_chips: [{ icon: 'core:poisoned', text: 'Poisoned' }] }) })} />);
+    const chip = document.querySelector('.map-token__chip') as HTMLElement;
+    expect(chip.textContent).toBe('☠');
+    expect(chip.textContent).not.toContain('core:poisoned');
+  });
+});
+
+describe('#303 counter badge + stepper: positioning, visibility, ±1, no clamp', () => {
+  function baseProps(overrides: Partial<ComponentProps<typeof MapToken>> = {}) {
+    return { token: makeToken({ counter_label: 'HP', counter_value: 10 }), scale: 1, ...overrides };
+  }
+
+  describe('no counter set => no badge and no stepper', () => {
+    it('renders neither badge nor stepper when counter_value is null', () => {
+      render(<MapToken {...baseProps({ token: makeToken({ counter_value: null }) })} />);
+      expect(document.querySelector('.map-token__counter')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^erhöhen$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^verringern$/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('stepper visibility: hidden by default, shown on hover or selection (D-B)', () => {
+    it('the stepper is not in the rendered output without hover or selection', () => {
+      render(<MapToken {...baseProps()} />);
+      expect(screen.queryByRole('button', { name: /^erhöhen$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^verringern$/i })).not.toBeInTheDocument();
+    });
+
+    it('hovering the token reveals the stepper', () => {
+      render(<MapToken {...baseProps()} />);
+      const el = document.querySelector('[data-token-id="token_1"]') as HTMLElement;
+      fireEvent.mouseEnter(el);
+      expect(screen.getByRole('button', { name: /^erhöhen$/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^verringern$/i })).toBeInTheDocument();
+    });
+
+    it('a selected token shows the stepper without hover', () => {
+      render(<MapToken {...baseProps({ selected: true })} />);
+      expect(screen.getByRole('button', { name: /^erhöhen$/i })).toBeInTheDocument();
+    });
+  });
+
+  describe('positioning: chips (top arc) and counter badge (bottom-right) never share an anchor', () => {
+    it.each(['token', 'plain'] as const)('render_style=%s: chips and counter badge use different position classes', (renderStyle) => {
+      render(<MapToken {...baseProps({ token: makeToken({ render_style: renderStyle, status_chips: [{ icon: '☠' }, { icon: '💤' }], counter_value: 5 }) })} />);
+      const chips = document.querySelector('.map-token__chips') as HTMLElement;
+      const badge = document.querySelector('.map-token__counter') as HTMLElement;
+      expect(chips).toBeInTheDocument();
+      expect(badge).toBeInTheDocument();
+      expect(chips.className).not.toBe(badge.className);
+    });
+  });
+
+  describe('counter_label appears in tooltip and, on hover/selection, next to the badge', () => {
+    it('the badge has a title (tooltip) with the counter_label', () => {
+      render(<MapToken {...baseProps()} />);
+      const badge = document.querySelector('.map-token__counter') as HTMLElement;
+      expect(badge.title).toBe('HP');
+    });
+
+    it('hovering shows the counter_label as visible text next to the badge', () => {
+      render(<MapToken {...baseProps()} />);
+      const el = document.querySelector('[data-token-id="token_1"]') as HTMLElement;
+      fireEvent.mouseEnter(el);
+      expect(screen.getByText(/^HP$/)).toBeInTheDocument();
+    });
   });
 });
 
@@ -138,6 +224,35 @@ describe('M15-S07 (integration): tokens in MapViewer', () => {
     fireEvent.pointerMove(tok, { clientX: 200, clientY: 240, pointerId: 1 });
     fireEvent.pointerUp(tok, { clientX: 200, clientY: 240, pointerId: 1 });
     await waitFor(() => expect(moveToken).toHaveBeenCalledWith(mockDb, 'token_1', expect.any(Number), expect.any(Number)));
+  });
+
+  // #303: up/down stepper persists via setCounter, without opening the TokenEditor.
+  it('clicking the up-stepper (on hover) calls setCounter with value+1', async () => {
+    const { listTokens, setCounter } = await import('../src/services/map-token-service');
+    (listTokens as ReturnType<typeof vi.fn>).mockResolvedValueOnce([makeToken({ id: 'token_1', counter_label: 'HP', counter_value: 10 })]);
+    render(<MapViewer mapId="map-1" database={mockDb as never} />);
+    const tok = await waitFor(() => {
+      const el = document.querySelector('[data-token-id="token_1"]') as HTMLElement | null;
+      if (!el) throw new Error('token not rendered');
+      return el;
+    });
+    fireEvent.mouseEnter(tok);
+    fireEvent.click(within(tok).getByRole('button', { name: /^erhöhen$/i }));
+    await waitFor(() => expect(setCounter).toHaveBeenCalledWith(mockDb, 'token_1', { counter_value: 11 }));
+  });
+
+  it('clicking the down-stepper allows going negative (no clamp)', async () => {
+    const { listTokens, setCounter } = await import('../src/services/map-token-service');
+    (listTokens as ReturnType<typeof vi.fn>).mockResolvedValueOnce([makeToken({ id: 'token_1', counter_label: 'HP', counter_value: 0 })]);
+    render(<MapViewer mapId="map-1" database={mockDb as never} />);
+    const tok = await waitFor(() => {
+      const el = document.querySelector('[data-token-id="token_1"]') as HTMLElement | null;
+      if (!el) throw new Error('token not rendered');
+      return el;
+    });
+    fireEvent.mouseEnter(tok);
+    fireEvent.click(within(tok).getByRole('button', { name: /^verringern$/i }));
+    await waitFor(() => expect(setCounter).toHaveBeenCalledWith(mockDb, 'token_1', { counter_value: -1 }));
   });
 
   it('clicking a token opens a rendered editor (not a prompt)', async () => {
