@@ -6,6 +6,8 @@
 
 **Ergebnis: WORKS — aber mit der bereits vermuteten harten Einschraenkung (kein Signalzugriff).**
 
+**Update:** Hidden/off-screen-Wiedergabe separat verifiziert — siehe `audio-hidden-playback-tauri-spike.md`. Auch da: WORKS, Wiedergabe laeuft ununterbrochen weiter.
+
 ## Testaufbau
 
 Wegwerf-HTML (`public/_spike_spotify.html`, nach dem Test entfernt — nicht produktiv), geladen im echten Tauri-Dev-Fenster. Spotifys offizielle IFrame-API (`https://open.spotify.com/embed/iframe-api/v1`) gegen eine bekannte oeffentliche Playlist (`37i9dQZF1DXcBWIGoYBM5M`, "Today's Top Hits").

@@ -2,7 +2,7 @@
 // M5-S22: PNG export via canvas.toBlob() — no server-side rendering.
 // See: https://github.com/Djimon/WorldBrain/issues/88
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 async function getPngExport() { return import('../src/services/png-export'); }
 

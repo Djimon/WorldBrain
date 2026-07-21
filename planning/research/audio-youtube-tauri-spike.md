@@ -4,6 +4,8 @@
 
 **Ergebnis: WORKS.** Kein Blocker gefunden. **Go für S13 (#284).**
 
+**Update:** Hidden/off-screen-Wiedergabe (S10/S13-AC: "audio-only, hidden/offscreen") separat verifiziert — siehe `audio-hidden-playback-tauri-spike.md`. Auch da: WORKS.
+
 ## Testaufbau
 
 Wegwerf-HTML (`public/_spike_youtube.html`, nach dem Test entfernt — nicht produktiv), geladen im echten Tauri-Dev-Fenster (`npm run desktop:dev`, `devUrl` temporär auf die Spike-Seite gesetzt). YouTube IFrame Player API (`https://www.youtube.com/iframe_api`) gegen ein bekannt einbettbares öffentliches Video (`dQw4w9WgXcQ`).

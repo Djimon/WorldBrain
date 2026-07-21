@@ -171,7 +171,7 @@ describe('M1-S04 base JSON validation policy', () => {
     input.entities[0] = {
       path: 'entities/Character/character-ada.json',
       data: {
-        ...validCharacterEntityData(),
+        ...validEntityData(),
         body: {
           format: 'unsupported_blocks',
           blocks: [],
