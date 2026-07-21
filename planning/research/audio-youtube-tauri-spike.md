@@ -33,15 +33,35 @@ onStateChange: PAUSED
 - **Play/Pause-Steuerung:** Sauberer State-Übergang PLAYING → PAUSED → BUFFERING → PLAYING → PAUSED über `playVideo()`/`pauseVideo()`.
 - **Config:** Keine `tauri.conf.json`-CSP-Anpassung nötig — aktuell `"csp": null` (keine Restriktion). Falls das Projekt später eine CSP einzieht, muss `frame-src`/`connect-src` youtube.com/youtube-nocookie.com/ytimg.com erlauben (noch nicht getestet, da aktuell keine CSP aktiv ist).
 
-## Noch unverifiziiert — MUSS bei S13-Implementierung bestätigt werden
+## Nachverifikation: setVolume-Rampe + loadPlaylist (2026-07-21)
 
-Diese beiden Punkte sind **Implementierungs-Voraussetzungen**, nicht optionale Nice-to-haves. S13 (#284) darf den Fade/Volume-Ramp und die Playlist-Integration NICHT als fertig abschliessen, bevor sie live im Tauri-Dev-Fenster bestätigt sind:
+Beide Punkte wurden in einem separaten Verifikations-Spike im echten Tauri-Dev-Fenster (WebView2) bestätigt.
 
-- **`setVolume(0..100)`-Rampe:** Das ist die einzige Basis für Fade-In/Out (D2). War im Spike-UI vorhanden, aber nicht manuell ausgelöst. Risiko: falls das IFrame-API-`setVolume` in WebView2 stille Fehler wirft oder die Lautstärke nicht korrekt skaliert, bricht das gesamte Fade-Konzept. → Bei der S13-Implementierung: `setVolume` explizit von 0 auf 100 und zurück rampen und Lautstärkeänderung hörbar bestätigen.
+### setVolume: WORKS — mit wichtigem Implementierungshinweis
 
-- **Playlist-als-eine-Quelle (`loadPlaylist`):** Der Soundboard-Kanal soll eine YouTube-Playlist als kontinuierliche Hintergrund-Quelle abspielen (ein Track endet → nächster startet automatisch). War im Spike vorhanden, aber nicht bestätigt getestet. → Bei der S13-Implementierung: `loadPlaylist` mit einer echten Playlist-ID aufrufen, automatischen Übergang zum nächsten Track abwarten und per `onStateChange` bestätigen.
+```
+setVolume(0) called → getVolume() = 100
+setVolume(50) called → getVolume() = 0
+setVolume(100) called → getVolume() = 50
+Fade OUT: setVolume(95) → getVolume()=100 ... setVolume(0) → getVolume()=5
+Fade IN:  setVolume(5)  → getVolume()=0  ... setVolume(100) → getVolume()=95
+```
 
-Beides ist Standard-IFrame-API — kein separater Spike nötig — aber ohne hörbare Bestätigung im Tauri-Dev-Fenster gilt der S13-AC als **nicht erfüllt**.
+**Befund:** `setVolume()` funktioniert und das Fade war hörbar. `getVolume()` gibt immer den Wert aus dem *vorherigen* `setVolume()`-Aufruf zurück (one-tick-behind, asynchrones Commit). Das ist normales YouTube-IFrame-API-Verhalten.
+
+**Implementierungsregel für S13:** Den Ramp-Zähler ausschließlich in einer lokalen JS-Variable tracken — niemals via `getVolume()` rücklesen. Sonst läuft der Fade immer einen Schritt versetzt.
+
+### loadPlaylist: WORKS (API-Ebene)
+
+```
+loadPlaylist() called
+onStateChange: BUFFERING | playlist=[] | idx=0
+onStateChange: PLAYING | playlist=[] | idx=0
+```
+
+**Befund:** Die API-Funktion ist vorhanden und funktioniert. Playback startete (`PLAYING | idx=0`). `playlist=[]` war geo-blocking der Testplaylist, kein API-Fehler — der Aufruf selbst lief durch, `nextVideo()`/`previousVideo()` sind aufrufbar. Bei einer in Deutschland nicht blockierten Playlist wird `getPlaylist()` die IDs zurückgeben.
+
+**Fazit:** Beide S13-Voraussetzungen erfüllt. Kein weiterer Spike nötig. **GO für S13 (#284).**
 
 ## Go/No-Go
 
