@@ -36,6 +36,7 @@ import { UpdateNotification } from './UpdateNotification';
 import { MapViewer } from './MapViewer';
 import { LayerPanel } from './LayerPanel';
 import { MapsSidebarTabs } from './MapsSidebarTabs';
+import { MapFolderTree } from './MapFolderTree';
 import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
@@ -413,18 +414,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                         Bild wird kopiert und vorbereitet…
                       </div>
                     )}
-                    <ul>
-                      {maps.map((m) => (
-                        <li key={m.id}>
-                          <button
-                            className={`emd__item${selectedMapId === m.id ? ' emd__item--active' : ''}`}
-                            onClick={() => setSelectedMapId(m.id)}
-                          >
-                            <span className="emd__item-title">{m.title}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                    <MapFolderTree database={database} maps={maps} selectedMapId={selectedMapId} onSelectMap={setSelectedMapId} />
                     {maps.length === 0 && (
                       <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: 'var(--space-2)' }}>
                         {t('noMaps')}

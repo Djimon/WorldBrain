@@ -3488,3 +3488,54 @@ input {
   font-variant-numeric: tabular-nums;
   color: var(--color-text);
 }
+
+.map-folder-tree__new-folder-btn {
+  width: 100%;
+  margin-bottom: var(--space-2);
+}
+
+.map-folder-tree__root {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.map-folder-tree__folder-row,
+.map-folder-tree__map-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.map-folder-tree__folder-row:hover,
+.map-folder-tree__map-row:hover {
+  background: var(--color-surface-hover);
+}
+
+.map-folder-tree__map-row--active {
+  background: var(--color-surface-active);
+}
+
+.map-folder-tree__map-title {
+  flex: 1;
+  cursor: pointer;
+}
+
+.map-folder-tree__folder-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.map-folder-tree__folder-row select,
+.map-folder-tree__map-row select {
+  max-width: 120px;
+  font-size: 0.75rem;
+}
+
+.map-folder-tree__folder-row button {
+  font-size: 0.72rem;
+  padding: 2px 6px;
+}

@@ -9,6 +9,7 @@ export interface MapRow {
   image_width_px: number;
   image_height_px: number;
   calibration_json: string | null;
+  folder_id: string | null;
 }
 
 export async function getMap(db: DatabaseLike, id: string): Promise<MapRow | null> {
