@@ -50,17 +50,20 @@ describe('MI-S00 Tauri plugin migration', () => {
     });
   });
 
-  describe('tauri.conf.json: plugins activated', () => {
-    const conf = fs.existsSync('src-tauri/tauri.conf.json')
-      ? fs.readFileSync('src-tauri/tauri.conf.json', 'utf-8')
-      : '{}';
+  // Tauri v2 activates plugins via the Rust builder in src-tauri/src/lib.rs
+  // (.plugin(tauri_plugin_fs::init())), not a "plugins" key in
+  // tauri.conf.json — that file has no such section for these plugins.
+  describe('src-tauri/src/lib.rs: plugins activated', () => {
+    const lib = fs.existsSync('src-tauri/src/lib.rs')
+      ? fs.readFileSync('src-tauri/src/lib.rs', 'utf-8')
+      : '';
 
-    it('tauri.conf.json activates plugin-fs', () => {
-      expect(conf).toMatch(/fs/);
+    it('lib.rs activates tauri_plugin_fs', () => {
+      expect(lib).toMatch(/tauri_plugin_fs::init\(\)/);
     });
 
-    it('tauri.conf.json activates plugin-sql', () => {
-      expect(conf).toMatch(/sql/);
+    it('lib.rs activates tauri_plugin_sql', () => {
+      expect(lib).toMatch(/tauri_plugin_sql/);
     });
   });
 
@@ -137,7 +140,10 @@ describe('MI-S00 Tauri plugin migration', () => {
       expect(src).toMatch(/@tauri-apps\/plugin-sql/);
     });
 
-    it('adapter file implements DatabaseLike (has prepare method)', () => {
+    // The shipped DatabaseLike interface is async execute(sql, args)/
+    // select(sql, args) — a synchronous better-sqlite3-style prepare() was
+    // an earlier plan, never the final shape (TauriSqlAdapter never had one).
+    it('adapter file implements DatabaseLike (has execute and select methods)', () => {
       const candidates = [
         'src/services/tauri-sql-adapter.ts',
         'src/services/db-adapter.ts',
@@ -147,13 +153,15 @@ describe('MI-S00 Tauri plugin migration', () => {
       const adapterFile = candidates.find(f => fs.existsSync(f));
       expect(adapterFile).toBeTruthy();
       const src = readSrc(adapterFile!);
-      expect(src).toMatch(/prepare\s*\(/);
+      expect(src).toMatch(/execute\s*\(/);
+      expect(src).toMatch(/select\s*[<(]/);
     });
 
-    it('DatabaseLike interface in entity-service.ts is unchanged (still has prepare)', () => {
+    it('DatabaseLike interface in entity-service.ts is unchanged (still has execute/select)', () => {
       const src = readSrc('src/services/entity-service.ts');
       expect(src).toMatch(/DatabaseLike/);
-      expect(src).toMatch(/prepare\s*\(/);
+      expect(src).toMatch(/execute\s*\(/);
+      expect(src).toMatch(/select\s*[<(]/);
     });
   });
 
