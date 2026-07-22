@@ -1578,6 +1578,12 @@ input {
 .token-editor__chip-row button { flex: 0 0 auto; padding: 4px 6px; }
 
 .token-editor__add-chip { align-self: flex-start; }
+.token-editor .token-editor__counter-clear {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  color: var(--color-status-failure, #c0392b);
+  border-color: var(--color-status-failure, #c0392b);
+}
 
 .token-editor__actions {
   display: flex;

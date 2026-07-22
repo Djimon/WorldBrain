@@ -155,6 +155,12 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
           value={counterLabel} onChange={(e) => setCounterLabel(e.target.value)} />
         <input type="number" aria-label={t('token.counterValue', 'Zähler-Wert')} placeholder="0"
           value={counterValue} onChange={(e) => setCounterValue(e.target.value)} />
+        {(counterLabel || counterValue) && (
+          <button type="button" className="token-editor__counter-clear"
+            onClick={() => { setCounterLabel(''); setCounterValue(''); }}>
+            {t('token.clearCounter', 'Zähler entfernen')}
+          </button>
+        )}
       </fieldset>
 
       <fieldset className="token-editor__chips">
