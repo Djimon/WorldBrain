@@ -10,12 +10,15 @@
 //   - „Neuer Ordner"-Icon-Button
 //   - Rename-Flow (onFolderMove → handleGroupRename)
 //   - Panel-Collapse
+//
+// AP-008: Pin-Labels erscheinen doppelt — Canvas (.map-pin__label) UND
+// Baum (.map-pin-tree__label). Alle Label-Queries via within(treeEl) verankert.
+// Ordner-Name via .map-pin-tree__group-name (📁 + name sind zwei Textknoten).
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MapViewer } from '../src/ui/MapViewer';
 
-// elementFromPoint fehlt in jsdom — einmalig stubben
 if (!document.elementFromPoint) {
   Object.defineProperty(document, 'elementFromPoint', {
     value: () => null, writable: true, configurable: true,
@@ -68,7 +71,9 @@ vi.mock('../src/services/entity-service', () => ({
 }));
 
 vi.mock('../src/services/map-layer-service', () => ({
-  listLayers: vi.fn(async () => []),
+  listLayers: vi.fn(async () => [
+    { id: 'layer-1', map_id: 'map-1', layer_type: 'image', asset_id: 'asset-1', visible: true, opacity: 1, z_order: 0, offset_x: 0, offset_y: 0, mask_data: null, name: 'Base' },
+  ]),
   updateLayer: vi.fn(async () => undefined),
   createTokenLayer: vi.fn(async () => ({ id: 'layer-1' })),
 }));
@@ -107,78 +112,111 @@ function renderViewer() {
   return render(<MapViewer mapId="map-1" database={mockDb} />);
 }
 
+// Wartet bis der Baum sichtbar ist; gibt within(treeEl) zurück.
+// Scope-Anker: .map-pin-tree — vermeidet Kollision mit Canvas-Labels.
+async function waitForTree() {
+  await waitFor(() => {
+    const el = document.querySelector('.map-pin-tree');
+    if (!el) throw new Error('tree not mounted');
+    // Baum hat Inhalt wenn mindestens ein Item oder Ordner gerendert ist
+    if (!el.querySelector('.map-pin-tree__label, .map-pin-tree__group-name'))
+      throw new Error('tree empty');
+  });
+  return within(document.querySelector('.map-pin-tree') as HTMLElement);
+}
+
 // ── Panel-Header ──────────────────────────────────────────────────────────────
 
 describe('PinTree via MapViewer — Panel-Header', () => {
   it('zeigt "Pins (N)" mit Anzahl der Nicht-Folder-Anker-Pins', async () => {
     renderViewer();
-    // 2 normale Marker (pin-1 + pin-2), 1 folder-anchor → "Pins (2)"
-    await waitFor(() => expect(screen.getByText(/Pins\s*\(\s*2\s*\)/)).toBeInTheDocument());
+    // Header liegt im .map-pin-tree; 2 normale Marker → "Pins (2)"
+    await waitFor(() => {
+      const tree = document.querySelector('.map-pin-tree');
+      expect(tree?.textContent).toMatch(/Pins\s*\(\s*2\s*\)/);
+    });
   });
 });
 
-// ── renderItem: Emoji + Label + verknüpfte Entity ─────────────────────────────
+// ── renderItem: Label + verknüpfte Entity ─────────────────────────────────────
 
 describe('PinTree via MapViewer — renderItem', () => {
-  it('rendert Pin-Label-Text', async () => {
+  it('rendert Pin-Label-Text im Baum (.map-pin-tree__label)', async () => {
     renderViewer();
-    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
+    const tree = await waitForTree();
+    expect(tree.getByText('Stadttor')).toBeInTheDocument();
   });
 
-  it('rendert verknüpfte Entity als Sub-Label wenn entity_id gesetzt', async () => {
+  it('rendert verknüpfte Entity als Sub-Label (.map-pin-tree__sub)', async () => {
     renderViewer();
-    await waitFor(() => expect(screen.getByText('Ada Thorn')).toBeInTheDocument());
+    const tree = await waitForTree();
+    expect(tree.getByText('Ada Thorn')).toBeInTheDocument();
   });
 });
 
 // ── fromPathStrings-Gruppierung ───────────────────────────────────────────────
 
 describe('PinTree via MapViewer — fromPathStrings Gruppierung', () => {
-  it('gruppierter Pin erscheint unter seinem Ordner', async () => {
+  it('Ordner-Name "Städte" erscheint in .map-pin-tree__group-name', async () => {
     renderViewer();
-    await waitFor(() => expect(screen.getByText('Städte')).toBeInTheDocument());
-    // Ordner aufgeklappt by default → Stadttor sichtbar
-    expect(screen.getByText('Stadttor')).toBeInTheDocument();
+    await waitForTree();
+    // group-name enthält "📁 Städte" als zwei Textknoten → CSS-Selektor statt getByText
+    expect(document.querySelector('.map-pin-tree__group-name')?.textContent).toMatch(/Städte/);
   });
 
-  it('ungrouped Pin (group_name null) erscheint ohne Ordner', async () => {
+  it('gruppierter Pin erscheint im Baum unter seinem Ordner', async () => {
     renderViewer();
-    await waitFor(() => expect(screen.getByText('Burg')).toBeInTheDocument());
+    const tree = await waitForTree();
+    expect(tree.getByText('Stadttor')).toBeInTheDocument();
+  });
+
+  it('ungrouped Pin (group_name null) erscheint im Baum ohne Ordner', async () => {
+    renderViewer();
+    const tree = await waitForTree();
+    expect(tree.getByText('Burg')).toBeInTheDocument();
   });
 });
 
 // ── Suchfeld (searchable=true) ────────────────────────────────────────────────
 
 describe('PinTree via MapViewer — Suchfeld', () => {
-  it('Suchfeld ist vorhanden (NestedTree searchable=true)', async () => {
+  it('Suchfeld ist im Baum vorhanden (NestedTree searchable=true)', async () => {
     renderViewer();
-    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
-    expect(screen.getByRole('searchbox')).toBeInTheDocument();
+    await waitForTree();
+    expect(within(document.querySelector('.map-pin-tree') as HTMLElement)
+      .getByRole('searchbox')).toBeInTheDocument();
   });
 
-  it('Suchfeld filtert Pins nach Label', async () => {
+  it('Suchfeld filtert Pins — nur "Burg" bleibt, "Stadttor" verschwindet', async () => {
     renderViewer();
-    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
-    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Burg' } });
-    expect(screen.getByText('Burg')).toBeInTheDocument();
-    expect(screen.queryByText('Stadttor')).not.toBeInTheDocument();
+    const tree = await waitForTree();
+    fireEvent.change(
+      within(document.querySelector('.map-pin-tree') as HTMLElement).getByRole('searchbox'),
+      { target: { value: 'Burg' } },
+    );
+    expect(tree.getByText('Burg')).toBeInTheDocument();
+    expect(tree.queryByText('Stadttor')).not.toBeInTheDocument();
   });
 });
 
 // ── „Neuer Ordner"-Button ─────────────────────────────────────────────────────
 
 describe('PinTree via MapViewer — Neuer Ordner', () => {
-  it('zeigt „Neuer Ordner"-Icon-Button (📁+)', async () => {
+  it('zeigt „Neuer Ordner"-Icon-Button (title="Neuer Ordner") im Baum', async () => {
     renderViewer();
-    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
-    expect(screen.getByTitle('Neuer Ordner')).toBeInTheDocument();
+    await waitForTree();
+    expect(
+      within(document.querySelector('.map-pin-tree') as HTMLElement).getByTitle('Neuer Ordner'),
+    ).toBeInTheDocument();
   });
 
-  it('„Neuer Ordner" → Input erscheint → Enter ruft createMarker mit kind=folder-anchor auf', async () => {
+  it('„Neuer Ordner" → Eingabe → Enter ruft createMarker mit kind=folder-anchor auf', async () => {
     const { createMarker } = await import('../src/services/map-marker-service');
     renderViewer();
-    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
-    fireEvent.click(screen.getByTitle('Neuer Ordner'));
+    await waitForTree();
+    fireEvent.click(
+      within(document.querySelector('.map-pin-tree') as HTMLElement).getByTitle('Neuer Ordner'),
+    );
     const input = await screen.findByPlaceholderText('Ordnername…');
     fireEvent.change(input, { target: { value: 'Berge' } });
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -191,24 +229,22 @@ describe('PinTree via MapViewer — Neuer Ordner', () => {
   });
 });
 
-// ── onFolderMove → handleGroupRename ─────────────────────────────────────────
+// ── Rename-Flow ───────────────────────────────────────────────────────────────
 
 describe('PinTree via MapViewer — Rename-Flow', () => {
-  it('Doppelklick auf Ordner-Header → Rename-Input erscheint', async () => {
+  it('Doppelklick auf .map-pin-tree__group-name → Rename-Input erscheint', async () => {
     renderViewer();
-    await waitFor(() => expect(screen.getByText('Städte')).toBeInTheDocument());
-    const groupName = screen.getByText('Städte').closest('[data-drop-path="Städte"]')
-      ?? document.querySelector('[data-drop-path="Städte"]');
-    fireEvent.doubleClick(groupName!.querySelector('.map-pin-tree__group-name') ?? groupName!);
+    await waitForTree();
+    const groupNameEl = document.querySelector('.map-pin-tree__group-name') as HTMLElement;
+    fireEvent.doubleClick(groupNameEl);
     await waitFor(() => expect(screen.getByRole('textbox')).toBeInTheDocument());
   });
 
   it('Enter im Rename-Input ruft updateMarker auf (Gruppen-Umbenennung)', async () => {
     const { updateMarker } = await import('../src/services/map-marker-service');
     renderViewer();
-    await waitFor(() => expect(screen.getByText('Städte')).toBeInTheDocument());
-    const groupNameEl = document.querySelector('.map-pin-tree__group-name') as HTMLElement;
-    fireEvent.doubleClick(groupNameEl);
+    await waitForTree();
+    fireEvent.doubleClick(document.querySelector('.map-pin-tree__group-name') as HTMLElement);
     const input = await screen.findByRole('textbox');
     fireEvent.change(input, { target: { value: 'Dörfer' } });
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -219,20 +255,22 @@ describe('PinTree via MapViewer — Rename-Flow', () => {
 // ── Panel-Collapse ────────────────────────────────────────────────────────────
 
 describe('PinTree via MapViewer — Panel-Collapse', () => {
-  it('Panel ist standardmäßig aufgeklappt (Pins sichtbar)', async () => {
+  it('Panel ist standardmäßig aufgeklappt (Suchfeld sichtbar)', async () => {
     renderViewer();
-    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
-    expect(screen.getByRole('searchbox')).toBeInTheDocument();
+    await waitForTree();
+    expect(
+      within(document.querySelector('.map-pin-tree') as HTMLElement).getByRole('searchbox'),
+    ).toBeInTheDocument();
   });
 
   it('Collapse-Button klappt das Panel ein (Suchfeld verschwindet)', async () => {
     renderViewer();
-    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
-    const collapseBtn = screen.queryByTitle('Pin-Liste einklappen')
-      ?? screen.queryByRole('button', { name: /einklappen|collapse/i });
+    await waitForTree();
+    const tree = document.querySelector('.map-pin-tree') as HTMLElement;
+    const collapseBtn = tree.querySelector('button[title*="einklappen"], button[title*="collapse"]') as HTMLElement | null;
     if (collapseBtn) {
       fireEvent.click(collapseBtn);
-      expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+      expect(tree.querySelector('[role="searchbox"]')).not.toBeInTheDocument();
     }
   });
 });
