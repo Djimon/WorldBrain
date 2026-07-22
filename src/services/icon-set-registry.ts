@@ -40,13 +40,13 @@ export const CORE_ICON_SET: IconSet = {
     { key: 'stunned', label: 'Stunned', svg: SVG('<path d="M12 12c.6 0 1-.5 1-1s-.6-1.4-1.5-1.4-2 1-2 2.4 1.3 2.9 3 2.9 3.6-1.6 3.6-3.9-2-4.4-4.5-4.4S6 8.6 6 12"/>') },
     { key: 'blinded', label: 'Blinded', svg: SVG('<path d="M3.5 12S7 6.5 12 6.5s8.5 5.5 8.5 5.5-3.5 5.5-8.5 5.5S3.5 12 3.5 12Z"/><circle cx="12" cy="12" r="2.2"/><path d="M4 4 20 20"/>') },
     { key: 'prone', label: 'Prone', svg: SVG('<path d="M12 3v9"/><path d="m8 8 4 4 4-4"/><path d="M4 20h16"/>') },
-    { key: 'restrained', label: 'Restrained', svg: SVG('<rect x="8.5" y="3.5" width="7" height="9" rx="3.5"/><rect x="8.5" y="11.5" width="7" height="9" rx="3.5"/>') },
+    { key: 'restrained', label: 'Restrained', svg: SVG('<rect x="8.5" y="3.5" width="7" height="9" rx="3.5"/><rect x="8.5" y="9.5" width="7" height="9" rx="3.5"/>') },
     { key: 'frightened', label: 'Frightened', svg: SVG('<circle cx="12" cy="12" r="8.5"/><circle cx="9" cy="10" r=".9"/><circle cx="15" cy="10" r=".9"/><circle cx="12" cy="15.5" r="1.8"/>') },
-    { key: 'invisible', label: 'Invisible', svg: SVG('<path d="M5 20v-8a7 7 0 0 1 14 0v8l-2.3-2-2.3 2-2.4-2-2.3 2Z" stroke-dasharray="2.5 3"/>') },
+    { key: 'invisible', label: 'Invisible', svg: SVG('<path d="M6 20V12a6 6 0 0 1 12 0v8l-2.4-1.8-2.4 1.8-2.4-1.8-2.4 1.8Z" stroke-dasharray="2.5 3"/><circle cx="10" cy="11" r="1.1"/><circle cx="14" cy="11" r="1.1"/>') },
     { key: 'on-fire', label: 'On Fire', svg: SVG('<path d="M12 3c1 3 4 4 4 8a4 4 0 0 1-8 0c0-1.8.9-2.6 1.6-3.4.4 1 1.4 1.4 1.4 1.4C11.6 7 11 5 12 3Z"/>') },
     { key: 'dead', label: 'Dead', svg: SVG('<path d="M6 21V11a6 6 0 0 1 12 0v10Z"/><path d="M6 21h12"/><path d="M12 6v5m-2.5-2.5h5"/>') },
     { key: 'hasted', label: 'Hasted', svg: SVG('<path d="M6 6l6 6-6 6"/><path d="M13 6l6 6-6 6"/>') },
-    { key: 'slowed', label: 'Slowed', svg: SVG('<path d="M6 3h12M6 21h12"/><path d="M8 3c0 5 8 4 8 9s-8 4-8 9"/><path d="M16 3c0 5-8 4-8 9s8 4 8 9"/>') },
+    { key: 'slowed', label: 'Slowed', svg: SVG('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.5 2"/>') },
   ],
 };
 
