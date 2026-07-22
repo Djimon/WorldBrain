@@ -79,6 +79,8 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   applyCardSchema(db as unknown as Parameters<typeof applyCardSchema>[0]);
   applyHandoutSchema(db as unknown as Parameters<typeof applyHandoutSchema>[0]);
   applyMapSchema(db as unknown as Parameters<typeof applyMapSchema>[0]);
+  // Idempotent: adds folder_id to maps on pre-folder-tree DBs (map_folders table now exists).
+  await adapter.execute(`ALTER TABLE maps ADD COLUMN folder_id TEXT`).catch(() => {});
   // Idempotent: adds group_name to map_markers on pre-folder DBs (table now exists).
   await adapter.execute(`ALTER TABLE map_markers ADD COLUMN group_name TEXT NOT NULL DEFAULT ''`).catch(() => {});
   // Idempotent: per-image-layer position (movable image layers).

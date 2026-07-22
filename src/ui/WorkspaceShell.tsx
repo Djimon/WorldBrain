@@ -400,21 +400,20 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 selectedMapId={selectedMapId}
                 mapsTabContent={
                   <>
-                    <h3>{t('maps')}</h3>
-                    <button
-                      className="emd__create-btn"
-                      style={{ width: '100%', marginBottom: 'var(--space-2)' }}
-                      onClick={() => void handleMapImport()}
-                      disabled={mapImporting}
-                    >
-                      {mapImporting ? '⏳ Importiere…' : '+ Karte importieren'}
-                    </button>
                     {mapImporting && (
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', padding: 'var(--space-1) var(--space-2)', background: 'var(--color-surface-alt)', borderRadius: 'var(--radius-sm)', marginBottom: 'var(--space-2)' }}>
-                        Bild wird kopiert und vorbereitet…
+                        {t('mapImportProgress', 'Bild wird kopiert und vorbereitet…')}
                       </div>
                     )}
-                    <MapFolderTree database={database} maps={maps} selectedMapId={selectedMapId} onSelectMap={setSelectedMapId} />
+                    <MapFolderTree
+                      database={database}
+                      maps={maps}
+                      selectedMapId={selectedMapId}
+                      onSelectMap={setSelectedMapId}
+                      onImportMap={() => void handleMapImport()}
+                      importing={mapImporting}
+                      onMapsChanged={() => { void listMaps(database).then(setMaps); }}
+                    />
                     {maps.length === 0 && (
                       <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: 'var(--space-2)' }}>
                         {t('noMaps')}

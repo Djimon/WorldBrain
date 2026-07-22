@@ -28,9 +28,15 @@ export interface MapFolderTreeProps {
   maps: MapFolderTreeMap[];
   selectedMapId?: string | null;
   onSelectMap?: (mapId: string) => void;
+  /** Compact header icon button, next to "Neuer Ordner" — matches the Pin panel's header chrome (#308). */
+  onImportMap?: () => void;
+  importing?: boolean;
+  /** Called after a map's folder_id changes (drag, or a folder holding it gets deleted) — the
+   *  `maps` prop is owned by the parent, so it must refetch for the tree to reflect the move. */
+  onMapsChanged?: () => void;
 }
 
-export function MapFolderTree({ database, maps, selectedMapId, onSelectMap }: MapFolderTreeProps) {
+export function MapFolderTree({ database, maps, selectedMapId, onSelectMap, onImportMap, importing, onMapsChanged }: MapFolderTreeProps) {
   const { t } = useTranslation();
   const [folders, setFolders] = useState<MapFolderRow[]>([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -72,7 +78,7 @@ export function MapFolderTree({ database, maps, selectedMapId, onSelectMap }: Ma
 
   function handleItemMove(mapId: string, newPath: string) {
     const folderId = newPath ? pathToId.get(newPath) ?? null : null;
-    void moveMap(database, mapId, folderId);
+    void moveMap(database, mapId, folderId).then(() => onMapsChanged?.());
   }
 
   function handleCreateFolder(name: string) {
@@ -82,7 +88,7 @@ export function MapFolderTree({ database, maps, selectedMapId, onSelectMap }: Ma
   function handleConfirmDelete() {
     const id = confirmDeleteId;
     setConfirmDeleteId(null);
-    if (id) void deleteFolder(database, id).then(reload);
+    if (id) void deleteFolder(database, id).then(() => { reload(); onMapsChanged?.(); });
   }
 
   function renderFolderExtra(node: TreeNode) {
@@ -132,7 +138,22 @@ export function MapFolderTree({ database, maps, selectedMapId, onSelectMap }: Ma
       onItemMove={handleItemMove}
       onCreateFolder={handleCreateFolder}
       renderFolderExtra={renderFolderExtra}
-      header={<span>{t('mapFolderTree.header', 'Karten')} ({maps.length})</span>}
+      header={
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {t('mapFolderTree.header', 'Karten')} ({maps.length})
+          {onImportMap && (
+            <button
+              type="button"
+              className="map-pin-tree__new-folder-btn"
+              title={importing ? t('mapFolderTree.importing', 'Importiere…') : t('mapFolderTree.importMap', 'Karte importieren')}
+              onClick={onImportMap}
+              disabled={importing}
+            >
+              {importing ? '⏳' : '🗺️+'}
+            </button>
+          )}
+        </span>
+      }
     />
   );
 }
