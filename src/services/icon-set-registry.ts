@@ -40,7 +40,7 @@ export const CORE_ICON_SET: IconSet = {
     { key: 'stunned', label: 'Stunned', svg: SVG('<path d="M12 12c.6 0 1-.5 1-1s-.6-1.4-1.5-1.4-2 1-2 2.4 1.3 2.9 3 2.9 3.6-1.6 3.6-3.9-2-4.4-4.5-4.4S6 8.6 6 12"/>') },
     { key: 'blinded', label: 'Blinded', svg: SVG('<path d="M3.5 12S7 6.5 12 6.5s8.5 5.5 8.5 5.5-3.5 5.5-8.5 5.5S3.5 12 3.5 12Z"/><circle cx="12" cy="12" r="2.2"/><path d="M4 4 20 20"/>') },
     { key: 'prone', label: 'Prone', svg: SVG('<path d="M12 3v9"/><path d="m8 8 4 4 4-4"/><path d="M4 20h16"/>') },
-    { key: 'restrained', label: 'Restrained', svg: SVG('<rect x="8.5" y="3.5" width="7" height="9" rx="3.5"/><rect x="8.5" y="9.5" width="7" height="9" rx="3.5"/>') },
+    { key: 'restrained', label: 'Restrained', svg: SVG('<g transform="rotate(-35 12 12)"><rect x="8.5" y="3.5" width="7" height="9" rx="3.5"/><rect x="8.5" y="9.5" width="7" height="9" rx="3.5"/></g>') },
     { key: 'frightened', label: 'Frightened', svg: SVG('<circle cx="12" cy="12" r="8.5"/><circle cx="9" cy="10" r=".9"/><circle cx="15" cy="10" r=".9"/><circle cx="12" cy="15.5" r="1.8"/>') },
     { key: 'invisible', label: 'Invisible', svg: SVG('<path d="M6 20V12a6 6 0 0 1 12 0v8l-2.4-1.8-2.4 1.8-2.4-1.8-2.4 1.8Z" stroke-dasharray="2.5 3"/><circle cx="10" cy="11" r="1.1"/><circle cx="14" cy="11" r="1.1"/>') },
     { key: 'on-fire', label: 'On Fire', svg: SVG('<path d="M12 3c1 3 4 4 4 8a4 4 0 0 1-8 0c0-1.8.9-2.6 1.6-3.4.4 1 1.4 1.4 1.4 1.4C11.6 7 11 5 12 3Z"/>') },
