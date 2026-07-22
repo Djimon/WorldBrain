@@ -13,6 +13,22 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MapFolderTree } from '../src/ui/MapFolderTree';
 
+if (!document.elementFromPoint) {
+  Object.defineProperty(document, 'elementFromPoint', {
+    value: () => null, writable: true, configurable: true,
+  });
+}
+
+// Ordner-Name wird als "📁 {name}" gerendert — zwei Textknoten, daher via
+// data-drop-path statt getByText(name) suchen (identisch zum Pin-Baum, s.
+// m15-pin-tree-characterization.dom.test.tsx).
+function folderHeader(path: string) {
+  return document.querySelector(`[data-drop-path="${path}"]`) as HTMLElement;
+}
+function folderNameEl(path: string) {
+  return folderHeader(path)?.querySelector('.map-pin-tree__group-name') as HTMLElement;
+}
+
 const FOLDERS = [
   { id: 'mapfolder_dungeons', parent_id: null, name: 'Dungeons', created_at: '' },
   { id: 'mapfolder_level1', parent_id: 'mapfolder_dungeons', name: 'Level 1', created_at: '' },
@@ -42,8 +58,9 @@ describe('M15-S05/#307 map folder tree — NestedTree-Konsument', () => {
   describe('Rendering via NestedTree', () => {
     it('rendert Ordner und Karten', async () => {
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
-      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
-      expect(screen.getByText('Level 1')).toBeInTheDocument();
+      await waitFor(() => expect(folderNameEl('Dungeons')).toBeInTheDocument());
+      expect(folderNameEl('Dungeons').textContent).toMatch(/Dungeons/);
+      expect(folderNameEl('Dungeons/Level 1').textContent).toMatch(/Level 1/);
       expect(screen.getByText('Overworld')).toBeInTheDocument();
       expect(screen.getByText('Cellar')).toBeInTheDocument();
     });
@@ -59,13 +76,13 @@ describe('M15-S05/#307 map folder tree — NestedTree-Konsument', () => {
   describe('Ordner-Header: data-drop-path + cursor:grab (via NestedTree)', () => {
     it('Ordner-Header tragen data-drop-path-Attribut', async () => {
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
-      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
+      await waitFor(() => expect(folderNameEl('Dungeons')).toBeInTheDocument());
       expect(document.querySelector('[data-drop-path="Dungeons"]')).toBeTruthy();
     });
 
     it('Root-Container hat data-drop-path=""', async () => {
       const { container } = render(<MapFolderTree database={mockDb} maps={MAPS} />);
-      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
+      await waitFor(() => expect(folderNameEl('Dungeons')).toBeInTheDocument());
       expect(container.querySelector('[data-drop-path=""]')).toBeTruthy();
     });
   });
@@ -77,11 +94,11 @@ describe('M15-S05/#307 map folder tree — NestedTree-Konsument', () => {
       await waitFor(() => expect(screen.getByText('Overworld')).toBeInTheDocument());
 
       const dungeonHeader = document.querySelector('[data-drop-path="Dungeons"]') as HTMLElement;
-      const overworldEl = screen.getByText('Overworld').closest('[data-item-id]') as HTMLElement
-        ?? screen.getByText('Overworld') as HTMLElement;
+      const overworldEl = screen.getByText('Overworld').closest('.map-pin-tree__item') as HTMLElement;
 
       vi.spyOn(document, 'elementFromPoint').mockReturnValue(dungeonHeader);
       fireEvent.pointerDown(overworldEl, { clientX: 10, clientY: 10 });
+      fireEvent(document, new PointerEvent('pointermove', { clientX: 100, clientY: 100, bubbles: true }));
       fireEvent(document, new PointerEvent('pointerup', { clientX: 100, clientY: 100, bubbles: true }));
       vi.restoreAllMocks();
 
@@ -93,13 +110,14 @@ describe('M15-S05/#307 map folder tree — NestedTree-Konsument', () => {
     it('pointerDown auf Level-1-Header + Drop auf Root → moveFolder(db, id, null)', async () => {
       const { moveFolder } = await import('../src/services/map-folder-service');
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
-      await waitFor(() => expect(screen.getByText('Level 1')).toBeInTheDocument());
+      await waitFor(() => expect(folderNameEl('Dungeons/Level 1')).toBeInTheDocument());
 
-      const level1Header = document.querySelector('[data-drop-path="Level 1"]') as HTMLElement;
+      const level1Header = document.querySelector('[data-drop-path="Dungeons/Level 1"]') as HTMLElement;
       const rootDrop = document.querySelector('[data-drop-path=""]') as HTMLElement;
 
       vi.spyOn(document, 'elementFromPoint').mockReturnValue(rootDrop);
       fireEvent.pointerDown(level1Header, { clientX: 10, clientY: 10 });
+      fireEvent(document, new PointerEvent('pointermove', { clientX: 200, clientY: 200, bubbles: true }));
       fireEvent(document, new PointerEvent('pointerup', { clientX: 200, clientY: 200, bubbles: true }));
       vi.restoreAllMocks();
 
@@ -110,16 +128,16 @@ describe('M15-S05/#307 map folder tree — NestedTree-Konsument', () => {
   describe('Umbenennen-Regression (#307)', () => {
     it('Doppelklick auf Ordner-Name aktiviert Rename-Input', async () => {
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
-      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
-      fireEvent.doubleClick(screen.getByText(/dungeons/i));
+      await waitFor(() => expect(folderNameEl('Dungeons')).toBeInTheDocument());
+      fireEvent.doubleClick(folderNameEl('Dungeons'));
       expect(screen.getByRole('textbox')).toBeInTheDocument();
     });
 
     it('Enter im Rename-Input ruft renameFolder auf', async () => {
       const { renameFolder } = await import('../src/services/map-folder-service');
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
-      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
-      fireEvent.doubleClick(screen.getByText(/dungeons/i));
+      await waitFor(() => expect(folderNameEl('Dungeons')).toBeInTheDocument());
+      fireEvent.doubleClick(folderNameEl('Dungeons'));
       const input = screen.getByRole('textbox');
       fireEvent.change(input, { target: { value: 'Crypts' } });
       fireEvent.keyDown(input, { key: 'Enter' });
@@ -130,7 +148,7 @@ describe('M15-S05/#307 map folder tree — NestedTree-Konsument', () => {
   describe('Löschen-Regression (#307): Dialog, kein confirm(), kein Kaskaden-Löschen', () => {
     it('Löschen-Button zeigt Sicherheitsdialog (kein confirm())', async () => {
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
-      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
+      await waitFor(() => expect(folderNameEl('Dungeons')).toBeInTheDocument());
       fireEvent.click(screen.getAllByRole('button', { name: /löschen/i })[0]);
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
@@ -138,7 +156,7 @@ describe('M15-S05/#307 map folder tree — NestedTree-Konsument', () => {
     it('Bestätigung im Dialog ruft deleteFolder auf', async () => {
       const { deleteFolder } = await import('../src/services/map-folder-service');
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
-      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
+      await waitFor(() => expect(folderNameEl('Dungeons')).toBeInTheDocument());
       fireEvent.click(screen.getAllByRole('button', { name: /löschen/i })[0]);
       fireEvent.click(screen.getByRole('button', { name: /bestätigen|ja|löschen/i }));
       await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith(mockDb, 'mapfolder_dungeons'));
@@ -154,8 +172,11 @@ describe('M15-S05/#307 map folder tree — NestedTree-Konsument', () => {
     it('erstellt Ordner via createFolder', async () => {
       const { createFolder } = await import('../src/services/map-folder-service');
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
-      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
+      await waitFor(() => expect(folderNameEl('Dungeons')).toBeInTheDocument());
       fireEvent.click(screen.getByRole('button', { name: /^📁\+$|neuer ordner/i }));
+      const input = await screen.findByPlaceholderText('Ordnername…');
+      fireEvent.change(input, { target: { value: 'Berge' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
       await waitFor(() => expect(createFolder).toHaveBeenCalled());
     });
   });
