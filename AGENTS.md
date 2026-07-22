@@ -89,6 +89,8 @@ Bug tests for a Story belong in the **existing Story test file**, not a new `iss
 
 **Guard assertions:** Absence checks (source grep, `not.toMatch`, "X must not exist") are a regression net, never proof of a behavior AC — allowed only *in addition* to the positive test. Without a recurrence history they belong in lint/architecture, not the suite.
 
+**Refactor with a "behavior must not change" clause:** write characterization tests of the *existing* behavior first; the interface follows from the extracted code. A pre-designed RED test dictates a new interface — and since the test is the contract, it silently turns the refactor into a rewrite.
+
 **UI Stories:** At least one `.dom.test.tsx` asserting every interactive element and event handler in AC exists in rendered output. Placeholder text where AC requires a form = test failure.
 
 **Async assertions:** Assertions depending on async state updates require `waitFor(...)`. Sync `expect(screen.getBy...)` directly after `render()` is only valid when the service is synchronous or not called at all.
