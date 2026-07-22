@@ -77,13 +77,18 @@ Actual current state, verified in code 2026-07-11:
   player-facing; a GM-notes image layer stays hidden. Reuses the EPIC-008 visibility projection —
   export shows only layers with `player_visible = 1` (and fog `visible` state as revealed).
 
-- **D7 — Der Pin-Baum ist der GOLD-STANDARD und wird NICHT geändert.** (User-Entscheidung 2026-07-22)
+- **D7 — Der Pin-Baum ist der GOLD-STANDARD; sein Frontend bleibt unverändert.** (User-Entscheidung 2026-07-22)
   `src/ui/MapViewer.tsx:87-390` (Pin-/Ordnerbaum: Drag&Drop für Elemente und Ordner, Collapse ▼/▶,
   Zähler, Suche, einklappbares Panel) ist die **verbindliche Referenz für jede Baum-UI im Projekt**.
-  - **Verboten:** den Pin-Baum umbauen, migrieren oder „vereinheitlichen". Er bleibt, wie er ist.
-  - **Pflicht:** Der Map-Ordnerbaum übernimmt **1:1 dieselbe Logik und dasselbe Erscheinungsbild** —
-    gleiche Interaktion, gleiche Affordanzen, gleiches Chrome. Keine Zusatz-Controls, die der
-    Pin-Baum nicht hat (z.B. **kein permanenter „verschieben"-Button** — im Pin-Baum wird gezogen).
+  - **Schritt 1 (erwünscht): den Pin-Baum generalisieren/kapseln**, damit andere davon profitieren —
+    also die geteilte Komponente **aus dem Pin-Baum extrahieren**, nicht danebenstellen und neu erfinden.
+  - **Harte Bedingung:** Dabei darf sich am **Pin-Baum-Frontend nichts ändern** — kein sichtbarer
+    oder spürbarer Unterschied in Aussehen und Bedienung. Reiner, verhaltenserhaltender Refactor;
+    vorhandene Pin-Tests bleiben grün. Jede Regression dort ist ein Blocker.
+  - **Schritt 2:** Der Map-Ordnerbaum konsumiert **dieselbe** Komponente → 1:1-Gleichheit ergibt sich
+    automatisch, statt nachgebaut zu werden.
+  - **Verboten:** die Pin-Baum-**UX** ändern; Zusatz-Controls, die er nicht hat (z.B. **kein permanenter
+    „verschieben"-Button** — im Pin-Baum wird gezogen).
   - Richtung ist einseitig: **Map adaptiert Pin**, nie umgekehrt. Bei Abweichung gewinnt immer der Pin-Baum.
   - Gilt auch für künftige Bäume (Entity-/Lore-Ordner, Audio-Scenes).
 
