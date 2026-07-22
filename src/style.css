@@ -3537,6 +3537,37 @@ input {
   margin-bottom: var(--space-2);
 }
 
+/* Folder delete confirmation */
+.map-folder-tree__confirm-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+.map-folder-tree__confirm-text { margin: 0; font-size: 0.8rem; color: var(--color-text-muted); }
+.map-folder-tree__confirm-actions { display: flex; gap: var(--space-2); }
+.map-folder-tree__confirm-yes,
+.map-folder-tree__confirm-no {
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.map-folder-tree__confirm-yes {
+  background: var(--color-status-failure, #c0392b);
+  border-color: var(--color-status-failure, #c0392b);
+  color: #fff;
+}
+.map-folder-tree__confirm-no {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.map-folder-tree__confirm-no:hover { border-color: var(--color-accent); }
+
 .map-folder-tree__root {
   list-style: none;
   margin: 0;
