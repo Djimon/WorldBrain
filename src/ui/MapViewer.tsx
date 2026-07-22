@@ -489,7 +489,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   async function handleMapClick(e: React.MouseEvent) {
     if (!containerRef.current) return;
     const pos = toMapCoords(e.clientX, e.clientY);
-    if (mode === 'navigate') { setSelectedPinId(null); }
+    if (mode === 'navigate') {
+      setSelectedPinId(null);
+      // Clicking the empty map exits token edit mode: deselect (removes the
+      // outline + enlarged counter/stepper) and close the editor.
+      setSelectedTokenId(null);
+      setEditingToken(null);
+    }
 
     if (mode === 'move-pin' && movingPinId) {
       const pin = markers.find((m) => m.id === movingPinId);
