@@ -12,6 +12,7 @@ import { FogMaskCanvas } from './FogMaskCanvas';
 import type { DatabaseLike } from '../services/entity-service';
 import { getMarkersForMap, createMarker, updateMarker, deleteMarker } from '../services/map-marker-service';
 import type { MarkerRow } from '../services/map-marker-service';
+import { NestedTree, fromPathStrings } from './NestedTree';
 import { getActivatedCells, clearAllCells, setCellState } from '../services/session-grid-service';
 import { listEntitiesByType } from '../services/entity-service';
 import { GridLayer, CellStateLayer, PaintInteractionLayer, GridControlsPanel, CellContextMenu, DEFAULT_GRID_SETTINGS } from './MapGrid';
@@ -82,327 +83,6 @@ function getPinEmoji(styleJson: string): string {
     const s = JSON.parse(styleJson) as { icon?: string };
     return PIN_ICONS.find((i) => i.key === s.icon)?.emoji ?? '📍';
   } catch { return '📍'; }
-}
-
-// ── Pin Tree (nested folders via "/" in group_name) ──────────────────────────
-
-interface TreeNode {
-  path: string;          // full path, e.g. "Städte/Hauptstädte"
-  name: string;          // last segment
-  children: TreeNode[];
-  pins: MarkerRow[];
-}
-
-function buildTree(markers: MarkerRow[]): { root: TreeNode[]; ungrouped: MarkerRow[] } {
-  const nodeMap = new Map<string, TreeNode>();
-  const ungrouped: MarkerRow[] = [];
-
-  function getNode(path: string): TreeNode {
-    if (nodeMap.has(path)) return nodeMap.get(path)!;
-    const segments = path.split('/');
-    const name = segments[segments.length - 1];
-    const node: TreeNode = { path, name, children: [], pins: [] };
-    nodeMap.set(path, node);
-    if (segments.length > 1) {
-      const parentPath = segments.slice(0, -1).join('/');
-      getNode(parentPath).children.push(node);
-    }
-    return node;
-  }
-
-  for (const m of markers) {
-    if (m.kind === 'folder-anchor') {
-      // ensures the folder node exists without adding a visible pin
-      getNode((m.group_name ?? '').trim() || (m.label_text ?? ''));
-      continue;
-    }
-    const g = (m.group_name ?? '').trim();
-    if (!g) { ungrouped.push(m); continue; }
-    getNode(g).pins.push(m);
-  }
-
-  // top-level nodes (path has no "/")
-  const root = [...nodeMap.values()]
-    .filter((n) => !n.path.includes('/'))
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  // sort children recursively
-  function sortChildren(node: TreeNode) {
-    node.children.sort((a, b) => a.name.localeCompare(b.name));
-    node.children.forEach(sortChildren);
-  }
-  root.forEach(sortChildren);
-
-  return { root, ungrouped };
-}
-
-function FolderNode({
-  node, depth, collapsed, onToggle, editingId, onSelect, entities,
-  renamingPath, renameVal, onRenameVal, onRenameCommit, onRenameStart, onRenameCancel,
-  dropHighlight, dragSourcePath, onPointerDown,
-}: {
-  node: TreeNode; depth: number;
-  collapsed: Set<string>; onToggle: (p: string) => void;
-  editingId: string | null; onSelect: (m: MarkerRow, e: React.MouseEvent) => void;
-  entities: { id: string; title: string }[];
-  renamingPath: string | null; renameVal: string;
-  onRenameVal: (v: string) => void; onRenameCommit: () => void;
-  onRenameStart: (p: string) => void; onRenameCancel: () => void;
-  dropHighlight: boolean;
-  dragSourcePath: string | null;
-  onPointerDown: (payload: DragPayload, label: string, e: React.PointerEvent) => void;
-}) {
-  const isOpen = !collapsed.has(node.path);
-  const indent = depth * 14;
-  const pinCount = node.pins.length + node.children.reduce((s, c) => s + c.pins.length, 0);
-
-  return (
-    <div>
-      <div
-        className={`map-pin-tree__group-header${dropHighlight ? ' drop-target' : ''}`}
-        style={{ paddingLeft: 12 + indent, cursor: 'grab', opacity: dragSourcePath === node.path ? 0.35 : 1 }}
-        data-drop-path={node.path}
-        onClick={() => onToggle(node.path)}
-        onPointerDown={(e) => { e.stopPropagation(); onPointerDown({ kind: 'folder', path: node.path }, node.name, e); }}
-      >
-        <span className="map-pin-tree__group-arrow">{isOpen ? '▼' : '▶'}</span>
-        {renamingPath === node.path ? (
-          <input className="map-pin-tree__rename-input" value={renameVal} autoFocus
-            onChange={(e) => onRenameVal(e.target.value)}
-            onBlur={onRenameCommit}
-            onKeyDown={(e) => { if (e.key === 'Enter') onRenameCommit(); if (e.key === 'Escape') onRenameCancel(); }}
-            onClick={(e) => e.stopPropagation()} />
-        ) : (
-          <span className="map-pin-tree__group-name"
-            onDoubleClick={(e) => { e.stopPropagation(); onRenameStart(node.path); }}>
-            📁 {node.name}
-          </span>
-        )}
-        <span className="map-pin-tree__group-count">{pinCount}</span>
-      </div>
-      {isOpen && (
-        <>
-          {node.children.map((child) => (
-            <FolderNode key={child.path} node={child} depth={depth + 1}
-              collapsed={collapsed} onToggle={onToggle}
-              editingId={editingId} onSelect={onSelect} entities={entities}
-              renamingPath={renamingPath} renameVal={renameVal}
-              onRenameVal={onRenameVal} onRenameCommit={onRenameCommit}
-              onRenameStart={onRenameStart} onRenameCancel={onRenameCancel}
-              dropHighlight={dropHighlight} dragSourcePath={dragSourcePath}
-              onPointerDown={onPointerDown} />
-          ))}
-          {node.pins.map((m) => (
-            <PinRow key={m.id} m={m} indent={indent + 14} editingId={editingId} onSelect={onSelect} entities={entities}
-              onPointerDown={onPointerDown} />
-          ))}
-        </>
-      )}
-    </div>
-  );
-}
-
-function PinRow({ m, indent, editingId, onSelect, entities, onPointerDown }: {
-  m: MarkerRow; indent: number; editingId: string | null;
-  onSelect: (m: MarkerRow, e: React.MouseEvent) => void;
-  entities: { id: string; title: string }[];
-  onPointerDown: (payload: DragPayload, label: string, e: React.PointerEvent) => void;
-}) {
-  const linked = entities.find((e) => e.id === m.entity_id);
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      className={`map-pin-tree__item${editingId === m.id ? ' active' : ''}`}
-      style={{ paddingLeft: 12 + indent, cursor: 'grab', userSelect: 'none' }}
-      onClick={(e) => onSelect(m, e as unknown as React.MouseEvent)}
-      onKeyDown={(e) => { if (e.key === 'Enter') onSelect(m, e as unknown as React.MouseEvent); }}
-      onPointerDown={(e) => onPointerDown({ kind: 'pin', id: m.id }, m.label_text ?? '(kein Name)', e)}
-    >
-      <span style={{ marginRight: 6 }}>{getPinEmoji(m.style_json)}</span>
-      <span className="map-pin-tree__label">{m.label_text || '(kein Name)'}</span>
-      {linked && <span className="map-pin-tree__sub">{linked.title}</span>}
-    </div>
-  );
-}
-
-type DragPayload = { kind: 'pin'; id: string } | { kind: 'folder'; path: string };
-
-interface PinTreeProps {
-  markers: MarkerRow[];
-  editingId: string | null;
-  onSelect: (m: MarkerRow, e: React.MouseEvent) => void;
-  panelCollapsed: boolean;
-  onTogglePanel: () => void;
-  entities: { id: string; title: string }[];
-  onGroupRename: (groupOld: string, groupNew: string) => void;
-  onPinMove: (markerId: string, newGroup: string) => void;
-  onCreateFolder: (name: string) => void;
-  onResizeStart: (e: React.MouseEvent) => void;
-}
-
-type PointerDrag = {
-  payload: DragPayload;
-  label: string;
-  ghostX: number;
-  ghostY: number;
-  dropPath: string | null; // null = no valid target, '' = root, 'a/b' = folder
-};
-
-function PinTree({ markers, editingId, onSelect, panelCollapsed, onTogglePanel, entities, onGroupRename, onPinMove, onCreateFolder, onResizeStart }: PinTreeProps) {
-  const [search, setSearch] = useState('');
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [renamingPath, setRenamingPath] = useState<string | null>(null);
-  const [renameVal, setRenameVal] = useState('');
-  const [newFolderInput, setNewFolderInput] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
-  const [drag, setDrag] = useState<PointerDrag | null>(null);
-  const dragRef = useRef<PointerDrag | null>(null);
-
-  const q = search.toLowerCase();
-  const filtered = q
-    ? markers.filter((m) => (m.label_text ?? '').toLowerCase().includes(q) || (m.group_name ?? '').toLowerCase().includes(q))
-    : markers;
-
-  const { root, ungrouped } = buildTree(filtered);
-  const allRoot = root;
-
-  function toggleCollapse(path: string) {
-    setCollapsed((prev) => { const n = new Set(prev); if (n.has(path)) n.delete(path); else n.add(path); return n; });
-  }
-
-  function commitRename() {
-    if (renamingPath !== null) onGroupRename(renamingPath, renameVal.trim());
-    setRenamingPath(null);
-  }
-
-  function createFolder() {
-    const name = newFolderName.trim();
-    if (name) onCreateFolder(name);
-    setNewFolderName('');
-    setNewFolderInput(false);
-  }
-
-  function startDrag(payload: DragPayload, label: string, e: React.PointerEvent) {
-    e.preventDefault();
-    const d: PointerDrag = { payload, label, ghostX: e.clientX, ghostY: e.clientY, dropPath: null };
-    setDrag(d);
-    dragRef.current = d;
-
-    function onMove(ev: PointerEvent) {
-      const el = document.elementFromPoint(ev.clientX, ev.clientY);
-      const dropEl = (el as HTMLElement | null)?.closest('[data-drop-path]') as HTMLElement | null;
-      let dropPath: string | null = null;
-      if (dropEl) {
-        const p = dropEl.getAttribute('data-drop-path') ?? '';
-        const cur = dragRef.current;
-        if (cur?.payload.kind === 'folder') {
-          const src = cur.payload.path;
-          if (p !== src && !p.startsWith(src + '/')) dropPath = p;
-        } else {
-          dropPath = p;
-        }
-      }
-      const updated: PointerDrag = { ...dragRef.current!, ghostX: ev.clientX, ghostY: ev.clientY, dropPath };
-      dragRef.current = updated;
-      setDrag({ ...updated });
-    }
-
-    function onUp() {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      const cur = dragRef.current;
-      if (cur && cur.dropPath !== null) {
-        if (cur.payload.kind === 'pin') {
-          onPinMove(cur.payload.id, cur.dropPath);
-        } else {
-          const folderName = cur.payload.path.split('/').pop()!;
-          const newPath = cur.dropPath ? `${cur.dropPath}/${folderName}` : folderName;
-          if (newPath !== cur.payload.path) onGroupRename(cur.payload.path, newPath);
-        }
-      }
-      setDrag(null);
-      dragRef.current = null;
-    }
-
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-  }
-
-  if (panelCollapsed) {
-    return (
-      <div className="map-pin-tree map-pin-tree--collapsed">
-        <div className="map-pin-tree__resize-handle" onMouseDown={onResizeStart} />
-        <button className="map-pin-tree__collapse-btn" onClick={onTogglePanel} title="Pin-Liste aufklappen">
-          <span className="map-pin-tree__collapsed-label">PINS</span>
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="map-pin-tree">
-      <div className="map-pin-tree__resize-handle" onMouseDown={onResizeStart} />
-      <div className="map-pin-editor__header">
-        <span>Pins ({markers.filter((m) => m.kind !== 'folder-anchor').length})</span>
-        <button className="map-pin-tree__new-folder-btn" title="Neuer Ordner"
-          onClick={() => setNewFolderInput(true)}>📁+</button>
-      </div>
-
-      {newFolderInput && (
-        <div className="map-pin-tree__new-folder-row">
-          <input className="map-pin-tree__rename-input" autoFocus placeholder="Ordnername…"
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') createFolder(); if (e.key === 'Escape') setNewFolderInput(false); }}
-          />
-          <button onClick={createFolder} style={{ fontSize: '0.75rem' }}>✓</button>
-          <button onClick={() => setNewFolderInput(false)} style={{ fontSize: '0.75rem' }}>✕</button>
-        </div>
-      )}
-
-      <div className="map-pin-tree__search-wrap">
-        <input className="map-pin-tree__search" placeholder="Suchen…" value={search}
-          onChange={(e) => setSearch(e.target.value)} />
-      </div>
-
-      <div className="map-pin-tree__list" data-drop-path="">
-        {allRoot.length === 0 && ungrouped.length === 0 && (
-          <div className="map-pin-tree__empty">Keine Pins. Pins auf der Karte setzen und hier per Drag in Ordner sortieren.</div>
-        )}
-        {ungrouped.map((m) => (
-          <PinRow key={m.id} m={m} indent={0} editingId={editingId} onSelect={onSelect} entities={entities}
-            onPointerDown={startDrag} />
-        ))}
-        {allRoot.map((node) => (
-          <FolderNode key={node.path} node={node} depth={0}
-            collapsed={collapsed} onToggle={toggleCollapse}
-            editingId={editingId} onSelect={onSelect} entities={entities}
-            renamingPath={renamingPath} renameVal={renameVal}
-            onRenameVal={setRenameVal} onRenameCommit={commitRename}
-            onRenameStart={(p) => { setRenamingPath(p); setRenameVal(p); }}
-            onRenameCancel={() => setRenamingPath(null)}
-            dropHighlight={drag?.dropPath === node.path}
-            dragSourcePath={drag?.payload.kind === 'folder' ? drag.payload.path : null}
-            onPointerDown={startDrag} />
-        ))}
-      </div>
-
-      {/* Drag ghost */}
-      {drag && (
-        <div style={{
-          position: 'fixed', left: drag.ghostX + 14, top: drag.ghostY - 10,
-          background: 'var(--color-surface)',
-          border: `1px solid ${drag.dropPath !== null ? 'var(--color-accent)' : 'var(--color-border)'}`,
-          borderRadius: 4, padding: '3px 10px', fontSize: '0.82rem',
-          color: 'var(--color-text)', opacity: 0.92, pointerEvents: 'none',
-          zIndex: 9999, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-        }}>
-          {drag.label}
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ── Ruler overlay ─────────────────────────────────────────────────────────────
@@ -946,6 +626,14 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   }
 
   const pinPx = PIN_SIZE_PX[gridSettings.pinSize] ?? 26;
+  const pinItems = markers
+    .filter((m) => m.kind !== 'folder-anchor')
+    .map((m) => ({ id: m.id, groupPath: (m.group_name ?? '').trim(), label: m.label_text ?? '(kein Name)' }));
+  const pinFolderPaths = markers
+    .filter((m) => m.kind === 'folder-anchor')
+    .map((m) => (m.group_name ?? m.label_text ?? '').trim())
+    .filter(Boolean);
+  const { root: pinRoot, ungrouped: pinUngrouped } = fromPathStrings(pinItems, pinFolderPaths);
   const VALID_VAR_TYPES = new Set(['boolean', 'number', 'string', 'enum']);
   const sessionVarDefs: VarDef[] = sessionVarsRaw
     .filter((v) => VALID_VAR_TYPES.has(v.type))
@@ -1326,28 +1014,43 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             ))}
           </div>
         ) : (
-        <PinTree
-          markers={markers}
-          editingId={editingPin?.id ?? null}
-          onSelect={openPinEditor}
-          panelCollapsed={false}
-          onTogglePanel={() => setPinTreeCollapsed(true)}
-          entities={entities}
-          onGroupRename={handleGroupRename}
-          onPinMove={(markerId, newGroup) => {
-            void updateMarker(database, markerId, { group_name: newGroup }).then(reloadMarkers);
-          }}
-          onCreateFolder={(name) => {
-            void createMarker(database, {
-              map_id: mapId, kind: 'folder-anchor', label_text: name,
-              group_name: name, entity_id: null,
-              geometry_json: '{"virtual":true}',
-              elevation_value: null, elevation_unit: null,
-              visibility_json: '"public"', style_json: '{}',
-            }).then(reloadMarkers);
-          }}
-          onResizeStart={handlePinResizeStart}
-        />
+        <NestedTree
+              root={pinRoot}
+              ungrouped={pinUngrouped}
+              renderItem={(item) => {
+                const m = markers.find((mk) => mk.id === item.id);
+                if (!m) return null;
+                const linked = entities.find((e) => e.id === m.entity_id);
+                return (
+                  <>
+                    <span style={{ marginRight: 6 }}>{getPinEmoji(m.style_json)}</span>
+                    <span className="map-pin-tree__label">{m.label_text || '(kein Name)'}</span>
+                    {linked && <span className="map-pin-tree__sub">{linked.title}</span>}
+                  </>
+                );
+              }}
+              activeItemId={editingPin?.id ?? null}
+              onItemClick={(id, e) => {
+                const m = markers.find((mk) => mk.id === id);
+                if (m) openPinEditor(m, e);
+              }}
+              onFolderMove={handleGroupRename}
+              onItemMove={(markerId, newGroup) => {
+                void updateMarker(database, markerId, { group_name: newGroup }).then(reloadMarkers);
+              }}
+              onCreateFolder={(name) => {
+                void createMarker(database, {
+                  map_id: mapId, kind: 'folder-anchor', label_text: name,
+                  group_name: name, entity_id: null,
+                  geometry_json: '{"virtual":true}',
+                  elevation_value: null, elevation_unit: null,
+                  visibility_json: '"public"', style_json: '{}',
+                }).then(reloadMarkers);
+              }}
+              header={<span>Pins ({markers.filter((m) => m.kind !== 'folder-anchor').length})</span>}
+              searchable
+              onResizeStart={handlePinResizeStart}
+            />
         )}
         </>
         )}
