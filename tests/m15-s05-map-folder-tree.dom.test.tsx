@@ -1,17 +1,15 @@
-// M15-S05: Map-Ordnerbaum — verschachtelte Folders für Maps (UI)
-// See: https://github.com/Djimon/WorldBrain/issues/277
+// M15-S05 / #307: Map-Ordnerbaum konsumiert NestedTree + Umbenennen/Löschen-Regression
+// See: https://github.com/Djimon/WorldBrain/issues/277 (original)
+//      https://github.com/Djimon/WorldBrain/issues/307 (migration + regression fix)
 //
-// Note: see MapFolderTree.tsx's header comment — "move to folder" is tested
-// via an accessible select per row, not PinTree's document.elementFromPoint
-// drag pattern (unavailable/no precedent in jsdom).
-//
-// AP-001: database prop typed as DatabaseLike; no unknown/as-never casts.
-// AP-003: no prompt()/alert()/confirm() — asserted via source scan.
-// AP-008 (RTL): anchored queries; getAllBy*/within where folder/map names
-// could collide.
+// Drag-Mechanik: data-drop-path + pointer events via NestedTree (wie Pin-Baum).
+// elementFromPoint null in jsdom → Drop-Callbacks über elementFromPoint-Mock.
+// AP-001: database typed as DatabaseLike.
+// AP-003: kein prompt/alert/confirm — via source scan + Dialog-Assertion.
+// AP-008 (RTL): anchored queries; within() wo Namen kollidieren könnten.
 
 import { readFileSync } from 'node:fs';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MapFolderTree } from '../src/ui/MapFolderTree';
 
@@ -29,6 +27,10 @@ vi.mock('../src/services/map-folder-service', () => ({
   moveFolder: vi.fn(async () => undefined),
 }));
 
+vi.mock('../src/ui/NestedTree', async (importOriginal) => {
+  return importOriginal();
+});
+
 const mockDb = { execute: vi.fn(), select: vi.fn() };
 
 const MAPS = [
@@ -36,64 +38,130 @@ const MAPS = [
   { id: 'map-nested', title: 'Cellar', folder_id: 'mapfolder_level1' },
 ];
 
-describe('M15-S05 map folder tree', () => {
-  describe('nested rendering: folders (arbitrary depth) + ungrouped maps at root', () => {
-    it('renders both folders and both maps', async () => {
+describe('M15-S05/#307 map folder tree — NestedTree-Konsument', () => {
+  describe('Rendering via NestedTree', () => {
+    it('rendert Ordner und Karten', async () => {
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
       await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
       expect(screen.getByText('Level 1')).toBeInTheDocument();
       expect(screen.getByText('Overworld')).toBeInTheDocument();
       expect(screen.getByText('Cellar')).toBeInTheDocument();
     });
-  });
 
-  describe('new-folder control', () => {
-    it('creates a folder via createFolder', async () => {
-      const { createFolder } = await import('../src/services/map-folder-service');
-      render(<MapFolderTree database={mockDb} maps={MAPS} />);
-      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
-      fireEvent.click(screen.getByRole('button', { name: /^neuer ordner$/i }));
-      await waitFor(() => expect(createFolder).toHaveBeenCalled());
+    it('MapFolderTree enthält keine eigene Collapse/Drag/Suche-Logik (dünner Adapter)', () => {
+      const src = readFileSync('src/ui/MapFolderTree.tsx', 'utf-8');
+      expect(src).toMatch(/NestedTree/);
+      expect(src).not.toMatch(/useState.*collapsed|setCollapsed/);
+      expect(src).not.toMatch(/elementFromPoint/);
     });
   });
 
-  describe('inline rename control', () => {
-    it('renaming "Dungeons" calls renameFolder', async () => {
+  describe('Ordner-Header: data-drop-path + cursor:grab (via NestedTree)', () => {
+    it('Ordner-Header tragen data-drop-path-Attribut', async () => {
+      render(<MapFolderTree database={mockDb} maps={MAPS} />);
+      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
+      expect(document.querySelector('[data-drop-path="Dungeons"]')).toBeTruthy();
+    });
+
+    it('Root-Container hat data-drop-path=""', async () => {
+      const { container } = render(<MapFolderTree database={mockDb} maps={MAPS} />);
+      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
+      expect(container.querySelector('[data-drop-path=""]')).toBeTruthy();
+    });
+  });
+
+  describe('Drag: Karte → Ordner ruft moveMap auf', () => {
+    it('pointerDown auf Karte + Drop auf Ordner → moveMap(db, mapId, folderId)', async () => {
+      const { moveMap } = await import('../src/services/map-folder-service');
+      render(<MapFolderTree database={mockDb} maps={MAPS} />);
+      await waitFor(() => expect(screen.getByText('Overworld')).toBeInTheDocument());
+
+      const dungeonHeader = document.querySelector('[data-drop-path="Dungeons"]') as HTMLElement;
+      const overworldEl = screen.getByText('Overworld').closest('[data-item-id]') as HTMLElement
+        ?? screen.getByText('Overworld') as HTMLElement;
+
+      vi.spyOn(document, 'elementFromPoint').mockReturnValue(dungeonHeader);
+      fireEvent.pointerDown(overworldEl, { clientX: 10, clientY: 10 });
+      fireEvent(document, new PointerEvent('pointerup', { clientX: 100, clientY: 100, bubbles: true }));
+      vi.restoreAllMocks();
+
+      await waitFor(() => expect(moveMap).toHaveBeenCalledWith(mockDb, 'map-root', expect.any(String)));
+    });
+  });
+
+  describe('Drag: Ordner → Ordner ruft moveFolder auf', () => {
+    it('pointerDown auf Level-1-Header + Drop auf Root → moveFolder(db, id, null)', async () => {
+      const { moveFolder } = await import('../src/services/map-folder-service');
+      render(<MapFolderTree database={mockDb} maps={MAPS} />);
+      await waitFor(() => expect(screen.getByText('Level 1')).toBeInTheDocument());
+
+      const level1Header = document.querySelector('[data-drop-path="Level 1"]') as HTMLElement;
+      const rootDrop = document.querySelector('[data-drop-path=""]') as HTMLElement;
+
+      vi.spyOn(document, 'elementFromPoint').mockReturnValue(rootDrop);
+      fireEvent.pointerDown(level1Header, { clientX: 10, clientY: 10 });
+      fireEvent(document, new PointerEvent('pointerup', { clientX: 200, clientY: 200, bubbles: true }));
+      vi.restoreAllMocks();
+
+      await waitFor(() => expect(moveFolder).toHaveBeenCalledWith(mockDb, 'mapfolder_level1', null));
+    });
+  });
+
+  describe('Umbenennen-Regression (#307)', () => {
+    it('Doppelklick auf Ordner-Name aktiviert Rename-Input', async () => {
+      render(<MapFolderTree database={mockDb} maps={MAPS} />);
+      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
+      fireEvent.doubleClick(screen.getByText(/dungeons/i));
+      expect(screen.getByRole('textbox')).toBeInTheDocument();
+    });
+
+    it('Enter im Rename-Input ruft renameFolder auf', async () => {
       const { renameFolder } = await import('../src/services/map-folder-service');
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
-      const folderRow = await screen.findByRole('listitem', { name: /^dungeons/i });
-      fireEvent.click(within(folderRow).getByRole('button', { name: /^umbenennen$/i }));
-      const input = within(folderRow).getByRole('textbox');
+      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
+      fireEvent.doubleClick(screen.getByText(/dungeons/i));
+      const input = screen.getByRole('textbox');
       fireEvent.change(input, { target: { value: 'Crypts' } });
       fireEvent.keyDown(input, { key: 'Enter' });
       await waitFor(() => expect(renameFolder).toHaveBeenCalledWith(mockDb, 'mapfolder_dungeons', 'Crypts'));
     });
   });
 
-  describe('moving a map into a folder', () => {
-    it('selecting a folder for "Overworld" calls moveMap', async () => {
-      const { moveMap } = await import('../src/services/map-folder-service');
+  describe('Löschen-Regression (#307): Dialog, kein confirm(), kein Kaskaden-Löschen', () => {
+    it('Löschen-Button zeigt Sicherheitsdialog (kein confirm())', async () => {
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
-      const mapRow = await screen.findByRole('listitem', { name: /^overworld/i });
-      const select = within(mapRow).getByRole('combobox', { name: /^verschieben nach$/i });
-      fireEvent.change(select, { target: { value: 'mapfolder_dungeons' } });
-      await waitFor(() => expect(moveMap).toHaveBeenCalledWith(mockDb, 'map-root', 'mapfolder_dungeons'));
+      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
+      fireEvent.click(screen.getAllByRole('button', { name: /löschen/i })[0]);
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('Bestätigung im Dialog ruft deleteFolder auf', async () => {
+      const { deleteFolder } = await import('../src/services/map-folder-service');
+      render(<MapFolderTree database={mockDb} maps={MAPS} />);
+      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
+      fireEvent.click(screen.getAllByRole('button', { name: /löschen/i })[0]);
+      fireEvent.click(screen.getByRole('button', { name: /bestätigen|ja|löschen/i }));
+      await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith(mockDb, 'mapfolder_dungeons'));
+    });
+
+    it('MapFolderTree.tsx hat kein ON DELETE CASCADE (kein Kaskaden-Löschen)', () => {
+      const src = readFileSync('src/ui/MapFolderTree.tsx', 'utf-8');
+      expect(src).not.toMatch(/cascade|deleteMap|delete.*map/i);
     });
   });
 
-  describe('reparenting a folder', () => {
-    it('moving "Level 1" to root calls moveFolder with null', async () => {
-      const { moveFolder } = await import('../src/services/map-folder-service');
+  describe('Neuer Ordner', () => {
+    it('erstellt Ordner via createFolder', async () => {
+      const { createFolder } = await import('../src/services/map-folder-service');
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
-      const folderRow = await screen.findByRole('listitem', { name: /^level 1/i });
-      const select = within(folderRow).getByRole('combobox', { name: /^ordner verschieben nach$/i });
-      fireEvent.change(select, { target: { value: '' } });
-      await waitFor(() => expect(moveFolder).toHaveBeenCalledWith(mockDb, 'mapfolder_level1', null));
+      await waitFor(() => expect(screen.getByText('Dungeons')).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: /^📁\+$|neuer ordner/i }));
+      await waitFor(() => expect(createFolder).toHaveBeenCalled());
     });
   });
 
-  describe('no prompt()/alert()/confirm() (AP-003)', () => {
-    it('MapFolderTree.tsx does not call prompt/alert/confirm', () => {
+  describe('AP-003: kein prompt/alert/confirm', () => {
+    it('MapFolderTree.tsx enthält kein prompt/alert/confirm', () => {
       const src = readFileSync('src/ui/MapFolderTree.tsx', 'utf-8');
       expect(src).not.toMatch(/\b(prompt|alert|confirm)\s*\(/);
     });
