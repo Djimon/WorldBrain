@@ -120,11 +120,11 @@ describe('issue-308 Karten-Panel-Chrome', () => {
     });
   });
 
-  describe('WorkspaceShell delegiert den Import-Button vollständig an MapFolderTree', () => {
-    it('WorkspaceShell.tsx definiert keinen eigenen "Karte importieren"-Button mehr (kein Duplikat/Alt-Markup)', () => {
-      const src = readFileSync('src/ui/WorkspaceShell.tsx', 'utf-8');
-      expect(src).not.toMatch(/karte importieren/i);
-    });
+  describe('WorkspaceShell reicht den Import auch an MapFolderTree weiter', () => {
+    // #308 teilweise ueberstimmt (Produktentscheidung 2026-07-22): der grosse rote
+    // "+ Karte importieren"-Button steht wieder ueber der Karten-Ueberschrift in
+    // WorkspaceShell; das Header-"+"-Icon (via onImportMap) bleibt zusaetzlich.
+    // Die fruehere Guard-Assertion (kein Import-Button in WorkspaceShell) wurde daher entfernt.
 
     it('WorkspaceShell.tsx reicht onImportMap an MapFolderTree weiter', () => {
       const src = readFileSync('src/ui/WorkspaceShell.tsx', 'utf-8');
