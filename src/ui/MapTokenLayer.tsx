@@ -15,6 +15,8 @@ export interface MapTokenProps {
   /** Current map zoom (the token counter-scales by 1/scale, times its own scale). */
   scale: number;
   selected?: boolean;
+  /** Transient drag state — shows the outline only, no stepper. */
+  dragging?: boolean;
   /** Resolves an asset id to a src URL (getAssetUrl). Omitted in pure tests. */
   resolveAssetUrl?: (assetId: string) => string;
   onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -34,7 +36,7 @@ export function tokenName(token: MapTokenRow): string {
 }
 
 export function MapToken({
-  token, scale, selected = false, resolveAssetUrl,
+  token, scale, selected = false, dragging = false, resolveAssetUrl,
   onPointerDown, onPointerMove, onPointerUp, onSelect, onResizeStart, onCounterStep,
 }: MapTokenProps) {
   // Stepper + full label reveal only when hovering the counter itself (not the
@@ -54,7 +56,7 @@ export function MapToken({
     <div
       data-token-id={token.id}
       data-render-style={token.render_style}
-      className={`map-token map-token--${token.render_style}${selected ? ' map-token--selected' : ''}`}
+      className={`map-token map-token--${token.render_style}${selected || dragging ? ' map-token--selected' : ''}`}
       style={{
         position: 'absolute',
         left: token.x,

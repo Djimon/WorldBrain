@@ -165,6 +165,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [markers, setMarkers] = useState<MarkerRow[]>([]);
   const [tokens, setTokens] = useState<MapTokenRow[]>([]);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
+  const [draggingTokenId, setDraggingTokenId] = useState<string | null>(null);
   const [editingToken, setEditingToken] = useState<MapTokenRow | null>(null);
   const [cells, setCells] = useState<Map<string, number>>(new Map());
   const [gridSettings, setGridSettings] = useState<GridSettings>(DEFAULT_GRID_SETTINGS);
@@ -403,7 +404,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     // point during the drag (no jump-to-cursor).
     const p = toMapCoords(e.clientX, e.clientY);
     tokenDrag.current = { id: token.id, moved: false, dx: token.x - p.x, dy: token.y - p.y };
-    setSelectedTokenId(token.id); // show the selection outline while dragging
+    setDraggingTokenId(token.id); // outline-only during drag (no select -> no stepper)
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* jsdom */ }
   }
 
@@ -419,6 +420,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     if (!tokenDrag.current) return;
     const { id, moved, dx, dy } = tokenDrag.current;
     tokenDrag.current = null;
+    setDraggingTokenId(null); // drag ended -> drop the transient outline
+
     if (!moved) return; // a plain click — selection handled in onClick
     suppressTokenClick.current = true; // swallow the click that follows a drag
     const p = toMapCoords(e.clientX, e.clientY);
@@ -919,6 +922,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               resolveAssetUrl={getAssetUrl}
               scale={scale}
               selected={selectedTokenId === tk.id}
+              dragging={draggingTokenId === tk.id}
               onPointerDown={(e) => handleTokenPointerDown(tk, e)}
               onPointerMove={handleTokenPointerMove}
               onPointerUp={handleTokenPointerUp}
