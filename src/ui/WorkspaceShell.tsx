@@ -121,6 +121,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   const [mapImporting, setMapImporting] = useState(false);
   // Resizable maps sidebar (same drag pattern as MapViewer's pin tree).
   const [mapsSidebarWidth, setMapsSidebarWidth] = useState(240);
+  const [mapsSidebarCollapsed, setMapsSidebarCollapsed] = useState(false);
   // Bumped whenever layers change (add / opacity / visibility / reorder / fog
   // stroke) -> MapViewer and LayerPanel reload their layer list live, no remount
   // (view/zoom preserved; markers/grid/cells untouched).
@@ -395,16 +396,20 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
       case 'maps':
         return (
           <div className="workspace-area" style={{ overflow: 'hidden' }}>
-            <div className="workspace-area__sidebar maps-sidebar" style={{ width: mapsSidebarWidth }}>
-              <button
-                className="emd__create-btn maps-sidebar__import"
-                onClick={() => void handleMapImport()}
-                disabled={mapImporting}
-              >
-                {mapImporting ? t('mapImporting', '⏳ Importiere…') : t('importMap', '+ Karte importieren')}
-              </button>
+            <div className="workspace-area__sidebar maps-sidebar" style={{ width: mapsSidebarCollapsed ? 32 : mapsSidebarWidth, padding: mapsSidebarCollapsed ? 'var(--space-2) 0' : undefined }}>
+              {!mapsSidebarCollapsed && (
+                <button
+                  className="emd__create-btn maps-sidebar__import"
+                  onClick={() => void handleMapImport()}
+                  disabled={mapImporting}
+                >
+                  {mapImporting ? t('mapImporting', '⏳ Importiere…') : t('importMap', '+ Karte importieren')}
+                </button>
+              )}
               <MapsSidebarTabs
                 selectedMapId={selectedMapId}
+                collapsed={mapsSidebarCollapsed}
+                onToggleCollapse={() => setMapsSidebarCollapsed((v) => !v)}
                 mapsTabContent={
                   <>
                     {mapImporting && (
@@ -453,12 +458,14 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 }
               />
             </div>
-            <div
-              className="maps-sidebar__resize-handle"
-              role="separator"
-              aria-orientation="vertical"
-              onMouseDown={handleMapsSidebarResize}
-            />
+            {!mapsSidebarCollapsed && (
+              <div
+                className="maps-sidebar__resize-handle"
+                role="separator"
+                aria-orientation="vertical"
+                onMouseDown={handleMapsSidebarResize}
+              />
+            )}
             <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
               {selectedMapId ? (
                 <MapViewer
