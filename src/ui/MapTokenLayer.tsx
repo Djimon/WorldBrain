@@ -37,8 +37,10 @@ export function MapToken({
   token, scale, selected = false, resolveAssetUrl,
   onPointerDown, onPointerMove, onPointerUp, onSelect, onResizeStart, onCounterStep,
 }: MapTokenProps) {
-  const [hover, setHover] = useState(false);
-  const showStepper = hover || selected;
+  // Stepper + full label reveal only when hovering the counter itself (not the
+  // whole token), or when the token is selected.
+  const [counterHover, setCounterHover] = useState(false);
+  const showStepper = counterHover || selected;
   // Stop drag/pan/select from firing when using an inline control (stepper/handle).
   const swallow = (e: React.SyntheticEvent) => e.stopPropagation();
   const name = tokenName(token);
@@ -63,8 +65,6 @@ export function MapToken({
       // Stop the mousedown from reaching the map container (which would start a
       // pan while dragging the token — #301). Pointer events drive the drag.
       onMouseDown={(e) => e.stopPropagation()}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -106,7 +106,8 @@ export function MapToken({
       <div className="map-token__footer">
         <span className="map-token__name">{name}</span>
         {token.counter_value != null && (
-          <div className="map-token__counter" title={token.counter_label || undefined}>
+          <div className="map-token__counter" title={token.counter_label || undefined}
+          onMouseEnter={() => setCounterHover(true)} onMouseLeave={() => setCounterHover(false)}>
             {showStepper && token.counter_label && (
               <span className="map-token__counter-label">{token.counter_label}</span>
             )}
