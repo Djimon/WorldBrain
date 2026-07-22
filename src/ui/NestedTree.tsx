@@ -28,6 +28,8 @@ export interface NestedTreeProps {
   header?: ReactNode;
   searchable?: boolean;
   onResizeStart?: (e: React.MouseEvent) => void;
+  /** Optional extra controls appended to a folder's header row (e.g. delete). Pins don't pass this. */
+  renderFolderExtra?: (node: TreeNode) => ReactNode;
 }
 
 type DragPayload = { kind: 'item'; id: string } | { kind: 'folder'; path: string };
@@ -46,7 +48,7 @@ function FolderNode({
   node, depth, collapsed, onToggle,
   renderItem, activeItemId, onItemClick,
   renamingPath, renameVal, onRenameVal, onRenameCommit, onRenameStart, onRenameCancel,
-  dropHighlight, dragSourcePath, onPointerDown,
+  dropHighlight, dragSourcePath, onPointerDown, renderFolderExtra,
 }: {
   node: TreeNode;
   depth: number;
@@ -64,6 +66,7 @@ function FolderNode({
   dropHighlight: boolean;
   dragSourcePath: string | null;
   onPointerDown: (payload: DragPayload, label: string, e: React.PointerEvent) => void;
+  renderFolderExtra?: (node: TreeNode) => ReactNode;
 }) {
   const isOpen = !collapsed.has(node.path);
   const indent = depth * 14;
@@ -96,6 +99,7 @@ function FolderNode({
           </span>
         )}
         <span className="map-pin-tree__group-count">{itemCount}</span>
+        {renderFolderExtra?.(node)}
       </div>
       {isOpen && (
         <>
@@ -107,7 +111,7 @@ function FolderNode({
               onRenameVal={onRenameVal} onRenameCommit={onRenameCommit}
               onRenameStart={onRenameStart} onRenameCancel={onRenameCancel}
               dropHighlight={dropHighlight} dragSourcePath={dragSourcePath}
-              onPointerDown={onPointerDown} />
+              onPointerDown={onPointerDown} renderFolderExtra={renderFolderExtra} />
           ))}
           {node.items.map((item) => (
             <div
@@ -134,6 +138,7 @@ function FolderNode({
 export function NestedTree({
   root, ungrouped = [], renderItem, activeItemId, onItemClick,
   onFolderMove, onItemMove, onCreateFolder, header, searchable, onResizeStart,
+  renderFolderExtra,
 }: NestedTreeProps) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -295,7 +300,7 @@ export function NestedTree({
             onRenameCancel={() => setRenamingPath(null)}
             dropHighlight={drag?.dropPath === node.path}
             dragSourcePath={drag?.payload.kind === 'folder' ? drag.payload.path : null}
-            onPointerDown={startDrag} />
+            onPointerDown={startDrag} renderFolderExtra={renderFolderExtra} />
         ))}
       </div>
 
@@ -366,8 +371,9 @@ export function fromPathStrings(
 // ── Adapter: parent_id → TreeNode[] ──────────────────────────────────────────
 
 export function fromParentId(
-  folders: Array<{ id: string; parent_id: string | null; label: string; itemCount?: number }>,
-): TreeNode[] {
+  folders: Array<{ id: string; parent_id: string | null; label: string }>,
+  items: Array<{ id: string; folderId: string | null; label: string }> = [],
+): { root: TreeNode[]; ungrouped: TreeItem[]; pathToId: Map<string, string> } {
   const map = new Map<string, TreeNode & { _folderId: string; _parentId: string | null }>();
 
   for (const f of folders) {
@@ -377,23 +383,26 @@ export function fromParentId(
       path: f.label,
       name: f.label,
       children: [],
-      items: Array.from({ length: f.itemCount ?? 0 }, (_, i) => ({
-        id: `__count_${f.id}_${i}`,
-        label: '',
-      })),
+      items: [],
     });
   }
 
   const roots: Array<TreeNode & { _folderId: string; _parentId: string | null }> = [];
 
   for (const node of map.values()) {
-    if (node._parentId === null) {
+    if (node._parentId === null || !map.has(node._parentId)) {
       roots.push(node);
     } else {
-      const parent = map.get(node._parentId);
-      if (parent) parent.children.push(node);
+      map.get(node._parentId)!.children.push(node);
     }
   }
+  roots.sort((a, b) => a.name.localeCompare(b.name));
+
+  function sortChildren(node: TreeNode) {
+    node.children.sort((a, b) => a.name.localeCompare(b.name));
+    node.children.forEach(sortChildren);
+  }
+  roots.forEach(sortChildren);
 
   function assignPaths(node: TreeNode, parentPath: string) {
     node.path = parentPath ? `${parentPath}/${node.name}` : node.name;
@@ -401,5 +410,15 @@ export function fromParentId(
   }
   for (const r of roots) assignPaths(r, '');
 
-  return roots;
+  const pathToId = new Map<string, string>();
+  for (const node of map.values()) pathToId.set(node.path, node._folderId);
+
+  const ungrouped: TreeItem[] = [];
+  for (const item of items) {
+    const node = item.folderId ? map.get(item.folderId) : undefined;
+    if (node) node.items.push({ id: item.id, label: item.label });
+    else ungrouped.push({ id: item.id, label: item.label });
+  }
+
+  return { root: roots, ungrouped, pathToId };
 }

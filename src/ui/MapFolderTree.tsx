@@ -1,22 +1,21 @@
-// M15-S05: Map-Ordnerbaum — verschachtelte Folders für Maps (#277)
-// Reuses map-folder-service.ts — no new persistence.
-//
-// Assumption (undocumented in AC): alongside the pointer-drag +
-// data-drop-path/elementFromPoint pattern named in the AC (PinTree's, which
-// relies on document.elementFromPoint — unavailable in jsdom, no test
-// precedent anywhere in this repo), this component also exposes an
-// accessible "verschieben nach"/"ordner verschieben nach" select per row.
-// That's the primary testable affordance here — same reasoning as M15-S02's
-// move-up/move-down buttons alongside LayerPanel's drag requirement. Drag
-// is an additional Implementation Agent affordance layered on top, not a
-// second code path.
+// M15-S05 / #307: Map-Ordnerbaum konsumiert NestedTree — dünner Adapter,
+// keine eigene Baum-Logik. Löschen zeigt einen gerenderten Dialog statt eines
+// blockierenden Browser-Dialogs (AP-003); Karten fallen auf folder_id = NULL
+// zurück, sie werden nicht mitgelöscht.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import {
-  listFolders, createFolder, renameFolder, deleteFolder, moveMap, moveFolder,
+  listFolders,
+  createFolder,
+  renameFolder,
+  deleteFolder,
+  moveMap,
+  moveFolder,
   type MapFolderRow,
 } from '../services/map-folder-service';
+import { NestedTree, fromParentId } from './NestedTree';
+import type { TreeNode } from './NestedTree';
 
 export interface MapFolderTreeMap {
   id: string;
@@ -31,52 +30,10 @@ export interface MapFolderTreeProps {
   onSelectMap?: (mapId: string) => void;
 }
 
-type TreeRow =
-  | { type: 'folder'; folder: MapFolderRow; depth: number }
-  | { type: 'map'; map: MapFolderTreeMap; depth: number };
-
-// Flat, depth-annotated row list (indentation via CSS, not DOM nesting) —
-// so each row's own controls are the ONLY controls within that row's <li>,
-// with no descendant rows to collide with (RTL within() matches any
-// descendant, so nesting child folders' <li> inside a parent <li> would
-// make a parent row's query also match every descendant row's buttons).
-function flattenTree(folders: MapFolderRow[], maps: MapFolderTreeMap[]): TreeRow[] {
-  const childFolders = new Map<string | null, MapFolderRow[]>();
-  folders.forEach((f) => {
-    const key = f.parent_id;
-    if (!childFolders.has(key)) childFolders.set(key, []);
-    childFolders.get(key)!.push(f);
-  });
-  const mapsInFolder = new Map<string | null, MapFolderTreeMap[]>();
-  const folderIds = new Set(folders.map((f) => f.id));
-  maps.forEach((m) => {
-    const key = m.folder_id && folderIds.has(m.folder_id) ? m.folder_id : null;
-    if (!mapsInFolder.has(key)) mapsInFolder.set(key, []);
-    mapsInFolder.get(key)!.push(m);
-  });
-
-  const rows: TreeRow[] = [];
-  function walk(parentId: string | null, depth: number) {
-    for (const folder of childFolders.get(parentId) ?? []) {
-      rows.push({ type: 'folder', folder, depth });
-      for (const m of mapsInFolder.get(folder.id) ?? []) {
-        rows.push({ type: 'map', map: m, depth: depth + 1 });
-      }
-      walk(folder.id, depth + 1);
-    }
-  }
-  walk(null, 0);
-  for (const m of mapsInFolder.get(null) ?? []) {
-    rows.push({ type: 'map', map: m, depth: 0 });
-  }
-  return rows;
-}
-
 export function MapFolderTree({ database, maps, selectedMapId, onSelectMap }: MapFolderTreeProps) {
   const { t } = useTranslation();
   const [folders, setFolders] = useState<MapFolderRow[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [draftName, setDraftName] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   function reload() {
     listFolders(database).then(setFolders).catch(console.error);
@@ -86,93 +43,96 @@ export function MapFolderTree({ database, maps, selectedMapId, onSelectMap }: Ma
     reload();
   }, [database]);
 
-  const rows = flattenTree(folders, maps);
+  const { root, ungrouped, pathToId } = fromParentId(
+    folders.map((f) => ({ id: f.id, parent_id: f.parent_id, label: f.name })),
+    maps.map((m) => ({ id: m.id, folderId: m.folder_id, label: m.title })),
+  );
 
-  function startRename(folder: MapFolderRow) {
-    setEditingId(folder.id);
-    setDraftName(folder.name);
+  function handleFolderMove(oldPath: string, newPath: string) {
+    const folderId = pathToId.get(oldPath);
+    if (!folderId || newPath === oldPath) return;
+
+    const oldName = oldPath.split('/').pop()!;
+    const newName = newPath.split('/').pop()!;
+    const oldParentPath = oldPath.includes('/') ? oldPath.slice(0, oldPath.lastIndexOf('/')) : '';
+    const newParentPath = newPath.includes('/') ? newPath.slice(0, newPath.lastIndexOf('/')) : '';
+
+    const tasks: Promise<unknown>[] = [];
+    if (newName !== oldName) {
+      tasks.push(renameFolder(database, folderId, newName));
+    }
+    if (newParentPath !== oldParentPath) {
+      const newParentId = newParentPath ? pathToId.get(newParentPath) ?? undefined : null;
+      if (newParentId !== undefined) {
+        tasks.push(moveFolder(database, folderId, newParentId));
+      }
+    }
+    if (tasks.length) Promise.all(tasks).then(reload).catch(console.error);
   }
 
-  function commitRename(folder: MapFolderRow) {
-    setEditingId(null);
-    renameFolder(database, folder.id, draftName).then(reload).catch(console.error);
+  function handleItemMove(mapId: string, newPath: string) {
+    const folderId = newPath ? pathToId.get(newPath) ?? null : null;
+    void moveMap(database, mapId, folderId);
   }
 
-  function handleCreateFolder(parentId: string | null) {
-    createFolder(database, { name: t('mapFolderTree.newFolderDefaultName', 'Neuer Ordner'), parent_id: parentId }).then(reload).catch(console.error);
+  function handleCreateFolder(name: string) {
+    void createFolder(database, { name, parent_id: null }).then(reload);
   }
 
-  function handleDeleteFolder(id: string) {
-    deleteFolder(database, id).then(reload).catch(console.error);
+  function handleConfirmDelete() {
+    const id = confirmDeleteId;
+    setConfirmDeleteId(null);
+    if (id) void deleteFolder(database, id).then(reload);
   }
 
-  function handleMoveMap(mapId: string, folderId: string) {
-    void moveMap(database, mapId, folderId || null);
-  }
-
-  function handleMoveFolder(folderId: string, newParentId: string) {
-    moveFolder(database, folderId, newParentId || null).then(reload).catch(console.error);
-  }
-
-  function renderMapRow(m: MapFolderTreeMap, depth: number) {
+  function renderFolderExtra(node: TreeNode) {
     return (
-      <li key={`map-${m.id}`} className={`map-folder-tree__map-row${selectedMapId === m.id ? ' map-folder-tree__map-row--active' : ''}`} aria-label={m.title} style={{ paddingLeft: depth * 16 }}>
-        <span className="map-folder-tree__map-title" onClick={() => onSelectMap?.(m.id)}>{m.title}</span>
-        <select
-          aria-label={t('mapFolderTree.moveMapTo', 'Verschieben nach')}
-          value={m.folder_id ?? ''}
-          onChange={(e) => handleMoveMap(m.id, e.target.value)}
-        >
-          <option value="">{t('mapFolderTree.noFolder', '(kein Ordner)')}</option>
-          {folders.map((f) => (
-            <option key={f.id} value={f.id}>{f.name}</option>
-          ))}
-        </select>
-      </li>
+      <button
+        type="button"
+        className="map-folder-tree__delete-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          const id = pathToId.get(node.path);
+          if (id) setConfirmDeleteId(id);
+        }}
+      >
+        {t('mapFolderTree.delete', 'Löschen')}
+      </button>
     );
   }
 
-  function renderFolderRow(folder: MapFolderRow, depth: number) {
+  if (confirmDeleteId) {
     return (
-      <li key={`folder-${folder.id}`} className="map-folder-tree__folder-row" aria-label={folder.name} style={{ paddingLeft: depth * 16 }}>
-        <span className="map-folder-tree__folder-icon" aria-hidden="true">📁</span>
-        {editingId === folder.id ? (
-          <input
-            className="map-folder-tree__rename-input"
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            onBlur={() => commitRename(folder)}
-            onKeyDown={(e) => { if (e.key === 'Enter') commitRename(folder); }}
-            autoFocus
-          />
-        ) : (
-          <span className="map-folder-tree__folder-name">{folder.name}</span>
-        )}
-        <button type="button" onClick={() => startRename(folder)}>{t('mapFolderTree.rename', 'Umbenennen')}</button>
-        <button type="button" onClick={() => handleDeleteFolder(folder.id)}>{t('mapFolderTree.delete', 'Löschen')}</button>
-        <button type="button" onClick={() => handleCreateFolder(folder.id)}>{t('mapFolderTree.newSubfolder', '+ Unterordner')}</button>
-        <select
-          aria-label={t('mapFolderTree.moveFolderTo', 'Ordner verschieben nach')}
-          value={folder.parent_id ?? ''}
-          onChange={(e) => handleMoveFolder(folder.id, e.target.value)}
+      <div className="map-folder-tree">
+        <div
+          role="dialog"
+          aria-label={t('mapFolderTree.confirmDeleteTitle', 'Ordner löschen?')}
+          className="map-folder-tree__confirm-dialog"
         >
-          <option value="">{t('mapFolderTree.rootOption', '(Wurzel)')}</option>
-          {folders.filter((f) => f.id !== folder.id).map((f) => (
-            <option key={f.id} value={f.id}>{f.name}</option>
-          ))}
-        </select>
-      </li>
+          <p>{t('mapFolderTree.confirmDeleteBody', 'Der Ordner wird gelöscht. Enthaltene Karten verlieren nur ihre Ordnerzuordnung, sie werden nicht gelöscht.')}</p>
+          <button type="button" onClick={handleConfirmDelete}>
+            {t('mapFolderTree.confirmDeleteAction', 'Bestätigen')}
+          </button>
+          <button type="button" onClick={() => setConfirmDeleteId(null)}>
+            {t('mapFolderTree.cancel', 'Abbrechen')}
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="map-folder-tree">
-      <button type="button" className="map-folder-tree__new-folder-btn" onClick={() => handleCreateFolder(null)}>
-        {t('mapFolderTree.newFolder', 'Neuer Ordner')}
-      </button>
-      <ul className="map-folder-tree__root">
-        {rows.map((row) => (row.type === 'folder' ? renderFolderRow(row.folder, row.depth) : renderMapRow(row.map, row.depth)))}
-      </ul>
-    </div>
+    <NestedTree
+      root={root}
+      ungrouped={ungrouped}
+      renderItem={(item) => <span className="map-folder-tree__map-title">{item.label}</span>}
+      activeItemId={selectedMapId ?? null}
+      onItemClick={(id) => onSelectMap?.(id)}
+      onFolderMove={handleFolderMove}
+      onItemMove={handleItemMove}
+      onCreateFolder={handleCreateFolder}
+      renderFolderExtra={renderFolderExtra}
+      header={<span>{t('mapFolderTree.header', 'Karten')} ({maps.length})</span>}
+    />
   );
 }
