@@ -81,15 +81,61 @@ describe('NestedTree — Suche', () => {
   });
 });
 
-describe('NestedTree — Drag / Move', () => {
-  it('calls onMove with (nodeId, targetId) when move is triggered', () => {
+describe('NestedTree — Drag & Drop (primär)', () => {
+  it('node elements carry draggable=true', () => {
+    render(<NestedTree nodes={simpleNodes} onMove={vi.fn()} />);
+    // Every top-level node must be a draggable element
+    const draggables = document.querySelectorAll('[draggable="true"]');
+    expect(draggables.length).toBeGreaterThanOrEqual(2); // Alpha, Beta
+  });
+
+  it('dragstart on a node sets the dragged node id as dataTransfer data', () => {
+    render(<NestedTree nodes={simpleNodes} onMove={vi.fn()} />);
+    const alphaEl = document.querySelector('[draggable="true"]') as HTMLElement;
+    const dt = { setData: vi.fn(), getData: vi.fn() };
+    fireEvent.dragStart(alphaEl, { dataTransfer: dt });
+    expect(dt.setData).toHaveBeenCalledWith(expect.stringMatching(/text|node/i), 'a');
+  });
+
+  it('dragover on a valid drop target does not throw and allows drop', () => {
+    render(<NestedTree nodes={simpleNodes} onMove={vi.fn()} />);
+    const [, betaEl] = document.querySelectorAll('[draggable="true"]');
+    expect(() =>
+      fireEvent.dragOver(betaEl, { dataTransfer: { getData: () => 'a' }, preventDefault: vi.fn() }),
+    ).not.toThrow();
+  });
+
+  it('drop on a target node calls onMove(draggedId, targetId)', () => {
     const onMove = vi.fn();
     render(<NestedTree nodes={simpleNodes} onMove={onMove} />);
-    // Accessible move affordance: aria-label containing "verschieben" or "move"
+    const [alphaEl, betaEl] = document.querySelectorAll('[draggable="true"]');
+    fireEvent.dragStart(alphaEl, { dataTransfer: { setData: vi.fn(), getData: vi.fn() } });
+    fireEvent.drop(betaEl, { dataTransfer: { getData: () => 'a' } });
+    expect(onMove).toHaveBeenCalledWith('a', 'b');
+  });
+
+  it('drop on root (outside any node) calls onMove(draggedId, null)', () => {
+    const onMove = vi.fn();
+    const { container } = render(<NestedTree nodes={simpleNodes} onMove={onMove} />);
+    const [alphaEl] = document.querySelectorAll('[draggable="true"]');
+    fireEvent.dragStart(alphaEl, { dataTransfer: { setData: vi.fn(), getData: vi.fn() } });
+    fireEvent.drop(container.firstChild as Element, { dataTransfer: { getData: () => 'a' } });
+    expect(onMove).toHaveBeenCalledWith('a', null);
+  });
+});
+
+describe('NestedTree — a11y Move (zusätzlich zu Drag)', () => {
+  it('renders an accessible move button per node (a11y affordance alongside drag)', () => {
+    render(<NestedTree nodes={simpleNodes} onMove={vi.fn()} />);
     const moveControls = screen.getAllByRole('button', { name: /verschieben|move/i });
-    expect(moveControls.length).toBeGreaterThanOrEqual(1);
-    fireEvent.click(moveControls[0]);
-    // After triggering move, onMove is eventually called — exact UX is impl detail
+    expect(moveControls.length).toBeGreaterThanOrEqual(2); // one per draggable node
+  });
+
+  it('clicking the a11y move button also calls onMove', () => {
+    const onMove = vi.fn();
+    render(<NestedTree nodes={simpleNodes} onMove={onMove} />);
+    fireEvent.click(screen.getAllByRole('button', { name: /verschieben|move/i })[0]);
+    expect(onMove).toHaveBeenCalled();
   });
 });
 
