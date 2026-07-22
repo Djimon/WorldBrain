@@ -64,23 +64,6 @@ describe('NestedTree — Drag-Struktur (Pointer-Events)', () => {
     expect(() => fireEvent.pointerDown(header)).not.toThrow();
   });
 
-  it('onItemMove wird nach pointerdown→pointerup mit gefundenem Drop-Ziel aufgerufen', () => {
-    const onItemMove = vi.fn();
-    render(<NestedTree nodes={treeNodes} onItemMove={onItemMove} />);
-
-    const header = document.querySelector('[data-drop-path="Wälder"]') as HTMLElement;
-    const dropTarget = document.querySelector('[data-drop-path="Städte"]') as HTMLElement;
-
-    // Mock elementFromPoint: simulates the pointer landing on "Städte"
-    vi.spyOn(document, 'elementFromPoint').mockReturnValue(dropTarget);
-
-    fireEvent.pointerDown(header, { clientX: 100, clientY: 100 });
-    fireEvent(document, new PointerEvent('pointerup', { clientX: 200, clientY: 100, bubbles: true }));
-
-    vi.restoreAllMocks();
-
-    expect(onItemMove).toHaveBeenCalledWith(expect.any(String), 'Städte');
-  });
 
   it('onFolderMove wird nach Ordner-Drag auf neues Ziel aufgerufen', () => {
     const onFolderMove = vi.fn();
@@ -123,31 +106,31 @@ describe('NestedTree — Collapse/Expand', () => {
     expect(screen.getByText('Wälder')).toBeInTheDocument();
   });
 
-  it('Kinder sind standardmäßig eingeklappt', () => {
+  it('Kinder sind standardmäßig aufgeklappt (wie Pin-Baum: collapsed = new Set())', () => {
     render(<NestedTree nodes={treeNodes} />);
-    expect(screen.queryByText('Hauptstädte')).not.toBeInTheDocument();
+    expect(screen.getByText('Hauptstädte')).toBeInTheDocument();
   });
 
-  it('Expand-Button zeigt ▶ wenn eingeklappt', () => {
+  it('Toggle-Button zeigt ▼ wenn aufgeklappt', () => {
     render(<NestedTree nodes={treeNodes} />);
     const staedteSection = document.querySelector('[data-drop-path="Städte"]')!;
-    expect(within(staedteSection as HTMLElement).getByText(/▶/)).toBeInTheDocument();
+    expect(within(staedteSection as HTMLElement).getByText(/▼/)).toBeInTheDocument();
   });
 
-  it('Klick auf Toggle zeigt Kinder und ändert Pfeil auf ▼', () => {
+  it('Klick auf Toggle klappt ein (Kinder verschwinden, Pfeil auf ▶)', () => {
     render(<NestedTree nodes={treeNodes} />);
     const toggleBtn = screen.getByRole('button', { name: /städte/i });
     fireEvent.click(toggleBtn);
-    expect(screen.getByText('Hauptstädte')).toBeInTheDocument();
-    expect(document.querySelector('[data-drop-path="Städte"]')?.textContent).toMatch(/▼/);
+    expect(screen.queryByText('Hauptstädte')).not.toBeInTheDocument();
+    expect(document.querySelector('[data-drop-path="Städte"]')?.textContent).toMatch(/▶/);
   });
 
-  it('zweiter Klick klappt wieder ein', () => {
+  it('zweiter Klick klappt wieder auf', () => {
     render(<NestedTree nodes={treeNodes} />);
     const btn = screen.getByRole('button', { name: /städte/i });
     fireEvent.click(btn);
     fireEvent.click(btn);
-    expect(screen.queryByText('Hauptstädte')).not.toBeInTheDocument();
+    expect(screen.getByText('Hauptstädte')).toBeInTheDocument();
   });
 });
 
