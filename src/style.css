@@ -1341,29 +1341,63 @@ input {
   padding: 1px 5px;
   border-radius: 3px;
   white-space: nowrap;
+}
+
+/* Name + counter sit together in a footer row below the token. */
+.map-token__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   margin-top: 2px;
 }
 
+/* Counter badge next to the name. Value always shown; label (+ ":") and the
+   vertical +/- stepper appear on hover/selection. */
 .map-token__counter {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  min-width: 18px;
-  height: 18px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
   padding: 0 4px;
-  border-radius: 9px;
+  border-radius: 10px;
   background: var(--color-accent-strong, #c0392b);
   color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 18px;
-  text-align: center;
   box-shadow: 0 1px 3px rgba(0,0,0,0.6);
 }
+.map-token__counter-val {
+  min-width: 10px;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 400;
+}
+.map-token__counter-label { font-size: 9px; font-weight: 400; opacity: 0.9; white-space: nowrap; }
+.map-token__counter-label::after { content: ':'; }
+.map-token__counter-steps {
+  display: flex;
+  flex-direction: column;
+}
+.map-token__counter-btn {
+  width: 16px;
+  height: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.85;
+}
+.map-token__counter-btn:hover { opacity: 1; }
 
 .map-token__chips {
   position: absolute;
   top: -14px;
+  left: 0;
   display: flex;
   gap: 2px;
   z-index: 6;

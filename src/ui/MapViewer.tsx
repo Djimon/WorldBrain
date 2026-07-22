@@ -749,6 +749,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     setEditingToken(token);
   }
 
+  // Inline counter step on the map (#303): +1 / -1 without opening the editor.
+  function handleTokenCounterStep(token: MapTokenRow, delta: number) {
+    const next = (token.counter_value ?? 0) + delta;
+    setTokens((prev) => prev.map((t) => (t.id === token.id ? { ...t, counter_value: next } : t)));
+    setCounter(database, token.id, { counter_value: next }).then(reloadTokens).catch(console.error);
+  }
+
   // Drag the corner handle of a selected token to scale it (#301). Horizontal
   // drag distance maps to a size factor, clamped; persisted on release.
   function handleTokenResizeStart(token: MapTokenRow, e: React.MouseEvent<HTMLDivElement>) {
@@ -1219,6 +1226,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               onPointerUp={handleTokenPointerUp}
               onSelect={(e) => handleTokenClick(tk, e)}
               onResizeStart={(e) => handleTokenResizeStart(tk, e)}
+              onCounterStep={(d) => handleTokenCounterStep(tk, d)}
             />
           ))}
 

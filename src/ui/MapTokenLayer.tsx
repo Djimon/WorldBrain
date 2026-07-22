@@ -7,6 +7,7 @@
 // No art yet -> initial-letter placeholder. Presentational only; drag/persist
 // is wired by MapViewer. Base size scales scale(1/mapScale) like pins to stay
 // legible, multiplied by the token's own `scale` (#301).
+import { useState } from 'react';
 import type { MapTokenRow } from '../services/map-token-service';
 
 export interface MapTokenProps {
@@ -22,6 +23,8 @@ export interface MapTokenProps {
   onSelect?: (e: React.MouseEvent<HTMLDivElement>) => void;
   /** Mouse-down on the resize handle (only shown when selected) -> MapViewer scales. */
   onResizeStart?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /** Inline counter step (+1 / -1) directly on the map, without the editor. */
+  onCounterStep?: (delta: number) => void;
 }
 
 const DEFAULT_RING = 'var(--color-accent, #6ea8fe)';
@@ -32,8 +35,12 @@ export function tokenName(token: MapTokenRow): string {
 
 export function MapToken({
   token, scale, selected = false, resolveAssetUrl,
-  onPointerDown, onPointerMove, onPointerUp, onSelect, onResizeStart,
+  onPointerDown, onPointerMove, onPointerUp, onSelect, onResizeStart, onCounterStep,
 }: MapTokenProps) {
+  const [hover, setHover] = useState(false);
+  const showStepper = hover || selected;
+  // Stop drag/pan/select from firing when using an inline control (stepper/handle).
+  const swallow = (e: React.SyntheticEvent) => e.stopPropagation();
   const name = tokenName(token);
   const initial = name.trim().charAt(0).toUpperCase() || '?';
   const ring = token.ring_color || DEFAULT_RING;
@@ -56,6 +63,8 @@ export function MapToken({
       // Stop the mousedown from reaching the map container (which would start a
       // pan while dragging the token — #301). Pointer events drive the drag.
       onMouseDown={(e) => e.stopPropagation()}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -94,12 +103,27 @@ export function MapToken({
         </div>
       )}
 
-      {token.counter_value != null && (
-        <span className="map-token__counter" title={token.counter_label || undefined}>
-          {token.counter_value}
-        </span>
-      )}
-      <span className="map-token__name">{name}</span>
+      <div className="map-token__footer">
+        <span className="map-token__name">{name}</span>
+        {token.counter_value != null && (
+          <div className="map-token__counter" title={token.counter_label || undefined}>
+            {showStepper && token.counter_label && (
+              <span className="map-token__counter-label">{token.counter_label}</span>
+            )}
+            <span className="map-token__counter-val">{token.counter_value}</span>
+            {showStepper && (
+              <div className="map-token__counter-steps">
+                <button type="button" className="map-token__counter-btn" aria-label="Erhöhen"
+                  onPointerDown={swallow} onMouseDown={swallow}
+                  onClick={(e) => { e.stopPropagation(); onCounterStep?.(1); }}>+</button>
+                <button type="button" className="map-token__counter-btn" aria-label="Verringern"
+                  onPointerDown={swallow} onMouseDown={swallow}
+                  onClick={(e) => { e.stopPropagation(); onCounterStep?.(-1); }}>−</button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {selected && (
         <div
