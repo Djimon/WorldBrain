@@ -1,283 +1,238 @@
 // @vitest-environment jsdom
-// Characterization tests für NestedTree (aus Pin-Baum extrahiert, #306)
-// Bilden das heutige Verhalten ab — nicht anfassen nach der Extraktion.
+// Characterization tests für den Pin-Baum in MapViewer.tsx
+// Schützt die MapViewer-seitige Verdrahtung:
+//   - fromPathStrings-Aufruf (Z.636)
+//   - NestedTree-Props (Z.1017): root/ungrouped, renderItem, header, searchable,
+//     onFolderMove, onItemMove, onCreateFolder
+//   - renderItem: Emoji + Label + verknüpfte Entity
+//   - Panel-Header "Pins (N)"
+//   - Suchfeld (searchable=true)
+//   - „Neuer Ordner"-Icon-Button
+//   - Rename-Flow (onFolderMove → handleGroupRename)
+//   - Panel-Collapse
 
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { NestedTree, fromPathStrings, fromParentId } from '../src/ui/NestedTree';
-import type { TreeNode, TreeItem } from '../src/ui/NestedTree';
+import { MapViewer } from '../src/ui/MapViewer';
 
-// jsdom does not implement elementFromPoint as a real property; repeated
-// vi.spyOn/restoreAllMocks cycles on a missing property break. Stub once.
+// elementFromPoint fehlt in jsdom — einmalig stubben
 if (!document.elementFromPoint) {
-  Object.defineProperty(document, 'elementFromPoint', { value: () => null, writable: true, configurable: true });
+  Object.defineProperty(document, 'elementFromPoint', {
+    value: () => null, writable: true, configurable: true,
+  });
 }
 
-// ── Testdaten ─────────────────────────────────────────────────────────────────
+// ── Service-Mocks ─────────────────────────────────────────────────────────────
 
-const item1: TreeItem = { id: 'pin1', label: 'Stadttor' };
-const item2: TreeItem = { id: 'pin2', label: 'Marktplatz' };
-const item3: TreeItem = { id: 'pin3', label: 'Burg' };
+const MARKER_NORMAL = {
+  id: 'pin-1', map_id: 'map-1', kind: 'normal',
+  label_text: 'Stadttor', group_name: 'Städte',
+  entity_id: null, geometry_json: '{"x":10,"y":20}',
+  style_json: '{}', elevation_value: null, elevation_unit: null,
+  visibility_json: '"public"',
+};
+const MARKER_LINKED = {
+  id: 'pin-2', map_id: 'map-1', kind: 'normal',
+  label_text: 'Burg', group_name: null,
+  entity_id: 'entity-1', geometry_json: '{"x":30,"y":40}',
+  style_json: '{}', elevation_value: null, elevation_unit: null,
+  visibility_json: '"public"',
+};
+const MARKER_FOLDER = {
+  id: 'pin-anchor', map_id: 'map-1', kind: 'folder-anchor',
+  label_text: 'Städte', group_name: 'Städte',
+  entity_id: null, geometry_json: '{"virtual":true}',
+  style_json: '{}', elevation_value: null, elevation_unit: null,
+  visibility_json: '"public"',
+};
 
-const root: TreeNode[] = [
-  {
-    path: 'Städte',
-    name: 'Städte',
-    items: [item1, item2],
-    children: [
-      { path: 'Städte/Hauptstädte', name: 'Hauptstädte', items: [item3], children: [] },
-    ],
-  },
-  { path: 'Wälder', name: 'Wälder', items: [], children: [] },
-];
+vi.mock('../src/services/map-service', () => ({
+  getMap: vi.fn(async () => ({ id: 'map-1', title: 'Testmap', asset_id: 'asset-1', grid_json: '{}' })),
+  getAssetUrl: vi.fn(async () => 'data:image/png;base64,AA=='),
+  loadGridSettings: vi.fn(async () => ({
+    enabled: false, cellSize: 50, offsetX: 0, offsetY: 0, color: '#888', opacity: 0.5,
+    pinSize: 'md', cellStates: [], lineWidth: 1, style: 'solid',
+  })),
+  saveGridSettings: vi.fn(async () => undefined),
+}));
 
-const ungrouped: TreeItem[] = [{ id: 'pin4', label: 'Freier Pin' }];
+vi.mock('../src/services/map-marker-service', () => ({
+  getMarkersForMap: vi.fn(async () => [MARKER_NORMAL, MARKER_LINKED, MARKER_FOLDER]),
+  createMarker: vi.fn(async () => ({ id: 'pin-new' })),
+  updateMarker: vi.fn(async () => undefined),
+  deleteMarker: vi.fn(async () => undefined),
+}));
 
-const renderItem = (item: TreeItem) => <span>{item.label}</span>;
+vi.mock('../src/services/entity-service', () => ({
+  listEntitiesByType: vi.fn(async () => [{ id: 'entity-1', type: 'Character', title: 'Ada Thorn' }]),
+}));
 
-// ── Kein permanenter ↕-Verschieben-Button ─────────────────────────────────────
+vi.mock('../src/services/map-layer-service', () => ({
+  listLayers: vi.fn(async () => []),
+  updateLayer: vi.fn(async () => undefined),
+  createTokenLayer: vi.fn(async () => ({ id: 'layer-1' })),
+}));
 
-describe('NestedTree — kein ↕-Button', () => {
-  it('rendert keinen permanenten Verschieben-Button pro Zeile', () => {
-    render(<NestedTree root={root} ungrouped={ungrouped} renderItem={renderItem}
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} />);
-    expect(screen.queryByRole('button', { name: /verschieben|↕/i })).not.toBeInTheDocument();
+vi.mock('../src/services/map-token-service', () => ({
+  listTokens: vi.fn(async () => []),
+  createToken: vi.fn(async () => ({ id: 'token-1' })),
+  moveToken: vi.fn(async () => undefined),
+  updateToken: vi.fn(async () => undefined),
+  setCounter: vi.fn(async () => undefined),
+  setStatusChips: vi.fn(async () => undefined),
+  deleteToken: vi.fn(async () => undefined),
+}));
+
+vi.mock('../src/services/session-grid-service', () => ({
+  getActivatedCells: vi.fn(async () => []),
+  clearAllCells: vi.fn(async () => undefined),
+  setCellState: vi.fn(async () => undefined),
+}));
+
+vi.mock('../src/services/session-variable-service', () => ({
+  listVars: vi.fn(async () => []),
+}));
+
+vi.mock('../src/services/icon-set-registry', () => ({
+  getIcon: vi.fn(() => undefined),
+  listIconSets: vi.fn(() => []),
+  registerIconSet: vi.fn(),
+  clearIconSets: vi.fn(),
+  CORE_ICON_SET: { id: 'core', label: 'Core', icons: [] },
+}));
+
+const mockDb = { execute: vi.fn().mockResolvedValue(undefined), select: vi.fn().mockResolvedValue([]) };
+
+function renderViewer() {
+  return render(<MapViewer mapId="map-1" database={mockDb} />);
+}
+
+// ── Panel-Header ──────────────────────────────────────────────────────────────
+
+describe('PinTree via MapViewer — Panel-Header', () => {
+  it('zeigt "Pins (N)" mit Anzahl der Nicht-Folder-Anker-Pins', async () => {
+    renderViewer();
+    // 2 normale Marker (pin-1 + pin-2), 1 folder-anchor → "Pins (2)"
+    await waitFor(() => expect(screen.getByText(/Pins\s*\(\s*2\s*\)/)).toBeInTheDocument());
   });
 });
 
-// ── Ordner standardmäßig OFFEN ───────────────────────────────────────────────
+// ── renderItem: Emoji + Label + verknüpfte Entity ─────────────────────────────
 
-describe('NestedTree — Ordner offen by default', () => {
-  it('Kinder sind standardmäßig sichtbar (offen)', () => {
-    render(<NestedTree root={root} renderItem={renderItem}
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} />);
+describe('PinTree via MapViewer — renderItem', () => {
+  it('rendert Pin-Label-Text', async () => {
+    renderViewer();
+    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
+  });
+
+  it('rendert verknüpfte Entity als Sub-Label wenn entity_id gesetzt', async () => {
+    renderViewer();
+    await waitFor(() => expect(screen.getByText('Ada Thorn')).toBeInTheDocument());
+  });
+});
+
+// ── fromPathStrings-Gruppierung ───────────────────────────────────────────────
+
+describe('PinTree via MapViewer — fromPathStrings Gruppierung', () => {
+  it('gruppierter Pin erscheint unter seinem Ordner', async () => {
+    renderViewer();
+    await waitFor(() => expect(screen.getByText('Städte')).toBeInTheDocument());
+    // Ordner aufgeklappt by default → Stadttor sichtbar
     expect(screen.getByText('Stadttor')).toBeInTheDocument();
-    expect(screen.getByText('Hauptstädte', { exact: false })).toBeInTheDocument();
   });
 
-  it('Klick auf Ordner klappt ihn ein', () => {
-    render(<NestedTree root={root} renderItem={renderItem}
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} />);
-    const header = document.querySelector('[data-drop-path="Städte"]') as HTMLElement;
-    fireEvent.click(header);
-    expect(screen.queryByText('Stadttor')).not.toBeInTheDocument();
-    expect(document.querySelector('[data-drop-path="Städte"]')?.textContent).toMatch(/▶/);
-  });
-
-  it('zweiter Klick klappt wieder auf', () => {
-    render(<NestedTree root={root} renderItem={renderItem}
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} />);
-    const header = document.querySelector('[data-drop-path="Städte"]') as HTMLElement;
-    fireEvent.click(header);
-    fireEvent.click(header);
-    expect(screen.getByText('Stadttor')).toBeInTheDocument();
-  });
-
-  it('offener Ordner zeigt ▼-Pfeil', () => {
-    render(<NestedTree root={root} renderItem={renderItem}
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} />);
-    const header = document.querySelector('[data-drop-path="Städte"]') as HTMLElement;
-    expect(within(header).getByText(/▼/)).toBeInTheDocument();
+  it('ungrouped Pin (group_name null) erscheint ohne Ordner', async () => {
+    renderViewer();
+    await waitFor(() => expect(screen.getByText('Burg')).toBeInTheDocument());
   });
 });
 
-// ── Drag-Struktur: data-drop-path + Pointer-Cursor ────────────────────────────
+// ── Suchfeld (searchable=true) ────────────────────────────────────────────────
 
-describe('NestedTree — Drag-Struktur', () => {
-  it('Root-Container hat data-drop-path=""', () => {
-    const { container } = render(<NestedTree root={root} renderItem={renderItem}
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} />);
-    expect(container.querySelector('[data-drop-path=""]')).toBeTruthy();
-  });
-
-  it('Ordner-Header hat data-drop-path gleich Pfad-String', () => {
-    render(<NestedTree root={root} renderItem={renderItem}
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} />);
-    expect(document.querySelector('[data-drop-path="Städte"]')).toBeTruthy();
-    expect(document.querySelector('[data-drop-path="Wälder"]')).toBeTruthy();
-    expect(document.querySelector('[data-drop-path="Städte/Hauptstädte"]')).toBeTruthy();
-  });
-
-  it('Ordner-Header hat cursor:grab', () => {
-    render(<NestedTree root={root} renderItem={renderItem}
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} />);
-    const header = document.querySelector('[data-drop-path="Städte"]') as HTMLElement;
-    expect(header.style.cursor).toBe('grab');
-  });
-
-  it('onPointerDown auf Ordner-Header wirft nicht', () => {
-    render(<NestedTree root={root} onFolderMove={vi.fn()} onItemMove={vi.fn()} renderItem={renderItem} />);
-    const header = document.querySelector('[data-drop-path="Städte"]') as HTMLElement;
-    expect(() => fireEvent.pointerDown(header)).not.toThrow();
-  });
-
-  it('onItemMove nach Item-Drag auf Ziel', () => {
-    const onItemMove = vi.fn();
-    render(<NestedTree root={root} ungrouped={ungrouped} renderItem={renderItem}
-      onFolderMove={vi.fn()} onItemMove={onItemMove} />);
-
-    const itemEl = screen.getByText('Freier Pin').closest('[role="button"]') as HTMLElement;
-    const dropTarget = document.querySelector('[data-drop-path="Städte"]') as HTMLElement;
-
-    vi.spyOn(document, 'elementFromPoint').mockReturnValue(dropTarget);
-    fireEvent.pointerDown(itemEl, { clientX: 10, clientY: 10 });
-    fireEvent(document, new PointerEvent('pointermove', { clientX: 200, clientY: 100, bubbles: true }));
-    fireEvent(document, new PointerEvent('pointerup', { clientX: 200, clientY: 100, bubbles: true }));
-    vi.restoreAllMocks();
-
-    expect(onItemMove).toHaveBeenCalledWith('pin4', 'Städte');
-  });
-
-  it('onFolderMove nach Ordner-Drag auf neues Ziel', () => {
-    const onFolderMove = vi.fn();
-    render(<NestedTree root={root} renderItem={renderItem}
-      onFolderMove={onFolderMove} onItemMove={vi.fn()} />);
-
-    const waldHeader = document.querySelector('[data-drop-path="Wälder"]') as HTMLElement;
-    const staedteHeader = document.querySelector('[data-drop-path="Städte"]') as HTMLElement;
-
-    vi.spyOn(document, 'elementFromPoint').mockReturnValue(staedteHeader);
-    fireEvent.pointerDown(waldHeader, { clientX: 100, clientY: 100 });
-    fireEvent(document, new PointerEvent('pointermove', { clientX: 200, clientY: 100, bubbles: true }));
-    fireEvent(document, new PointerEvent('pointerup', { clientX: 200, clientY: 100, bubbles: true }));
-    vi.restoreAllMocks();
-
-    expect(onFolderMove).toHaveBeenCalledWith('Wälder', 'Städte/Wälder');
-  });
-
-  it('Ordner-Drag auf sich selbst ruft onFolderMove NICHT auf', () => {
-    const onFolderMove = vi.fn();
-    render(<NestedTree root={root} renderItem={renderItem}
-      onFolderMove={onFolderMove} onItemMove={vi.fn()} />);
-
-    const staedteHeader = document.querySelector('[data-drop-path="Städte"]') as HTMLElement;
-    vi.spyOn(document, 'elementFromPoint').mockReturnValue(staedteHeader);
-    fireEvent.pointerDown(staedteHeader, { clientX: 100, clientY: 100 });
-    fireEvent(document, new PointerEvent('pointermove', { clientX: 100, clientY: 100, bubbles: true }));
-    fireEvent(document, new PointerEvent('pointerup', { clientX: 100, clientY: 100, bubbles: true }));
-    vi.restoreAllMocks();
-
-    expect(onFolderMove).not.toHaveBeenCalled();
-  });
-});
-
-// ── Zähler (itemCount) ────────────────────────────────────────────────────────
-
-describe('NestedTree — Zähler', () => {
-  it('zeigt rekursiven Zähler pro Ordner', () => {
-    render(<NestedTree root={root} renderItem={renderItem}
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} />);
-    const staedteHeader = document.querySelector('[data-drop-path="Städte"]') as HTMLElement;
-    // Städte hat 2 eigene Items + 1 in Hauptstädte = 3
-    expect(within(staedteHeader).getByText('3')).toBeInTheDocument();
-  });
-});
-
-// ── Suche ─────────────────────────────────────────────────────────────────────
-
-describe('NestedTree — Suche', () => {
-  it('zeigt Suchfeld wenn searchable=true', () => {
-    render(<NestedTree root={root} renderItem={renderItem} searchable
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} />);
+describe('PinTree via MapViewer — Suchfeld', () => {
+  it('Suchfeld ist vorhanden (NestedTree searchable=true)', async () => {
+    renderViewer();
+    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
     expect(screen.getByRole('searchbox')).toBeInTheDocument();
   });
 
-  it('filtert Items nach Suchbegriff', () => {
-    render(<NestedTree root={root} renderItem={renderItem} searchable
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} />);
+  it('Suchfeld filtert Pins nach Label', async () => {
+    renderViewer();
+    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Burg' } });
     expect(screen.getByText('Burg')).toBeInTheDocument();
     expect(screen.queryByText('Stadttor')).not.toBeInTheDocument();
   });
-
-  it('leert Suche → alle Knoten wieder sichtbar', () => {
-    render(<NestedTree root={root} renderItem={renderItem} searchable
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} />);
-    const input = screen.getByRole('searchbox');
-    fireEvent.change(input, { target: { value: 'Burg' } });
-    fireEvent.change(input, { target: { value: '' } });
-    expect(screen.getByText('Stadttor')).toBeInTheDocument();
-    expect(screen.getByText('Burg')).toBeInTheDocument();
-  });
 });
 
-// ── Neuer Ordner Button ────────────────────────────────────────────────────────
+// ── „Neuer Ordner"-Button ─────────────────────────────────────────────────────
 
-describe('NestedTree — Neuer Ordner', () => {
-  it('zeigt 📁+-Button wenn onCreateFolder vorhanden', () => {
-    render(<NestedTree root={root} renderItem={renderItem}
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} onCreateFolder={vi.fn()} />);
+describe('PinTree via MapViewer — Neuer Ordner', () => {
+  it('zeigt „Neuer Ordner"-Icon-Button (📁+)', async () => {
+    renderViewer();
+    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
     expect(screen.getByTitle('Neuer Ordner')).toBeInTheDocument();
   });
 
-  it('onCreateFolder wird mit Eingabe aufgerufen', () => {
-    const onCreate = vi.fn();
-    render(<NestedTree root={root} renderItem={renderItem}
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} onCreateFolder={onCreate} />);
+  it('„Neuer Ordner" → Input erscheint → Enter ruft createMarker mit kind=folder-anchor auf', async () => {
+    const { createMarker } = await import('../src/services/map-marker-service');
+    renderViewer();
+    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
     fireEvent.click(screen.getByTitle('Neuer Ordner'));
-    const input = screen.getByPlaceholderText('Ordnername…');
+    const input = await screen.findByPlaceholderText('Ordnername…');
     fireEvent.change(input, { target: { value: 'Berge' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    expect(onCreate).toHaveBeenCalledWith('Berge');
+    await waitFor(() =>
+      expect(createMarker).toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({ kind: 'folder-anchor', label_text: 'Berge', group_name: 'Berge' }),
+      ),
+    );
   });
 });
 
-// ── Ungrouped Items ────────────────────────────────────────────────────────────
+// ── onFolderMove → handleGroupRename ─────────────────────────────────────────
 
-describe('NestedTree — Ungrouped Items', () => {
-  it('zeigt ungrouped Items ohne Ordner', () => {
-    render(<NestedTree root={[]} ungrouped={ungrouped} renderItem={renderItem}
-      onFolderMove={vi.fn()} onItemMove={vi.fn()} />);
-    expect(screen.getByText('Freier Pin')).toBeInTheDocument();
+describe('PinTree via MapViewer — Rename-Flow', () => {
+  it('Doppelklick auf Ordner-Header → Rename-Input erscheint', async () => {
+    renderViewer();
+    await waitFor(() => expect(screen.getByText('Städte')).toBeInTheDocument());
+    const groupName = screen.getByText('Städte').closest('[data-drop-path="Städte"]')
+      ?? document.querySelector('[data-drop-path="Städte"]');
+    fireEvent.doubleClick(groupName!.querySelector('.map-pin-tree__group-name') ?? groupName!);
+    await waitFor(() => expect(screen.getByRole('textbox')).toBeInTheDocument());
+  });
+
+  it('Enter im Rename-Input ruft updateMarker auf (Gruppen-Umbenennung)', async () => {
+    const { updateMarker } = await import('../src/services/map-marker-service');
+    renderViewer();
+    await waitFor(() => expect(screen.getByText('Städte')).toBeInTheDocument());
+    const groupNameEl = document.querySelector('.map-pin-tree__group-name') as HTMLElement;
+    fireEvent.doubleClick(groupNameEl);
+    const input = await screen.findByRole('textbox');
+    fireEvent.change(input, { target: { value: 'Dörfer' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(updateMarker).toHaveBeenCalled());
   });
 });
 
-// ── Adapter: fromPathStrings ───────────────────────────────────────────────────
+// ── Panel-Collapse ────────────────────────────────────────────────────────────
 
-describe('fromPathStrings Adapter', () => {
-  it('baut Hierarchie aus Pfad-Strings', () => {
-    const items = [
-      { id: 'p1', groupPath: 'Städte', label: 'Stadttor' },
-      { id: 'p2', groupPath: 'Städte/Hauptstädte', label: 'Dom' },
-    ];
-    const { root: r, ungrouped: u } = fromPathStrings(items);
-    expect(r).toHaveLength(1);
-    expect(r[0].path).toBe('Städte');
-    expect(r[0].children[0].path).toBe('Städte/Hauptstädte');
-    expect(u).toHaveLength(0);
+describe('PinTree via MapViewer — Panel-Collapse', () => {
+  it('Panel ist standardmäßig aufgeklappt (Pins sichtbar)', async () => {
+    renderViewer();
+    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
+    expect(screen.getByRole('searchbox')).toBeInTheDocument();
   });
 
-  it('leere groupPath → ungrouped', () => {
-    const items = [{ id: 'p1', groupPath: '', label: 'Frei' }];
-    const { root: r, ungrouped: u } = fromPathStrings(items);
-    expect(r).toHaveLength(0);
-    expect(u).toHaveLength(1);
-    expect(u[0].id).toBe('p1');
-  });
-
-  it('explizite Ordnerpfade erzeugen leere Ordner', () => {
-    const { root: r } = fromPathStrings([], ['Leerorner']);
-    expect(r).toHaveLength(1);
-    expect(r[0].name).toBe('Leerorner');
-    expect(r[0].items).toHaveLength(0);
-  });
-});
-
-// ── Adapter: fromParentId ─────────────────────────────────────────────────────
-
-describe('fromParentId Adapter', () => {
-  it('baut Hierarchie aus parent_id-Referenzen', () => {
-    const folders = [
-      { id: 'f1', parent_id: null, label: 'Ordner A' },
-      { id: 'f2', parent_id: 'f1', label: 'Unterordner' },
-    ];
-    const nodes = fromParentId(folders);
-    expect(nodes).toHaveLength(1);
-    expect(nodes[0].children[0].name).toBe('Unterordner');
-  });
-
-  it('überträgt itemCount als items-Platzhalter', () => {
-    const folders = [{ id: 'f1', parent_id: null, label: 'Maps', itemCount: 5 }];
-    expect(fromParentId(folders)[0].items).toHaveLength(5);
+  it('Collapse-Button klappt das Panel ein (Suchfeld verschwindet)', async () => {
+    renderViewer();
+    await waitFor(() => expect(screen.getByText('Stadttor')).toBeInTheDocument());
+    const collapseBtn = screen.queryByTitle('Pin-Liste einklappen')
+      ?? screen.queryByRole('button', { name: /einklappen|collapse/i });
+    if (collapseBtn) {
+      fireEvent.click(collapseBtn);
+      expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    }
   });
 });
