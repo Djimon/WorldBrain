@@ -396,18 +396,17 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
         return (
           <div className="workspace-area" style={{ overflow: 'hidden' }}>
             <div className="workspace-area__sidebar maps-sidebar" style={{ width: mapsSidebarWidth }}>
+              <button
+                className="emd__create-btn maps-sidebar__import"
+                onClick={() => void handleMapImport()}
+                disabled={mapImporting}
+              >
+                {mapImporting ? t('mapImporting', '⏳ Importiere…') : t('importMap', '+ Karte importieren')}
+              </button>
               <MapsSidebarTabs
                 selectedMapId={selectedMapId}
                 mapsTabContent={
                   <>
-                    <button
-                      className="emd__create-btn"
-                      style={{ width: '100%', marginBottom: 'var(--space-2)' }}
-                      onClick={() => void handleMapImport()}
-                      disabled={mapImporting}
-                    >
-                      {mapImporting ? t('mapImporting', '⏳ Importiere…') : t('importMap', '+ Karte importieren')}
-                    </button>
                     {mapImporting && (
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', padding: 'var(--space-1) var(--space-2)', background: 'var(--color-surface-alt)', borderRadius: 'var(--radius-sm)', marginBottom: 'var(--space-2)' }}>
                         {t('mapImportProgress', 'Bild wird kopiert und vorbereitet…')}
