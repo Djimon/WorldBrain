@@ -181,9 +181,16 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
 
   async function handleOpenSoundboard() {
     if (await WebviewWindow.getByLabel(SOUNDBOARD_WINDOW_LABEL)) return;
+    // Native background matched to the current theme BEFORE content paints —
+    // without this the window briefly shows its default white background
+    // while the webview spins up, then again while style.css loads (visible
+    // as a double flash, unlike the main window whose OS chrome is already
+    // warm at app start).
+    const isDark = (localStorage.getItem('theme') ?? 'dark') === 'dark';
     const win = new WebviewWindow(SOUNDBOARD_WINDOW_LABEL, {
       url: 'index.html#/audio-soundboard',
       title: t('audioSoundboardWindowTitle', 'Audio-Soundboard'),
+      backgroundColor: isDark ? '#15181b' : '#f2f3f5',
     });
     setSoundboardOpen(true);
     void win.once('tauri://destroyed', () => setSoundboardOpen(false));
