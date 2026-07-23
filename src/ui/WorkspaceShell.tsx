@@ -41,6 +41,7 @@ import { importImageLayer, createFogLayer } from '../services/map-layer-service'
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { join } from '@tauri-apps/api/path';
 
 const SOUNDBOARD_WINDOW_LABEL = 'audio-soundboard';
 
@@ -187,8 +188,12 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     // as a double flash, unlike the main window whose OS chrome is already
     // warm at app start).
     const isDark = (localStorage.getItem('theme') ?? 'dark') === 'dark';
+    // The soundboard is a separate window/JS context with no state shared
+    // with this React tree — the db path travels as a query param so it can
+    // open its own connection to the SAME SQLite DB (EPIC-024/D1).
+    const dbPath = await join(projectDir, 'world.db');
     const win = new WebviewWindow(SOUNDBOARD_WINDOW_LABEL, {
-      url: 'index.html#/audio-soundboard',
+      url: `index.html?db=${encodeURIComponent(dbPath)}#/audio-soundboard`,
       title: t('audioSoundboardWindowTitle', 'Audio-Soundboard'),
       backgroundColor: isDark ? '#15181b' : '#f2f3f5',
     });

@@ -22,5 +22,10 @@
   "audioSoundboardStart": "Start audio player",
   "audioSoundboardRunning": "Audio player already running",
   "audioSoundboardWindowTitle": "Audio soundboard",
-  "audioSoundboardPlaceholder": "Built out in upcoming stories (M15-S10 ff.)."
+  "audioSoundboardPlaceholder": "Built out in upcoming stories (M15-S10 ff.).",
+  "audioSoundboardLoading": "Loading…",
+  "audioSoundboardNoProject": "No project connected.",
+  "audioSoundboardGateTitle": "Enable audio playback",
+  "audioSoundboardGateHint": "The browser blocks audio playback without a user action. Please enable it.",
+  "audioSoundboardGateButton": "Activate soundboard"
 }

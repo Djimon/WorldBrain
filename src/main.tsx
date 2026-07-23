@@ -16,11 +16,14 @@ if (rootElement === null) {
 
 // The detached audio-soundboard WebviewWindow (EPIC-024/D1) loads this same
 // index.html with a distinguishing hash — route it to its own root here
-// rather than through App's project-bootstrap flow.
+// rather than through App's project-bootstrap flow. The db path travels as a
+// query param since this is a separate window/JS context with no state
+// shared with the main window's React tree.
 const isSoundboardWindow = window.location.hash === '#/audio-soundboard';
+const soundboardDbPath = new URLSearchParams(window.location.search).get('db');
 
 createRoot(rootElement).render(
   <StrictMode>
-    {isSoundboardWindow ? <AudioSoundboardWindow /> : <App />}
+    {isSoundboardWindow ? <AudioSoundboardWindow dbPath={soundboardDbPath} /> : <App />}
   </StrictMode>,
 );

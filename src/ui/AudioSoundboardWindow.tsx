@@ -1,16 +1,75 @@
-// EPIC-024 (M15 audio soundboard): root component for the detached
-// soundboard WebviewWindow (D1 — own AudioContext, separate from the main
-// workspace window). Channels/clips/scenes land in M15-S10..S16; this is the
-// window shell so the launcher button in WorkspaceShell has somewhere to go.
+// EPIC-024 M15-S10 (#281): root component for the detached soundboard
+// WebviewWindow — own AudioContext (D1), reads/writes the SAME SQLite DB as
+// the main window (no separate audio DB), autoplay gate overlay shown only
+// if the AudioContext actually starts suspended (per Decision D8 the local
+// Web Audio autoplay policy is untested/separate from the YouTube tier's
+// spike — never assume, always check `audioContext.state`). Board content
+// itself is S14; this delivers the window shell + AudioContext lifecycle +
+// gate.
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { DatabaseLike } from '../services/entity-service';
+import { openProjectDb } from '../services/db-init';
+import { DatabaseProvider } from '../services/DatabaseContext';
 
-export function AudioSoundboardWindow() {
+type WindowMode =
+  | { kind: 'loading' }
+  | { kind: 'no-project' }
+  | { kind: 'gate'; db: DatabaseLike; audioContext: AudioContext }
+  | { kind: 'ready'; db: DatabaseLike; audioContext: AudioContext };
+
+export interface AudioSoundboardWindowProps {
+  dbPath: string | null;
+}
+
+export function AudioSoundboardWindow({ dbPath }: AudioSoundboardWindowProps) {
   const { t } = useTranslation('nav');
+  const [mode, setMode] = useState<WindowMode>({ kind: 'loading' });
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  useEffect(() => {
+    if (!dbPath) { setMode({ kind: 'no-project' }); return; }
+    if (!audioContextRef.current) audioContextRef.current = new AudioContext();
+    const audioContext = audioContextRef.current;
+
+    openProjectDb(dbPath).then((db) => {
+      setMode(audioContext.state === 'suspended' ? { kind: 'gate', db, audioContext } : { kind: 'ready', db, audioContext });
+    }).catch(console.error);
+
+    return () => { void audioContext.close(); };
+  }, [dbPath]);
+
+  if (mode.kind === 'loading') {
+    return <div className="audio-soundboard-window">{t('audioSoundboardLoading', 'Lade…')}</div>;
+  }
+
+  if (mode.kind === 'no-project') {
+    return <div className="audio-soundboard-window">{t('audioSoundboardNoProject', 'Kein Projekt verbunden.')}</div>;
+  }
+
+  if (mode.kind === 'gate') {
+    const { db, audioContext } = mode;
+    return (
+      <div className="audio-soundboard-window audio-soundboard-window__gate" role="dialog" aria-label={t('audioSoundboardGateTitle', 'Audiowiedergabe freigeben')}>
+        <p>{t('audioSoundboardGateHint', 'Der Browser blockiert Audiowiedergabe ohne Nutzeraktion. Bitte freigeben.')}</p>
+        <button
+          className="btn btn--primary"
+          onClick={() => {
+            void audioContext.resume().then(() => setMode({ kind: 'ready', db, audioContext }));
+          }}
+        >
+          {t('audioSoundboardGateButton', 'Soundboard aktivieren')}
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="audio-soundboard-window">
-      <h1>{t('audioSoundboardWindowTitle', 'Audio-Soundboard')}</h1>
-      <p>{t('audioSoundboardPlaceholder', 'Wird in den nächsten Storys gebaut (M15-S10 ff.).')}</p>
-    </div>
+    <DatabaseProvider value={mode.db}>
+      <div className="audio-soundboard-window">
+        <h1>{t('audioSoundboardWindowTitle', 'Audio-Soundboard')}</h1>
+        <p>{t('audioSoundboardPlaceholder', 'Wird in den nächsten Storys gebaut (M15-S10 ff.).')}</p>
+      </div>
+    </DatabaseProvider>
   );
 }
