@@ -134,6 +134,7 @@ export function MapFolderTree({ database, maps, selectedMapId, onSelectMap, onIm
       onCreateFolder={handleCreateFolder}
       onDeleteFolder={handleDeleteFolder}
       onFolderColorChange={handleFolderColorChange}
+      persistKey="map-folder-tree"
       header={
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {t('mapFolderTree.header', 'Karten')} ({maps.length})

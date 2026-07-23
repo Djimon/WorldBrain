@@ -1121,6 +1121,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               onResizeStart={handlePinResizeStart}
               onDeleteFolder={(node) => setConfirmDeleteFolderPath(node.path)}
               onFolderColorChange={(path, color) => void handlePinFolderColorChange(path, color)}
+              persistKey={`pin-tree-${mapId}`}
             />
         )}
         </>

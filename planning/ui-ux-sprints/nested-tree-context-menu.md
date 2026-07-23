@@ -18,6 +18,19 @@ Scope: `src/ui/NestedTree.tsx` (geteilte Komponente), Konsumenten `MapFolderTree
 
 5. **Nebenbei entdeckt und behoben:** `.map-folder-tree__confirm-dialog` (seit #307 im Markup) hatte nie CSS — der Löschen-Dialog rendert bislang ungestylt (Browser-Default). Jetzt gestylt (Karten und Pins teilen sich dieselbe Klasse).
 
+## Follow-up-Fixes nach erstem Live-Test
+
+Nutzer-Feedback nach erstem Test deckte drei zusammenhängende Bugs auf:
+
+6. **Karten-Panel füllte nicht die verfügbare Höhe, sah "abgeschnitten" aus.** Root Cause: `.maps-sidebar-tabs` und `.maps-sidebar-tabs__panel` hatten keine `flex:1` — sie wuchsen nicht auf die Höhe des Elternkontainers, sondern sizeten nach Inhalt. Zusätzlich boxte das geerbte `.workspace-area__sidebar`-Padding den Baum ein (Pin-Panel hat kein solches äußeres Padding). Fix: `flex:1` auf beide Klassen, `padding:0` auf `.maps-sidebar` (MapFolderTree bringt sein eigenes Chrome mit, wie der Pin-Baum).
+
+7. **Klick auf Menü-Einträge ("Bearbeiten"/"Löschen") klappte den Ordner zusätzlich ein.** Der Dropdown-Container stoppte nur `onMouseDown`, nicht `onClick` — der Klick bubblte weiter zum Header und löste dort `onToggle` aus. Fix: `onClick`-stopPropagation zusätzlich zu `onMouseDown` auf dem Menü-Container.
+
+8. **Popup schloss sich beim ersten Klick, Ordnerfarbe kam nie an.** Der Rename-Input hatte `onBlur={onRenameCommit}` — sobald der Nutzer auf den Farbwähler oder ein Swatch klickte, verlor der Text-Input den Fokus (blur), was synchron `setRenamingPath(null)` auslöste und damit die Farb-Swatches aus dem DOM entfernte, bevor deren eigener Klick-Handler feuern konnte. Das erklärt vermutlich auch, warum die Farbe nie sichtbar wechselte — der Klick auf den Swatch/Color-Input wurde durch das Unmounten während des Events geschluckt.
+   - Fix: `onBlur` entfernt. Bearbeiten-Modus hat jetzt explizite **✓ Speichern** / **✕ Abbrechen**-Buttons (Nutzer entscheidet, wann die Bearbeitung endet — nicht mehr implizit per Wegklicken).
+
+9. **Ordner-Aufklapp-Zustand nicht persistent.** Neuer `persistKey`-Prop auf `NestedTree`, sichert `collapsed`-Set in `localStorage` (etabliertes Pattern, bereits genutzt von `ThemeToggle`/`LanguageSwitcher`). Karten-Baum: globaler Key `"map-folder-tree"`. Pin-Baum: pro Karte `` `pin-tree-${mapId}` `` (unterschiedliche Karten haben unterschiedliche Ordnerstrukturen).
+
 ## Bekannte Test-Auswirkungen (nicht selbst angepasst — Implementation-Agent-Rolle)
 
 - `tests/m15-s05-map-folder-tree.dom.test.tsx`: 3 Tests im "Löschen-Regression"-Block scheitern, weil sie direkt `getAllByRole('button', {name:/löschen/i})` klicken — der Button existiert jetzt erst nach Öffnen des ⋮-Menüs. Verhalten selbst (Dialog erscheint, `deleteFolder` wird aufgerufen, kein Cascade) ist unverändert, nur der Interaktionspfad.

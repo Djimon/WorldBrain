@@ -33,6 +33,22 @@ export interface NestedTreeProps {
   onDeleteFolder?: (node: TreeNode) => void;
   /** Enables a color swatch in the folder's "Bearbeiten" (rename) row. */
   onFolderColorChange?: (path: string, color: string) => void;
+  /** Persists collapsed/expanded folder state in localStorage across remounts (per-tree key, e.g. "pin-tree-<mapId>"). Omit to keep it session-only. */
+  persistKey?: string;
+}
+
+function collapsedStorageKey(persistKey: string): string {
+  return `nestedTree.collapsed.${persistKey}`;
+}
+
+function loadCollapsed(persistKey?: string): Set<string> {
+  if (!persistKey) return new Set();
+  try {
+    const raw = localStorage.getItem(collapsedStorageKey(persistKey));
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch {
+    return new Set();
+  }
 }
 
 type DragPayload = { kind: 'item'; id: string } | { kind: 'folder'; path: string };
@@ -102,7 +118,6 @@ function FolderNode({
           <>
             <input className="map-pin-tree__rename-input" value={renameVal} autoFocus
               onChange={(e) => onRenameVal(e.target.value)}
-              onBlur={onRenameCommit}
               onKeyDown={(e) => { if (e.key === 'Enter') onRenameCommit(); if (e.key === 'Escape') onRenameCancel(); }}
               onClick={(e) => e.stopPropagation()} />
             {onFolderColorChange && (
@@ -116,6 +131,12 @@ function FolderNode({
                 onChange={(e) => onFolderColorChange(node.path, e.target.value)}
               />
             )}
+            <button type="button" className="map-pin-tree__rename-commit-btn"
+              title={t('nestedTree.save', 'Speichern')}
+              onClick={(e) => { e.stopPropagation(); onRenameCommit(); }}>✓</button>
+            <button type="button" className="map-pin-tree__rename-commit-btn"
+              title={t('nestedTree.cancel', 'Abbrechen')}
+              onClick={(e) => { e.stopPropagation(); onRenameCancel(); }}>✕</button>
           </>
         ) : (
           <span className="map-pin-tree__group-name"
@@ -137,7 +158,9 @@ function FolderNode({
               ⋮
             </button>
             {menuOpen && (
-              <div className="map-pin-tree__group-menu" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="map-pin-tree__group-menu"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}>
                 <button type="button" onClick={() => { onRenameStart(node.path); onToggleMenu(null); }}>
                   {t('nestedTree.editFolder', 'Bearbeiten')}
                 </button>
@@ -204,11 +227,16 @@ function FolderNode({
 export function NestedTree({
   root, ungrouped = [], renderItem, activeItemId, onItemClick,
   onFolderMove, onItemMove, onCreateFolder, header, searchable, onResizeStart,
-  onDeleteFolder, onFolderColorChange,
+  onDeleteFolder, onFolderColorChange, persistKey,
 }: NestedTreeProps) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => loadCollapsed(persistKey));
+
+  useEffect(() => {
+    if (!persistKey) return;
+    try { localStorage.setItem(collapsedStorageKey(persistKey), JSON.stringify([...collapsed])); } catch { /* storage unavailable/full — UI state only, safe to skip */ }
+  }, [collapsed, persistKey]);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
   const [newFolderInput, setNewFolderInput] = useState(false);
