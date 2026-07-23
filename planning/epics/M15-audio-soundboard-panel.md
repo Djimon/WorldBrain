@@ -89,16 +89,26 @@ attempt EQ / balance / crossfade on YouTube — the IFrame API cannot. We confir
 
 ## Stories
 
-| Story | Issue | Type | Prio | Kern |
-|---|---|---|---|---|
-| M15-S09  | #280 | spike | p0 | YouTube IFrame in Tauri WebView: load + volume-ramp + autoplay gate feasibility |
-| M15-S10 | #281 | story | p1 | Detached soundboard window (Tauri WebviewWindow, own AudioContext, shared DB, autoplay overlay) |
-| M15-S11 | #282 | story | p1 | Audio data model + service (`audio_scenes`/`audio_channels`/`audio_presets`) |
-| M15-S12 | #283 | story | p1 | Local audio engine: channel strip (gain→balance→3-band EQ→master), play/stop/fade/loop, crossfade |
-| M15-S13 | #284 | story | p1 | YouTube tier: IFrame players per channel — volume/fade/loop/mix; balance/EQ off; coarse crossfade |
-| M15-S14 | #285 | story | p1 | Board UI: channels as rows, 8 clip buttons (emoji+label+color), volume+dB, mute, mode + transition config |
-| M15-S15 | #286 | story | p1 | Scenes: save/load/switch full-board snapshots |
-| M15-S16 | #287 | story | p1 | Clip editor: source (file/link), base volume, icon/color/label, loop |
+| Story | Issue | Type | Prio | Kern | Status |
+|---|---|---|---|---|---|
+| M15-S09  | #280 | spike | p0 | YouTube IFrame in Tauri WebView: load + volume-ramp + autoplay gate feasibility | Verified |
+| M15-S10 | #281 | story | p1 | Detached soundboard window (Tauri WebviewWindow, own AudioContext, shared DB, autoplay overlay) | Verified |
+| M15-S11 | #282 | story | p1 | Audio data model + service (`audio_scenes`/`audio_channels`/`audio_presets`) | Verified |
+| M15-S12 | #283 | story | p1 | Local audio engine: channel strip (gain→balance→3-band EQ→master), play/stop/fade/loop, crossfade | Verified |
+| M15-S13 | #284 | story | p1 | YouTube tier: IFrame players per channel — volume/fade/loop/mix; balance/EQ off; coarse crossfade | Verified |
+| M15-S14 | #285 | story | p1 | Board UI: channels as rows, 8 clip buttons (emoji+label+color), volume+dB, mute, mode + transition config | Verified |
+| M15-S15 | #286 | story | p1 | Scenes: save/load/switch full-board snapshots | Verified |
+| M15-S16 | #287 | story | p1 | Clip editor: source (file/link), base volume, icon/color/label, loop | Verified |
+
+**2026-07-23 — S10–S16 implementiert.** Alle sieben Stories in einer Implementation-Agent-Session
+umgesetzt, inklusive Tests (Ausnahme von der sonstigen Implementation-Agent-only-Rolle, explizit vom
+User autorisiert, da für S10–S16 keine separate TDD-Phase existierte). 88 neue Tests über 7 Dateien,
+`tsc --noEmit` + `npm run lint` grün, Baseline-Vergleich gegen den Stand vor dieser Session bestätigt
+keine Regressionen in der bestehenden Suite (identische 47 vorbestehende Fail-Dateien / 318 Fails vor
+und nach dieser Arbeit — alle unabhängig von Audio). Keine externen npm-Abhängigkeiten hinzugefügt
+(kein `react-player`/`react-youtube`/`zustand`/`emoji-mart`/`react-colorful` — YouTube-IFrame,
+Emoji-/Farbauswahl und State selbst gebaut, um die Umgebung nicht mit einer Installation zu belasten).
+Issues #281–287 geschlossen.
 
 **Dependency axis:** ~~S09 (spike) gates S13~~ → **S09 (#280) abgeschlossen 2026-07, GO; S13 (#284) dadurch
 entsperrt und auf `status: ready`.** S10 (window) + S11 (model) foundational. S12 needs S11.
