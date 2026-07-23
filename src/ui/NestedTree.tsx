@@ -62,6 +62,20 @@ type PointerDrag = {
 };
 
 const FOLDER_COLORS = ['#e0e0e0', '#ef9a9a', '#ffcc80', '#fff59d', '#a5d6a7', '#90caf9', '#ce93d8'];
+const DEFAULT_FOLDER_COLOR = '#f0c674';
+
+// Flat, single-fill folder glyph (emoji can't be recolored via CSS) — fill is
+// the folder's own color, or the default folder-yellow when none is set.
+function FolderIcon({ color }: { color?: string | null }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path
+        d="M1.5 3.5C1.5 2.94772 1.94772 2.5 2.5 2.5H6.17157C6.43679 2.5 6.69114 2.60536 6.87868 2.79289L7.70711 3.62132C7.89464 3.80886 8.14899 3.91421 8.41421 3.91421H13.5C14.0523 3.91421 14.5 4.36193 14.5 4.91421V12C14.5 12.5523 14.0523 13 13.5 13H2.5C1.94772 13 1.5 12.5523 1.5 12V3.5Z"
+        fill={color || DEFAULT_FOLDER_COLOR}
+      />
+    </svg>
+  );
+}
 
 // ── FolderNode ─────────────────────────────────────────────────────────────────
 
@@ -115,34 +129,15 @@ function FolderNode({
       >
         <span className="map-pin-tree__group-arrow">{isOpen ? '▼' : '▶'}</span>
         {renamingPath === node.path ? (
-          <>
-            <input className="map-pin-tree__rename-input" value={renameVal} autoFocus
-              onChange={(e) => onRenameVal(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') onRenameCommit(); if (e.key === 'Escape') onRenameCancel(); }}
-              onClick={(e) => e.stopPropagation()} />
-            {onFolderColorChange && (
-              <input
-                type="color"
-                aria-label={t('nestedTree.folderColor', 'Ordnerfarbe')}
-                className="map-pin-tree__color-input"
-                value={node.color ?? '#888888'}
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                onChange={(e) => onFolderColorChange(node.path, e.target.value)}
-              />
-            )}
-            <button type="button" className="map-pin-tree__rename-commit-btn"
-              title={t('nestedTree.save', 'Speichern')}
-              onClick={(e) => { e.stopPropagation(); onRenameCommit(); }}>✓</button>
-            <button type="button" className="map-pin-tree__rename-commit-btn"
-              title={t('nestedTree.cancel', 'Abbrechen')}
-              onClick={(e) => { e.stopPropagation(); onRenameCancel(); }}>✕</button>
-          </>
+          <input className="map-pin-tree__rename-input" value={renameVal} autoFocus
+            onChange={(e) => onRenameVal(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') onRenameCommit(); if (e.key === 'Escape') onRenameCancel(); }}
+            onClick={(e) => e.stopPropagation()} />
         ) : (
           <span className="map-pin-tree__group-name"
             onDoubleClick={(e) => { e.stopPropagation(); onRenameStart(node.path); }}>
-            {node.color && <span className="map-pin-tree__group-color-dot" style={{ background: node.color }} />}
-            📁 {node.name}
+            <FolderIcon color={node.color} />
+            {node.name}
           </span>
         )}
         <span className="map-pin-tree__group-count">{itemCount}</span>
@@ -174,18 +169,33 @@ function FolderNode({
           </div>
         )}
       </div>
-      {renamingPath === node.path && onFolderColorChange && (
-        <div className="map-pin-tree__color-swatches" style={{ paddingLeft: 12 + indent + 14 }}>
-          {FOLDER_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className="map-pin-tree__color-swatch"
-              style={{ background: c }}
-              title={c}
-              onClick={() => onFolderColorChange(node.path, c)}
-            />
-          ))}
+      {renamingPath === node.path && (
+        <div className="map-pin-tree__edit-row" style={{ paddingLeft: 12 + indent + 14 }}>
+          {onFolderColorChange && (
+            <>
+              <input
+                type="color"
+                aria-label={t('nestedTree.folderColor', 'Ordnerfarbe')}
+                className="map-pin-tree__color-input"
+                value={node.color ?? '#888888'}
+                onChange={(e) => onFolderColorChange(node.path, e.target.value)}
+              />
+              {FOLDER_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className="map-pin-tree__color-swatch"
+                  style={{ background: c }}
+                  title={c}
+                  onClick={() => onFolderColorChange(node.path, c)}
+                />
+              ))}
+            </>
+          )}
+          <button type="button" className="map-pin-tree__rename-commit-btn map-pin-tree__rename-commit-btn--save"
+            onClick={onRenameCommit}>{t('nestedTree.save', 'Speichern')}</button>
+          <button type="button" className="map-pin-tree__rename-commit-btn"
+            onClick={onRenameCancel}>{t('nestedTree.cancel', 'Abbrechen')}</button>
         </div>
       )}
       {isOpen && (
@@ -279,7 +289,13 @@ export function NestedTree({
   }
 
   function commitRename() {
-    if (renamingPath !== null) onFolderMove(renamingPath, renameVal.trim());
+    if (renamingPath !== null) {
+      const newLeaf = renameVal.trim();
+      if (newLeaf) {
+        const parentPrefix = renamingPath.includes('/') ? renamingPath.slice(0, renamingPath.lastIndexOf('/') + 1) : '';
+        onFolderMove(renamingPath, parentPrefix + newLeaf);
+      }
+    }
     setRenamingPath(null);
   }
 
@@ -398,7 +414,7 @@ export function NestedTree({
             renderItem={renderItem} activeItemId={activeItemId} onItemClick={onItemClick}
             renamingPath={renamingPath} renameVal={renameVal}
             onRenameVal={setRenameVal} onRenameCommit={commitRename}
-            onRenameStart={(p) => { setRenamingPath(p); setRenameVal(p); }}
+            onRenameStart={(p) => { setRenamingPath(p); setRenameVal(p.split('/').pop() ?? p); }}
             onRenameCancel={() => setRenamingPath(null)}
             dropHighlight={drag?.dropPath === node.path}
             dragSourcePath={drag?.payload.kind === 'folder' ? drag.payload.path : null}

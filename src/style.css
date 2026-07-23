@@ -1921,13 +1921,6 @@ input {
 .map-pin-tree__group-name { flex: 1; font-weight: 500; color: var(--color-text); display: flex; align-items: center; gap: 5px; }
 .map-pin-tree__group-count { font-size: 0.7rem; color: var(--color-text-muted); }
 
-.map-pin-tree__group-color-dot {
-  display: inline-block;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
 .map-pin-tree__group-menu-wrap { position: relative; }
 
 .map-pin-tree__group-menu-btn {
@@ -1976,8 +1969,10 @@ input {
   cursor: pointer;
 }
 
-.map-pin-tree__color-swatches {
+.map-pin-tree__edit-row {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 3px 0 5px;
 }
@@ -2006,11 +2001,16 @@ input {
   border-radius: 3px;
   cursor: pointer;
   color: var(--color-text-muted);
-  padding: 1px 6px;
+  padding: 2px 8px;
   font-size: 0.75rem;
   flex-shrink: 0;
 }
 .map-pin-tree__rename-commit-btn:hover { color: var(--color-text); background: var(--color-surface-hover); }
+.map-pin-tree__rename-commit-btn--save {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.map-pin-tree__rename-commit-btn--save:hover { background: color-mix(in srgb, var(--color-accent) 15%, transparent); }
 
 .map-pin-tree__item--indented { padding-left: calc(var(--space-3) + 16px); }
 
@@ -3472,8 +3472,6 @@ input {
   min-width: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
 .maps-layer-section {
