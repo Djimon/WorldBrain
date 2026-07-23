@@ -54,6 +54,7 @@ type Area =
   | 'plugins'
   | 'rules'
   | 'session'
+  | 'audio'
   | 'project';
 
 interface CalendarRow {
@@ -86,6 +87,7 @@ const AREAS: { id: Area; icon: string }[] = [
   { id: 'plugins',  icon: '🔌' },
   { id: 'rules',    icon: '📖' },
   { id: 'session',  icon: '🎲' },
+  { id: 'audio',    icon: '🎧' },
   { id: 'project',  icon: '⚙' },
 ];
 
@@ -777,6 +779,18 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
           </div>
         );
 
+      case 'audio':
+        return (
+          <div className="workspace-area">
+            <button
+              onClick={() => void handleOpenSoundboard()}
+              disabled={soundboardOpen}
+            >
+              {soundboardOpen ? t('audioSoundboardRunning', 'Audio-Player läuft bereits') : t('audioSoundboardStart', 'Audio-Player starten')}
+            </button>
+          </div>
+        );
+
       case 'project':
         return (
           <div className="workspace-area">
@@ -814,15 +828,6 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
             {icon}
           </button>
         ))}
-        <button
-          className="workspace-shell__soundboard-btn"
-          aria-label={soundboardOpen ? t('audioSoundboardRunning', 'Audio-Player läuft bereits') : t('audioSoundboardStart', 'Audio-Player starten')}
-          title={soundboardOpen ? t('audioSoundboardRunning', 'Audio-Player läuft bereits') : t('audioSoundboardStart', 'Audio-Player starten')}
-          onClick={() => void handleOpenSoundboard()}
-          disabled={soundboardOpen}
-        >
-          🎧
-        </button>
         <div className="workspace-shell__sidebar-spacer" />
         <button
           className="workspace-shell__close-btn"
