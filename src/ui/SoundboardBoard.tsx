@@ -19,6 +19,8 @@ export interface SoundboardBoardProps {
   localEngine: LocalAudioEngine;
   youtubeEngine: YoutubeTierEngine;
   onEditClip: (channelId: string, presetId: string | null) => void;
+  /** Bump to force a reload — e.g. after the clip editor (S16) saves/deletes a preset. */
+  refreshToken?: number;
 }
 
 function mixerConfigFor(channel: AudioChannelRow): ChannelMixerConfig {
@@ -35,7 +37,7 @@ function mixerConfigFor(channel: AudioChannelRow): ChannelMixerConfig {
   };
 }
 
-export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine, onEditClip }: SoundboardBoardProps) {
+export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine, onEditClip, refreshToken }: SoundboardBoardProps) {
   const { t } = useTranslation('nav');
   const [scene, setScene] = useState<SceneWithChannels | null>(null);
   const [activeByChannel, setActiveByChannel] = useState<Map<string, Set<string>>>(new Map());
@@ -44,7 +46,7 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
     listScene(database, sceneId).then(setScene).catch(console.error);
   }, [database, sceneId]);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => { reload(); }, [reload, refreshToken]);
 
   useEffect(() => {
     function recompute() {

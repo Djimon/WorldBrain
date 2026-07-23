@@ -62,5 +62,22 @@
   "audioSceneRename": "Umbenennen",
   "audioSceneDuplicate": "Duplizieren",
   "audioSceneDelete": "Löschen",
-  "audioSceneCreate": "+ Neue Szene"
+  "audioSceneCreate": "+ Neue Szene",
+  "audioClipEditorTitle": "Clip bearbeiten",
+  "audioClipSourceType": "Quelle",
+  "audioClipSourceFile": "Lokale Datei",
+  "audioClipSourceLink": "Link (YouTube)",
+  "audioClipPickFile": "Datei wählen…",
+  "audioClipAudioFiles": "Audio",
+  "audioClipSourceUrl": "URL",
+  "audioClipLabel": "Name",
+  "audioClipBaseVolume": "Basis-Lautstärke",
+  "audioClipIcon": "Icon",
+  "audioClipColor": "Farbe",
+  "audioClipLoop": "Endlos wiederholen",
+  "audioClipSave": "Speichern",
+  "audioClipDelete": "Löschen",
+  "audioClipConfirmDeleteTitle": "Clip löschen?",
+  "audioClipConfirmDeleteBody": "Der Clip wird gelöscht.",
+  "audioClipConfirmDeleteAction": "Löschen"
 }

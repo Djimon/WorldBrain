@@ -1,12 +1,18 @@
 {
   "identifier": "audio-soundboard",
-  "description": "Capability for the detached audio-soundboard window (EPIC-024/D1) — reads/writes the same project SQLite DB as the main window.",
+  "description": "Capability for the detached audio-soundboard window (EPIC-024/D1) — reads/writes the same project SQLite DB as the main window; S16 clip editor needs fs (copy imported audio into assets/audio) + dialog (file picker) too.",
   "windows": ["audio-soundboard"],
   "permissions": [
     "core:default",
     "sql:default",
     "sql:allow-execute",
     "sql:allow-select",
-    "sql:allow-load"
+    "sql:allow-load",
+    "fs:default",
+    "fs:allow-appdata-read-recursive",
+    "fs:allow-appdata-write-recursive",
+    "fs:allow-document-read-recursive",
+    "fs:allow-document-write-recursive",
+    "dialog:default"
   ]
 }

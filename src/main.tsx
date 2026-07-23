@@ -20,10 +20,14 @@ if (rootElement === null) {
 // query param since this is a separate window/JS context with no state
 // shared with the main window's React tree.
 const isSoundboardWindow = window.location.hash === '#/audio-soundboard';
-const soundboardDbPath = new URLSearchParams(window.location.search).get('db');
+const soundboardParams = new URLSearchParams(window.location.search);
+const soundboardDbPath = soundboardParams.get('db');
+const soundboardProjectDir = soundboardParams.get('projectDir');
 
 createRoot(rootElement).render(
   <StrictMode>
-    {isSoundboardWindow ? <AudioSoundboardWindow dbPath={soundboardDbPath} /> : <App />}
+    {isSoundboardWindow
+      ? <AudioSoundboardWindow dbPath={soundboardDbPath} projectDir={soundboardProjectDir} />
+      : <App />}
   </StrictMode>,
 );

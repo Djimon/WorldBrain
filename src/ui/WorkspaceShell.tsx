@@ -193,7 +193,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     // open its own connection to the SAME SQLite DB (EPIC-024/D1).
     const dbPath = await join(projectDir, 'world.db');
     const win = new WebviewWindow(SOUNDBOARD_WINDOW_LABEL, {
-      url: `index.html?db=${encodeURIComponent(dbPath)}#/audio-soundboard`,
+      url: `index.html?db=${encodeURIComponent(dbPath)}&projectDir=${encodeURIComponent(projectDir)}#/audio-soundboard`,
       title: t('audioSoundboardWindowTitle', 'Audio-Soundboard'),
       backgroundColor: isDark ? '#15181b' : '#f2f3f5',
     });

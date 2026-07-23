@@ -15,6 +15,7 @@ import { YoutubeTierEngine } from '../services/youtube-tier-engine';
 import { stopSceneAudio } from '../services/stop-scene-audio';
 import { SceneSwitcher } from './SceneSwitcher';
 import { SoundboardBoard } from './SoundboardBoard';
+import { ClipEditor } from './ClipEditor';
 
 type WindowMode =
   | { kind: 'loading' }
@@ -24,9 +25,10 @@ type WindowMode =
 
 export interface AudioSoundboardWindowProps {
   dbPath: string | null;
+  projectDir: string | null;
 }
 
-export function AudioSoundboardWindow({ dbPath }: AudioSoundboardWindowProps) {
+export function AudioSoundboardWindow({ dbPath, projectDir }: AudioSoundboardWindowProps) {
   const { t } = useTranslation('nav');
   const [mode, setMode] = useState<WindowMode>({ kind: 'loading' });
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -70,7 +72,7 @@ export function AudioSoundboardWindow({ dbPath }: AudioSoundboardWindowProps) {
 
   return (
     <DatabaseProvider value={mode.db}>
-      <ReadyBoard db={mode.db} audioContext={mode.audioContext} />
+      <ReadyBoard db={mode.db} audioContext={mode.audioContext} projectDir={projectDir} />
     </DatabaseProvider>
   );
 }
@@ -78,15 +80,18 @@ export function AudioSoundboardWindow({ dbPath }: AudioSoundboardWindowProps) {
 interface ReadyBoardProps {
   db: DatabaseLike;
   audioContext: AudioContext;
+  projectDir: string | null;
 }
 
-function ReadyBoard({ db, audioContext }: ReadyBoardProps) {
+function ReadyBoard({ db, audioContext, projectDir }: ReadyBoardProps) {
   const { t } = useTranslation('nav');
   const localEngineRef = useRef<LocalAudioEngine | null>(null);
   const youtubeEngineRef = useRef<YoutubeTierEngine | null>(null);
   if (!localEngineRef.current) localEngineRef.current = new LocalAudioEngine(audioContext);
   if (!youtubeEngineRef.current) youtubeEngineRef.current = new YoutubeTierEngine();
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
+  const [editingClip, setEditingClip] = useState<{ channelId: string; presetId: string | null } | null>(null);
+  const [boardRefreshToken, setBoardRefreshToken] = useState(0);
 
   useEffect(() => {
     listScenes(db).then((scenes) => {
@@ -112,7 +117,18 @@ function ReadyBoard({ db, audioContext }: ReadyBoardProps) {
           sceneId={activeSceneId}
           localEngine={localEngineRef.current}
           youtubeEngine={youtubeEngineRef.current}
-          onEditClip={() => {}}
+          refreshToken={boardRefreshToken}
+          onEditClip={(channelId, presetId) => setEditingClip({ channelId, presetId })}
+        />
+      )}
+      {editingClip && projectDir && (
+        <ClipEditor
+          database={db}
+          projectDir={projectDir}
+          channelId={editingClip.channelId}
+          presetId={editingClip.presetId}
+          onClose={() => setEditingClip(null)}
+          onSaved={() => setBoardRefreshToken((n) => n + 1)}
         />
       )}
     </div>
