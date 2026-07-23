@@ -37,8 +37,8 @@ export async function renameFolder(db: DatabaseLike, id: string, name: string): 
   await db.execute('UPDATE map_folders SET name = ? WHERE id = ?', [name, id]);
 }
 
-/** Sets a folder's display color (hex string, e.g. "#a5d6a7"). */
-export async function setFolderColor(db: DatabaseLike, id: string, color: string): Promise<void> {
+/** Sets a folder's display color (hex string, e.g. "#a5d6a7"), or null to reset to the default. */
+export async function setFolderColor(db: DatabaseLike, id: string, color: string | null): Promise<void> {
   await db.execute('UPDATE map_folders SET color = ? WHERE id = ?', [color, id]);
 }
 

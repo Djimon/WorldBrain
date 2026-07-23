@@ -111,10 +111,9 @@ describe('#303 counter badge + stepper: positioning, visibility, ±1, no clamp',
       expect(screen.queryByRole('button', { name: /^verringern$/i })).not.toBeInTheDocument();
     });
 
-    it('hovering the token reveals the stepper', () => {
+    it('hovering the counter reveals the stepper', () => {
       render(<MapToken {...baseProps()} />);
-      const el = document.querySelector('[data-token-id="token_1"]') as HTMLElement;
-      fireEvent.mouseEnter(el);
+      fireEvent.mouseEnter(document.querySelector('.map-token__counter') as HTMLElement);
       expect(screen.getByRole('button', { name: /^erhöhen$/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^verringern$/i })).toBeInTheDocument();
     });
@@ -143,10 +142,9 @@ describe('#303 counter badge + stepper: positioning, visibility, ±1, no clamp',
       expect(badge.title).toBe('HP');
     });
 
-    it('hovering shows the counter_label as visible text next to the badge', () => {
+    it('hovering the counter shows the counter_label as visible text next to the badge', () => {
       render(<MapToken {...baseProps()} />);
-      const el = document.querySelector('[data-token-id="token_1"]') as HTMLElement;
-      fireEvent.mouseEnter(el);
+      fireEvent.mouseEnter(document.querySelector('.map-token__counter') as HTMLElement);
       expect(screen.getByText(/^HP$/)).toBeInTheDocument();
     });
   });
@@ -236,7 +234,7 @@ describe('M15-S07 (integration): tokens in MapViewer', () => {
       if (!el) throw new Error('token not rendered');
       return el;
     });
-    fireEvent.mouseEnter(tok);
+    fireEvent.mouseEnter(tok.querySelector('.map-token__counter') as HTMLElement);
     fireEvent.click(within(tok).getByRole('button', { name: /^erhöhen$/i }));
     await waitFor(() => expect(setCounter).toHaveBeenCalledWith(mockDb, 'token_1', { counter_value: 11 }));
   });
@@ -250,7 +248,7 @@ describe('M15-S07 (integration): tokens in MapViewer', () => {
       if (!el) throw new Error('token not rendered');
       return el;
     });
-    fireEvent.mouseEnter(tok);
+    fireEvent.mouseEnter(tok.querySelector('.map-token__counter') as HTMLElement);
     fireEvent.click(within(tok).getByRole('button', { name: /^verringern$/i }));
     await waitFor(() => expect(setCounter).toHaveBeenCalledWith(mockDb, 'token_1', { counter_value: -1 }));
   });

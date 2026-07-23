@@ -1578,6 +1578,12 @@ input {
 .token-editor__chip-row button { flex: 0 0 auto; padding: 4px 6px; }
 
 .token-editor__add-chip { align-self: flex-start; }
+.token-editor .token-editor__counter-clear {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  color: var(--color-status-failure, #c0392b);
+  border-color: var(--color-status-failure, #c0392b);
+}
 
 .token-editor__actions {
   display: flex;
@@ -1984,6 +1990,13 @@ input {
   padding: 0;
 }
 .map-pin-tree__color-swatch:hover { outline: 2px solid var(--color-accent); }
+.map-pin-tree__color-swatch--reset {
+  background: var(--color-surface);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem;
+  color: var(--color-text-muted);
+}
+.map-pin-tree__color-swatch--reset:hover { color: var(--color-text); }
 
 .map-pin-tree__rename-input {
   flex: 1;
@@ -3405,14 +3418,21 @@ input {
 .maps-sidebar {
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   min-width: 0;
+  min-height: 0;
   /* MapFolderTree/.map-pin-tree bring their own chrome (border, background,
      internal padding), matching the Pin panel's borderless-fill look — the
      generic .workspace-area__sidebar padding would double-box it and stop it
      from using the full available height. */
   padding: 0;
+}
+
+/* Import button pinned above the tabs — outside the scroll box, never scrolls. */
+.maps-sidebar__import {
+  flex: 0 0 auto;
+  width: 100%;
+  margin-bottom: var(--space-2);
 }
 
 /* Splitter to resize the maps sidebar (mirrors the pin-tree resize handle). */
@@ -3642,6 +3662,37 @@ input {
   width: 100%;
   margin-bottom: var(--space-2);
 }
+
+/* Folder delete confirmation */
+.map-folder-tree__confirm-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+.map-folder-tree__confirm-text { margin: 0; font-size: 0.8rem; color: var(--color-text-muted); }
+.map-folder-tree__confirm-actions { display: flex; gap: var(--space-2); }
+.map-folder-tree__confirm-yes,
+.map-folder-tree__confirm-no {
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.map-folder-tree__confirm-yes {
+  background: var(--color-status-failure, #c0392b);
+  border-color: var(--color-status-failure, #c0392b);
+  color: #fff;
+}
+.map-folder-tree__confirm-no {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.map-folder-tree__confirm-no:hover { border-color: var(--color-accent); }
 
 .map-folder-tree__root {
   list-style: none;

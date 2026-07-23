@@ -61,7 +61,7 @@ type PointerDrag = {
   dropPath: string | null;
 };
 
-const FOLDER_COLORS = ['#e0e0e0', '#ef9a9a', '#ffcc80', '#fff59d', '#a5d6a7', '#90caf9', '#ce93d8'];
+const FOLDER_COLORS = ['#e0e0e0', '#ef9a9a', '#ffcc80', '#a5d6a7', '#90caf9', '#ce93d8'];
 const DEFAULT_FOLDER_COLOR = '#f0c674';
 
 // Flat, single-fill folder glyph (emoji can't be recolored via CSS) — fill is
@@ -180,6 +180,12 @@ function FolderNode({
                 value={node.color ?? '#888888'}
                 onChange={(e) => onFolderColorChange(node.path, e.target.value)}
               />
+              <button
+                type="button"
+                className="map-pin-tree__color-swatch map-pin-tree__color-swatch--reset"
+                title={t('nestedTree.resetColor', 'Standardfarbe')}
+                onClick={() => onFolderColorChange(node.path, '')}
+              >✕</button>
               {FOLDER_COLORS.map((c) => (
                 <button
                   key={c}

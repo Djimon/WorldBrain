@@ -165,6 +165,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [markers, setMarkers] = useState<MarkerRow[]>([]);
   const [tokens, setTokens] = useState<MapTokenRow[]>([]);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
+  const [draggingTokenId, setDraggingTokenId] = useState<string | null>(null);
   const [editingToken, setEditingToken] = useState<MapTokenRow | null>(null);
   const [cells, setCells] = useState<Map<string, number>>(new Map());
   const [gridSettings, setGridSettings] = useState<GridSettings>(DEFAULT_GRID_SETTINGS);
@@ -217,7 +218,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
 
   const dragStart = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
   const layerDrag = useRef<{ mx: number; my: number; ox: number; oy: number; last: { x: number; y: number } } | null>(null);
-  const tokenDrag = useRef<{ id: string; moved: boolean } | null>(null);
+  const tokenDrag = useRef<{ id: string; moved: boolean; dx: number; dy: number } | null>(null);
   const suppressTokenClick = useRef(false);
   const tokenScaleDrag = useRef<{ id: string; startScale: number; startX: number; last: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -400,26 +401,32 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   function handleTokenPointerDown(token: MapTokenRow, e: React.PointerEvent<HTMLDivElement>) {
     if (mode !== 'navigate') return;
     e.stopPropagation();
-    tokenDrag.current = { id: token.id, moved: false };
+    // Grab offset = token origin minus cursor, so the token keeps its grab
+    // point during the drag (no jump-to-cursor).
+    const p = toMapCoords(e.clientX, e.clientY);
+    tokenDrag.current = { id: token.id, moved: false, dx: token.x - p.x, dy: token.y - p.y };
+    setDraggingTokenId(token.id); // outline-only during drag (no select -> no stepper)
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* jsdom */ }
   }
 
   function handleTokenPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!tokenDrag.current) return;
     tokenDrag.current.moved = true;
-    const { x, y } = toMapCoords(e.clientX, e.clientY);
-    const id = tokenDrag.current.id;
-    setTokens((prev) => prev.map((tk) => (tk.id === id ? { ...tk, x, y } : tk)));
+    const p = toMapCoords(e.clientX, e.clientY);
+    const { id, dx, dy } = tokenDrag.current;
+    setTokens((prev) => prev.map((tk) => (tk.id === id ? { ...tk, x: p.x + dx, y: p.y + dy } : tk)));
   }
 
   function handleTokenPointerUp(e: React.PointerEvent<HTMLDivElement>) {
     if (!tokenDrag.current) return;
-    const { id, moved } = tokenDrag.current;
+    const { id, moved, dx, dy } = tokenDrag.current;
     tokenDrag.current = null;
+    setDraggingTokenId(null); // drag ended -> drop the transient outline
+
     if (!moved) return; // a plain click — selection handled in onClick
     suppressTokenClick.current = true; // swallow the click that follows a drag
-    const { x, y } = toMapCoords(e.clientX, e.clientY);
-    moveToken(database, id, Math.round(x), Math.round(y)).then(reloadTokens).catch(console.error);
+    const p = toMapCoords(e.clientX, e.clientY);
+    moveToken(database, id, Math.round(p.x + dx), Math.round(p.y + dy)).then(reloadTokens).catch(console.error);
   }
 
   function handleTokenClick(token: MapTokenRow, e: React.MouseEvent<HTMLDivElement>) {
@@ -490,7 +497,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   async function handleMapClick(e: React.MouseEvent) {
     if (!containerRef.current) return;
     const pos = toMapCoords(e.clientX, e.clientY);
-    if (mode === 'navigate') { setSelectedPinId(null); }
+    if (mode === 'navigate') {
+      setSelectedPinId(null);
+      // Clicking the empty map exits token edit mode: deselect (removes the
+      // outline + enlarged counter/stepper) and close the editor.
+      setSelectedTokenId(null);
+      setEditingToken(null);
+    }
 
     if (mode === 'move-pin' && movingPinId) {
       const pin = markers.find((m) => m.id === movingPinId);
@@ -634,8 +647,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     if (anchor) {
       let style: Record<string, unknown> = {};
       try { style = JSON.parse(anchor.style_json) as Record<string, unknown>; } catch { /* default {} */ }
-      await updateMarker(database, anchor.id, { style_json: JSON.stringify({ ...style, color }) });
-    } else {
+      if (color) style.color = color; else delete style.color;
+      await updateMarker(database, anchor.id, { style_json: JSON.stringify(style) });
+    } else if (color) {
       await createMarker(database, {
         map_id: mapId, kind: 'folder-anchor', label_text: path,
         group_name: path, entity_id: null,
@@ -954,6 +968,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               resolveAssetUrl={getAssetUrl}
               scale={scale}
               selected={selectedTokenId === tk.id}
+              dragging={draggingTokenId === tk.id}
               onPointerDown={(e) => handleTokenPointerDown(tk, e)}
               onPointerMove={handleTokenPointerMove}
               onPointerUp={handleTokenPointerUp}

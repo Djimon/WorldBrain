@@ -18,11 +18,14 @@ export interface MapsSidebarTabsProps {
   selectedMapId: string | null;
   mapsTabContent: ReactNode;
   layersTabContent: ReactNode;
+  /** When set, the sidebar can collapse to a vertical label strip (like Pins/Token). */
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 type Tab = 'maps' | 'layers';
 
-export function MapsSidebarTabs({ selectedMapId, mapsTabContent, layersTabContent }: MapsSidebarTabsProps) {
+export function MapsSidebarTabs({ selectedMapId, mapsTabContent, layersTabContent, collapsed = false, onToggleCollapse }: MapsSidebarTabsProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>('maps');
   const prevMapId = useRef<string | null>(null);
@@ -33,6 +36,23 @@ export function MapsSidebarTabs({ selectedMapId, mapsTabContent, layersTabConten
       prevMapId.current = selectedMapId;
     }
   }, [selectedMapId]);
+
+  if (collapsed) {
+    return (
+      <div className="maps-sidebar-tabs maps-sidebar-tabs--collapsed">
+        <div className="map-side-collapsed">
+          <button type="button" className="map-side-collapsed__tab"
+            onClick={() => { setActiveTab('maps'); onToggleCollapse?.(); }}>
+            {t('mapsSidebarTabs.maps', 'Karten')}
+          </button>
+          <button type="button" className="map-side-collapsed__tab" disabled={!selectedMapId}
+            onClick={() => { if (selectedMapId) setActiveTab('layers'); onToggleCollapse?.(); }}>
+            {t('mapsSidebarTabs.layers', 'Ebenen')}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="maps-sidebar-tabs">
@@ -56,6 +76,10 @@ export function MapsSidebarTabs({ selectedMapId, mapsTabContent, layersTabConten
         >
           {t('mapsSidebarTabs.layers', 'Ebenen')}
         </button>
+        {onToggleCollapse && (
+          <button type="button" className="map-side-collapse-btn" title={t('collapse', 'Einklappen')}
+            onClick={onToggleCollapse}>◀</button>
+        )}
       </div>
       <div className="maps-sidebar-tabs__panel">
         {activeTab === 'maps' ? mapsTabContent : layersTabContent}
