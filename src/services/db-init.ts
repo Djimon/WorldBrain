@@ -1,5 +1,6 @@
 import type { DatabaseLike } from './entity-service';
 import { TauriSqlAdapter } from './tauri-sql-adapter';
+import { applyAudioSchema } from '../../core_data/audio-schema';
 import { applyCalendarSchema } from '../../core_data/calendar-schema';
 import { applyCardSchema } from '../../core_data/card-schema';
 import { applyHandoutSchema } from '../../core_data/handout-schema';
@@ -106,6 +107,7 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
     `DELETE FROM relations WHERE source_id NOT IN (SELECT id FROM base_entities) OR target_id NOT IN (SELECT id FROM base_entities)`,
   ).catch(() => {});
   applyRuleSchema(adapter);
+  applyAudioSchema(db as unknown as Parameters<typeof applyAudioSchema>[0]);
 
   // Drain all fire-and-forget schema exec() calls before returning.
   await adapter.flush();
