@@ -48,5 +48,19 @@
   "audioTransitionFade": "Fade",
   "audioTransitionSeconds": "Seconds",
   "audioSettingsClose": "Close",
-  "audioAddChannel": "+ Add channel"
+  "audioAddChannel": "+ Add channel",
+  "audioSceneNewName": "New scene",
+  "audioSceneCopySuffix": "copy",
+  "audioSceneConfirmDeleteTitle": "Delete scene?",
+  "audioSceneConfirmDeleteBody": "The scene will be deleted with all its channels and clips.",
+  "audioSceneConfirmDeleteAction": "Delete",
+  "audioSceneCancel": "Cancel",
+  "audioSceneRenameInput": "Scene name",
+  "audioSceneRenameSave": "Save",
+  "audioSceneMoveUp": "Move up",
+  "audioSceneMoveDown": "Move down",
+  "audioSceneRename": "Rename",
+  "audioSceneDuplicate": "Duplicate",
+  "audioSceneDelete": "Delete",
+  "audioSceneCreate": "+ New scene"
 }

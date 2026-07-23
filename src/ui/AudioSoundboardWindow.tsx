@@ -3,14 +3,18 @@
 // the main window (no separate audio DB), autoplay gate overlay shown only
 // if the AudioContext actually starts suspended (per Decision D8 the local
 // Web Audio autoplay policy is untested/separate from the YouTube tier's
-// spike — never assume, always check `audioContext.state`). Board content
-// itself is S14; this delivers the window shell + AudioContext lifecycle +
-// gate.
+// spike — never assume, always check `audioContext.state`).
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { openProjectDb } from '../services/db-init';
 import { DatabaseProvider } from '../services/DatabaseContext';
+import { listScene, listScenes } from '../services/audio-service';
+import { LocalAudioEngine } from '../services/local-audio-engine';
+import { YoutubeTierEngine } from '../services/youtube-tier-engine';
+import { stopSceneAudio } from '../services/stop-scene-audio';
+import { SceneSwitcher } from './SceneSwitcher';
+import { SoundboardBoard } from './SoundboardBoard';
 
 type WindowMode =
   | { kind: 'loading' }
@@ -66,10 +70,51 @@ export function AudioSoundboardWindow({ dbPath }: AudioSoundboardWindowProps) {
 
   return (
     <DatabaseProvider value={mode.db}>
-      <div className="audio-soundboard-window">
-        <h1>{t('audioSoundboardWindowTitle', 'Audio-Soundboard')}</h1>
-        <p>{t('audioSoundboardPlaceholder', 'Wird in den nächsten Storys gebaut (M15-S10 ff.).')}</p>
-      </div>
+      <ReadyBoard db={mode.db} audioContext={mode.audioContext} />
     </DatabaseProvider>
+  );
+}
+
+interface ReadyBoardProps {
+  db: DatabaseLike;
+  audioContext: AudioContext;
+}
+
+function ReadyBoard({ db, audioContext }: ReadyBoardProps) {
+  const { t } = useTranslation('nav');
+  const localEngineRef = useRef<LocalAudioEngine | null>(null);
+  const youtubeEngineRef = useRef<YoutubeTierEngine | null>(null);
+  if (!localEngineRef.current) localEngineRef.current = new LocalAudioEngine(audioContext);
+  if (!youtubeEngineRef.current) youtubeEngineRef.current = new YoutubeTierEngine();
+  const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
+
+  useEffect(() => {
+    listScenes(db).then((scenes) => {
+      setActiveSceneId((current) => current ?? scenes[0]?.id ?? null);
+    }).catch(console.error);
+  }, [db]);
+
+  async function handleSelectScene(sceneId: string) {
+    if (activeSceneId && activeSceneId !== sceneId) {
+      const previous = await listScene(db, activeSceneId);
+      if (previous) stopSceneAudio(previous, localEngineRef.current!, youtubeEngineRef.current!);
+    }
+    setActiveSceneId(sceneId);
+  }
+
+  return (
+    <div className="audio-soundboard-window">
+      <h1>{t('audioSoundboardWindowTitle', 'Audio-Soundboard')}</h1>
+      <SceneSwitcher database={db} activeSceneId={activeSceneId} onSelectScene={(id) => void handleSelectScene(id)} />
+      {activeSceneId && (
+        <SoundboardBoard
+          database={db}
+          sceneId={activeSceneId}
+          localEngine={localEngineRef.current}
+          youtubeEngine={youtubeEngineRef.current}
+          onEditClip={() => {}}
+        />
+      )}
+    </div>
   );
 }

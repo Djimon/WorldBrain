@@ -16,13 +16,25 @@ vi.mock('../src/services/db-init', () => ({
 
 let nextInitialState: 'suspended' | 'running' = 'suspended';
 
+function fakeAudioParam() { return { value: 0 }; }
+function fakeAudioNode() { return { connect: vi.fn(), disconnect: vi.fn() }; }
+
 class FakeAudioContext {
   state: 'suspended' | 'running' | 'closed';
   resumeCalls = 0;
   closeCalls = 0;
+  currentTime = 0;
+  destination = fakeAudioNode();
   constructor() { this.state = nextInitialState; }
   resume() { this.resumeCalls += 1; this.state = 'running'; return Promise.resolve(); }
   close() { this.closeCalls += 1; this.state = 'closed'; return Promise.resolve(); }
+  // Minimal Web Audio surface so LocalAudioEngine (mounted once the board is
+  // ready) can construct its master gain node without a real audio backend.
+  createGain() { return { ...fakeAudioNode(), gain: fakeAudioParam() }; }
+  createStereoPanner() { return { ...fakeAudioNode(), pan: fakeAudioParam() }; }
+  createBiquadFilter() { return { ...fakeAudioNode(), type: '', frequency: fakeAudioParam(), Q: fakeAudioParam(), gain: fakeAudioParam() }; }
+  createBufferSource() { return { ...fakeAudioNode(), start: vi.fn(), stop: vi.fn(), buffer: null, loop: false }; }
+  decodeAudioData() { return Promise.resolve({}); }
 }
 
 beforeEach(() => {
