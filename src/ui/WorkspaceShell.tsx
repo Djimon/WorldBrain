@@ -782,13 +782,16 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
       case 'audio':
         return (
           <div className="workspace-area">
-            <button
-              className="btn btn--primary"
-              onClick={() => void handleOpenSoundboard()}
-              disabled={soundboardOpen}
-            >
-              {soundboardOpen ? t('audioSoundboardRunning', 'Audio-Player läuft bereits') : t('audioSoundboardStart', 'Audio-Player starten')}
-            </button>
+            <div className="workspace-area__main">
+              <h2>{t('audio')}</h2>
+              <button
+                className="btn btn--primary"
+                onClick={() => void handleOpenSoundboard()}
+                disabled={soundboardOpen}
+              >
+                {soundboardOpen ? t('audioSoundboardRunning', 'Audio-Player läuft bereits') : t('audioSoundboardStart', 'Audio-Player starten')}
+              </button>
+            </div>
           </div>
         );
 
