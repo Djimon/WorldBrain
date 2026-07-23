@@ -51,9 +51,28 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
   // or decode is actually diagnosable without opening devtools.
   const [playbackError, setPlaybackError] = useState<string | null>(null);
 
+  // Re-applies each channel's current base_volume/mixer to whatever is
+  // already playing — otherwise editing a clip's volume while it's active
+  // (clip editor -> save) only takes effect the next time it's triggered.
+  const syncLiveVolumes = useCallback((freshScene: SceneWithChannels) => {
+    for (const channel of freshScene.channels) {
+      const mixer = mixerConfigFor(channel);
+      for (const preset of channel.presets) {
+        if (preset.source_type === 'file') {
+          localEngine.updateClipVolume(channel.id, preset.id, preset.base_volume);
+        }
+      }
+      const baseVolumeByClipId = new Map(channel.presets.map((preset) => [preset.id, preset.base_volume]));
+      youtubeEngine.updateChannelVolume(channel.id, mixer, baseVolumeByClipId);
+    }
+  }, [localEngine, youtubeEngine]);
+
   const reload = useCallback(() => {
-    listScene(database, sceneId).then(setScene).catch(console.error);
-  }, [database, sceneId]);
+    listScene(database, sceneId).then((freshScene) => {
+      setScene(freshScene);
+      if (freshScene) syncLiveVolumes(freshScene);
+    }).catch(console.error);
+  }, [database, sceneId, syncLiveVolumes]);
 
   useEffect(() => { reload(); }, [reload, refreshToken]);
 

@@ -31,11 +31,19 @@ export function YoutubeClipPlayer({ videoUrl, targetVolume, rampSeconds, loop }:
   useEffect(() => {
     let cancelled = false;
     let player: YoutubePlayer | null = null;
+    // YT.Player replaces the given element with its own iframe rather than
+    // inserting inside it. Handing it a plain child we create and remove
+    // ourselves — never the React-owned container div directly — keeps
+    // React's reconciliation of that div consistent with the real DOM (same
+    // "removeChild: node is not a child of this node" class of bug hit on
+    // the Spotify tier, which uses the identical takes-over-the-element pattern).
+    const mountPoint = document.createElement('div');
+    containerRef.current?.appendChild(mountPoint);
 
     void loadYoutubeIframeApi().then((YT) => {
-      if (cancelled || !containerRef.current) return;
+      if (cancelled) return;
       const source = parseYoutubeSource(videoUrl);
-      player = new YT.Player(containerRef.current, {
+      player = new YT.Player(mountPoint, {
         videoId: source.videoId ?? undefined,
         playerVars: { autoplay: 1, controls: 0 },
         events: {
@@ -60,6 +68,7 @@ export function YoutubeClipPlayer({ videoUrl, targetVolume, rampSeconds, loop }:
       if (rampTimerRef.current) clearInterval(rampTimerRef.current);
       player?.destroy();
       playerRef.current = null;
+      mountPoint.remove();
     };
     // A new videoUrl is a new clip/player — only remount on that, not on volume changes.
   }, [videoUrl]);

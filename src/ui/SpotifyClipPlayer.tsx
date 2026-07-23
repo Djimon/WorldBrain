@@ -17,9 +17,19 @@ export function SpotifyClipPlayer({ uri }: SpotifyClipPlayerProps) {
 
   useEffect(() => {
     let cancelled = false;
+    // Spotify's createController takes over the given element (replaces its
+    // contents, sometimes the element itself). Handing it a plain child we
+    // create and remove ourselves — never the React-owned container div
+    // directly — keeps React's own reconciliation of that div consistent
+    // with the real DOM. Without this, unmounting threw "Failed to execute
+    // 'removeChild' on 'Node': the node to be removed is not a child of
+    // this node" once Spotify had mutated what React thought it still owned.
+    const mountPoint = document.createElement('div');
+    containerRef.current?.appendChild(mountPoint);
+
     void loadSpotifyIframeApi().then((IFrameAPI) => {
-      if (cancelled || !containerRef.current) return;
-      IFrameAPI.createController(containerRef.current, { uri, width: '1', height: '1' }, (controller) => {
+      if (cancelled) return;
+      IFrameAPI.createController(mountPoint, { uri, width: '1', height: '1' }, (controller) => {
         if (cancelled) return;
         controllerRef.current = controller;
         controller.play();
@@ -30,6 +40,7 @@ export function SpotifyClipPlayer({ uri }: SpotifyClipPlayerProps) {
       cancelled = true;
       controllerRef.current?.pause();
       controllerRef.current = null;
+      mountPoint.remove();
     };
   }, [uri]);
 

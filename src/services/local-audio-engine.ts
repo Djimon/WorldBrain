@@ -185,6 +185,13 @@ export class LocalAudioEngine {
     return this.channels.get(channelId)?.playing.has(clipId) ?? false;
   }
 
+  /** Snaps a currently-playing clip's own gain to a new base_volume — e.g. the clip editor was used to change it mid-playback. No-op if the clip isn't playing. */
+  updateClipVolume(channelId: string, clipId: string, baseVolume: number): void {
+    const playing = this.channels.get(channelId)?.playing.get(clipId);
+    if (!playing) return;
+    playing.clipGain.gain.value = baseVolume;
+  }
+
   dispose(): void {
     for (const strip of this.channels.values()) {
       for (const clipId of Array.from(strip.playing.keys())) {

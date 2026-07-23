@@ -132,6 +132,21 @@ describe('M15-S12 local audio engine', () => {
     expect(context.gainNodes[1].gain.value).toBe(0);
   });
 
+  it('updateClipVolume snaps a currently-playing clip\'s own gain live (e.g. clip editor saved a new base_volume mid-playback)', async () => {
+    const { context, engine } = makeEngine();
+    await engine.triggerClip('chan_1', clip({ id: 'a', baseVolume: 0.5 }), mixer({ transitionType: 'cut' }));
+    const clipGain = context.gainNodes[2];
+    expect(clipGain.gain.value).toBe(0.5);
+
+    engine.updateClipVolume('chan_1', 'a', 0.9);
+    expect(clipGain.gain.value).toBe(0.9);
+  });
+
+  it('updateClipVolume is a no-op for a clip that is not playing', () => {
+    const { engine } = makeEngine();
+    expect(() => engine.updateClipVolume('chan_1', 'not-playing', 0.9)).not.toThrow();
+  });
+
   it('eq and balance live updates apply to the running strip', () => {
     const { context, engine } = makeEngine();
     engine.updateChannel('chan_1', mixer({ balance: -0.5, eqLow: 3, eqMid: -2, eqHigh: 6 }));
