@@ -1,0 +1,12 @@
+{
+  "identifier": "audio-soundboard",
+  "description": "Capability for the detached audio-soundboard window (EPIC-024/D1) — reads/writes the same project SQLite DB as the main window.",
+  "windows": ["audio-soundboard"],
+  "permissions": [
+    "core:default",
+    "sql:default",
+    "sql:allow-execute",
+    "sql:allow-select",
+    "sql:allow-load"
+  ]
+}
