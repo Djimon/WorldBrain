@@ -12,6 +12,7 @@ import { DatabaseProvider } from '../services/DatabaseContext';
 import { listScene, listScenes } from '../services/audio-service';
 import { LocalAudioEngine } from '../services/local-audio-engine';
 import { YoutubeTierEngine } from '../services/youtube-tier-engine';
+import { SpotifyTierEngine } from '../services/spotify-tier-engine';
 import { stopSceneAudio } from '../services/stop-scene-audio';
 import { SceneSwitcher } from './SceneSwitcher';
 import { SoundboardBoard } from './SoundboardBoard';
@@ -87,8 +88,10 @@ function ReadyBoard({ db, audioContext, projectDir }: ReadyBoardProps) {
   const { t } = useTranslation('nav');
   const localEngineRef = useRef<LocalAudioEngine | null>(null);
   const youtubeEngineRef = useRef<YoutubeTierEngine | null>(null);
+  const spotifyEngineRef = useRef<SpotifyTierEngine | null>(null);
   if (!localEngineRef.current) localEngineRef.current = new LocalAudioEngine(audioContext);
   if (!youtubeEngineRef.current) youtubeEngineRef.current = new YoutubeTierEngine();
+  if (!spotifyEngineRef.current) spotifyEngineRef.current = new SpotifyTierEngine();
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
   const [editingClip, setEditingClip] = useState<{ channelId: string; presetId: string | null } | null>(null);
   const [boardRefreshToken, setBoardRefreshToken] = useState(0);
@@ -102,7 +105,7 @@ function ReadyBoard({ db, audioContext, projectDir }: ReadyBoardProps) {
   async function handleSelectScene(sceneId: string) {
     if (activeSceneId && activeSceneId !== sceneId) {
       const previous = await listScene(db, activeSceneId);
-      if (previous) stopSceneAudio(previous, localEngineRef.current!, youtubeEngineRef.current!);
+      if (previous) stopSceneAudio(previous, localEngineRef.current!, youtubeEngineRef.current!, spotifyEngineRef.current!);
     }
     setActiveSceneId(sceneId);
   }
@@ -117,6 +120,7 @@ function ReadyBoard({ db, audioContext, projectDir }: ReadyBoardProps) {
           sceneId={activeSceneId}
           localEngine={localEngineRef.current}
           youtubeEngine={youtubeEngineRef.current}
+          spotifyEngine={spotifyEngineRef.current}
           refreshToken={boardRefreshToken}
           onEditClip={(channelId, presetId) => setEditingClip({ channelId, presetId })}
         />

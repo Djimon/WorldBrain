@@ -4,11 +4,13 @@ import type { DatabaseLike } from './entity-service';
 
 export type ChannelMode = 'replace' | 'add';
 export type TransitionType = 'cut' | 'fade';
-export type SourceType = 'file' | 'link';
+// 'spotify' is a crude, deliberately reduced tier (no volume/fade at all —
+// the public embed has no setVolume; see spotify-tier-engine.ts).
+export type SourceType = 'file' | 'link' | 'spotify';
 
 const VALID_MODES: ChannelMode[] = ['replace', 'add'];
 const VALID_TRANSITIONS: TransitionType[] = ['cut', 'fade'];
-const VALID_SOURCE_TYPES: SourceType[] = ['file', 'link'];
+const VALID_SOURCE_TYPES: SourceType[] = ['file', 'link', 'spotify'];
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));

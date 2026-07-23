@@ -4,11 +4,18 @@
 import type { SceneWithChannels } from './audio-service';
 import type { LocalAudioEngine } from './local-audio-engine';
 import type { YoutubeTierEngine } from './youtube-tier-engine';
+import type { SpotifyTierEngine } from './spotify-tier-engine';
 
-export function stopSceneAudio(scene: SceneWithChannels, localEngine: LocalAudioEngine, youtubeEngine: YoutubeTierEngine): void {
+export function stopSceneAudio(
+  scene: SceneWithChannels,
+  localEngine: LocalAudioEngine,
+  youtubeEngine: YoutubeTierEngine,
+  spotifyEngine: SpotifyTierEngine,
+): void {
   for (const channel of scene.channels) {
     const mixer = { transitionType: channel.transition_type, transitionSeconds: channel.transition_seconds };
     localEngine.stopChannel(channel.id, mixer);
     youtubeEngine.stopChannel(channel.id, mixer);
+    spotifyEngine.stopChannel(channel.id);
   }
 }

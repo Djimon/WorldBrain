@@ -197,8 +197,8 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
       title: t('audioSoundboardWindowTitle', 'Audio-Soundboard'),
       backgroundColor: isDark ? '#15181b' : '#f2f3f5',
       // Board rows (8 clip buttons + mixer cluster) need more room than
-      // Tauri's 800x600 default — roughly +40%.
-      width: 1120,
+      // Tauri's 800x600 default — roughly +40%, then +10% more per feedback.
+      width: 1232,
       height: 840,
     });
     setSoundboardOpen(true);

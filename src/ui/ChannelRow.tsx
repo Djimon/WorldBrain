@@ -32,13 +32,15 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mixerExpanded, setMixerExpanded] = useState(false);
 
-  const hasActiveLinkClip = channel.presets.some((p) => activeClipIds.has(p.id) && p.source_type === 'link');
+  // Neither YouTube nor Spotify's embeds expose a Web Audio node (D2 for
+  // YouTube; the crude Spotify tier has no signal access at all).
+  const hasActiveLinkClip = channel.presets.some((p) => activeClipIds.has(p.id) && p.source_type !== 'file');
   const isPlayingAny = channel.presets.some((p) => activeClipIds.has(p.id));
 
   const slots: (AudioPresetRow | null)[] = channel.presets.slice(0, MAX_CLIP_SLOTS);
   while (slots.length < MAX_CLIP_SLOTS) slots.push(null);
 
-  const eqDisabledTitle = hasActiveLinkClip ? t('audioEqDisabledHint', 'Balance/EQ sind für YouTube-Clips nicht verfügbar') : undefined;
+  const eqDisabledTitle = hasActiveLinkClip ? t('audioEqDisabledHint', 'Balance/EQ sind für YouTube-/Spotify-Clips nicht verfügbar') : undefined;
 
   return (
     <div className="channel-row">

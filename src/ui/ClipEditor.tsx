@@ -9,6 +9,7 @@ import {
 } from '../services/audio-service';
 import type { SourceType } from '../services/audio-service';
 import { copyAudioAsset } from '../services/audio-asset';
+import { parseSpotifyUri } from '../services/spotify-uri';
 
 const DEFAULT_CLIP_COLOR = '#3a3f45';
 
@@ -67,7 +68,8 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
   }
 
   async function handleSave() {
-    const patch = { source_type: sourceType, source_ref: sourceRef, base_volume: baseVolume, label, icon, color, loop };
+    const normalizedRef = sourceType === 'spotify' ? (parseSpotifyUri(sourceRef) ?? sourceRef) : sourceRef;
+    const patch = { source_type: sourceType, source_ref: normalizedRef, base_volume: baseVolume, label, icon, color, loop };
     if (presetId === null) {
       await createPreset(database, { channel_id: channelId, ...patch });
     } else {
@@ -111,6 +113,7 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
         <select value={sourceType} onChange={(e) => setSourceType(e.target.value as SourceType)}>
           <option value="file">{t('audioClipSourceFile', 'Lokale Datei')}</option>
           <option value="link">{t('audioClipSourceLink', 'Link (YouTube)')}</option>
+          <option value="spotify">{t('audioClipSourceSpotify', 'Spotify (nur An/Aus)')}</option>
         </select>
       </label>
 
@@ -121,11 +124,19 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
           </button>
           {sourceRef && <span className="clip-editor__source-path">{sourceRef}</span>}
         </div>
-      ) : (
+      ) : sourceType === 'link' ? (
         <label>
           {t('audioClipSourceUrl', 'URL')}
           <input
             type="text" value={sourceRef} placeholder="https://www.youtube.com/watch?v=…"
+            onChange={(e) => setSourceRef(e.target.value)}
+          />
+        </label>
+      ) : (
+        <label>
+          {t('audioClipSourceSpotifyUrl', 'Spotify-Link oder -URI')}
+          <input
+            type="text" value={sourceRef} placeholder="https://open.spotify.com/track/… oder spotify:track:…"
             onChange={(e) => setSourceRef(e.target.value)}
           />
         </label>

@@ -297,7 +297,7 @@ describe('M15-S11 audio data model & service', () => {
       try {
         const { id: sceneId } = await createScene(asyncDb, { name: 'S' });
         const { id: channelId } = await createChannel(asyncDb, { scene_id: sceneId });
-        await expect(createPreset(asyncDb, { channel_id: channelId, source_type: 'spotify' as unknown as 'file', source_ref: 'x' })).rejects.toThrow();
+        await expect(createPreset(asyncDb, { channel_id: channelId, source_type: 'soundcloud' as unknown as 'file', source_ref: 'x' })).rejects.toThrow();
       } finally {
         db.close();
       }

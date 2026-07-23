@@ -10,14 +10,17 @@ import { createChannel, listScene, updateChannelMixer } from '../services/audio-
 import type { AudioChannelRow, AudioPresetRow, ChannelMixerPatch, SceneWithChannels } from '../services/audio-service';
 import type { ChannelMixerConfig, LocalAudioEngine } from '../services/local-audio-engine';
 import type { YoutubeTierEngine } from '../services/youtube-tier-engine';
+import type { SpotifyTierEngine } from '../services/spotify-tier-engine';
 import { ChannelRow } from './ChannelRow';
 import { YoutubeChannelPlayers } from './YoutubeChannelPlayers';
+import { SpotifyChannelPlayers } from './SpotifyChannelPlayers';
 
 export interface SoundboardBoardProps {
   database: DatabaseLike;
   sceneId: string;
   localEngine: LocalAudioEngine;
   youtubeEngine: YoutubeTierEngine;
+  spotifyEngine: SpotifyTierEngine;
   onEditClip: (channelId: string, presetId: string | null) => void;
   /** Bump to force a reload — e.g. after the clip editor (S16) saves/deletes a preset. */
   refreshToken?: number;
@@ -37,7 +40,7 @@ function mixerConfigFor(channel: AudioChannelRow): ChannelMixerConfig {
   };
 }
 
-export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine, onEditClip, refreshToken }: SoundboardBoardProps) {
+export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine, spotifyEngine, onEditClip, refreshToken }: SoundboardBoardProps) {
   const { t } = useTranslation('nav');
   const [scene, setScene] = useState<SceneWithChannels | null>(null);
   const [activeByChannel, setActiveByChannel] = useState<Map<string, Set<string>>>(new Map());
@@ -59,7 +62,8 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
         for (const channel of current.channels) {
           const local = localEngine.getPlayingClipIds(channel.id);
           const link = youtubeEngine.getSlots(channel.id).map((slot) => slot.clipId);
-          next.set(channel.id, new Set([...local, ...link]));
+          const spotify = spotifyEngine.getSlots(channel.id).map((slot) => slot.clipId);
+          next.set(channel.id, new Set([...local, ...link, ...spotify]));
         }
         setActiveByChannel(next);
         setLastActiveByChannel((prevLast) => {
@@ -75,8 +79,9 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
     recompute();
     const unsubscribeLocal = localEngine.subscribe(recompute);
     const unsubscribeYoutube = youtubeEngine.subscribe(recompute);
-    return () => { unsubscribeLocal(); unsubscribeYoutube(); };
-  }, [scene, localEngine, youtubeEngine]);
+    const unsubscribeSpotify = spotifyEngine.subscribe(recompute);
+    return () => { unsubscribeLocal(); unsubscribeYoutube(); unsubscribeSpotify(); };
+  }, [scene, localEngine, youtubeEngine, spotifyEngine]);
 
   function handleTriggerClip(channel: AudioChannelRow, preset: AudioPresetRow) {
     const mixer = mixerConfigFor(channel);
@@ -86,12 +91,14 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
         { id: preset.id, sourceUrl: convertFileSrc(preset.source_ref), baseVolume: preset.base_volume, loop: !!preset.loop },
         mixer,
       ).catch(console.error);
-    } else {
+    } else if (preset.source_type === 'link') {
       youtubeEngine.triggerClip(
         channel.id,
         { id: preset.id, videoUrl: preset.source_ref, baseVolume: preset.base_volume, loop: !!preset.loop },
         mixer,
       );
+    } else {
+      spotifyEngine.triggerClip(channel.id, { id: preset.id, uri: preset.source_ref }, { mode: channel.mode });
     }
   }
 
@@ -115,6 +122,7 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
     if (active.size > 0) {
       localEngine.stopChannel(channel.id, mixer);
       youtubeEngine.stopChannel(channel.id, mixer);
+      spotifyEngine.stopChannel(channel.id);
       return;
     }
     const toResume = lastActiveByChannel.get(channel.id) ?? [];
@@ -146,6 +154,7 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
             onTogglePlayback={() => handleTogglePlayback(channel)}
           />
           <YoutubeChannelPlayers channelId={channel.id} engine={youtubeEngine} />
+          <SpotifyChannelPlayers channelId={channel.id} engine={spotifyEngine} />
         </div>
       ))}
       <button type="button" className="btn soundboard-board__add-channel" onClick={() => void handleAddChannel()}>

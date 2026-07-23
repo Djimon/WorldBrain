@@ -8,6 +8,7 @@ import { stopSceneAudio } from '../src/services/stop-scene-audio';
 import type { SceneWithChannels } from '../src/services/audio-service';
 import type { LocalAudioEngine } from '../src/services/local-audio-engine';
 import type { YoutubeTierEngine } from '../src/services/youtube-tier-engine';
+import type { SpotifyTierEngine } from '../src/services/spotify-tier-engine';
 
 const { serviceMocks } = vi.hoisted(() => ({
   serviceMocks: {
@@ -123,15 +124,18 @@ describe('M15-S15 stopSceneAudio: switching scenes stops the previous one\'s aud
     };
   }
 
-  it('stops every channel on both engines, respecting each channel\'s own transition', () => {
+  it('stops every channel on all three engines, respecting each channel\'s own transition', () => {
     const localEngine = { stopChannel: vi.fn() } as unknown as LocalAudioEngine;
     const youtubeEngine = { stopChannel: vi.fn() } as unknown as YoutubeTierEngine;
+    const spotifyEngine = { stopChannel: vi.fn() } as unknown as SpotifyTierEngine;
 
-    stopSceneAudio(makeScene(), localEngine, youtubeEngine);
+    stopSceneAudio(makeScene(), localEngine, youtubeEngine, spotifyEngine);
 
     expect(localEngine.stopChannel).toHaveBeenCalledWith('chan_1', { transitionType: 'fade', transitionSeconds: 3 });
     expect(localEngine.stopChannel).toHaveBeenCalledWith('chan_2', { transitionType: 'cut', transitionSeconds: 0 });
     expect(youtubeEngine.stopChannel).toHaveBeenCalledWith('chan_1', { transitionType: 'fade', transitionSeconds: 3 });
     expect(youtubeEngine.stopChannel).toHaveBeenCalledWith('chan_2', { transitionType: 'cut', transitionSeconds: 0 });
+    expect(spotifyEngine.stopChannel).toHaveBeenCalledWith('chan_1');
+    expect(spotifyEngine.stopChannel).toHaveBeenCalledWith('chan_2');
   });
 });
