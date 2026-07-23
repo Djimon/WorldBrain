@@ -17,5 +17,9 @@
   "closeProject": "Close project",
   "noMaps": "No maps yet. Import a PNG, JPG or WebP.",
   "changeCalendar": "Change calendar",
-  "noCalendar": "No calendar configured — SessionClock available after calendar setup."
+  "noCalendar": "No calendar configured — SessionClock available after calendar setup.",
+  "audioSoundboardStart": "Start audio player",
+  "audioSoundboardRunning": "Audio player already running",
+  "audioSoundboardWindowTitle": "Audio soundboard",
+  "audioSoundboardPlaceholder": "Built out in upcoming stories (M15-S10 ff.)."
 }

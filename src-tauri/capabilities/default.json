@@ -13,6 +13,7 @@
     "sql:allow-execute",
     "sql:allow-select",
     "sql:allow-load",
-    "dialog:default"
+    "dialog:default",
+    "core:webview:allow-create-webview-window"
   ]
 }

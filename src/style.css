@@ -184,8 +184,23 @@ input {
   color: #fff;
 }
 
+.workspace-shell__sidebar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.workspace-shell__sidebar button:disabled:hover {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
 .workspace-shell__sidebar-spacer {
   flex: 1;
+}
+
+.audio-soundboard-window {
+  padding: var(--space-4);
+  color: var(--color-text);
 }
 
 .workspace-shell__close-btn {

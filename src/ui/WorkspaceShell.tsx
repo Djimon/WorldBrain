@@ -40,6 +40,9 @@ import { MapFolderTree } from './MapFolderTree';
 import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+
+const SOUNDBOARD_WINDOW_LABEL = 'audio-soundboard';
 
 type Area =
   | 'entities'
@@ -133,6 +136,9 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   const [movingLayerId, setMovingLayerId] = useState<string | null>(null);
   const [savedViews, setSavedViews] = useState<SavedViewRow[]>([]);
   const [sessionVarsRaw, setSessionVarsRaw] = useState<VarRow[]>([]);
+  // Detached audio-soundboard window (EPIC-024/D1) — one instance at a time;
+  // the launcher button is disabled while it's open, re-enabled once closed.
+  const [soundboardOpen, setSoundboardOpen] = useState(false);
 
   useEffect(() => {
     listMaps(database).then(setMaps).catch(console.error);
@@ -149,6 +155,16 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     listVars(database, projectId).then(setSessionVarsRaw).catch(console.error);
   }, [database, projectId]);
 
+  // The OS window can outlive a WorkspaceShell remount (e.g. project switch) —
+  // check for it on mount so the launcher button reflects reality.
+  useEffect(() => {
+    let cancelled = false;
+    WebviewWindow.getByLabel(SOUNDBOARD_WINDOW_LABEL)
+      .then((win) => { if (!cancelled && win) setSoundboardOpen(true); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   // #187: Ctrl+K / Cmd+K → search area
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -160,6 +176,17 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  async function handleOpenSoundboard() {
+    if (await WebviewWindow.getByLabel(SOUNDBOARD_WINDOW_LABEL)) return;
+    const win = new WebviewWindow(SOUNDBOARD_WINDOW_LABEL, {
+      url: 'index.html#/audio-soundboard',
+      title: t('audioSoundboardWindowTitle', 'Audio-Soundboard'),
+    });
+    setSoundboardOpen(true);
+    void win.once('tauri://destroyed', () => setSoundboardOpen(false));
+    void win.once('tauri://error', () => setSoundboardOpen(false));
+  }
 
   const pluginEntityTypes = listEntityTypes().map((t) => t.id);
   const allEntityTypes = [...CORE_ENTITY_TYPES, ...pluginEntityTypes.filter((t) => !CORE_ENTITY_TYPES.includes(t))];
@@ -787,6 +814,15 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
             {icon}
           </button>
         ))}
+        <button
+          className="workspace-shell__soundboard-btn"
+          aria-label={soundboardOpen ? t('audioSoundboardRunning', 'Audio-Player läuft bereits') : t('audioSoundboardStart', 'Audio-Player starten')}
+          title={soundboardOpen ? t('audioSoundboardRunning', 'Audio-Player läuft bereits') : t('audioSoundboardStart', 'Audio-Player starten')}
+          onClick={() => void handleOpenSoundboard()}
+          disabled={soundboardOpen}
+        >
+          🎧
+        </button>
         <div className="workspace-shell__sidebar-spacer" />
         <button
           className="workspace-shell__close-btn"
