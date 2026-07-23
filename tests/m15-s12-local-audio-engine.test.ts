@@ -224,4 +224,23 @@ describe('M15-S12 local audio engine', () => {
       expect(engine.isPlaying('chan_1', 'b')).toBe(false);
     });
   });
+
+  describe('subscribe / getPlayingClipIds (board UI highlight state)', () => {
+    it('getPlayingClipIds reflects the currently playing set', async () => {
+      const { engine } = makeEngine();
+      const m = mixer({ mode: 'add', transitionType: 'cut' });
+      await engine.triggerClip('chan_1', clip({ id: 'a' }), m);
+      await engine.triggerClip('chan_1', clip({ id: 'b' }), m);
+      expect(engine.getPlayingClipIds('chan_1').sort()).toEqual(['a', 'b']);
+    });
+
+    it('notifies subscribers when a channel starts or stops a clip', async () => {
+      const { engine } = makeEngine();
+      const notified: string[] = [];
+      const unsubscribe = engine.subscribe((channelId) => notified.push(channelId));
+      await engine.triggerClip('chan_1', clip({ id: 'a' }), mixer({ mode: 'add', transitionType: 'cut' }));
+      expect(notified).toContain('chan_1');
+      unsubscribe();
+    });
+  });
 });

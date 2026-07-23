@@ -35,16 +35,33 @@ interface ChannelStrip {
   playing: Map<string, PlayingClip>;
 }
 
+type Listener = (channelId: string) => void;
+
 export class LocalAudioEngine {
   private context: AudioContext;
   master: GainNode;
   private channels = new Map<string, ChannelStrip>();
   private bufferCache = new Map<string, AudioBuffer>();
+  private listeners = new Set<Listener>();
 
   constructor(context: AudioContext) {
     this.context = context;
     this.master = context.createGain();
     this.master.connect(context.destination);
+  }
+
+  /** Notified whenever a channel's set of currently-playing clips changes (board UI highlight state). */
+  subscribe(listener: Listener): () => void {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  }
+
+  private notify(channelId: string): void {
+    for (const listener of this.listeners) listener(channelId);
+  }
+
+  getPlayingClipIds(channelId: string): string[] {
+    return Array.from(this.channels.get(channelId)?.playing.keys() ?? []);
   }
 
   private getOrCreateChannel(channelId: string): ChannelStrip {
@@ -128,7 +145,8 @@ export class LocalAudioEngine {
 
     source.start(now);
     strip.playing.set(clip.id, { source, clipGain });
-    source.onended = () => { strip.playing.delete(clip.id); };
+    source.onended = () => { strip.playing.delete(clip.id); this.notify(channelId); };
+    this.notify(channelId);
   }
 
   /** Stops one clip on a channel, respecting the channel's transition. */
@@ -147,6 +165,7 @@ export class LocalAudioEngine {
       playing.source.stop(now);
     }
     strip.playing.delete(clipId);
+    this.notify(channelId);
   }
 
   /** Stops every clip currently playing on a channel (e.g. scene switch). */
