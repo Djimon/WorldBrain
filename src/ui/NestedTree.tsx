@@ -61,7 +61,7 @@ type PointerDrag = {
   dropPath: string | null;
 };
 
-const FOLDER_COLORS = ['#e0e0e0', '#ef9a9a', '#ffcc80', '#a5d6a7', '#90caf9', '#ce93d8'];
+const FOLDER_COLORS = ['#dedede', '#ef9a9a', '#a5d6a7', '#90caf9', '#ce93d8', '#424242'];
 const DEFAULT_FOLDER_COLOR = '#f0c674';
 
 // Flat, single-fill folder glyph (emoji can't be recolored via CSS) — fill is
