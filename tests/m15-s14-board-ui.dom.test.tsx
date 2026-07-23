@@ -5,7 +5,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ChannelRow } from '../src/ui/ChannelRow';
-import type { ChannelWithPresets } from '../src/ui/ChannelRow';
+import type { ChannelRowProps, ChannelWithPresets } from '../src/ui/ChannelRow';
 import type { AudioPresetRow } from '../src/services/audio-service';
 
 function makeChannel(overrides: Partial<ChannelWithPresets> = {}): ChannelWithPresets {
@@ -26,15 +26,32 @@ function makePreset(overrides: Partial<AudioPresetRow> = {}): AudioPresetRow {
   };
 }
 
+function renderRow(overrides: Partial<ChannelRowProps> = {}) {
+  const props: ChannelRowProps = {
+    channel: makeChannel(),
+    activeClipIds: new Set(),
+    onTriggerClip: vi.fn(),
+    onEditClip: vi.fn(),
+    onMixerChange: vi.fn(),
+    onTogglePlayback: vi.fn(),
+    ...overrides,
+  };
+  return { ...render(<ChannelRow {...props} />), props };
+}
+
+function openMixer() {
+  fireEvent.click(screen.getByRole('button', { name: 'Balance & EQ' }));
+}
+
 describe('M15-S14 ChannelRow', () => {
   it('renders the channel name', () => {
-    render(<ChannelRow channel={makeChannel({ name: 'Ambience' })} activeClipIds={new Set()} onTriggerClip={vi.fn()} onEditClip={vi.fn()} onMixerChange={vi.fn()} />);
+    renderRow({ channel: makeChannel({ name: 'Ambience' }) });
     expect(screen.getByText('Ambience')).toBeInTheDocument();
   });
 
   it('renders exactly 8 clip slots — existing presets plus empty add-slots', () => {
     const presets = [makePreset({ id: 'a', label: 'Rain' }), makePreset({ id: 'b', label: 'Thunder' })];
-    render(<ChannelRow channel={makeChannel({ presets })} activeClipIds={new Set()} onTriggerClip={vi.fn()} onEditClip={vi.fn()} onMixerChange={vi.fn()} />);
+    renderRow({ channel: makeChannel({ presets }) });
     expect(screen.getByRole('button', { name: 'Rain' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Thunder' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Clip hinzufügen' })).toHaveLength(6);
@@ -42,7 +59,7 @@ describe('M15-S14 ChannelRow', () => {
 
   it('clip icon/label/color render on the clip button', () => {
     const presets = [makePreset({ id: 'a', label: 'Rain', icon: '🌧️', color: '#204060' })];
-    render(<ChannelRow channel={makeChannel({ presets })} activeClipIds={new Set()} onTriggerClip={vi.fn()} onEditClip={vi.fn()} onMixerChange={vi.fn()} />);
+    renderRow({ channel: makeChannel({ presets }) });
     const button = screen.getByRole('button', { name: 'Rain' });
     expect(button.textContent).toContain('🌧️');
     expect(button.style.backgroundColor).toBe('rgb(32, 64, 96)');
@@ -51,14 +68,14 @@ describe('M15-S14 ChannelRow', () => {
   it('clicking a clip button calls onTriggerClip with that preset', () => {
     const preset = makePreset({ id: 'a', label: 'Rain' });
     const onTriggerClip = vi.fn();
-    render(<ChannelRow channel={makeChannel({ presets: [preset] })} activeClipIds={new Set()} onTriggerClip={onTriggerClip} onEditClip={vi.fn()} onMixerChange={vi.fn()} />);
+    renderRow({ channel: makeChannel({ presets: [preset] }), onTriggerClip });
     fireEvent.click(screen.getByRole('button', { name: 'Rain' }));
     expect(onTriggerClip).toHaveBeenCalledWith(preset);
   });
 
   it('clicking an empty slot calls onEditClip with a null presetId', () => {
     const onEditClip = vi.fn();
-    render(<ChannelRow channel={makeChannel()} activeClipIds={new Set()} onTriggerClip={vi.fn()} onEditClip={onEditClip} onMixerChange={vi.fn()} />);
+    renderRow({ onEditClip });
     fireEvent.click(screen.getAllByRole('button', { name: 'Clip hinzufügen' })[0]);
     expect(onEditClip).toHaveBeenCalledWith('chan_1', null);
   });
@@ -67,7 +84,7 @@ describe('M15-S14 ChannelRow', () => {
     const preset = makePreset({ id: 'a', label: 'Rain' });
     const onTriggerClip = vi.fn();
     const onEditClip = vi.fn();
-    render(<ChannelRow channel={makeChannel({ presets: [preset] })} activeClipIds={new Set()} onTriggerClip={onTriggerClip} onEditClip={onEditClip} onMixerChange={vi.fn()} />);
+    renderRow({ channel: makeChannel({ presets: [preset] }), onTriggerClip, onEditClip });
     fireEvent.click(screen.getByRole('button', { name: 'Clip bearbeiten' }));
     expect(onEditClip).toHaveBeenCalledWith('chan_1', 'a');
     expect(onTriggerClip).not.toHaveBeenCalled();
@@ -75,33 +92,53 @@ describe('M15-S14 ChannelRow', () => {
 
   it('active clip is highlighted (aria-pressed)', () => {
     const preset = makePreset({ id: 'a', label: 'Rain' });
-    render(<ChannelRow channel={makeChannel({ presets: [preset] })} activeClipIds={new Set(['a'])} onTriggerClip={vi.fn()} onEditClip={vi.fn()} onMixerChange={vi.fn()} />);
+    renderRow({ channel: makeChannel({ presets: [preset] }), activeClipIds: new Set(['a']) });
     expect(screen.getByRole('button', { name: 'Rain', pressed: true })).toBeInTheDocument();
   });
 
   it('renders a volume slider with a dB readout', () => {
-    render(<ChannelRow channel={makeChannel({ volume: 0.5 })} activeClipIds={new Set()} onTriggerClip={vi.fn()} onEditClip={vi.fn()} onMixerChange={vi.fn()} />);
+    renderRow({ channel: makeChannel({ volume: 0.5 }) });
     expect(screen.getByLabelText(/Lautstärke/)).toBeInTheDocument();
     expect(screen.getByText(/dB/)).toBeInTheDocument();
   });
 
   it('changing the volume slider calls onMixerChange', () => {
     const onMixerChange = vi.fn();
-    render(<ChannelRow channel={makeChannel()} activeClipIds={new Set()} onTriggerClip={vi.fn()} onEditClip={vi.fn()} onMixerChange={onMixerChange} />);
+    renderRow({ onMixerChange });
     fireEvent.change(screen.getByLabelText(/Lautstärke/), { target: { value: '0.3' } });
     expect(onMixerChange).toHaveBeenCalledWith({ volume: 0.3 });
   });
 
   it('renders a mute button that toggles muted', () => {
     const onMixerChange = vi.fn();
-    render(<ChannelRow channel={makeChannel({ muted: 0 })} activeClipIds={new Set()} onTriggerClip={vi.fn()} onEditClip={vi.fn()} onMixerChange={onMixerChange} />);
+    renderRow({ channel: makeChannel({ muted: 0 }), onMixerChange });
     fireEvent.click(screen.getByRole('button', { name: 'Stumm' }));
     expect(onMixerChange).toHaveBeenCalledWith({ muted: true });
   });
 
+  describe('channel play/pause', () => {
+    it('shows pause when the channel has an active clip, play otherwise', () => {
+      const preset = makePreset({ id: 'a' });
+      renderRow({ channel: makeChannel({ presets: [preset] }), activeClipIds: new Set(['a']) });
+      expect(screen.getByRole('button', { name: 'Kanal pausieren' })).toBeInTheDocument();
+    });
+
+    it('shows play when nothing on the channel is active', () => {
+      renderRow({ activeClipIds: new Set() });
+      expect(screen.getByRole('button', { name: 'Kanal abspielen' })).toBeInTheDocument();
+    });
+
+    it('clicking the status icon calls onTogglePlayback', () => {
+      const onTogglePlayback = vi.fn();
+      renderRow({ onTogglePlayback });
+      fireEvent.click(screen.getByRole('button', { name: 'Kanal abspielen' }));
+      expect(onTogglePlayback).toHaveBeenCalled();
+    });
+  });
+
   describe('mode + transition config popover', () => {
     it('opens on the settings button and shows mode + transition controls', () => {
-      render(<ChannelRow channel={makeChannel({ mode: 'add', transition_type: 'cut', transition_seconds: 1 })} activeClipIds={new Set()} onTriggerClip={vi.fn()} onEditClip={vi.fn()} onMixerChange={vi.fn()} />);
+      renderRow({ channel: makeChannel({ mode: 'add', transition_type: 'cut', transition_seconds: 1 }) });
       fireEvent.click(screen.getByRole('button', { name: 'Kanaleinstellungen' }));
       const dialog = screen.getByRole('dialog', { name: 'Kanaleinstellungen' });
       expect(dialog).toBeInTheDocument();
@@ -112,25 +149,34 @@ describe('M15-S14 ChannelRow', () => {
 
     it('changing mode calls onMixerChange', () => {
       const onMixerChange = vi.fn();
-      render(<ChannelRow channel={makeChannel()} activeClipIds={new Set()} onTriggerClip={vi.fn()} onEditClip={vi.fn()} onMixerChange={onMixerChange} />);
+      renderRow({ onMixerChange });
       fireEvent.click(screen.getByRole('button', { name: 'Kanaleinstellungen' }));
       fireEvent.change(screen.getByLabelText(/Modus/), { target: { value: 'add' } });
       expect(onMixerChange).toHaveBeenCalledWith({ mode: 'add' });
     });
   });
 
-  describe('balance + 3-band EQ', () => {
+  describe('balance + 3-band EQ — collapsed behind a toggle button', () => {
+    it('are hidden until the mixer-toggle button is clicked', () => {
+      renderRow();
+      expect(screen.queryByLabelText(/^Balance$/)).not.toBeInTheDocument();
+      openMixer();
+      expect(screen.getByLabelText(/^Balance$/)).toBeInTheDocument();
+    });
+
     it('are enabled when no active clip on the channel is a link', () => {
       const preset = makePreset({ id: 'a', source_type: 'file' });
-      render(<ChannelRow channel={makeChannel({ presets: [preset] })} activeClipIds={new Set(['a'])} onTriggerClip={vi.fn()} onEditClip={vi.fn()} onMixerChange={vi.fn()} />);
-      expect(screen.getByLabelText(/Balance/)).not.toBeDisabled();
+      renderRow({ channel: makeChannel({ presets: [preset] }), activeClipIds: new Set(['a']) });
+      openMixer();
+      expect(screen.getByLabelText(/^Balance$/)).not.toBeDisabled();
       expect(screen.getByLabelText(/Bass/)).not.toBeDisabled();
     });
 
     it('are disabled when the active clip is a YouTube link clip', () => {
       const preset = makePreset({ id: 'yt1', source_type: 'link', source_ref: 'https://youtu.be/x' });
-      render(<ChannelRow channel={makeChannel({ presets: [preset] })} activeClipIds={new Set(['yt1'])} onTriggerClip={vi.fn()} onEditClip={vi.fn()} onMixerChange={vi.fn()} />);
-      expect(screen.getByLabelText(/Balance/)).toBeDisabled();
+      renderRow({ channel: makeChannel({ presets: [preset] }), activeClipIds: new Set(['yt1']) });
+      openMixer();
+      expect(screen.getByLabelText(/^Balance$/)).toBeDisabled();
       expect(screen.getByLabelText(/Bass/)).toBeDisabled();
       expect(screen.getByLabelText(/Mitten/)).toBeDisabled();
       expect(screen.getByLabelText(/Höhen/)).toBeDisabled();

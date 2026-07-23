@@ -196,6 +196,10 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
       url: `index.html?db=${encodeURIComponent(dbPath)}&projectDir=${encodeURIComponent(projectDir)}#/audio-soundboard`,
       title: t('audioSoundboardWindowTitle', 'Audio-Soundboard'),
       backgroundColor: isDark ? '#15181b' : '#f2f3f5',
+      // Board rows (8 clip buttons + mixer cluster) need more room than
+      // Tauri's 800x600 default — roughly +40%.
+      width: 1120,
+      height: 840,
     });
     setSoundboardOpen(true);
     void win.once('tauri://destroyed', () => setSoundboardOpen(false));

@@ -64,7 +64,10 @@ export class YoutubeTierEngine {
   triggerClip(channelId: string, clip: YoutubeClipInput, mixer: YoutubeChannelMixer): void {
     const slots = this.getChannelSlots(channelId);
 
-    if (mixer.mode === 'add' && slots.has(clip.id)) {
+    // Clicking the clip that's already playing always toggles it off — in
+    // 'replace' mode a second click on the sole audible clip must stop it
+    // rather than stop-then-immediately-restart the same clip.
+    if (slots.has(clip.id)) {
       this.stopClip(channelId, clip.id, mixer);
       return;
     }

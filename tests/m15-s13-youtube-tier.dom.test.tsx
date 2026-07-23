@@ -146,6 +146,16 @@ describe('M15-S13 YouTube tier', () => {
       expect(engine.isPlaying('chan_1', 'b')).toBe(true);
     });
 
+    it('replace mode: clicking the already-playing clip again stops it instead of restarting it', () => {
+      const engine = new YoutubeTierEngine();
+      const mixer = { volume: 1, muted: false, mode: 'replace' as const, transitionType: 'cut' as const, transitionSeconds: 2 };
+      const clip = { id: 'a', videoUrl: 'https://youtu.be/a', baseVolume: 1, loop: false };
+      engine.triggerClip('chan_1', clip, mixer);
+      expect(engine.isPlaying('chan_1', 'a')).toBe(true);
+      engine.triggerClip('chan_1', clip, mixer);
+      expect(engine.isPlaying('chan_1', 'a')).toBe(false);
+    });
+
     it('replace mode + fade: outgoing player ramps to 0 immediately, then is removed after transitionSeconds; incoming ramps up', async () => {
       vi.useFakeTimers();
       try {

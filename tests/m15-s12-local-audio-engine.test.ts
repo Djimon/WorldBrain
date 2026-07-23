@@ -190,6 +190,16 @@ describe('M15-S12 local audio engine', () => {
       expect(engine.isPlaying('chan_1', 'b')).toBe(false);
       expect(engine.isPlaying('chan_1', 'c')).toBe(true);
     });
+
+    it('clicking the already-playing clip again stops it instead of restarting it', async () => {
+      const { context, engine } = makeEngine();
+      const m = mixer({ mode: 'replace', transitionType: 'cut' });
+      await engine.triggerClip('chan_1', clip({ id: 'a' }), m);
+      expect(engine.isPlaying('chan_1', 'a')).toBe(true);
+      await engine.triggerClip('chan_1', clip({ id: 'a' }), m);
+      expect(engine.isPlaying('chan_1', 'a')).toBe(false);
+      expect(context.bufferSources).toHaveLength(1); // no second source created
+    });
   });
 
   describe('add mode', () => {

@@ -116,7 +116,11 @@ export class LocalAudioEngine {
   async triggerClip(channelId: string, clip: ClipConfig, mixer: ChannelMixerConfig): Promise<void> {
     const strip = this.getOrCreateChannel(channelId);
 
-    if (mixer.mode === 'add' && strip.playing.has(clip.id)) {
+    // Clicking the clip that's already playing always toggles it off — in
+    // 'add' mode that's per-clip; in 'replace' mode it's the sole audible
+    // clip, so a second click on the same button must stop it rather than
+    // restart it (only a DIFFERENT clip should trigger the exclusive swap).
+    if (strip.playing.has(clip.id)) {
       this.stopClip(channelId, clip.id, mixer);
       return;
     }

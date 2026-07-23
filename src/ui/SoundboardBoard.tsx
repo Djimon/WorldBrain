@@ -41,6 +41,9 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
   const { t } = useTranslation('nav');
   const [scene, setScene] = useState<SceneWithChannels | null>(null);
   const [activeByChannel, setActiveByChannel] = useState<Map<string, Set<string>>>(new Map());
+  // Remembers each channel's last non-empty active-clip set so the channel
+  // play/pause button (pause = stop everything) has something to resume.
+  const [lastActiveByChannel, setLastActiveByChannel] = useState<Map<string, string[]>>(new Map());
 
   const reload = useCallback(() => {
     listScene(database, sceneId).then(setScene).catch(console.error);
@@ -59,6 +62,13 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
           next.set(channel.id, new Set([...local, ...link]));
         }
         setActiveByChannel(next);
+        setLastActiveByChannel((prevLast) => {
+          const nextLast = new Map(prevLast);
+          for (const [channelId, active] of next) {
+            if (active.size > 0) nextLast.set(channelId, Array.from(active));
+          }
+          return nextLast;
+        });
         return current;
       });
     }
@@ -75,7 +85,7 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
         channel.id,
         { id: preset.id, sourceUrl: convertFileSrc(preset.source_ref), baseVolume: preset.base_volume, loop: !!preset.loop },
         mixer,
-      );
+      ).catch(console.error);
     } else {
       youtubeEngine.triggerClip(
         channel.id,
@@ -99,6 +109,21 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
     reload();
   }
 
+  function handleTogglePlayback(channel: AudioChannelRow & { presets: AudioPresetRow[] }) {
+    const mixer = mixerConfigFor(channel);
+    const active = activeByChannel.get(channel.id) ?? new Set<string>();
+    if (active.size > 0) {
+      localEngine.stopChannel(channel.id, mixer);
+      youtubeEngine.stopChannel(channel.id, mixer);
+      return;
+    }
+    const toResume = lastActiveByChannel.get(channel.id) ?? [];
+    for (const presetId of toResume) {
+      const preset = channel.presets.find((p) => p.id === presetId);
+      if (preset) handleTriggerClip(channel, preset);
+    }
+  }
+
   async function handleAddChannel() {
     await createChannel(database, { scene_id: sceneId, name: t('audioChannelUnnamed', 'Kanal') });
     reload();
@@ -118,6 +143,7 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
             onTriggerClip={(preset) => handleTriggerClip(channel, preset)}
             onEditClip={onEditClip}
             onMixerChange={(patch) => void handleMixerChange(channel, patch)}
+            onTogglePlayback={() => handleTogglePlayback(channel)}
           />
           <YoutubeChannelPlayers channelId={channel.id} engine={youtubeEngine} />
         </div>

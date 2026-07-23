@@ -24,11 +24,13 @@ export interface ChannelRowProps {
   onTriggerClip: (preset: AudioPresetRow) => void;
   onEditClip: (channelId: string, presetId: string | null) => void;
   onMixerChange: (patch: ChannelMixerPatch) => void;
+  onTogglePlayback: () => void;
 }
 
-export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, onMixerChange }: ChannelRowProps) {
+export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, onMixerChange, onTogglePlayback }: ChannelRowProps) {
   const { t } = useTranslation('nav');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mixerExpanded, setMixerExpanded] = useState(false);
 
   const hasActiveLinkClip = channel.presets.some((p) => activeClipIds.has(p.id) && p.source_type === 'link');
   const isPlayingAny = channel.presets.some((p) => activeClipIds.has(p.id));
@@ -40,9 +42,22 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
 
   return (
     <div className="channel-row">
-      <div className="channel-row__status" aria-hidden="true">
-        <span className="channel-row__status-icon">{isPlayingAny ? '▶' : '⏸'}</span>
-        <span className="channel-row__waveform" />
+      <div className="channel-row__status">
+        <button
+          type="button"
+          className="channel-row__status-icon"
+          aria-pressed={isPlayingAny}
+          aria-label={isPlayingAny ? t('audioChannelPause', 'Kanal pausieren') : t('audioChannelPlay', 'Kanal abspielen')}
+          title={isPlayingAny ? t('audioChannelPause', 'Kanal pausieren') : t('audioChannelPlay', 'Kanal abspielen')}
+          onClick={onTogglePlayback}
+        >
+          {isPlayingAny ? '⏸' : '▶'}
+        </button>
+        <div className={`channel-row__waveform${isPlayingAny ? ' is-active' : ''}`} aria-hidden="true">
+          {Array.from({ length: 5 }, (_, i) => (
+            <span key={i} className="channel-row__bar" style={{ animationDelay: `${i * 0.12}s` }} />
+          ))}
+        </div>
       </div>
 
       <div className="channel-row__name">{channel.name || t('audioChannelUnnamed', 'Kanal')}</div>
@@ -60,33 +75,16 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
       </div>
 
       <div className="channel-row__mixer">
-        <label className="channel-row__balance" title={eqDisabledTitle}>
-          {t('audioBalance', 'Balance')}
-          <input
-            type="range" min={-1} max={1} step={0.01}
-            value={channel.balance}
-            disabled={hasActiveLinkClip}
-            onChange={(e) => onMixerChange({ balance: Number(e.target.value) })}
-          />
-        </label>
-
-        <div className="channel-row__eq" title={eqDisabledTitle}>
-          <label>
-            {t('audioEqLow', 'Bass')}
-            <input type="range" min={-12} max={12} step={0.5} value={channel.eq_low} disabled={hasActiveLinkClip}
-              onChange={(e) => onMixerChange({ eq_low: Number(e.target.value) })} />
-          </label>
-          <label>
-            {t('audioEqMid', 'Mitten')}
-            <input type="range" min={-12} max={12} step={0.5} value={channel.eq_mid} disabled={hasActiveLinkClip}
-              onChange={(e) => onMixerChange({ eq_mid: Number(e.target.value) })} />
-          </label>
-          <label>
-            {t('audioEqHigh', 'Höhen')}
-            <input type="range" min={-12} max={12} step={0.5} value={channel.eq_high} disabled={hasActiveLinkClip}
-              onChange={(e) => onMixerChange({ eq_high: Number(e.target.value) })} />
-          </label>
-        </div>
+        <button
+          type="button"
+          className="channel-row__mixer-toggle"
+          aria-expanded={mixerExpanded}
+          aria-label={t('audioMixerToggle', 'Balance & EQ')}
+          title={t('audioMixerToggle', 'Balance & EQ')}
+          onClick={() => setMixerExpanded((v) => !v)}
+        >
+          🎚
+        </button>
 
         <label className="channel-row__volume">
           {t('audioVolume', 'Lautstärke')}
@@ -117,6 +115,38 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
           ⚙
         </button>
       </div>
+
+      {mixerExpanded && (
+        <div className="channel-row__settings-popover" role="group" aria-label={t('audioMixerToggle', 'Balance & EQ')}>
+          <label className="channel-row__balance" title={eqDisabledTitle}>
+            {t('audioBalance', 'Balance')}
+            <input
+              type="range" min={-1} max={1} step={0.01}
+              value={channel.balance}
+              disabled={hasActiveLinkClip}
+              onChange={(e) => onMixerChange({ balance: Number(e.target.value) })}
+            />
+          </label>
+          <label title={eqDisabledTitle}>
+            {t('audioEqLow', 'Bass')}
+            <input type="range" min={-12} max={12} step={0.5} value={channel.eq_low} disabled={hasActiveLinkClip}
+              onChange={(e) => onMixerChange({ eq_low: Number(e.target.value) })} />
+          </label>
+          <label title={eqDisabledTitle}>
+            {t('audioEqMid', 'Mitten')}
+            <input type="range" min={-12} max={12} step={0.5} value={channel.eq_mid} disabled={hasActiveLinkClip}
+              onChange={(e) => onMixerChange({ eq_mid: Number(e.target.value) })} />
+          </label>
+          <label title={eqDisabledTitle}>
+            {t('audioEqHigh', 'Höhen')}
+            <input type="range" min={-12} max={12} step={0.5} value={channel.eq_high} disabled={hasActiveLinkClip}
+              onChange={(e) => onMixerChange({ eq_high: Number(e.target.value) })} />
+          </label>
+          <button type="button" className="btn" onClick={() => setMixerExpanded(false)}>
+            {t('audioSettingsClose', 'Schließen')}
+          </button>
+        </div>
+      )}
 
       {settingsOpen && (
         <div className="channel-row__settings-popover" role="dialog" aria-label={t('audioChannelSettings', 'Kanaleinstellungen')}>
