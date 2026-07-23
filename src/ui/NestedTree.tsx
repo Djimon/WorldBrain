@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -14,6 +14,7 @@ export interface TreeNode {
   name: string;
   children: TreeNode[];
   items: TreeItem[];
+  color?: string | null;
 }
 
 export interface NestedTreeProps {
@@ -28,8 +29,10 @@ export interface NestedTreeProps {
   header?: ReactNode;
   searchable?: boolean;
   onResizeStart?: (e: React.MouseEvent) => void;
-  /** Optional extra controls appended to a folder's header row (e.g. delete). Pins don't pass this. */
-  renderFolderExtra?: (node: TreeNode) => ReactNode;
+  /** Enables the "⋮" folder menu (Löschen). Menu is hidden until hovered/opened — never a permanent button in the drag path. */
+  onDeleteFolder?: (node: TreeNode) => void;
+  /** Enables a color swatch in the folder's "Bearbeiten" (rename) row. */
+  onFolderColorChange?: (path: string, color: string) => void;
 }
 
 type DragPayload = { kind: 'item'; id: string } | { kind: 'folder'; path: string };
@@ -42,13 +45,16 @@ type PointerDrag = {
   dropPath: string | null;
 };
 
+const FOLDER_COLORS = ['#e0e0e0', '#ef9a9a', '#ffcc80', '#fff59d', '#a5d6a7', '#90caf9', '#ce93d8'];
+
 // ── FolderNode ─────────────────────────────────────────────────────────────────
 
 function FolderNode({
   node, depth, collapsed, onToggle,
   renderItem, activeItemId, onItemClick,
   renamingPath, renameVal, onRenameVal, onRenameCommit, onRenameStart, onRenameCancel,
-  dropHighlight, dragSourcePath, onPointerDown, renderFolderExtra,
+  dropHighlight, dragSourcePath, onPointerDown,
+  onDeleteFolder, onFolderColorChange, menuOpenPath, onToggleMenu,
 }: {
   node: TreeNode;
   depth: number;
@@ -66,10 +72,16 @@ function FolderNode({
   dropHighlight: boolean;
   dragSourcePath: string | null;
   onPointerDown: (payload: DragPayload, label: string, e: React.PointerEvent) => void;
-  renderFolderExtra?: (node: TreeNode) => ReactNode;
+  onDeleteFolder?: (node: TreeNode) => void;
+  onFolderColorChange?: (path: string, color: string) => void;
+  menuOpenPath: string | null;
+  onToggleMenu: (path: string | null) => void;
 }) {
+  const { t } = useTranslation();
   const isOpen = !collapsed.has(node.path);
   const indent = depth * 14;
+  const hasMenu = Boolean(onDeleteFolder || onFolderColorChange);
+  const menuOpen = menuOpenPath === node.path;
 
   function countItems(n: TreeNode): number {
     return n.items.length + n.children.reduce((s, c) => s + countItems(c), 0);
@@ -87,20 +99,72 @@ function FolderNode({
       >
         <span className="map-pin-tree__group-arrow">{isOpen ? '▼' : '▶'}</span>
         {renamingPath === node.path ? (
-          <input className="map-pin-tree__rename-input" value={renameVal} autoFocus
-            onChange={(e) => onRenameVal(e.target.value)}
-            onBlur={onRenameCommit}
-            onKeyDown={(e) => { if (e.key === 'Enter') onRenameCommit(); if (e.key === 'Escape') onRenameCancel(); }}
-            onClick={(e) => e.stopPropagation()} />
+          <>
+            <input className="map-pin-tree__rename-input" value={renameVal} autoFocus
+              onChange={(e) => onRenameVal(e.target.value)}
+              onBlur={onRenameCommit}
+              onKeyDown={(e) => { if (e.key === 'Enter') onRenameCommit(); if (e.key === 'Escape') onRenameCancel(); }}
+              onClick={(e) => e.stopPropagation()} />
+            {onFolderColorChange && (
+              <input
+                type="color"
+                aria-label={t('nestedTree.folderColor', 'Ordnerfarbe')}
+                className="map-pin-tree__color-input"
+                value={node.color ?? '#888888'}
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                onChange={(e) => onFolderColorChange(node.path, e.target.value)}
+              />
+            )}
+          </>
         ) : (
           <span className="map-pin-tree__group-name"
             onDoubleClick={(e) => { e.stopPropagation(); onRenameStart(node.path); }}>
+            {node.color && <span className="map-pin-tree__group-color-dot" style={{ background: node.color }} />}
             📁 {node.name}
           </span>
         )}
         <span className="map-pin-tree__group-count">{itemCount}</span>
-        {renderFolderExtra?.(node)}
+        {hasMenu && (
+          <div className="map-pin-tree__group-menu-wrap">
+            <button
+              type="button"
+              className={`map-pin-tree__group-menu-btn${menuOpen ? ' is-open' : ''}`}
+              title={t('nestedTree.folderMenu', 'Ordner-Menü')}
+              onClick={(e) => { e.stopPropagation(); onToggleMenu(menuOpen ? null : node.path); }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              ⋮
+            </button>
+            {menuOpen && (
+              <div className="map-pin-tree__group-menu" onMouseDown={(e) => e.stopPropagation()}>
+                <button type="button" onClick={() => { onRenameStart(node.path); onToggleMenu(null); }}>
+                  {t('nestedTree.editFolder', 'Bearbeiten')}
+                </button>
+                {onDeleteFolder && (
+                  <button type="button" onClick={() => { onDeleteFolder(node); onToggleMenu(null); }}>
+                    {t('nestedTree.deleteFolder', 'Löschen')}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+      {renamingPath === node.path && onFolderColorChange && (
+        <div className="map-pin-tree__color-swatches" style={{ paddingLeft: 12 + indent + 14 }}>
+          {FOLDER_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className="map-pin-tree__color-swatch"
+              style={{ background: c }}
+              title={c}
+              onClick={() => onFolderColorChange(node.path, c)}
+            />
+          ))}
+        </div>
+      )}
       {isOpen && (
         <>
           {node.children.map((child) => (
@@ -111,7 +175,9 @@ function FolderNode({
               onRenameVal={onRenameVal} onRenameCommit={onRenameCommit}
               onRenameStart={onRenameStart} onRenameCancel={onRenameCancel}
               dropHighlight={dropHighlight} dragSourcePath={dragSourcePath}
-              onPointerDown={onPointerDown} renderFolderExtra={renderFolderExtra} />
+              onPointerDown={onPointerDown}
+              onDeleteFolder={onDeleteFolder} onFolderColorChange={onFolderColorChange}
+              menuOpenPath={menuOpenPath} onToggleMenu={onToggleMenu} />
           ))}
           {node.items.map((item) => (
             <div
@@ -138,7 +204,7 @@ function FolderNode({
 export function NestedTree({
   root, ungrouped = [], renderItem, activeItemId, onItemClick,
   onFolderMove, onItemMove, onCreateFolder, header, searchable, onResizeStart,
-  renderFolderExtra,
+  onDeleteFolder, onFolderColorChange,
 }: NestedTreeProps) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -149,6 +215,14 @@ export function NestedTree({
   const [newFolderName, setNewFolderName] = useState('');
   const [drag, setDrag] = useState<PointerDrag | null>(null);
   const dragRef = useRef<PointerDrag | null>(null);
+  const [menuOpenPath, setMenuOpenPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (menuOpenPath === null) return;
+    const close = () => setMenuOpenPath(null);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [menuOpenPath]);
 
   const q = search.toLowerCase();
 
@@ -300,7 +374,9 @@ export function NestedTree({
             onRenameCancel={() => setRenamingPath(null)}
             dropHighlight={drag?.dropPath === node.path}
             dragSourcePath={drag?.payload.kind === 'folder' ? drag.payload.path : null}
-            onPointerDown={startDrag} renderFolderExtra={renderFolderExtra} />
+            onPointerDown={startDrag}
+            onDeleteFolder={onDeleteFolder} onFolderColorChange={onFolderColorChange}
+            menuOpenPath={menuOpenPath} onToggleMenu={setMenuOpenPath} />
         ))}
       </div>
 
@@ -325,6 +401,7 @@ export function NestedTree({
 export function fromPathStrings(
   items: Array<{ id: string; groupPath: string; label: string }>,
   explicitFolderPaths: string[] = [],
+  colorByPath: Map<string, string> = new Map(),
 ): { root: TreeNode[]; ungrouped: TreeItem[] } {
   const nodeMap = new Map<string, TreeNode>();
   const ungrouped: TreeItem[] = [];
@@ -333,7 +410,7 @@ export function fromPathStrings(
     if (nodeMap.has(path)) return nodeMap.get(path)!;
     const segments = path.split('/');
     const name = segments[segments.length - 1];
-    const node: TreeNode = { path, name, children: [], items: [] };
+    const node: TreeNode = { path, name, children: [], items: [], color: colorByPath.get(path) };
     nodeMap.set(path, node);
     if (segments.length > 1) {
       const parentPath = segments.slice(0, -1).join('/');
@@ -371,7 +448,7 @@ export function fromPathStrings(
 // ── Adapter: parent_id → TreeNode[] ──────────────────────────────────────────
 
 export function fromParentId(
-  folders: Array<{ id: string; parent_id: string | null; label: string }>,
+  folders: Array<{ id: string; parent_id: string | null; label: string; color?: string | null }>,
   items: Array<{ id: string; folderId: string | null; label: string }> = [],
 ): { root: TreeNode[]; ungrouped: TreeItem[]; pathToId: Map<string, string> } {
   const map = new Map<string, TreeNode & { _folderId: string; _parentId: string | null }>();
@@ -384,6 +461,7 @@ export function fromParentId(
       name: f.label,
       children: [],
       items: [],
+      color: f.color,
     });
   }
 

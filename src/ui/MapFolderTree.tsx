@@ -12,6 +12,7 @@ import {
   deleteFolder,
   moveMap,
   moveFolder,
+  setFolderColor,
   type MapFolderRow,
 } from '../services/map-folder-service';
 import { NestedTree, fromParentId } from './NestedTree';
@@ -50,7 +51,7 @@ export function MapFolderTree({ database, maps, selectedMapId, onSelectMap, onIm
   }, [database]);
 
   const { root, ungrouped, pathToId } = fromParentId(
-    folders.map((f) => ({ id: f.id, parent_id: f.parent_id, label: f.name })),
+    folders.map((f) => ({ id: f.id, parent_id: f.parent_id, label: f.name, color: f.color })),
     maps.map((m) => ({ id: m.id, folderId: m.folder_id, label: m.title })),
   );
 
@@ -91,20 +92,14 @@ export function MapFolderTree({ database, maps, selectedMapId, onSelectMap, onIm
     if (id) void deleteFolder(database, id).then(() => { reload(); onMapsChanged?.(); });
   }
 
-  function renderFolderExtra(node: TreeNode) {
-    return (
-      <button
-        type="button"
-        className="map-folder-tree__delete-btn"
-        onClick={(e) => {
-          e.stopPropagation();
-          const id = pathToId.get(node.path);
-          if (id) setConfirmDeleteId(id);
-        }}
-      >
-        {t('mapFolderTree.delete', 'Löschen')}
-      </button>
-    );
+  function handleDeleteFolder(node: TreeNode) {
+    const id = pathToId.get(node.path);
+    if (id) setConfirmDeleteId(id);
+  }
+
+  function handleFolderColorChange(path: string, color: string) {
+    const id = pathToId.get(path);
+    if (id) void setFolderColor(database, id, color).then(reload);
   }
 
   if (confirmDeleteId) {
@@ -137,7 +132,8 @@ export function MapFolderTree({ database, maps, selectedMapId, onSelectMap, onIm
       onFolderMove={handleFolderMove}
       onItemMove={handleItemMove}
       onCreateFolder={handleCreateFolder}
-      renderFolderExtra={renderFolderExtra}
+      onDeleteFolder={handleDeleteFolder}
+      onFolderColorChange={handleFolderColorChange}
       header={
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {t('mapFolderTree.header', 'Karten')} ({maps.length})

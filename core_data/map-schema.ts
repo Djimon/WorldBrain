@@ -20,6 +20,7 @@ export function applyMapSchema(db: MapDb): void {
       id TEXT PRIMARY KEY NOT NULL,
       parent_id TEXT,
       name TEXT NOT NULL,
+      color TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);

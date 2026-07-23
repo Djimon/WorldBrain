@@ -8,6 +8,7 @@ export interface MapFolderRow {
   id: string;
   parent_id: string | null;
   name: string;
+  color: string | null;
   created_at: string;
 }
 
@@ -34,6 +35,11 @@ export async function listFolders(db: DatabaseLike): Promise<MapFolderRow[]> {
 /** Renames a folder. */
 export async function renameFolder(db: DatabaseLike, id: string, name: string): Promise<void> {
   await db.execute('UPDATE map_folders SET name = ? WHERE id = ?', [name, id]);
+}
+
+/** Sets a folder's display color (hex string, e.g. "#a5d6a7"). */
+export async function setFolderColor(db: DatabaseLike, id: string, color: string): Promise<void> {
+  await db.execute('UPDATE map_folders SET color = ? WHERE id = ?', [color, id]);
 }
 
 /** Deletes a folder. Maps in it fall back to folder_id = NULL (ungrouped) — never cascade-deletes maps. */

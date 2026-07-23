@@ -1859,6 +1859,33 @@ input {
   padding: var(--space-1) 0;
 }
 
+.map-folder-tree,
+.map-folder-tree__confirm-dialog {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-folder-tree__confirm-dialog {
+  gap: var(--space-2);
+  padding: var(--space-3);
+  font-size: 0.85rem;
+}
+.map-folder-tree__confirm-dialog p { margin: 0; color: var(--color-text); }
+.map-folder-tree__confirm-dialog button {
+  padding: 4px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+.map-folder-tree__confirm-dialog button:first-of-type {
+  border-color: var(--color-status-failure);
+  color: var(--color-status-failure);
+}
+.map-folder-tree__confirm-dialog button:hover { background: var(--color-surface-hover); }
+
 .map-pin-tree__group-header {
   display: flex;
   align-items: center;
@@ -1891,8 +1918,77 @@ input {
 }
 .map-pin-tree__new-folder-row button:hover { color: var(--color-text); }
 .map-pin-tree__group-arrow { font-size: 0.6rem; width: 10px; }
-.map-pin-tree__group-name { flex: 1; font-weight: 500; color: var(--color-text); }
+.map-pin-tree__group-name { flex: 1; font-weight: 500; color: var(--color-text); display: flex; align-items: center; gap: 5px; }
 .map-pin-tree__group-count { font-size: 0.7rem; color: var(--color-text-muted); }
+
+.map-pin-tree__group-color-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.map-pin-tree__group-menu-wrap { position: relative; }
+
+.map-pin-tree__group-menu-btn {
+  background: transparent; border: none; cursor: pointer;
+  color: var(--color-text-muted); font-size: 0.85rem; padding: 0 4px;
+  opacity: 0;
+}
+.map-pin-tree__group-header:hover .map-pin-tree__group-menu-btn,
+.map-pin-tree__group-menu-btn.is-open,
+.map-pin-tree__group-menu-btn:focus-visible {
+  opacity: 1;
+}
+.map-pin-tree__group-menu-btn:hover { color: var(--color-accent); }
+
+.map-pin-tree__group-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+  z-index: 20;
+  min-width: 120px;
+  padding: 3px 0;
+}
+.map-pin-tree__group-menu button {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.8rem;
+  text-align: left;
+}
+.map-pin-tree__group-menu button:hover { background: var(--color-surface-hover); }
+
+.map-pin-tree__color-input {
+  width: 22px; height: 22px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  background: none;
+  cursor: pointer;
+}
+
+.map-pin-tree__color-swatches {
+  display: flex;
+  gap: 4px;
+  padding: 3px 0 5px;
+}
+.map-pin-tree__color-swatch {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  padding: 0;
+}
+.map-pin-tree__color-swatch:hover { outline: 2px solid var(--color-accent); }
 
 .map-pin-tree__rename-input {
   flex: 1;

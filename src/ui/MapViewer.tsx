@@ -188,6 +188,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [sessionVarsRaw, setSessionVarsRaw] = useState<VarRow[]>([]);
   const [entities, setEntities] = useState<{ id: string; type: string; title: string }[]>([]);
   const [pinTreeCollapsed, setPinTreeCollapsed] = useState(false);
+  const [confirmDeleteFolderPath, setConfirmDeleteFolderPath] = useState<string | null>(null);
   const [pinTreeWidth, setPinTreeWidth] = useState(220);
   const [rightTab, setRightTab] = useState<'pins' | 'tokens'>('pins');
   const [cellMenu, setCellMenu] = useState<{ x: number; y: number; cellKey: string } | null>(null);
@@ -611,6 +612,41 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     reloadMarkers();
   }
 
+  function findFolderAnchor(path: string): MarkerRow | undefined {
+    return markers.find((m) => m.kind === 'folder-anchor' && (m.group_name ?? m.label_text ?? '').trim() === path);
+  }
+
+  async function handleDeleteFolderConfirmed() {
+    const path = confirmDeleteFolderPath;
+    setConfirmDeleteFolderPath(null);
+    if (!path) return;
+    const anchor = findFolderAnchor(path);
+    const directChildren = markers.filter((m) => m.kind !== 'folder-anchor' && (m.group_name ?? '').trim() === path);
+    await Promise.all([
+      ...(anchor ? [deleteMarker(database, anchor.id)] : []),
+      ...directChildren.map((m) => updateMarker(database, m.id, { group_name: '' })),
+    ]);
+    reloadMarkers();
+  }
+
+  async function handlePinFolderColorChange(path: string, color: string) {
+    const anchor = findFolderAnchor(path);
+    if (anchor) {
+      let style: Record<string, unknown> = {};
+      try { style = JSON.parse(anchor.style_json) as Record<string, unknown>; } catch { /* default {} */ }
+      await updateMarker(database, anchor.id, { style_json: JSON.stringify({ ...style, color }) });
+    } else {
+      await createMarker(database, {
+        map_id: mapId, kind: 'folder-anchor', label_text: path,
+        group_name: path, entity_id: null,
+        geometry_json: '{"virtual":true}',
+        elevation_value: null, elevation_unit: null,
+        visibility_json: '"public"', style_json: JSON.stringify({ color }),
+      });
+    }
+    reloadMarkers();
+  }
+
   function resetView() { setScale(1); setOffset({ x: 0, y: 0 }); }
 
   function updateGridSettings(s: GridSettings) {
@@ -640,7 +676,16 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     .filter((m) => m.kind === 'folder-anchor')
     .map((m) => (m.group_name ?? m.label_text ?? '').trim())
     .filter(Boolean);
-  const { root: pinRoot, ungrouped: pinUngrouped } = fromPathStrings(pinItems, pinFolderPaths);
+  const pinFolderColors = new Map<string, string>();
+  markers.filter((m) => m.kind === 'folder-anchor').forEach((m) => {
+    const path = (m.group_name ?? m.label_text ?? '').trim();
+    if (!path) return;
+    try {
+      const s = JSON.parse(m.style_json) as { color?: string };
+      if (s.color) pinFolderColors.set(path, s.color);
+    } catch { /* default: no color */ }
+  });
+  const { root: pinRoot, ungrouped: pinUngrouped } = fromPathStrings(pinItems, pinFolderPaths, pinFolderColors);
   const VALID_VAR_TYPES = new Set(['boolean', 'number', 'string', 'enum']);
   const sessionVarDefs: VarDef[] = sessionVarsRaw
     .filter((v) => VALID_VAR_TYPES.has(v.type))
@@ -1021,6 +1066,22 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               </div>
             ))}
           </div>
+        ) : confirmDeleteFolderPath ? (
+          <div className="map-folder-tree">
+            <div
+              role="dialog"
+              aria-label={t('pinFolder.confirmDeleteTitle', 'Ordner löschen?')}
+              className="map-folder-tree__confirm-dialog"
+            >
+              <p>{t('pinFolder.confirmDeleteBody', 'Der Ordner wird gelöscht. Enthaltene Pins verlieren nur ihre Ordnerzuordnung, sie werden nicht gelöscht.')}</p>
+              <button type="button" onClick={() => void handleDeleteFolderConfirmed()}>
+                {t('pinFolder.confirmDeleteAction', 'Bestätigen')}
+              </button>
+              <button type="button" onClick={() => setConfirmDeleteFolderPath(null)}>
+                {t('pinFolder.cancel', 'Abbrechen')}
+              </button>
+            </div>
+          </div>
         ) : (
         <NestedTree
               root={pinRoot}
@@ -1058,6 +1119,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               header={<span>Pins ({markers.filter((m) => m.kind !== 'folder-anchor').length})</span>}
               searchable
               onResizeStart={handlePinResizeStart}
+              onDeleteFolder={(node) => setConfirmDeleteFolderPath(node.path)}
+              onFolderColorChange={(path, color) => void handlePinFolderColorChange(path, color)}
             />
         )}
         </>
