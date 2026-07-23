@@ -14,6 +14,24 @@ function dbFromLinear(volume: number): string {
   return `${db >= 0 ? '+' : ''}${db.toFixed(1)} dB`;
 }
 
+// Abstract envelope shapes: cut = an instant vertical drop, fade = a gradual ramp.
+function CutIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+      <path d="M2 3 L2 13 L8 13" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8 13 L8 3" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function FadeIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+      <path d="M2 13 L14 3" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export interface ChannelWithPresets extends AudioChannelRow {
   presets: AudioPresetRow[];
 }
@@ -70,7 +88,18 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
         </div>
       </div>
 
-      <div className="channel-row__name">{channel.name || t('audioChannelUnnamed', 'Kanal')}</div>
+      <div className="channel-row__name-block">
+        <div className="channel-row__name">{channel.name || t('audioChannelUnnamed', 'Kanal')}</div>
+        <div className="channel-row__chips">
+          <span className="channel-row__chip">
+            {channel.mode === 'add' ? t('audioModeAdd', 'Hinzufügen') : t('audioModeReplace', 'Ersetzen')}
+          </span>
+          <span className="channel-row__chip">
+            {channel.transition_type === 'fade' ? <FadeIcon /> : <CutIcon />}
+            {channel.transition_type === 'fade' ? t('audioTransitionFade', 'Überblenden') : t('audioTransitionCut', 'Schnitt')}
+          </span>
+        </div>
+      </div>
 
       <div className="channel-row__clips">
         {slots.map((preset, i) => (

@@ -54,6 +54,30 @@ describe('M15-S14 ChannelRow', () => {
     expect(screen.getByText('Ambience')).toBeInTheDocument();
   });
 
+  describe('mode + transition chips (below the name)', () => {
+    it('shows a "Hinzufügen" chip for add mode', () => {
+      renderRow({ channel: makeChannel({ mode: 'add' }) });
+      expect(screen.getByText('Hinzufügen')).toBeInTheDocument();
+    });
+
+    it('shows an "Ersetzen" chip for replace mode', () => {
+      renderRow({ channel: makeChannel({ mode: 'replace' }) });
+      expect(screen.getByText('Ersetzen')).toBeInTheDocument();
+    });
+
+    it('shows a "Schnitt" chip with a cut icon for cut transitions', () => {
+      const { container } = renderRow({ channel: makeChannel({ transition_type: 'cut' }) });
+      expect(screen.getByText('Schnitt')).toBeInTheDocument();
+      expect(container.querySelectorAll('svg')).toHaveLength(1);
+    });
+
+    it('shows an "Überblenden" chip with a fade icon for fade transitions', () => {
+      const { container } = renderRow({ channel: makeChannel({ transition_type: 'fade' }) });
+      expect(screen.getByText('Überblenden')).toBeInTheDocument();
+      expect(container.querySelectorAll('svg')).toHaveLength(1);
+    });
+  });
+
   it('renders exactly 8 clip slots — existing presets plus empty add-slots', () => {
     const presets = [makePreset({ id: 'a', label: 'Rain' }), makePreset({ id: 'b', label: 'Thunder' })];
     renderRow({ channel: makeChannel({ presets }) });

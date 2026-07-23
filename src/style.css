@@ -3959,11 +3959,37 @@ input {
   50% { height: 18px; }
 }
 
-.channel-row__name {
+.channel-row__name-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   flex-shrink: 0;
   min-width: 90px;
+}
+
+.channel-row__name {
   font-weight: 600;
   color: var(--color-text);
+}
+
+.channel-row__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.channel-row__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .channel-row__clips {
