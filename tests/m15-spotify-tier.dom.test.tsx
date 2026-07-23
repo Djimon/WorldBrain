@@ -50,6 +50,10 @@ describe('parseSpotifyUri', () => {
     expect(parseSpotifyUri('https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC')).toBe('spotify:track:4uLU6hMCjMI75M1A2tKUQC');
   });
 
+  it('normalizes a locale-prefixed URL (/intl-de/track/ID) — reported bug', () => {
+    expect(parseSpotifyUri('https://open.spotify.com/intl-de/track/4uLU6hMCjMI75M1A2tKUQC')).toBe('spotify:track:4uLU6hMCjMI75M1A2tKUQC');
+  });
+
   it('normalizes a playlist URL', () => {
     expect(parseSpotifyUri('https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M')).toBe('spotify:playlist:37i9dQZF1DXcBWIGoYBM5M');
   });

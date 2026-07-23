@@ -3867,6 +3867,30 @@ input {
 
 .soundboard-board__add-channel { align-self: flex-start; }
 
+.soundboard-board__error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-status-failure);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  font-size: 0.8rem;
+}
+
+.soundboard-board__error-dismiss {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.soundboard-board__error-dismiss:hover { color: var(--color-text); }
+
 .channel-row {
   display: flex;
   align-items: center;

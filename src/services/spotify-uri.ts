@@ -15,7 +15,12 @@ export function parseSpotifyUri(input: string): string | null {
   }
   if (!url.hostname.endsWith('open.spotify.com')) return null;
 
-  const [, type, id] = url.pathname.split('/');
-  if (!type || !id) return null;
+  // Spotify URLs sometimes carry a locale prefix before type/id
+  // (/intl-de/track/ID vs. plain /track/ID) — take the last two segments
+  // rather than assuming a fixed position.
+  const segments = url.pathname.split('/').filter(Boolean);
+  if (segments.length < 2) return null;
+  const id = segments[segments.length - 1];
+  const type = segments[segments.length - 2];
   return `spotify:${type}:${id}`;
 }

@@ -34,6 +34,7 @@ function renderRow(overrides: Partial<ChannelRowProps> = {}) {
     onEditClip: vi.fn(),
     onMixerChange: vi.fn(),
     onTogglePlayback: vi.fn(),
+    onRenameChannel: vi.fn(),
     ...overrides,
   };
   return { ...render(<ChannelRow {...props} />), props };
@@ -41,6 +42,10 @@ function renderRow(overrides: Partial<ChannelRowProps> = {}) {
 
 function openMixer() {
   fireEvent.click(screen.getByRole('button', { name: 'Balance & EQ' }));
+}
+
+function openSettings() {
+  fireEvent.click(screen.getByRole('button', { name: 'Kanaleinstellungen' }));
 }
 
 describe('M15-S14 ChannelRow', () => {
@@ -153,6 +158,31 @@ describe('M15-S14 ChannelRow', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Kanaleinstellungen' }));
       fireEvent.change(screen.getByLabelText(/Modus/), { target: { value: 'add' } });
       expect(onMixerChange).toHaveBeenCalledWith({ mode: 'add' });
+    });
+
+    it('shows a channel-name input pre-filled with the current name', () => {
+      renderRow({ channel: makeChannel({ name: 'Ambience' }) });
+      openSettings();
+      expect(screen.getByLabelText(/Kanalname/)).toHaveValue('Ambience');
+    });
+
+    it('renaming commits onRenameChannel on blur, not on every keystroke', () => {
+      const onRenameChannel = vi.fn();
+      renderRow({ channel: makeChannel({ name: 'Music' }), onRenameChannel });
+      openSettings();
+      const input = screen.getByLabelText(/Kanalname/);
+      fireEvent.change(input, { target: { value: 'Ambience' } });
+      expect(onRenameChannel).not.toHaveBeenCalled();
+      fireEvent.blur(input);
+      expect(onRenameChannel).toHaveBeenCalledWith('Ambience');
+    });
+
+    it('does not call onRenameChannel on blur if the name did not change', () => {
+      const onRenameChannel = vi.fn();
+      renderRow({ channel: makeChannel({ name: 'Music' }), onRenameChannel });
+      openSettings();
+      fireEvent.blur(screen.getByLabelText(/Kanalname/));
+      expect(onRenameChannel).not.toHaveBeenCalled();
     });
   });
 

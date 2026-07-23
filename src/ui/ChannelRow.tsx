@@ -1,7 +1,7 @@
 // M15-S14 (#285): one channel row — play/pause+level indicator, name, up to
 // 8 clip buttons, volume slider+dB readout, mute, mode/transition popover,
 // balance+3-band EQ (disabled for link clips, D2). Concept art: _design/soundboard concept.png.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClipButton } from './ClipButton';
 import type { AudioChannelRow, AudioPresetRow, ChannelMixerPatch } from '../services/audio-service';
@@ -25,12 +25,20 @@ export interface ChannelRowProps {
   onEditClip: (channelId: string, presetId: string | null) => void;
   onMixerChange: (patch: ChannelMixerPatch) => void;
   onTogglePlayback: () => void;
+  onRenameChannel: (name: string) => void;
 }
 
-export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, onMixerChange, onTogglePlayback }: ChannelRowProps) {
+export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, onMixerChange, onTogglePlayback, onRenameChannel }: ChannelRowProps) {
   const { t } = useTranslation('nav');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mixerExpanded, setMixerExpanded] = useState(false);
+  // Buffered locally, committed on blur — an onChange-per-keystroke DB
+  // round-trip risks out-of-order writes clobbering a later keystroke.
+  const [nameDraft, setNameDraft] = useState(channel.name ?? '');
+
+  useEffect(() => {
+    if (settingsOpen) setNameDraft(channel.name ?? '');
+  }, [settingsOpen, channel.name]);
 
   // Neither YouTube nor Spotify's embeds expose a Web Audio node (D2 for
   // YouTube; the crude Spotify tier has no signal access at all).
@@ -152,6 +160,14 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
 
       {settingsOpen && (
         <div className="channel-row__settings-popover" role="dialog" aria-label={t('audioChannelSettings', 'Kanaleinstellungen')}>
+          <label>
+            {t('audioChannelName', 'Kanalname')}
+            <input
+              type="text" value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              onBlur={() => { if (nameDraft !== channel.name) onRenameChannel(nameDraft); }}
+            />
+          </label>
           <label>
             {t('audioMode', 'Modus')}
             <select value={channel.mode} onChange={(e) => onMixerChange({ mode: e.target.value as 'replace' | 'add' })}>

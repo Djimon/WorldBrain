@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import type { DatabaseLike } from '../services/entity-service';
-import { createChannel, listScene, updateChannelMixer } from '../services/audio-service';
+import { createChannel, listScene, renameChannel, updateChannelMixer } from '../services/audio-service';
 import type { AudioChannelRow, AudioPresetRow, ChannelMixerPatch, SceneWithChannels } from '../services/audio-service';
 import type { ChannelMixerConfig, LocalAudioEngine } from '../services/local-audio-engine';
 import type { YoutubeTierEngine } from '../services/youtube-tier-engine';
@@ -47,6 +47,9 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
   // Remembers each channel's last non-empty active-clip set so the channel
   // play/pause button (pause = stop everything) has something to resume.
   const [lastActiveByChannel, setLastActiveByChannel] = useState<Map<string, string[]>>(new Map());
+  // Surfaced visibly (not just console.error) so a failed local-file fetch
+  // or decode is actually diagnosable without opening devtools.
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     listScene(database, sceneId).then(setScene).catch(console.error);
@@ -86,11 +89,15 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
   function handleTriggerClip(channel: AudioChannelRow, preset: AudioPresetRow) {
     const mixer = mixerConfigFor(channel);
     if (preset.source_type === 'file') {
+      setPlaybackError(null);
       void localEngine.triggerClip(
         channel.id,
         { id: preset.id, sourceUrl: convertFileSrc(preset.source_ref), baseVolume: preset.base_volume, loop: !!preset.loop },
         mixer,
-      ).catch(console.error);
+      ).catch((error: unknown) => {
+        console.error(error);
+        setPlaybackError(`${preset.label ?? preset.id}: ${error instanceof Error ? error.message : String(error)}`);
+      });
     } else if (preset.source_type === 'link') {
       youtubeEngine.triggerClip(
         channel.id,
@@ -132,6 +139,11 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
     }
   }
 
+  async function handleRenameChannel(channelId: string, name: string) {
+    await renameChannel(database, channelId, name);
+    reload();
+  }
+
   async function handleAddChannel() {
     await createChannel(database, { scene_id: sceneId, name: t('audioChannelUnnamed', 'Kanal') });
     reload();
@@ -143,6 +155,12 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
 
   return (
     <div className="soundboard-board">
+      {playbackError && (
+        <div className="soundboard-board__error" role="alert">
+          <span>{t('audioPlaybackError', 'Wiedergabe fehlgeschlagen')}: {playbackError}</span>
+          <button type="button" className="soundboard-board__error-dismiss" aria-label={t('audioSceneCancel', 'Abbrechen')} onClick={() => setPlaybackError(null)}>✕</button>
+        </div>
+      )}
       {scene.channels.map((channel) => (
         <div className="soundboard-board__channel" key={channel.id}>
           <ChannelRow
@@ -152,6 +170,7 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
             onEditClip={onEditClip}
             onMixerChange={(patch) => void handleMixerChange(channel, patch)}
             onTogglePlayback={() => handleTogglePlayback(channel)}
+            onRenameChannel={(name) => void handleRenameChannel(channel.id, name)}
           />
           <YoutubeChannelPlayers channelId={channel.id} engine={youtubeEngine} />
           <SpotifyChannelPlayers channelId={channel.id} engine={spotifyEngine} />
