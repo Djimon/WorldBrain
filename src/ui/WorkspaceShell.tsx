@@ -783,6 +783,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
         return (
           <div className="workspace-area">
             <button
+              className="btn btn--primary"
               onClick={() => void handleOpenSoundboard()}
               disabled={soundboardOpen}
             >

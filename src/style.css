@@ -498,6 +498,12 @@ input {
   border-color: var(--color-accent-strong);
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+}
+
 /* ── Entity Master Detail ────────────────────────────── */
 
 .emd {
