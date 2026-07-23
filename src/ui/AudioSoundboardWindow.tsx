@@ -43,7 +43,17 @@ export function AudioSoundboardWindow({ dbPath, projectDir }: AudioSoundboardWin
       setMode(audioContext.state === 'suspended' ? { kind: 'gate', db, audioContext } : { kind: 'ready', db, audioContext });
     }).catch(console.error);
 
-    return () => { void audioContext.close(); };
+    return () => {
+      // Must null the ref, not just close() — React 18 StrictMode's dev-only
+      // mount->cleanup->mount cycle would otherwise leave the SAME (now
+      // closed) context sitting in the ref, and the guard above
+      // (`if (!audioContextRef.current)`) would skip creating a fresh one
+      // on the second mount. Every Web Audio node built on a closed context
+      // "succeeds" silently (no error, no sound) — this was the reported
+      // "UI shows playing but I hear nothing" bug.
+      void audioContext.close();
+      audioContextRef.current = null;
+    };
   }, [dbPath]);
 
   if (mode.kind === 'loading') {

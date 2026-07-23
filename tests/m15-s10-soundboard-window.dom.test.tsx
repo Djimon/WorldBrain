@@ -4,6 +4,7 @@
 // AudioContext is mocked (jsdom has no Web Audio). openProjectDb is mocked
 // so this test never touches a real Tauri SQL connection.
 
+import { StrictMode } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AudioSoundboardWindow } from '../src/ui/AudioSoundboardWindow';
@@ -20,12 +21,13 @@ function fakeAudioParam() { return { value: 0 }; }
 function fakeAudioNode() { return { connect: vi.fn(), disconnect: vi.fn() }; }
 
 class FakeAudioContext {
+  static instances: FakeAudioContext[] = [];
   state: 'suspended' | 'running' | 'closed';
   resumeCalls = 0;
   closeCalls = 0;
   currentTime = 0;
   destination = fakeAudioNode();
-  constructor() { this.state = nextInitialState; }
+  constructor() { this.state = nextInitialState; FakeAudioContext.instances.push(this); }
   resume() { this.resumeCalls += 1; this.state = 'running'; return Promise.resolve(); }
   close() { this.closeCalls += 1; this.state = 'closed'; return Promise.resolve(); }
   // Minimal Web Audio surface so LocalAudioEngine (mounted once the board is
@@ -39,6 +41,7 @@ class FakeAudioContext {
 
 beforeEach(() => {
   nextInitialState = 'suspended';
+  FakeAudioContext.instances = [];
   vi.stubGlobal('AudioContext', FakeAudioContext);
 });
 
@@ -78,6 +81,26 @@ describe('M15-S10 soundboard window', () => {
       render(<AudioSoundboardWindow dbPath="/tmp/world.db" />);
       await waitFor(() => expect(screen.getByRole('heading', { name: 'Audio-Soundboard' })).toBeInTheDocument());
       expect(screen.queryByRole('dialog', { name: 'Audiowiedergabe freigeben' })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('StrictMode double-invoke (regression: silent audio nodes on a closed context)', () => {
+    // React 18 StrictMode mounts, cleans up, then mounts again in dev — the
+    // cleanup used to close() the context without clearing the ref, so the
+    // second mount reused the SAME (now closed) instance. Every Web Audio
+    // node built on a closed context "succeeds" silently — no error, no
+    // sound — exactly the reported "UI shows playing but I hear nothing" bug.
+    it('the context used by the final mount is not closed', async () => {
+      nextInitialState = 'running';
+      render(
+        <StrictMode>
+          <AudioSoundboardWindow dbPath="/tmp/world.db" projectDir="/tmp/proj" />
+        </StrictMode>,
+      );
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Audio-Soundboard' })).toBeInTheDocument());
+      const finalContext = FakeAudioContext.instances.at(-1)!;
+      expect(finalContext.state).not.toBe('closed');
+      expect(finalContext.closeCalls).toBe(0);
     });
   });
 });
