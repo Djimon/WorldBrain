@@ -27,7 +27,7 @@ function ChipGlyph({ icon }: { icon: string }) {
 // starting from the top. NOT resized dynamically by count: more chips just
 // continue further around the same fixed-spacing orbit (wrapping past 360°
 // is fine — CSS rotate() normalizes it visually).
-const CHIP_ORBIT_STEP_DEG = 40;
+const CHIP_ORBIT_STEP_DEG = 30;
 function chipAngle(index: number): number {
   return index * CHIP_ORBIT_STEP_DEG;
 }
@@ -114,7 +114,7 @@ export function MapToken({
                     // rotate to the arc position, translate out, then
                     // counter-rotate back — keeps the glyph itself upright
                     // while its position still fans out along the arc.
-                    ? { transform: `rotate(${angle}deg) translateY(-0.95em) rotate(${-angle}deg)` }
+                    ? { transform: `rotate(${angle}deg) translateY(-2em) rotate(${-angle}deg)` }
                     : undefined),
                 }}
                 title={chip.text || chip.icon}

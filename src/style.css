@@ -1425,7 +1425,7 @@ input {
   top: 0;
   left: 0;
   margin-left: -0.5em;
-  margin-top: -0.7em;
+  margin-top: +0.6em;
   transform-origin: center;
 }
 
