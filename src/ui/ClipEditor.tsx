@@ -37,6 +37,20 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
   const [loop, setLoop] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  // Building the ~1900-emoji grid is genuinely expensive — rendering it
+  // eagerly on mount just moves that cost onto opening the clip editor
+  // itself. Instead, defer it to the browser's idle time (after the rest of
+  // the editor has already painted), so it's warm by the time the user
+  // actually clicks the icon field instead of stalling at that moment.
+  // Clicking the trigger still renders it immediately either way (the `||
+  // iconPickerOpen` below), so this is purely a head start, never a delay.
+  const [emojiPickerWarm, setEmojiPickerWarm] = useState(false);
+  useEffect(() => {
+    const idle = window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 300));
+    const cancel = window.cancelIdleCallback ?? window.clearTimeout;
+    const id = idle(() => setEmojiPickerWarm(true));
+    return () => cancel(id);
+  }, []);
 
   useEffect(() => {
     if (presetId === null) return;
@@ -164,11 +178,16 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
         >
           {icon}
         </button>
-        {iconPickerOpen && (
-          <div className="clip-editor__icon-popover">
+        {/* Rendered (hidden via CSS) as soon as the clip editor itself is
+            open, not gated behind the trigger click — building the ~1900-
+            emoji grid is the expensive part, and doing it now means it's
+            already done by the time the user actually clicks, instead of a
+            visible stall at that moment. */}
+        <div className="clip-editor__icon-popover" hidden={!iconPickerOpen}>
+          {(iconPickerOpen || emojiPickerWarm) && (
             <EmojiPicker value={icon} onSelect={(emoji) => { setIcon(emoji); setIconPickerOpen(false); }} />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="clip-editor__color-picker" role="group" aria-label={t('audioClipColor', 'Farbe')}>
