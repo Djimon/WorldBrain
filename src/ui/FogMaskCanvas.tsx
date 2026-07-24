@@ -6,7 +6,8 @@
 // caller (MapViewer) persists it via updateLayer (debounce acceptable).
 import { useEffect, useRef, useState } from 'react';
 import type { FogToolMode, FogToolShape } from './FogTools';
-import type { FogStampGridType, FogStampLevel } from './fogStampGeometry';
+import { stampCells } from './fogStampGeometry';
+import type { CellCoord, FogStampGridType, FogStampLevel } from './fogStampGeometry';
 
 export interface FogMaskCanvasProps {
   layerId: string;
@@ -28,6 +29,7 @@ export interface FogMaskCanvasProps {
 
 export function FogMaskCanvas({
   layerId, maskData, imgW, imgH, mode, shape, brushSize, feather, active, onStrokeEnd,
+  gridType, gridCellSize, stampLevel,
 }: FogMaskCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
@@ -88,9 +90,61 @@ export function FogMaskCanvas({
     ctx.restore();
   }
 
+  // #295: maps a canvas pixel to its grid cell — same geometry as
+  // MapGrid.tsx's cellKeyFor/GridLayer (reused, not reinvented).
+  function cellUnderPoint(x: number, y: number, cellSize: number): CellCoord {
+    if (gridType === 'square') return { col: Math.floor(x / cellSize), row: Math.floor(y / cellSize) };
+    const approxCol = Math.round(x / (cellSize * 0.75));
+    const approxRow = Math.round((y - (approxCol % 2) * cellSize * 0.433) / (cellSize * 0.866));
+    let best: CellCoord = { col: approxCol, row: approxRow };
+    let bestDist = Infinity;
+    for (let dc = -1; dc <= 1; dc++) {
+      for (let dr = -1; dr <= 1; dr++) {
+        const c = approxCol + dc, r = approxRow + dr;
+        const cx = c * cellSize * 0.75;
+        const cy = r * cellSize * 0.866 + (c % 2) * cellSize * 0.433;
+        const dist = (x - cx) ** 2 + (y - cy) ** 2;
+        if (dist < bestDist) { bestDist = dist; best = { col: c, row: r }; }
+      }
+    }
+    return best;
+  }
+
+  // #295: fills one grid cell's exact footprint — same square-rect / hex-polygon
+  // geometry as MapGrid.tsx's CellStateLayer (reused, not reinvented).
+  function fillCell(ctx: CanvasRenderingContext2D, cell: CellCoord, cellSize: number) {
+    if (gridType === 'square') {
+      ctx.fillRect(cell.col * cellSize, cell.row * cellSize, cellSize, cellSize);
+      return;
+    }
+    const cx = cell.col * cellSize * 0.75;
+    const cy = cell.row * cellSize * 0.866 + (cell.col % 2) * cellSize * 0.433;
+    const r = cellSize / 2;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 3) * i;
+      const px = cx + r * Math.cos(a), py = cy + r * Math.sin(a);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Grid-aware stamp (#295) — covers every cell stampCells() returns for the
+  // active level/grid type, centered on the cell under the cursor.
+  function stampGrid(ctx: CanvasRenderingContext2D, x: number, y: number) {
+    if (!gridType || !gridCellSize) return;
+    const center = cellUnderPoint(x, y, gridCellSize);
+    ctx.save();
+    paintOp(ctx);
+    for (const cell of stampCells(center, stampLevel ?? 0, gridType)) fillCell(ctx, cell, gridCellSize);
+    ctx.restore();
+  }
+
   function dab(ctx: CanvasRenderingContext2D, x: number, y: number) {
     if (shape === 'brush') stampBrush(ctx, x, y);
     else if (shape === 'square') stampSquare(ctx, x, y);
+    else if (shape === 'grid-stamp') stampGrid(ctx, x, y);
   }
 
   function emit() {
@@ -156,7 +210,7 @@ export function FogMaskCanvas({
       {/* Dab preview for brush (circle) and square (rectangle) — circle diameter
           and square edge are both brushSize (= 2 x radius), so switching keeps the
           same visual size. */}
-      {active && hover && shape !== 'region' && (
+      {active && hover && shape !== 'region' && shape !== 'grid-stamp' && (
         <div
           className="fog-brush-preview"
           style={{

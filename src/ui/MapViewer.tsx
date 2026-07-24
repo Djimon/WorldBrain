@@ -8,6 +8,7 @@ import { MapToken } from './MapTokenLayer';
 import { TokenEditor, type TokenEditPatch } from './TokenEditor';
 import type { MapLayerRow } from '../services/map-layer-service';
 import { FogTools, type FogToolMode, type FogToolShape } from './FogTools';
+import type { FogStampLevel } from './fogStampGeometry';
 import { FogMaskCanvas } from './FogMaskCanvas';
 import type { DatabaseLike } from '../services/entity-service';
 import { getMarkersForMap, createMarker, updateMarker, deleteMarker } from '../services/map-marker-service';
@@ -161,6 +162,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [fogFeather, setFogFeather] = useState(8);
   const [fogMode, setFogMode] = useState<FogToolMode>('reveal');
   const [fogShape, setFogShape] = useState<FogToolShape>('brush');
+  const [fogStampLevel, setFogStampLevel] = useState<FogStampLevel>(1);
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
   const [markers, setMarkers] = useState<MarkerRow[]>([]);
   const [tokens, setTokens] = useState<MapTokenRow[]>([]);
@@ -837,6 +839,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               brushSize={fogBrush} feather={fogFeather} mode={fogMode} shape={fogShape}
               onBrushSizeChange={setFogBrush} onFeatherChange={setFogFeather}
               onModeChange={setFogMode} onShapeChange={setFogShape}
+              gridActive={gridSettings.visible} gridType={gridSettings.type}
+              stampLevel={fogStampLevel} onStampLevelChange={setFogStampLevel}
             />
           </div>
         )}
@@ -885,6 +889,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                 feather={fogFeather}
                 active={editFogLayerId === layer.id}
                 onStrokeEnd={(m) => handleFogStrokeEnd(layer.id, m)}
+                gridType={gridSettings.type} gridCellSize={gridSettings.cellSize}
+                stampLevel={fogStampLevel}
               />
             </div>
           ))}
