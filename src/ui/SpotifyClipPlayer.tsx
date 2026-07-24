@@ -34,11 +34,23 @@ export function SpotifyClipPlayer({ uri, paused }: SpotifyClipPlayerProps) {
     containerRef.current?.appendChild(mountPoint);
     console.debug('[SpotifyClipPlayer] mounting', { uri });
 
+    // Spotify's embed inserts its iframe with loading="lazy". Nested inside
+    // our permanently display:none container, it has zero layout geometry
+    // and never satisfies the browser's near-viewport heuristic, so the
+    // navigation is deferred forever — the iframe sits on about:blank and
+    // controller.play() just posts into an empty document, no error, no
+    // sound. Forcing eager loading unblocks the actual embed page load.
+    function forceEagerLoad() {
+      const iframe = containerRef.current?.querySelector('iframe');
+      if (iframe) iframe.loading = 'eager';
+    }
+
     void loadSpotifyIframeApi().then((IFrameAPI) => {
       if (cancelled) { console.debug('[SpotifyClipPlayer] IFrame API ready but already cancelled', { uri }); return; }
       IFrameAPI.createController(mountPoint, { uri, width: '1', height: '1' }, (controller) => {
         if (cancelled) { console.debug('[SpotifyClipPlayer] controller ready but already cancelled', { uri }); return; }
         controllerRef.current = controller;
+        forceEagerLoad();
         if (!pausedRef.current) {
           console.debug('[SpotifyClipPlayer] controller ready, calling play()', { uri });
           controller.play();
@@ -46,6 +58,9 @@ export function SpotifyClipPlayer({ uri, paused }: SpotifyClipPlayerProps) {
           console.debug('[SpotifyClipPlayer] controller ready but channel is paused, not calling play()', { uri });
         }
       });
+      // The iframe element itself is inserted synchronously inside
+      // createController — no need to wait for the ready callback to unblock it.
+      forceEagerLoad();
     }).catch((error: unknown) => {
       console.error('[SpotifyClipPlayer] failed to start playback', { uri, error });
     });

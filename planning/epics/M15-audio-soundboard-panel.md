@@ -127,6 +127,23 @@ Note: story numbers continue M15's sequence (S01–S08 belong to EPIC-023 maps);
 ## Open Decisions
 
 - None blocking. (Spotify tier, LAN broadcast, master-EQ-loopback all explicitly deferred/out.)
+- **D9 — Spotify-Embed war still: echte Ursache war ein Lazy-Loading-Bug in unserem eigenen Mount-Code,
+  nicht (nur) Tracking Prevention.** Live-Test (2026-07-24) zeigte ~194x `Tracking Prevention blocked
+  access to storage` für `open.spotify.com` im WebView2; erste Analyse (Research-Agent,
+  `planning/research/audio-spotify-webview2-tracking-prevention.md`) verdächtigte deshalb WebView2s
+  Tracking Prevention / Spotifys Embed-Zuverlässigkeit als externe, nicht behebbare Ursache. **Diese
+  Einschätzung war falsch** — User-Bisection (`4fe6039` spielte noch, mit Stop-Bug; `82ef6ea` stumm)
+  zeigte eindeutig einen echten Code-Regression. Per Devtools-Elements-Inspektion bestätigt: Spotifys
+  `createController()` fügt sein Iframe mit `loading="lazy"` ein; der Fix in `82ef6ea`
+  (Crash-on-unmount-Fix) beließ den React-eigenen `display:none`-Container als **dauerhaften Wrapper** um
+  das Iframe — mit null Layout-Geometrie erreicht das Iframe nie die Near-Viewport-Schwelle für Lazy-Load,
+  bleibt für immer auf `about:blank`, `controller.play()` postet folgenlos in ein leeres Dokument (kein
+  Fehler, kein Ton). **Fix (`src/ui/SpotifyClipPlayer.tsx`):** `iframe.loading = 'eager'` wird direkt nach
+  `createController()` und nochmal im Ready-Callback erzwungen. Regressionstest (`m15-spotify-tier.dom.test.tsx`)
+  simuliert jetzt das echte Replace-mit-lazy-iframe-Verhalten (vorheriger Mock rief nur den Callback auf,
+  ohne DOM-Mutation — hätte diesen Bug nie fangen können); verifiziert: schlägt ohne Fix fehl, grün mit Fix.
+  Tracking Prevention (194 Storage-Blocks) bleibt ein separates, unbestätigtes Zuverlässigkeits-Risiko für
+  Volltrack-vs-Preview (siehe Research-Datei), aber NICHT mehr die Erklärung für "komplett stumm".
 
 ## Sources
 

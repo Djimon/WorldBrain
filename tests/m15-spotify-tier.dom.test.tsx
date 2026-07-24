@@ -27,7 +27,14 @@ const { FakeController } = vi.hoisted(() => {
 
 vi.mock('../src/services/spotify-iframe-api', () => ({
   loadSpotifyIframeApi: () => Promise.resolve({
-    createController: (_el: HTMLElement, _opts: unknown, callback: (c: InstanceType<typeof FakeController>) => void) => {
+    // Real Spotify replaces the given element with a loading="lazy" iframe
+    // (confirmed against Spotify's own docs and a live devtools capture) —
+    // mirror that here, since a mock that just invokes the callback without
+    // touching the DOM can't catch a regression in how we handle that iframe.
+    createController: (el: HTMLElement, _opts: unknown, callback: (c: InstanceType<typeof FakeController>) => void) => {
+      const iframe = document.createElement('iframe');
+      iframe.loading = 'lazy';
+      el.replaceWith(iframe);
       callback(new FakeController());
     },
   }),
@@ -69,6 +76,14 @@ describe('SpotifyClipPlayer', () => {
     await flush();
     expect((container.firstChild as HTMLElement).style.display).toBe('none');
     expect(FakeController.instances[0].calls.play).toBe(1);
+  });
+
+  it('forces the replaced iframe to load eagerly — regression: nested inside a permanently display:none container, a loading="lazy" iframe never intersects the viewport, so it never navigates past about:blank and controller.play() silently does nothing', async () => {
+    const { container } = render(<SpotifyClipPlayer uri="spotify:track:abc" paused={false} />);
+    await flush();
+    const iframe = container.querySelector('iframe');
+    expect(iframe).toBeTruthy();
+    expect(iframe!.loading).toBe('eager');
   });
 
   describe('paused prop (real pause/resume, keeps the controller mounted)', () => {
