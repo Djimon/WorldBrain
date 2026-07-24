@@ -26,6 +26,24 @@ const GROUPS = emojiMessages.groups
 // under in a grid-by-category picker, so they're excluded.
 const ENTRIES: Emoji[] = (emojiData as Emoji[]).filter((e) => e.group !== undefined && e.group !== 2);
 
+// Neutral line-icon per category (same style as icon-set-registry.ts's SVG
+// icons: thin stroke, no fill) — tabs show only the icon, the full category
+// name is a hover tooltip (title) + the accessible name (aria-label).
+const SVG = (body: string): string =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+
+const CATEGORY_ICONS: Record<string, string> = {
+  'smileys-emotion': SVG('<circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r=".6" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r=".6" fill="currentColor" stroke="none"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/>'),
+  'people-body': SVG('<circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/>'),
+  'animals-nature': SVG('<ellipse cx="12" cy="15" rx="4" ry="3.2"/><circle cx="7" cy="9" r="1.6"/><circle cx="12" cy="7" r="1.6"/><circle cx="17" cy="9" r="1.6"/>'),
+  'food-drink': SVG('<path d="M5 6h11v8a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V6Z"/><path d="M16 9h2a2.5 2.5 0 0 1 0 5h-2"/>'),
+  'travel-places': SVG('<path d="M12 21s-6-5.5-6-10a6 6 0 0 1 12 0c0 4.5-6 10-6 10Z"/><circle cx="12" cy="11" r="2"/>'),
+  activities: SVG('<path d="M7 4h10v3a5 5 0 0 1-5 5 5 5 0 0 1-5-5V4Z"/><path d="M9 15h6v3H9z"/><path d="M8 19h8"/><path d="M4 5h3v2a3 3 0 0 1-3 3"/><path d="M20 5h-3v2a3 3 0 0 0 3 3"/>'),
+  objects: SVG('<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.9V17h5v-1.2c0-.8.4-1.5 1-1.9A6 6 0 0 0 12 3Z"/>'),
+  symbols: SVG('<path d="M12 20s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 5c-2.5 4.5-9.5 9-9.5 9Z"/>'),
+  flags: SVG('<path d="M6 3v18"/><path d="M6 4h11l-2.5 4L17 12H6"/>'),
+};
+
 function groupAnchorId(key: string): string {
   return `emoji-picker-group-${key}`;
 }
@@ -65,9 +83,15 @@ export function EmojiPicker({ value, onSelect }: EmojiPickerProps) {
             type="button"
             role="tab"
             className="emoji-picker__tab"
+            aria-label={group.message}
+            title={group.message}
             onClick={() => scrollToGroup(group.key)}
           >
-            {group.message}
+            <span
+              className="emoji-picker__tab-icon"
+              aria-hidden="true"
+              dangerouslySetInnerHTML={{ __html: CATEGORY_ICONS[group.key] ?? '' }}
+            />
           </button>
         ))}
       </div>

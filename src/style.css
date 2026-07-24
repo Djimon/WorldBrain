@@ -4411,7 +4411,10 @@ input {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  width: 260px;
+  /* Wide enough that .emoji-picker__groups' vertical scrollbar doesn't
+     squeeze the grid into overflowing horizontally (which produced a
+     second, bottom scrollbar). */
+  width: 300px;
 }
 
 .emoji-picker__search {
@@ -4431,9 +4434,14 @@ input {
   gap: var(--space-1);
 }
 
+/* Icon-only tab — the category name is a tooltip (title), not visible text. */
 .emoji-picker__tab {
-  font-size: 0.68rem;
-  padding: 2px 6px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface-alt);
@@ -4441,9 +4449,14 @@ input {
   cursor: pointer;
 }
 
+.emoji-picker__tab-icon svg { display: block; width: 15px; height: 15px; }
+
 .emoji-picker__groups {
   max-height: 260px;
   overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  padding-right: 6px;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
