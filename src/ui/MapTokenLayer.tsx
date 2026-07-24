@@ -27,7 +27,7 @@ function ChipGlyph({ icon }: { icon: string }) {
 // added instead of staying squeezed into a narrow arc.
 function chipAngle(index: number, count: number): number {
   if (count <= 1) return 0;
-  const span = Math.min(360, 40 * (count - 1));
+  const span = Math.min(360, 55 * (count - 1));
   const step = span / (count - 1);
   return -span / 2 + step * index;
 }
@@ -113,7 +113,7 @@ export function MapToken({
                     // rotate to the arc position, translate out, then
                     // counter-rotate back — keeps the glyph itself upright
                     // while its position still fans out along the arc.
-                    ? { transform: `rotate(${angle}deg) translateY(-0.9em) rotate(${-angle}deg)` }
+                    ? { transform: `rotate(${angle}deg) translateY(-0.8em) rotate(${-angle}deg)` }
                     : undefined),
                 }}
                 title={chip.text || chip.icon}
