@@ -72,6 +72,21 @@ describe('SpotifyClipPlayer', () => {
   });
 });
 
+describe('loadSpotifyIframeApi (real implementation — script load failure)', () => {
+  it('rejects instead of hanging forever if the API script fails to load', async () => {
+    // Previously silent: no onerror handler at all meant a blocked script
+    // (network, ad-blocker, or WebView2 tracking prevention — seen live as
+    // "Tracking Prevention blocked access to storage" for a Spotify URL)
+    // left the promise pending forever, with zero signal anywhere.
+    const { loadSpotifyIframeApi } = await vi.importActual<typeof import('../src/services/spotify-iframe-api')>('../src/services/spotify-iframe-api');
+    const promise = loadSpotifyIframeApi();
+    const script = document.head.querySelector('script[src*="spotify"]') as HTMLScriptElement | null;
+    expect(script).toBeTruthy();
+    script?.dispatchEvent(new Event('error'));
+    await expect(promise).rejects.toThrow();
+  });
+});
+
 describe('SpotifyTierEngine', () => {
   it('add mode: layers multiple clips simultaneously', () => {
     const engine = new SpotifyTierEngine();

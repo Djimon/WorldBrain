@@ -31,11 +31,22 @@ let apiPromise: Promise<SpotifyIframeApi> | null = null;
 export function loadSpotifyIframeApi(): Promise<SpotifyIframeApi> {
   if (apiPromise) return apiPromise;
 
-  apiPromise = new Promise((resolve) => {
-    window.onSpotifyIframeApiReady = (IFrameAPI) => resolve(IFrameAPI);
+  apiPromise = new Promise((resolve, reject) => {
+    window.onSpotifyIframeApiReady = (IFrameAPI) => {
+      console.debug('[spotify-iframe-api] IFrame API ready');
+      resolve(IFrameAPI);
+    };
     const script = document.createElement('script');
     script.src = 'https://open.spotify.com/embed/iframe-api/v1';
     script.async = true;
+    // Previously silent: if this script never loads (blocked by network,
+    // an ad-blocker, or WebView2 tracking prevention — seen live as
+    // "Tracking Prevention blocked access to storage" for a Spotify URL),
+    // the promise hung forever with zero signal. Reject explicitly instead.
+    script.onerror = () => {
+      console.error('[spotify-iframe-api] failed to load the Spotify IFrame API script (network blocked, or WebView2 tracking prevention)');
+      reject(new Error('Failed to load Spotify IFrame API script'));
+    };
     document.head.appendChild(script);
   });
   return apiPromise;

@@ -26,14 +26,18 @@ export function SpotifyClipPlayer({ uri }: SpotifyClipPlayerProps) {
     // this node" once Spotify had mutated what React thought it still owned.
     const mountPoint = document.createElement('div');
     containerRef.current?.appendChild(mountPoint);
+    console.debug('[SpotifyClipPlayer] mounting', { uri });
 
     void loadSpotifyIframeApi().then((IFrameAPI) => {
-      if (cancelled) return;
+      if (cancelled) { console.debug('[SpotifyClipPlayer] IFrame API ready but already cancelled', { uri }); return; }
       IFrameAPI.createController(mountPoint, { uri, width: '1', height: '1' }, (controller) => {
-        if (cancelled) return;
+        if (cancelled) { console.debug('[SpotifyClipPlayer] controller ready but already cancelled', { uri }); return; }
+        console.debug('[SpotifyClipPlayer] controller ready, calling play()', { uri });
         controllerRef.current = controller;
         controller.play();
       });
+    }).catch((error: unknown) => {
+      console.error('[SpotifyClipPlayer] failed to start playback', { uri, error });
     });
 
     return () => {
