@@ -7,6 +7,19 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MapTokenRow, StatusChip, TokenRenderStyle } from '../services/map-token-service';
+import { getIcon } from '../services/icon-set-registry';
+import { IconPicker } from './IconPicker';
+
+// #300: chip.icon may be a registry ref ("set_id:icon_key") or a legacy
+// literal glyph string (no colon -> getIcon returns undefined, falls back
+// to showing the raw string as before — backward compatible).
+function ChipIconTriggerContent({ icon }: { icon: string }) {
+  const resolved = icon ? getIcon(icon) : undefined;
+  if (!resolved) return <>{icon}</>;
+  if (resolved.svg) return <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: resolved.svg }} />;
+  if (resolved.src) return <img src={resolved.src} alt="" aria-hidden="true" />;
+  return <>{resolved.glyph}</>;
+}
 
 export interface TokenEditPatch {
   label: string;
@@ -45,6 +58,7 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
   const [counterLabel, setCounterLabel] = useState(token.counter_label ?? '');
   const [counterValue, setCounterValue] = useState(token.counter_value != null ? String(token.counter_value) : '');
   const [chips, setChips] = useState<StatusChip[]>(token.status_chips);
+  const [openPickerIndex, setOpenPickerIndex] = useState<number | null>(null);
 
   const cropRef = useRef<HTMLDivElement | null>(null);
   const dragStart = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
@@ -167,8 +181,19 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
         <legend>{t('token.chips', 'Status-Chips')}</legend>
         {chips.map((chip, i) => (
           <div key={i} className="token-editor__chip-row">
-            <input type="text" aria-label={t('token.chipIcon', 'Chip-Symbol')} placeholder="⚡"
-              value={chip.icon} onChange={(e) => updateChip(i, { icon: e.target.value })} />
+            <button type="button" className="token-editor__chip-icon-trigger"
+              aria-label={t('token.chipIconPicker', 'Symbol wählen')}
+              onClick={() => setOpenPickerIndex(openPickerIndex === i ? null : i)}>
+              <ChipIconTriggerContent icon={chip.icon} />
+            </button>
+            {openPickerIndex === i && (
+              <div className="token-editor__chip-icon-popover">
+                <IconPicker
+                  value={chip.icon || null}
+                  onSelect={(ref) => { updateChip(i, { icon: ref }); setOpenPickerIndex(null); }}
+                />
+              </div>
+            )}
             <input type="text" aria-label={t('token.chipText', 'Chip-Text')} placeholder={t('token.chipText', 'Chip-Text')}
               value={chip.text ?? ''} onChange={(e) => updateChip(i, { text: e.target.value })} />
             <input type="color" aria-label={t('token.chipColor', 'Chip-Farbe')}

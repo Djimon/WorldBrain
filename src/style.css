@@ -1407,11 +1407,25 @@ input {
 
 .map-token__chips {
   position: absolute;
-  top: -14px;
-  left: 0;
+  top: 0;
+  left: 50%;
+  z-index: 6;
+}
+/* #300: render_style='plain' -> side by side, fixed to the top edge, centered. */
+.map-token__chips--row {
   display: flex;
   gap: 2px;
-  z-index: 6;
+  transform: translate(-50%, -16px);
+}
+/* #300: render_style='token' -> fanned arc above the token, each chip
+   individually rotated (inline style, chipAngle) around this shared anchor. */
+.map-token__chips--arc .map-token__chip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin-left: -0.6em;
+  margin-top: -0.6em;
+  transform-origin: center;
 }
 
 .map-token__chip {
@@ -1422,6 +1436,7 @@ input {
   padding: 1px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
+.map-token__chip svg { display: block; width: 1em; height: 1em; }
 
 .map-token--selected .map-token__ring {
   box-shadow: 0 0 0 2px var(--color-accent-strong), 0 1px 4px rgba(0,0,0,0.6);
@@ -1582,11 +1597,40 @@ input {
   display: flex;
   gap: var(--space-1);
   align-items: center;
+  position: relative;
 }
-/* Icon field is narrow; the text field takes the rest. */
-.token-editor__chip-row input[type="text"]:first-of-type { flex: 0 0 46px; text-align: center; }
 .token-editor__chip-row input[type="text"] { flex: 1 1 auto; min-width: 0; }
 .token-editor__chip-row button { flex: 0 0 auto; padding: 4px 6px; }
+
+/* #300: icon-picker trigger (replaces the old free-text icon input). */
+.token-editor__chip-icon-trigger {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+}
+.token-editor__chip-icon-trigger svg { width: 18px; height: 18px; }
+
+.token-editor__chip-icon-popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 30;
+  margin-top: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  padding: var(--space-2);
+}
 
 .token-editor__add-chip { align-self: flex-start; }
 .token-editor .token-editor__counter-clear {
@@ -4267,6 +4311,73 @@ input {
 }
 
 .clip-editor__color-swatch[aria-pressed='true'] { border-color: var(--color-text); }
+
+/* ── IconPicker: grid popover grouped by icon set (#300) ── */
+.icon-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 220px;
+}
+
+.icon-picker__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.icon-picker__tab {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.icon-picker__groups {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.icon-picker__group-label {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 2px;
+}
+
+.icon-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+  gap: var(--space-1);
+}
+
+.icon-picker__icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+}
+
+.icon-picker__icon[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.icon-picker__glyph svg { display: block; width: 18px; height: 18px; }
 
 .clip-editor__actions {
   display: flex;

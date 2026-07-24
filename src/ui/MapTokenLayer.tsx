@@ -9,6 +9,28 @@
 // legible, multiplied by the token's own `scale` (#301).
 import { useState } from 'react';
 import type { MapTokenRow } from '../services/map-token-service';
+import { getIcon } from '../services/icon-set-registry';
+
+// #300: chip.icon may be a registry ref ("set_id:icon_key") or a legacy
+// literal glyph string (no colon -> getIcon returns undefined, falls back
+// to rendering the raw string as before — backward compatible).
+function ChipGlyph({ icon }: { icon: string }) {
+  const resolved = getIcon(icon);
+  if (!resolved) return <>{icon}</>;
+  if (resolved.svg) return <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: resolved.svg }} />;
+  if (resolved.src) return <img src={resolved.src} alt="" aria-hidden="true" />;
+  return <>{resolved.glyph}</>;
+}
+
+// #300 "Chip-Rendering am Token": chips fan out in an arc around the token
+// (render_style='token'), growing toward a full circle as more chips are
+// added instead of staying squeezed into a narrow arc.
+function chipAngle(index: number, count: number): number {
+  if (count <= 1) return 0;
+  const span = Math.min(360, 40 * (count - 1));
+  const step = span / (count - 1);
+  return -span / 2 + step * index;
+}
 
 export interface MapTokenProps {
   token: MapTokenRow;
@@ -73,15 +95,21 @@ export function MapToken({
       onClick={onSelect}
     >
       {token.status_chips.length > 0 && (
-        <div className="map-token__chips">
+        <div className={`map-token__chips map-token__chips--${token.render_style === 'token' ? 'arc' : 'row'}`}>
           {token.status_chips.map((chip, i) => (
             <span
               key={`${chip.icon}-${i}`}
               className="map-token__chip"
-              style={chip.color ? { color: chip.color } : undefined}
+              style={{
+                ...(chip.color ? { color: chip.color } : undefined),
+                fontSize: `${10 * tokenScale}px`,
+                ...(token.render_style === 'token'
+                  ? { transform: `rotate(${chipAngle(i, token.status_chips.length)}deg) translateY(-1.6em)` }
+                  : undefined),
+              }}
               title={chip.text || chip.icon}
             >
-              {chip.icon}
+              <ChipGlyph icon={chip.icon} />
             </span>
           ))}
         </div>
