@@ -1430,19 +1430,12 @@ input {
 }
 
 /* No background/circle — just the stroked SVG (or legacy emoji glyph)
-   standing on its own against the map, transparent otherwise. A white halo
-   (four 1px-offset, zero-blur drop-shadows) traces an outline just outside
-   the black line itself, so it lifts off the map regardless of what's
-   underneath — a soft shadow underneath adds a bit of depth on top. */
+   standing on its own against the map, transparent otherwise. A dark drop
+   shadow lifts the line off the map. */
 .map-token__chip {
   font-size: 14.4px;
   line-height: 1;
-  filter:
-    drop-shadow(1px 0 0 #fff)
-    drop-shadow(-1px 0 0 #fff)
-    drop-shadow(0 1px 0 #fff)
-    drop-shadow(0 -1px 0 #fff)
-    drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
 }
 .map-token__chip svg { display: block; width: 1em; height: 1em; }
 
