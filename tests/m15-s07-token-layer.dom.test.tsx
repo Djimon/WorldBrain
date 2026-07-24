@@ -142,9 +142,12 @@ describe('#300 chip rendering: arc (token) vs row (plain) layout, overflow, scal
   // token itself. Root cause was double-scaling — the token root already has
   // `transform: scale(tokenScale/mapScale)`, which the chips inherit as
   // descendants; multiplying chip fontSize by tokenScale on top of that
-  // compounded the growth. Chips must use a fixed base fontSize and let the
-  // ancestor transform alone account for the token's own scale.
-  it('chip fontSize stays fixed regardless of the token\'s own scale (#301) — scaling comes from the token root transform, not a second multiplication', () => {
+  // compounded the growth. A second live report then found that even a
+  // *fixed* inline fontSize was wrong — it silently shadowed style.css's
+  // font-size rule (inline always wins), so editing the CSS had no visible
+  // effect. Chips must not set fontSize inline at all — sizing lives purely
+  // in style.css, scaling comes only from the token root's transform.
+  it('chip has no inline fontSize (base size lives in style.css, not JS) — same regardless of the token\'s own scale (#301)', () => {
     const chipsSmall = (() => {
       const { unmount } = render(<MapToken {...baseProps({ token: makeToken({ scale: 1, status_chips: twoChips() }) })} />);
       const size = (document.querySelector('.map-token__chip') as HTMLElement).style.fontSize;
@@ -155,7 +158,7 @@ describe('#300 chip rendering: arc (token) vs row (plain) layout, overflow, scal
       render(<MapToken {...baseProps({ token: makeToken({ scale: 2, status_chips: twoChips() }) })} />);
       return (document.querySelector('.map-token__chip') as HTMLElement).style.fontSize;
     })();
-    expect(chipsSmall).toBeTruthy();
+    expect(chipsSmall).toBe('');
     expect(chipsLarge).toBe(chipsSmall);
   });
 });

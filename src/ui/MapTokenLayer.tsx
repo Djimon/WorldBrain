@@ -27,7 +27,7 @@ function ChipGlyph({ icon }: { icon: string }) {
 // added instead of staying squeezed into a narrow arc.
 function chipAngle(index: number, count: number): number {
   if (count <= 1) return 0;
-  const span = Math.min(360, 55 * (count - 1));
+  const span = Math.min(360, 100 * (count - 1));
   const step = span / (count - 1);
   return -span / 2 + step * index;
 }
@@ -97,10 +97,12 @@ export function MapToken({
       {token.status_chips.length > 0 && (
         <div className={`map-token__chips map-token__chips--${token.render_style === 'token' ? 'arc' : 'row'}`}>
           {token.status_chips.map((chip, i) => {
-            // Fixed base size — the token's own scale already applies via the
-            // token root's `transform: scale(tokenScale/mapScale)`, which this
-            // whole chips container inherits. Multiplying fontSize by
-            // tokenScale here too double-scales (grows faster than the token).
+            // Base size lives purely in style.css (.map-token__chip font-size)
+            // — no inline fontSize here. The token's own scale already
+            // applies via the token root's `transform: scale(tokenScale/
+            // mapScale)`, which this whole chips container inherits; setting
+            // fontSize inline too (even a fixed value) would still shadow
+            // whatever CSS says, so CSS wouldn't be the source of truth.
             const angle = chipAngle(i, token.status_chips.length);
             return (
               <span
@@ -108,12 +110,11 @@ export function MapToken({
                 className="map-token__chip"
                 style={{
                   color: chip.color || '#000',
-                  fontSize: '14.4px',
                   ...(token.render_style === 'token'
                     // rotate to the arc position, translate out, then
                     // counter-rotate back — keeps the glyph itself upright
                     // while its position still fans out along the arc.
-                    ? { transform: `rotate(${angle}deg) translateY(-0.85em) rotate(${-angle}deg)` }
+                    ? { transform: `rotate(${angle}deg) translateY(-0.95em) rotate(${-angle}deg)` }
                     : undefined),
                 }}
                 title={chip.text || chip.icon}
