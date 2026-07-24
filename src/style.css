@@ -1417,8 +1417,9 @@ input {
   gap: 2px;
   transform: translate(-50%, -16px);
 }
-/* #300: render_style='token' -> fanned arc above the token, each chip
-   individually rotated (inline style, chipAngle) around this shared anchor. */
+/* #300: render_style='token' -> fanned arc above the token; each chip is
+   positioned around this shared anchor (inline style, chipAngle), but the
+   glyph itself is counter-rotated back upright — only the position fans out. */
 .map-token__chips--arc .map-token__chip {
   position: absolute;
   top: 0;
@@ -1428,13 +1429,12 @@ input {
   transform-origin: center;
 }
 
+/* No background/circle — just the stroked SVG (or legacy emoji glyph)
+   standing on its own against the map, transparent otherwise. */
 .map-token__chip {
   font-size: 12px;
   line-height: 1;
-  background: var(--color-surface);
-  border-radius: 50%;
-  padding: 1px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.6));
 }
 .map-token__chip svg { display: block; width: 1em; height: 1em; }
 

@@ -60,6 +60,7 @@ export function IconPicker({ value, onSelect }: IconPickerProps) {
                     type="button"
                     className="icon-picker__icon"
                     aria-label={icon.label ?? icon.key}
+                    title={icon.label ?? icon.key}
                     aria-pressed={value === ref}
                     onClick={() => onSelect(ref)}
                   >

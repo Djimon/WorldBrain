@@ -190,7 +190,14 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
               <div className="token-editor__chip-icon-popover">
                 <IconPicker
                   value={chip.icon || null}
-                  onSelect={(ref) => { updateChip(i, { icon: ref }); setOpenPickerIndex(null); }}
+                  onSelect={(ref) => {
+                    // Pre-fills the chip's text with the condition's name —
+                    // only when the text is still empty, so it never
+                    // overwrites something the user already typed.
+                    const label = getIcon(ref)?.label;
+                    updateChip(i, { icon: ref, ...(!chip.text && label ? { text: label } : {}) });
+                    setOpenPickerIndex(null);
+                  }}
                 />
               </div>
             )}

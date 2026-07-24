@@ -138,7 +138,13 @@ describe('#300 chip rendering: arc (token) vs row (plain) layout, overflow, scal
     expect(Math.max(...angles) - Math.min(...angles)).toBeGreaterThan(180);
   });
 
-  it('chip visual size scales with the token\'s own scale (#301), not just the token root', () => {
+  // Regression (2026-07-24, live report): chips were growing faster than the
+  // token itself. Root cause was double-scaling — the token root already has
+  // `transform: scale(tokenScale/mapScale)`, which the chips inherit as
+  // descendants; multiplying chip fontSize by tokenScale on top of that
+  // compounded the growth. Chips must use a fixed base fontSize and let the
+  // ancestor transform alone account for the token's own scale.
+  it('chip fontSize stays fixed regardless of the token\'s own scale (#301) — scaling comes from the token root transform, not a second multiplication', () => {
     const chipsSmall = (() => {
       const { unmount } = render(<MapToken {...baseProps({ token: makeToken({ scale: 1, status_chips: twoChips() }) })} />);
       const size = (document.querySelector('.map-token__chip') as HTMLElement).style.fontSize;
@@ -150,8 +156,7 @@ describe('#300 chip rendering: arc (token) vs row (plain) layout, overflow, scal
       return (document.querySelector('.map-token__chip') as HTMLElement).style.fontSize;
     })();
     expect(chipsSmall).toBeTruthy();
-    expect(chipsLarge).toBeTruthy();
-    expect(chipsLarge).not.toBe(chipsSmall);
+    expect(chipsLarge).toBe(chipsSmall);
   });
 });
 

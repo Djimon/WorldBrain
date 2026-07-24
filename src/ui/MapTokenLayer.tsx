@@ -96,22 +96,32 @@ export function MapToken({
     >
       {token.status_chips.length > 0 && (
         <div className={`map-token__chips map-token__chips--${token.render_style === 'token' ? 'arc' : 'row'}`}>
-          {token.status_chips.map((chip, i) => (
-            <span
-              key={`${chip.icon}-${i}`}
-              className="map-token__chip"
-              style={{
-                ...(chip.color ? { color: chip.color } : undefined),
-                fontSize: `${10 * tokenScale}px`,
-                ...(token.render_style === 'token'
-                  ? { transform: `rotate(${chipAngle(i, token.status_chips.length)}deg) translateY(-1.6em)` }
-                  : undefined),
-              }}
-              title={chip.text || chip.icon}
-            >
-              <ChipGlyph icon={chip.icon} />
-            </span>
-          ))}
+          {token.status_chips.map((chip, i) => {
+            // Fixed base size — the token's own scale already applies via the
+            // token root's `transform: scale(tokenScale/mapScale)`, which this
+            // whole chips container inherits. Multiplying fontSize by
+            // tokenScale here too double-scales (grows faster than the token).
+            const angle = chipAngle(i, token.status_chips.length);
+            return (
+              <span
+                key={`${chip.icon}-${i}`}
+                className="map-token__chip"
+                style={{
+                  color: chip.color || '#000',
+                  fontSize: '12px',
+                  ...(token.render_style === 'token'
+                    // rotate to the arc position, translate out, then
+                    // counter-rotate back — keeps the glyph itself upright
+                    // while its position still fans out along the arc.
+                    ? { transform: `rotate(${angle}deg) translateY(-0.9em) rotate(${-angle}deg)` }
+                    : undefined),
+                }}
+                title={chip.text || chip.icon}
+              >
+                <ChipGlyph icon={chip.icon} />
+              </span>
+            );
+          })}
         </div>
       )}
 
