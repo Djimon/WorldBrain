@@ -223,6 +223,15 @@ spezifizierten 6 V1-Icons gekuerzt (ueberzaehlige SVGs waren ungenutztes Scaffol
 (`issue-300-icon-registry`, `issue-300-icon-picker`, `m15-s07-token-layer`), tsc/lint 0, keine Regression.
 Issue #300 geschlossen.
 
+**2026-07-24 — #295 implementiert (Zusatz zu S04/#276).** Grid-bewusster Fog-Stempel: `fogStampGeometry.ts`
+(`stampCellCount` geschlossene Formel, `stampCells` per odd-q-Offset<->Cube-Hex-Disk-Algorithmus, exakt
+das Koordinatenschema aus `MapGrid.tsx` wiederverwendet), `FogTools` (4. Shape-Button nur bei aktivem
+Grid, 5-Stufen-Größen-Flyout mit grid-spezifischem Zellzahl-Label), `FogMaskCanvas` (malt wirklich —
+gleiche Rect-/Hex-Polygon-Geometrie wie `CellStateLayer`), `MapViewer` (gridActive/gridType/gridCellSize/
+stampLevel durchverdrahtet, sonst waere das Feature unerreichbar). 46 Tests gruen, tsc/lint 0, keine
+Regression (44 vorbestehende Fail-Dateien / 307 Fails vorher/nachher, exakt die #295-Tests kippten).
+Issue #295 geschlossen.
+
 ## Constraints propagated into every Story AC (verbatim)
 
 - AP-001: `database` prop typed as `DatabaseLike` (from `entity-service.ts`); no `unknown` or `as never` casts at call sites.
