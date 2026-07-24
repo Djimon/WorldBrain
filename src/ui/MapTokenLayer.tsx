@@ -108,12 +108,12 @@ export function MapToken({
                 className="map-token__chip"
                 style={{
                   color: chip.color || '#000',
-                  fontSize: '12px',
+                  fontSize: '14.4px',
                   ...(token.render_style === 'token'
                     // rotate to the arc position, translate out, then
                     // counter-rotate back — keeps the glyph itself upright
                     // while its position still fans out along the arc.
-                    ? { transform: `rotate(${angle}deg) translateY(-0.8em) rotate(${-angle}deg)` }
+                    ? { transform: `rotate(${angle}deg) translateY(-0.85em) rotate(${-angle}deg)` }
                     : undefined),
                 }}
                 title={chip.text || chip.icon}

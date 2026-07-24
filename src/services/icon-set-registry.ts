@@ -27,7 +27,7 @@ export interface IconSet {
 // Slim / minimal line icons (Apple/KISS): thin 1.5 stroke, one clear metaphor
 // each, currentColor so the chip color / white default tints them.
 const SVG = (body: string): string =>
-  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 
 export const CORE_ICON_SET: IconSet = {
   id: 'core',
