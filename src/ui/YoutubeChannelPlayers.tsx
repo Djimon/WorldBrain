@@ -31,6 +31,7 @@ export function YoutubeChannelPlayers({ channelId, engine }: YoutubeChannelPlaye
           targetVolume={slot.targetVolume}
           rampSeconds={slot.rampSeconds}
           loop={slot.loop}
+          paused={slot.paused}
         />
       ))}
     </>

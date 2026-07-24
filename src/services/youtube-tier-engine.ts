@@ -28,6 +28,11 @@ export interface YoutubeSlot {
   loop: boolean;
   targetVolume: number;
   rampSeconds: number;
+  // Channel-level pause (real pause/resume, unlike stopClip/stopChannel which
+  // discard the clip entirely) — the player stays mounted so YT keeps its
+  // own playback position; YoutubeClipPlayer reads this to call
+  // pauseVideo()/playVideo() instead of unmounting/remounting.
+  paused: boolean;
 }
 
 type Listener = (channelId: string, slots: YoutubeSlot[]) => void;
@@ -58,7 +63,8 @@ export class YoutubeTierEngine {
   }
 
   isPlaying(channelId: string, clipId: string): boolean {
-    return this.channels.get(channelId)?.has(clipId) ?? false;
+    const slot = this.channels.get(channelId)?.get(clipId);
+    return !!slot && !slot.paused;
   }
 
   triggerClip(channelId: string, clip: YoutubeClipInput, mixer: YoutubeChannelMixer): void {
@@ -87,6 +93,7 @@ export class YoutubeTierEngine {
       loop: clip.loop,
       targetVolume: this.effectiveVolume(clip.baseVolume, mixer),
       rampSeconds: mixer.transitionType === 'fade' ? mixer.transitionSeconds : 0,
+      paused: false,
     });
     this.notify(channelId);
   }
@@ -121,6 +128,21 @@ export class YoutubeTierEngine {
     const slots = this.channels.get(channelId);
     if (!slots) return;
     for (const clipId of Array.from(slots.keys())) this.stopClip(channelId, clipId, mixer);
+  }
+
+  /** Real pause (unlike stopChannel) — the player stays mounted so YouTube retains its own playback position, resumeChannel just un-pauses it. */
+  pauseChannel(channelId: string): void {
+    const slots = this.channels.get(channelId);
+    if (!slots) return;
+    for (const slot of slots.values()) slot.paused = true;
+    this.notify(channelId);
+  }
+
+  resumeChannel(channelId: string): void {
+    const slots = this.channels.get(channelId);
+    if (!slots) return;
+    for (const slot of slots.values()) slot.paused = false;
+    this.notify(channelId);
   }
 
   /** Re-applies channel volume/mute to every currently-audible clip (e.g. fader moved while playing). */

@@ -24,6 +24,23 @@ export interface ChannelMixerConfig {
 interface PlayingClip {
   source: AudioBufferSourceNode;
   clipGain: GainNode;
+  buffer: AudioBuffer;
+  loop: boolean;
+  // Playback-position bookkeeping for real pause/resume — an
+  // AudioBufferSourceNode has no native pause, only stop(), so resuming
+  // means creating a NEW source and starting it at the right offset.
+  startedAt: number;
+  offsetAtStart: number;
+}
+
+// A paused clip keeps its clipGain (still connected into the channel strip)
+// and buffer so resuming doesn't need to re-fetch/re-decode anything — only
+// the (now stopped) source and position are gone, both rebuilt on resume.
+interface PausedClip {
+  clipGain: GainNode;
+  buffer: AudioBuffer;
+  loop: boolean;
+  offset: number;
 }
 
 interface ChannelStrip {
@@ -33,6 +50,7 @@ interface ChannelStrip {
   eqMid: BiquadFilterNode;
   eqHigh: BiquadFilterNode;
   playing: Map<string, PlayingClip>;
+  paused: Map<string, PausedClip>;
 }
 
 type Listener = (channelId: string) => void;
@@ -64,6 +82,10 @@ export class LocalAudioEngine {
     return Array.from(this.channels.get(channelId)?.playing.keys() ?? []);
   }
 
+  getPausedClipIds(channelId: string): string[] {
+    return Array.from(this.channels.get(channelId)?.paused.keys() ?? []);
+  }
+
   private getOrCreateChannel(channelId: string): ChannelStrip {
     const existing = this.channels.get(channelId);
     if (existing) return existing;
@@ -87,7 +109,7 @@ export class LocalAudioEngine {
     eqMid.connect(eqHigh);
     eqHigh.connect(this.master);
 
-    const strip: ChannelStrip = { channelGain, panner, eqLow, eqMid, eqHigh, playing: new Map() };
+    const strip: ChannelStrip = { channelGain, panner, eqLow, eqMid, eqHigh, playing: new Map(), paused: new Map() };
     this.channels.set(channelId, strip);
     return strip;
   }
@@ -115,6 +137,10 @@ export class LocalAudioEngine {
   /** Click handler entry point for a clip button — behavior depends on the channel's mode. */
   async triggerClip(channelId: string, clip: ClipConfig, mixer: ChannelMixerConfig): Promise<void> {
     const strip = this.getOrCreateChannel(channelId);
+    // A direct clip-button click always starts fresh from the top, even if
+    // the channel-level pause button had left this clip paused mid-track —
+    // pause/resume is a channel-level concept, clip buttons stay as before.
+    strip.paused.delete(clip.id);
 
     // Clicking the clip that's already playing always toggles it off — in
     // 'add' mode that's per-clip; in 'replace' mode it's the sole audible
@@ -148,12 +174,12 @@ export class LocalAudioEngine {
     }
 
     source.start(now);
-    strip.playing.set(clip.id, { source, clipGain });
+    strip.playing.set(clip.id, { source, clipGain, buffer, loop: clip.loop, startedAt: now, offsetAtStart: 0 });
     source.onended = () => { strip.playing.delete(clip.id); this.notify(channelId); };
     this.notify(channelId);
   }
 
-  /** Stops one clip on a channel, respecting the channel's transition. */
+  /** Stops one clip on a channel, respecting the channel's transition. Discards playback position — use pauseClip to keep it. */
   stopClip(channelId: string, clipId: string, mixer: Pick<ChannelMixerConfig, 'transitionType' | 'transitionSeconds'>): void {
     const strip = this.channels.get(channelId);
     const playing = strip?.playing.get(clipId);
@@ -169,15 +195,74 @@ export class LocalAudioEngine {
       playing.source.stop(now);
     }
     strip.playing.delete(clipId);
+    strip.paused.delete(clipId);
     this.notify(channelId);
   }
 
-  /** Stops every clip currently playing on a channel (e.g. scene switch). */
+  /** Stops every clip currently playing on a channel (e.g. scene switch) — discards any paused position too. */
   stopChannel(channelId: string, mixer: Pick<ChannelMixerConfig, 'transitionType' | 'transitionSeconds'>): void {
     const strip = this.channels.get(channelId);
     if (!strip) return;
     for (const clipId of Array.from(strip.playing.keys())) {
       this.stopClip(channelId, clipId, mixer);
+    }
+    strip.paused.clear();
+  }
+
+  /** Pauses one clip in place — unlike stopClip, the playback position is kept so resumeClip can continue from it. */
+  pauseClip(channelId: string, clipId: string): void {
+    const strip = this.channels.get(channelId);
+    const playing = strip?.playing.get(clipId);
+    if (!strip || !playing) return;
+
+    const now = this.context.currentTime;
+    const elapsed = now - playing.startedAt;
+    const offset = playing.loop
+      ? (playing.offsetAtStart + elapsed) % playing.buffer.duration
+      : Math.min(playing.offsetAtStart + elapsed, playing.buffer.duration);
+    playing.source.stop(now);
+    strip.playing.delete(clipId);
+    strip.paused.set(clipId, { clipGain: playing.clipGain, buffer: playing.buffer, loop: playing.loop, offset });
+    this.notify(channelId);
+  }
+
+  /** Pauses every clip currently playing on a channel, keeping each one's position. */
+  pauseChannel(channelId: string): void {
+    const strip = this.channels.get(channelId);
+    if (!strip) return;
+    for (const clipId of Array.from(strip.playing.keys())) {
+      this.pauseClip(channelId, clipId);
+    }
+  }
+
+  /** Resumes one paused clip from where it left off. No-op if it isn't paused. */
+  resumeClip(channelId: string, clipId: string): void {
+    const strip = this.channels.get(channelId);
+    const paused = strip?.paused.get(clipId);
+    if (!strip || !paused) return;
+
+    const source = this.context.createBufferSource();
+    source.buffer = paused.buffer;
+    source.loop = paused.loop;
+    source.connect(paused.clipGain);
+
+    const now = this.context.currentTime;
+    source.start(now, paused.offset);
+    strip.paused.delete(clipId);
+    strip.playing.set(clipId, {
+      source, clipGain: paused.clipGain, buffer: paused.buffer, loop: paused.loop,
+      startedAt: now, offsetAtStart: paused.offset,
+    });
+    source.onended = () => { strip.playing.delete(clipId); this.notify(channelId); };
+    this.notify(channelId);
+  }
+
+  /** Resumes every paused clip on a channel from where each left off. */
+  resumeChannel(channelId: string): void {
+    const strip = this.channels.get(channelId);
+    if (!strip) return;
+    for (const clipId of Array.from(strip.paused.keys())) {
+      this.resumeClip(channelId, clipId);
     }
   }
 
@@ -185,11 +270,13 @@ export class LocalAudioEngine {
     return this.channels.get(channelId)?.playing.has(clipId) ?? false;
   }
 
-  /** Snaps a currently-playing clip's own gain to a new base_volume — e.g. the clip editor was used to change it mid-playback. No-op if the clip isn't playing. */
+  /** Snaps a currently-playing (or paused) clip's own gain to a new base_volume — e.g. the clip editor was used to change it mid-playback. No-op if the clip is neither. */
   updateClipVolume(channelId: string, clipId: string, baseVolume: number): void {
-    const playing = this.channels.get(channelId)?.playing.get(clipId);
-    if (!playing) return;
-    playing.clipGain.gain.value = baseVolume;
+    const strip = this.channels.get(channelId);
+    const playing = strip?.playing.get(clipId);
+    if (playing) { playing.clipGain.gain.value = baseVolume; return; }
+    const paused = strip?.paused.get(clipId);
+    if (paused) paused.clipGain.gain.value = baseVolume;
   }
 
   dispose(): void {
@@ -197,6 +284,7 @@ export class LocalAudioEngine {
       for (const clipId of Array.from(strip.playing.keys())) {
         strip.playing.get(clipId)?.source.stop();
       }
+      strip.paused.clear();
     }
     this.channels.clear();
     this.master.disconnect();

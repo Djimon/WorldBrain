@@ -65,10 +65,32 @@ describe('parseSpotifyUri', () => {
 
 describe('SpotifyClipPlayer', () => {
   it('mounts a hidden embed controller and calls play', async () => {
-    const { container } = render(<SpotifyClipPlayer uri="spotify:track:abc" />);
+    const { container } = render(<SpotifyClipPlayer uri="spotify:track:abc" paused={false} />);
     await flush();
     expect((container.firstChild as HTMLElement).style.display).toBe('none');
     expect(FakeController.instances[0].calls.play).toBe(1);
+  });
+
+  describe('paused prop (real pause/resume, keeps the controller mounted)', () => {
+    it('calls pause() when paused flips to true, play() when it flips back', async () => {
+      const { rerender } = render(<SpotifyClipPlayer uri="spotify:track:abc" paused={false} />);
+      await flush();
+      const controller = FakeController.instances.at(-1)!;
+      expect(controller.calls.play).toBe(1);
+
+      rerender(<SpotifyClipPlayer uri="spotify:track:abc" paused={true} />);
+      expect(controller.calls.pause).toBe(1);
+
+      rerender(<SpotifyClipPlayer uri="spotify:track:abc" paused={false} />);
+      expect(controller.calls.play).toBe(2);
+    });
+
+    it('does not call play() once the controller is ready if the channel is already paused', async () => {
+      render(<SpotifyClipPlayer uri="spotify:track:abc" paused={true} />);
+      await flush();
+      const controller = FakeController.instances.at(-1)!;
+      expect(controller.calls.play).toBe(0);
+    });
   });
 });
 
@@ -131,5 +153,27 @@ describe('SpotifyTierEngine', () => {
     await flush();
     expect(container.querySelectorAll('input')).toHaveLength(0);
     expect(container.querySelectorAll('[style]')).toHaveLength(1);
+  });
+
+  describe('pauseChannel/resumeChannel (real pause — unlike stopChannel, the slot stays)', () => {
+    it('pauseChannel marks every slot paused; isPlaying becomes false but the slot is still there', () => {
+      const engine = new SpotifyTierEngine();
+      engine.triggerClip('chan_1', { id: 'a', uri: 'spotify:track:a' }, { mode: 'add' });
+
+      engine.pauseChannel('chan_1');
+      expect(engine.isPlaying('chan_1', 'a')).toBe(false);
+      expect(engine.getSlots('chan_1')).toHaveLength(1);
+      expect(engine.getSlots('chan_1')[0].paused).toBe(true);
+    });
+
+    it('resumeChannel un-pauses every slot', () => {
+      const engine = new SpotifyTierEngine();
+      engine.triggerClip('chan_1', { id: 'a', uri: 'spotify:track:a' }, { mode: 'add' });
+      engine.pauseChannel('chan_1');
+
+      engine.resumeChannel('chan_1');
+      expect(engine.isPlaying('chan_1', 'a')).toBe(true);
+      expect(engine.getSlots('chan_1')[0].paused).toBe(false);
+    });
   });
 });

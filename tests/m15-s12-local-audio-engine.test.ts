@@ -45,9 +45,10 @@ class MockAudioBufferSourceNode extends MockAudioNode {
   loop = false;
   onended: (() => void) | null = null;
   started = false;
+  startArgs: [number?, number?] | null = null;
   stopped = false;
   stopTime: number | null = null;
-  start() { this.started = true; }
+  start(when?: number, offset?: number) { this.started = true; this.startArgs = [when, offset]; }
   stop(time?: number) { this.stopped = true; this.stopTime = time ?? 0; }
 }
 
@@ -63,7 +64,7 @@ class MockAudioContext {
   createStereoPanner() { const n = new MockStereoPannerNode(); this.pannerNodes.push(n); return n; }
   createBiquadFilter() { const n = new MockBiquadFilterNode(); this.biquadNodes.push(n); return n; }
   createBufferSource() { const n = new MockAudioBufferSourceNode(); this.bufferSources.push(n); return n; }
-  decodeAudioData(): Promise<unknown> { return Promise.resolve({}); }
+  decodeAudioData(): Promise<unknown> { return Promise.resolve({ duration: 100 }); }
 }
 
 function makeEngine() {
@@ -247,6 +248,79 @@ describe('M15-S12 local audio engine', () => {
       engine.stopChannel('chan_1', m);
       expect(engine.isPlaying('chan_1', 'a')).toBe(false);
       expect(engine.isPlaying('chan_1', 'b')).toBe(false);
+    });
+  });
+
+  describe('pause/resume (channel-level play/pause button — keeps position, unlike stop)', () => {
+    it('pauseClip stops the source, moves the clip to paused, keeps position resumable', async () => {
+      const { context, engine } = makeEngine();
+      await engine.triggerClip('chan_1', clip({ id: 'a' }), mixer({ transitionType: 'cut' }));
+      engine.pauseClip('chan_1', 'a');
+      expect(engine.isPlaying('chan_1', 'a')).toBe(false);
+      expect(engine.getPausedClipIds('chan_1')).toEqual(['a']);
+      expect(context.bufferSources[0].stopped).toBe(true);
+    });
+
+    it('resumeClip creates a new source starting at the elapsed offset', async () => {
+      const { context, engine } = makeEngine();
+      await engine.triggerClip('chan_1', clip({ id: 'a' }), mixer({ transitionType: 'cut' }));
+      context.currentTime = 5; // 5s elapsed since start
+      engine.pauseClip('chan_1', 'a');
+      engine.resumeClip('chan_1', 'a');
+
+      expect(engine.isPlaying('chan_1', 'a')).toBe(true);
+      expect(engine.getPausedClipIds('chan_1')).toEqual([]);
+      expect(context.bufferSources).toHaveLength(2);
+      expect(context.bufferSources[1].startArgs).toEqual([5, 5]);
+    });
+
+    it('pauseChannel pauses every playing clip; resumeChannel resumes them all', async () => {
+      const { engine } = makeEngine();
+      const m = mixer({ mode: 'add', transitionType: 'cut' });
+      await engine.triggerClip('chan_1', clip({ id: 'a' }), m);
+      await engine.triggerClip('chan_1', clip({ id: 'b' }), m);
+
+      engine.pauseChannel('chan_1');
+      expect(engine.isPlaying('chan_1', 'a')).toBe(false);
+      expect(engine.isPlaying('chan_1', 'b')).toBe(false);
+      expect(engine.getPausedClipIds('chan_1').sort()).toEqual(['a', 'b']);
+
+      engine.resumeChannel('chan_1');
+      expect(engine.isPlaying('chan_1', 'a')).toBe(true);
+      expect(engine.isPlaying('chan_1', 'b')).toBe(true);
+      expect(engine.getPausedClipIds('chan_1')).toEqual([]);
+    });
+
+    it('stopChannel discards paused state too, not just currently-playing clips', async () => {
+      const { engine } = makeEngine();
+      await engine.triggerClip('chan_1', clip({ id: 'a' }), mixer({ transitionType: 'cut' }));
+      engine.pauseClip('chan_1', 'a');
+      expect(engine.getPausedClipIds('chan_1')).toEqual(['a']);
+
+      engine.stopChannel('chan_1', mixer({ transitionType: 'cut' }));
+      expect(engine.getPausedClipIds('chan_1')).toEqual([]);
+    });
+
+    it('a fresh clip-button trigger clears any stale paused entry for that clip (starts over, not resumes)', async () => {
+      const { engine } = makeEngine();
+      const m = mixer({ mode: 'add', transitionType: 'cut' });
+      await engine.triggerClip('chan_1', clip({ id: 'a' }), m);
+      engine.pauseClip('chan_1', 'a');
+      expect(engine.getPausedClipIds('chan_1')).toEqual(['a']);
+
+      await engine.triggerClip('chan_1', clip({ id: 'a' }), m);
+      expect(engine.getPausedClipIds('chan_1')).toEqual([]);
+      expect(engine.isPlaying('chan_1', 'a')).toBe(true);
+    });
+
+    it('updateClipVolume also applies to a paused clip\'s gain, reflected once resumed', async () => {
+      const { context, engine } = makeEngine();
+      await engine.triggerClip('chan_1', clip({ id: 'a', baseVolume: 0.5 }), mixer({ transitionType: 'cut' }));
+      engine.pauseClip('chan_1', 'a');
+      engine.updateClipVolume('chan_1', 'a', 0.9);
+      engine.resumeClip('chan_1', 'a');
+      const clipGain = context.gainNodes[2];
+      expect(clipGain.gain.value).toBe(0.9);
     });
   });
 

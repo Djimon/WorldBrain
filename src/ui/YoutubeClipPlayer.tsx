@@ -13,15 +13,21 @@ export interface YoutubeClipPlayerProps {
   targetVolume: number;
   rampSeconds: number;
   loop: boolean;
+  paused: boolean;
 }
 
 const RAMP_STEPS_PER_SECOND = 20;
 
-export function YoutubeClipPlayer({ videoUrl, targetVolume, rampSeconds, loop }: YoutubeClipPlayerProps) {
+export function YoutubeClipPlayer({ videoUrl, targetVolume, rampSeconds, loop, paused }: YoutubeClipPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YoutubePlayer | null>(null);
   const loopRef = useRef(loop);
   loopRef.current = loop;
+  // Read by onReady, which can fire after `paused` has already changed —
+  // without this a channel paused before the player finished loading would
+  // still start playing once it became ready.
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   // Local ramp state — never read back from the player. getVolume() lags one
   // tick behind setVolume() (spike finding), so the ramp must track its own
   // last-applied value instead of re-reading it from the IFrame API.
@@ -50,7 +56,7 @@ export function YoutubeClipPlayer({ videoUrl, targetVolume, rampSeconds, loop }:
           onReady: (event) => {
             if (source.playlistId) event.target.loadPlaylist({ list: source.playlistId });
             event.target.setVolume(currentVolumeRef.current);
-            event.target.playVideo();
+            if (!pausedRef.current) event.target.playVideo();
           },
           onStateChange: (event) => {
             if (loopRef.current && event.data === YT.PlayerState.ENDED) {
@@ -101,6 +107,14 @@ export function YoutubeClipPlayer({ videoUrl, targetVolume, rampSeconds, loop }:
       if (rampTimerRef.current) { clearInterval(rampTimerRef.current); rampTimerRef.current = null; }
     };
   }, [targetVolume, rampSeconds]);
+
+  // Real pause/resume (unlike removing the slot): keeps this player mounted
+  // so YouTube retains its own playback position.
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
+    if (paused) player.pauseVideo(); else player.playVideo();
+  }, [paused]);
 
   return <div ref={containerRef} style={{ display: 'none' }} />;
 }

@@ -21,7 +21,7 @@ export function SpotifyChannelPlayers({ channelId, engine }: SpotifyChannelPlaye
 
   return (
     <>
-      {slots.map((slot) => <SpotifyClipPlayer key={slot.clipId} uri={slot.uri} />)}
+      {slots.map((slot) => <SpotifyClipPlayer key={slot.clipId} uri={slot.uri} paused={slot.paused} />)}
     </>
   );
 }

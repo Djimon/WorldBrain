@@ -44,8 +44,13 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
   const { t } = useTranslation('nav');
   const [scene, setScene] = useState<SceneWithChannels | null>(null);
   const [activeByChannel, setActiveByChannel] = useState<Map<string, Set<string>>>(new Map());
+  // Whether a channel currently has any paused-in-place clips (real pause,
+  // not stopped) — distinguishes "resume where it left off" from "nothing
+  // to resume, replay from scratch" in the channel play/pause button.
+  const [pausedByChannel, setPausedByChannel] = useState<Map<string, boolean>>(new Map());
   // Remembers each channel's last non-empty active-clip set so the channel
-  // play/pause button (pause = stop everything) has something to resume.
+  // play/pause button has something to replay from scratch when there's
+  // nothing playing AND nothing paused (e.g. right after a full stop).
   const [lastActiveByChannel, setLastActiveByChannel] = useState<Map<string, string[]>>(new Map());
   // Surfaced visibly (not just console.error) so a failed local-file fetch
   // or decode is actually diagnosable without opening devtools.
@@ -81,13 +86,21 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
       setScene((current) => {
         if (!current) return current;
         const next = new Map<string, Set<string>>();
+        const nextPaused = new Map<string, boolean>();
         for (const channel of current.channels) {
           const local = localEngine.getPlayingClipIds(channel.id);
-          const link = youtubeEngine.getSlots(channel.id).map((slot) => slot.clipId);
-          const spotify = spotifyEngine.getSlots(channel.id).map((slot) => slot.clipId);
+          const youtubeSlots = youtubeEngine.getSlots(channel.id);
+          const spotifySlots = spotifyEngine.getSlots(channel.id);
+          const link = youtubeSlots.filter((slot) => !slot.paused).map((slot) => slot.clipId);
+          const spotify = spotifySlots.filter((slot) => !slot.paused).map((slot) => slot.clipId);
           next.set(channel.id, new Set([...local, ...link, ...spotify]));
+          nextPaused.set(channel.id,
+            localEngine.getPausedClipIds(channel.id).length > 0
+            || youtubeSlots.some((slot) => slot.paused)
+            || spotifySlots.some((slot) => slot.paused));
         }
         setActiveByChannel(next);
+        setPausedByChannel(nextPaused);
         setLastActiveByChannel((prevLast) => {
           const nextLast = new Map(prevLast);
           for (const [channelId, active] of next) {
@@ -143,14 +156,23 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
   }
 
   function handleTogglePlayback(channel: AudioChannelRow & { presets: AudioPresetRow[] }) {
-    const mixer = mixerConfigFor(channel);
     const active = activeByChannel.get(channel.id) ?? new Set<string>();
     if (active.size > 0) {
-      localEngine.stopChannel(channel.id, mixer);
-      youtubeEngine.stopChannel(channel.id, mixer);
-      spotifyEngine.stopChannel(channel.id);
+      // Real pause, not stop — keeps each clip's position so resuming
+      // continues from where it left off instead of restarting.
+      localEngine.pauseChannel(channel.id);
+      youtubeEngine.pauseChannel(channel.id);
+      spotifyEngine.pauseChannel(channel.id);
       return;
     }
+    if (pausedByChannel.get(channel.id)) {
+      localEngine.resumeChannel(channel.id);
+      youtubeEngine.resumeChannel(channel.id);
+      spotifyEngine.resumeChannel(channel.id);
+      return;
+    }
+    // Nothing playing, nothing paused (e.g. right after a full stop) —
+    // nothing to resume, so replay whatever was last active from scratch.
     const toResume = lastActiveByChannel.get(channel.id) ?? [];
     for (const presetId of toResume) {
       const preset = channel.presets.find((p) => p.id === presetId);

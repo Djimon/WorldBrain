@@ -15,7 +15,7 @@ import { parseYoutubeSource } from '../src/services/youtube-url';
 const { FakePlayer, PLAYER_STATE } = vi.hoisted(() => {
   class FakePlayer {
     static instances: FakePlayer[] = [];
-    calls = { setVolume: [] as number[], playVideo: 0, seekTo: [] as Array<[number, boolean | undefined]>, loadPlaylist: [] as Array<{ list: string }>, destroy: 0 };
+    calls = { setVolume: [] as number[], playVideo: 0, pauseVideo: 0, seekTo: [] as Array<[number, boolean | undefined]>, loadPlaylist: [] as Array<{ list: string }>, destroy: 0 };
     options: { events?: { onReady?: (e: unknown) => void; onStateChange?: (e: unknown) => void }; videoId?: string };
 
     constructor(_el: HTMLElement, options: typeof FakePlayer.prototype.options) {
@@ -24,7 +24,7 @@ const { FakePlayer, PLAYER_STATE } = vi.hoisted(() => {
     }
     setVolume(v: number) { this.calls.setVolume.push(v); }
     playVideo() { this.calls.playVideo += 1; }
-    pauseVideo() {}
+    pauseVideo() { this.calls.pauseVideo += 1; }
     stopVideo() {}
     seekTo(s: number, allow?: boolean) { this.calls.seekTo.push([s, allow]); }
     mute() {}
@@ -136,6 +136,33 @@ describe('M15-S13 YouTube tier', () => {
     });
   });
 
+  describe('YoutubeClipPlayer paused prop (real pause/resume, keeps the player mounted)', () => {
+    it('calls pauseVideo() when paused flips to true, playVideo() when it flips back', async () => {
+      const { rerender } = render(
+        <YoutubeClipPlayer videoUrl="https://www.youtube.com/watch?v=abc123" targetVolume={80} rampSeconds={0} loop={false} paused={false} />,
+      );
+      await flush();
+      const player = FakePlayer.instances.at(-1)!;
+      player.triggerReady();
+
+      rerender(<YoutubeClipPlayer videoUrl="https://www.youtube.com/watch?v=abc123" targetVolume={80} rampSeconds={0} loop={false} paused={true} />);
+      expect(player.calls.pauseVideo).toBe(1);
+
+      rerender(<YoutubeClipPlayer videoUrl="https://www.youtube.com/watch?v=abc123" targetVolume={80} rampSeconds={0} loop={false} paused={false} />);
+      expect(player.calls.playVideo).toBeGreaterThanOrEqual(2); // once from onReady, once from resuming
+    });
+
+    it('does not call playVideo() on ready if the channel is already paused', async () => {
+      render(
+        <YoutubeClipPlayer videoUrl="https://www.youtube.com/watch?v=abc123" targetVolume={80} rampSeconds={0} loop={false} paused={true} />,
+      );
+      await flush();
+      const player = FakePlayer.instances.at(-1)!;
+      player.triggerReady();
+      expect(player.calls.playVideo).toBe(0);
+    });
+  });
+
   describe('YoutubeTierEngine', () => {
     it('add mode: layers multiple clips simultaneously', () => {
       const engine = new YoutubeTierEngine();
@@ -193,6 +220,30 @@ describe('M15-S13 YouTube tier', () => {
       engine.triggerClip('chan_1', { id: 'a', videoUrl: 'https://www.youtube.com/watch?v=abc&list=PLxyz', baseVolume: 1, loop: false },
         { volume: 1, muted: false, mode: 'add', transitionType: 'cut', transitionSeconds: 2 });
       expect(engine.getSlots('chan_1')).toHaveLength(1);
+    });
+
+    describe('pauseChannel/resumeChannel (real pause — unlike stopChannel, the slot stays)', () => {
+      it('pauseChannel marks every slot paused; isPlaying becomes false but the slot is still there', () => {
+        const engine = new YoutubeTierEngine();
+        const mixer = { volume: 1, muted: false, mode: 'add' as const, transitionType: 'cut' as const, transitionSeconds: 2 };
+        engine.triggerClip('chan_1', { id: 'a', videoUrl: 'https://youtu.be/a', baseVolume: 1, loop: false }, mixer);
+
+        engine.pauseChannel('chan_1');
+        expect(engine.isPlaying('chan_1', 'a')).toBe(false);
+        expect(engine.getSlots('chan_1')).toHaveLength(1);
+        expect(engine.getSlots('chan_1')[0].paused).toBe(true);
+      });
+
+      it('resumeChannel un-pauses every slot', () => {
+        const engine = new YoutubeTierEngine();
+        const mixer = { volume: 1, muted: false, mode: 'add' as const, transitionType: 'cut' as const, transitionSeconds: 2 };
+        engine.triggerClip('chan_1', { id: 'a', videoUrl: 'https://youtu.be/a', baseVolume: 1, loop: false }, mixer);
+        engine.pauseChannel('chan_1');
+
+        engine.resumeChannel('chan_1');
+        expect(engine.isPlaying('chan_1', 'a')).toBe(true);
+        expect(engine.getSlots('chan_1')[0].paused).toBe(false);
+      });
     });
   });
 });

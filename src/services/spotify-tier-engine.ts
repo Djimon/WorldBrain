@@ -16,6 +16,10 @@ export interface SpotifyChannelMixer {
 export interface SpotifySlot {
   clipId: string;
   uri: string;
+  // Channel-level pause (real pause/resume, unlike triggerClip's toggle-off
+  // or stopChannel, which discard the clip entirely) — the embed controller
+  // stays mounted so Spotify keeps its own playback position.
+  paused: boolean;
 }
 
 type Listener = (channelId: string, slots: SpotifySlot[]) => void;
@@ -45,7 +49,8 @@ export class SpotifyTierEngine {
   }
 
   isPlaying(channelId: string, clipId: string): boolean {
-    return this.channels.get(channelId)?.has(clipId) ?? false;
+    const slot = this.channels.get(channelId)?.get(clipId);
+    return !!slot && !slot.paused;
   }
 
   triggerClip(channelId: string, clip: SpotifyClipInput, mixer: SpotifyChannelMixer): void {
@@ -58,7 +63,7 @@ export class SpotifyTierEngine {
     }
 
     if (mixer.mode === 'replace') slots.clear();
-    slots.set(clip.id, { clipId: clip.id, uri: clip.uri });
+    slots.set(clip.id, { clipId: clip.id, uri: clip.uri, paused: false });
     this.notify(channelId);
   }
 
@@ -73,6 +78,21 @@ export class SpotifyTierEngine {
     const slots = this.channels.get(channelId);
     if (!slots || slots.size === 0) return;
     slots.clear();
+    this.notify(channelId);
+  }
+
+  /** Real pause (unlike stopChannel) — the embed controller stays mounted so Spotify retains its own playback position, resumeChannel just un-pauses it. */
+  pauseChannel(channelId: string): void {
+    const slots = this.channels.get(channelId);
+    if (!slots) return;
+    for (const slot of slots.values()) slot.paused = true;
+    this.notify(channelId);
+  }
+
+  resumeChannel(channelId: string): void {
+    const slots = this.channels.get(channelId);
+    if (!slots) return;
+    for (const slot of slots.values()) slot.paused = false;
     this.notify(channelId);
   }
 

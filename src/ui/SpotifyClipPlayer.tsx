@@ -9,11 +9,17 @@ import type { SpotifyController } from '../services/spotify-iframe-api';
 
 export interface SpotifyClipPlayerProps {
   uri: string;
+  paused: boolean;
 }
 
-export function SpotifyClipPlayer({ uri }: SpotifyClipPlayerProps) {
+export function SpotifyClipPlayer({ uri, paused }: SpotifyClipPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const controllerRef = useRef<SpotifyController | null>(null);
+  // Read by the ready callback, which can fire after `paused` has already
+  // changed — without this a channel paused before the controller finished
+  // loading would still start playing once it became ready.
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
 
   useEffect(() => {
     let cancelled = false;
@@ -32,9 +38,13 @@ export function SpotifyClipPlayer({ uri }: SpotifyClipPlayerProps) {
       if (cancelled) { console.debug('[SpotifyClipPlayer] IFrame API ready but already cancelled', { uri }); return; }
       IFrameAPI.createController(mountPoint, { uri, width: '1', height: '1' }, (controller) => {
         if (cancelled) { console.debug('[SpotifyClipPlayer] controller ready but already cancelled', { uri }); return; }
-        console.debug('[SpotifyClipPlayer] controller ready, calling play()', { uri });
         controllerRef.current = controller;
-        controller.play();
+        if (!pausedRef.current) {
+          console.debug('[SpotifyClipPlayer] controller ready, calling play()', { uri });
+          controller.play();
+        } else {
+          console.debug('[SpotifyClipPlayer] controller ready but channel is paused, not calling play()', { uri });
+        }
       });
     }).catch((error: unknown) => {
       console.error('[SpotifyClipPlayer] failed to start playback', { uri, error });
@@ -47,6 +57,14 @@ export function SpotifyClipPlayer({ uri }: SpotifyClipPlayerProps) {
       mountPoint.remove();
     };
   }, [uri]);
+
+  // Real pause/resume (unlike removing the slot): keeps the embed controller
+  // mounted so Spotify retains its own playback position.
+  useEffect(() => {
+    const controller = controllerRef.current;
+    if (!controller) return;
+    if (paused) controller.pause(); else controller.play();
+  }, [paused]);
 
   return <div ref={containerRef} style={{ display: 'none' }} />;
 }
