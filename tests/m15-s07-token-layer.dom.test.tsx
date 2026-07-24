@@ -10,6 +10,7 @@ import type { ComponentProps } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MapToken } from '../src/ui/MapTokenLayer';
+import { TokenEditor } from '../src/ui/TokenEditor';
 import type { MapTokenRow } from '../src/services/map-token-service';
 
 // #300: chip icons resolve through the icon-set registry (set_id:icon_key)
@@ -87,6 +88,139 @@ describe('#300 chip icons resolve via the icon-set registry', () => {
     const chip = document.querySelector('.map-token__chip') as HTMLElement;
     expect(chip.textContent).toBe('☠');
     expect(chip.textContent).not.toContain('core:poisoned');
+  });
+});
+
+// #300 (design section "Chip-Rendering am Token"): render_style='token' shows
+// chips as an arc above the token; render_style='plain' shows them side by
+// side, fixed to the top edge, centered. Chip size scales with the token's
+// own `scale` (#301). Overflow (many chips) grows the arc up to a full
+// circle instead of truncating.
+describe('#300 chip rendering: arc (token) vs row (plain) layout, overflow, scale', () => {
+  function baseProps(overrides: Partial<ComponentProps<typeof MapToken>> = {}) {
+    return { token: makeToken(), scale: 1, ...overrides };
+  }
+  function twoChips() {
+    return [{ icon: '☠', text: 'Gift' }, { icon: '💤', text: 'Schlaf' }];
+  }
+
+  it('render_style="token": chips container carries the arc layout modifier', () => {
+    render(<MapToken {...baseProps({ token: makeToken({ render_style: 'token', status_chips: twoChips() }) })} />);
+    const chips = document.querySelector('.map-token__chips') as HTMLElement;
+    expect(chips.className).toMatch(/\bmap-token__chips--arc\b/);
+  });
+
+  it('render_style="plain": chips container carries the row layout modifier, not arc', () => {
+    render(<MapToken {...baseProps({ token: makeToken({ render_style: 'plain', status_chips: twoChips() }) })} />);
+    const chips = document.querySelector('.map-token__chips') as HTMLElement;
+    expect(chips.className).toMatch(/\bmap-token__chips--row\b/);
+    expect(chips.className).not.toMatch(/\bmap-token__chips--arc\b/);
+  });
+
+  it('render_style="token": each chip is individually rotated (arc), and no two chips share the same angle', () => {
+    render(<MapToken {...baseProps({ token: makeToken({ render_style: 'token', status_chips: twoChips() }) })} />);
+    const chips = Array.from(document.querySelectorAll('.map-token__chip')) as HTMLElement[];
+    expect(chips).toHaveLength(2);
+    const transforms = chips.map((c) => c.style.transform);
+    for (const t of transforms) expect(t).toMatch(/rotate\(-?\d+(\.\d+)?deg\)/);
+    expect(new Set(transforms).size).toBe(transforms.length);
+  });
+
+  it('overflow: many chips (12) still render all of them, spread as a full arc instead of being truncated', () => {
+    const manyChips = Array.from({ length: 12 }, (_, i) => ({ icon: `chip-${i}` }));
+    render(<MapToken {...baseProps({ token: makeToken({ render_style: 'token', status_chips: manyChips }) })} />);
+    const chips = Array.from(document.querySelectorAll('.map-token__chip')) as HTMLElement[];
+    expect(chips).toHaveLength(12);
+    const angles = chips.map((c) => Number(c.style.transform.match(/rotate\((-?\d+(?:\.\d+)?)deg\)/)?.[1]));
+    expect(angles.every((a) => Number.isFinite(a))).toBe(true);
+    // 12 chips growing "bis zum Vollkreis" must span (close to) a full 360°
+    // arc, not be squeezed into the same narrow arc used for 2-3 chips.
+    expect(Math.max(...angles) - Math.min(...angles)).toBeGreaterThan(180);
+  });
+
+  it('chip visual size scales with the token\'s own scale (#301), not just the token root', () => {
+    const chipsSmall = (() => {
+      const { unmount } = render(<MapToken {...baseProps({ token: makeToken({ scale: 1, status_chips: twoChips() }) })} />);
+      const size = (document.querySelector('.map-token__chip') as HTMLElement).style.fontSize;
+      unmount();
+      return size;
+    })();
+    const chipsLarge = (() => {
+      render(<MapToken {...baseProps({ token: makeToken({ scale: 2, status_chips: twoChips() }) })} />);
+      return (document.querySelector('.map-token__chip') as HTMLElement).style.fontSize;
+    })();
+    expect(chipsSmall).toBeTruthy();
+    expect(chipsLarge).toBeTruthy();
+    expect(chipsLarge).not.toBe(chipsSmall);
+  });
+});
+
+// #300: TokenEditor's chip icon field must be wired to the IconPicker
+// (grid popover, registry-backed) instead of a plain-text input for the icon.
+describe('#300 TokenEditor: chip icon field uses IconPicker, not free text', () => {
+  function baseProps(overrides: Partial<ComponentProps<typeof TokenEditor>> = {}) {
+    return {
+      token: makeToken({ status_chips: [{ icon: 'core:poisoned', text: 'Poisoned' }] }),
+      onPickArt: vi.fn(async () => null),
+      resolveAssetUrl: (a: string) => `/assets/${a}`,
+      onSave: vi.fn(),
+      onDelete: vi.fn(),
+      onClose: vi.fn(),
+      ...overrides,
+    };
+  }
+
+  it('the chip row no longer has a free-text input for the icon (aria-label "Chip-Symbol")', () => {
+    render(<TokenEditor {...baseProps()} />);
+    expect(screen.queryByLabelText(/^chip-symbol$/i)).not.toBeInTheDocument();
+  });
+
+  it('each chip row shows an icon-picker trigger button with the resolved glyph, not the raw ref string', () => {
+    render(<TokenEditor {...baseProps()} />);
+    const row = document.querySelector('.token-editor__chip-row') as HTMLElement;
+    const trigger = within(row).getByRole('button', { name: /symbol|icon/i });
+    expect(trigger.textContent).not.toContain('core:poisoned');
+  });
+
+  it('clicking the icon-picker trigger opens the IconPicker grid popover', () => {
+    render(<TokenEditor {...baseProps()} />);
+    const row = document.querySelector('.token-editor__chip-row') as HTMLElement;
+    fireEvent.click(within(row).getByRole('button', { name: /symbol|icon/i }));
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
+  });
+
+  it('selecting an icon in the popover updates the chip and closes the picker', () => {
+    render(<TokenEditor {...baseProps()} />);
+    const row = document.querySelector('.token-editor__chip-row') as HTMLElement;
+    fireEvent.click(within(row).getByRole('button', { name: /symbol|icon/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^asleep$/i }));
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+  });
+
+  it('AP-008: two chip rows each get an independently scoped icon-picker trigger (no cross-row collision)', () => {
+    render(<TokenEditor {...baseProps({
+      token: makeToken({ status_chips: [{ icon: 'core:poisoned' }, { icon: 'core:asleep' }] }),
+    })} />);
+    const rows = document.querySelectorAll('.token-editor__chip-row');
+    expect(rows).toHaveLength(2);
+    for (const row of Array.from(rows)) {
+      expect(within(row as HTMLElement).getByRole('button', { name: /symbol|icon/i })).toBeInTheDocument();
+    }
+  });
+
+  it('saving persists the icon chosen via the picker as a "set_id:icon_key" ref', () => {
+    const onSave = vi.fn();
+    render(<TokenEditor {...baseProps({
+      token: makeToken({ status_chips: [{ icon: '' }] }),
+      onSave,
+    })} />);
+    const row = document.querySelector('.token-editor__chip-row') as HTMLElement;
+    fireEvent.click(within(row).getByRole('button', { name: /symbol|icon/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^bleeding$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^speichern$/i }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ status_chips: [expect.objectContaining({ icon: 'core:bleeding' })] }),
+    );
   });
 });
 
