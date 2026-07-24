@@ -99,6 +99,8 @@ attempt EQ / balance / crossfade on YouTube — the IFrame API cannot. We confir
 | M15-S14 | #285 | story | p1 | Board UI: channels as rows, 8 clip buttons (emoji+label+color), volume+dB, mute, mode + transition config | Verified |
 | M15-S15 | #286 | story | p1 | Scenes: save/load/switch full-board snapshots | Verified |
 | M15-S16 | #287 | story | p1 | Clip editor: source (file/link), base volume, icon/color/label, loop | Verified |
+| M15-S20 | #310 | story | p2 | Zentrale wiederverwendbare Emoji-Picker-Komponente (volle Standard-Bibliothek, statt 12er-Array in ClipEditor) | Open |
+| M15-S21 | #311 | story | p2 | Audio-Soundboard Export/Import (JSON, komplette Board-Konfiguration teilbar) | Open |
 
 **2026-07-23 — S10–S16 implementiert.** Alle sieben Stories in einer Implementation-Agent-Session
 umgesetzt, inklusive Tests (Ausnahme von der sonstigen Implementation-Agent-only-Rolle, explizit vom
@@ -144,6 +146,15 @@ Note: story numbers continue M15's sequence (S01–S08 belong to EPIC-023 maps);
   ohne DOM-Mutation — hätte diesen Bug nie fangen können); verifiziert: schlägt ohne Fix fehl, grün mit Fix.
   Tracking Prevention (194 Storage-Blocks) bleibt ein separates, unbestätigtes Zuverlässigkeits-Risiko für
   Volltrack-vs-Preview (siehe Research-Datei), aber NICHT mehr die Erklärung für "komplett stumm".
+
+**2026-07-25 — Soundboard-Fenster ignorierte den App-Theme.** `index.html` hardcodet `data-theme="dark"`;
+`main.tsx`s Bootstrap-Skript setzte das Attribut nur für Dark, entfernte es nie für Light. Das Hauptfenster
+kam damit durch, weil `ThemeToggle`s Mount-Effekt es korrigiert — `ThemeToggle` wird aber nur in
+`WorkspaceShell` gerendert, nicht im Soundboard-Fenster. Fix: Bootstrap symmetrisch (add/remove), matched
+`ThemeToggle`s eigene `applyTheme`-Logik — behebt es fensterunabhängig. Commit `b6a7951`.
+
+M15-S20 (#310, Emoji-Picker) und M15-S21 (#311, Export/Import) auf User-Wunsch als Issues angelegt
+(Requirement-Stufe, keine Design-Entscheidung/TDD-Phase bisher) — siehe Stories-Tabelle oben.
 
 ## Sources
 
