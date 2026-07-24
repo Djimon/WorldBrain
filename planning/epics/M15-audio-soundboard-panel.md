@@ -99,7 +99,7 @@ attempt EQ / balance / crossfade on YouTube — the IFrame API cannot. We confir
 | M15-S14 | #285 | story | p1 | Board UI: channels as rows, 8 clip buttons (emoji+label+color), volume+dB, mute, mode + transition config | Verified |
 | M15-S15 | #286 | story | p1 | Scenes: save/load/switch full-board snapshots | Verified |
 | M15-S16 | #287 | story | p1 | Clip editor: source (file/link), base volume, icon/color/label, loop | Verified |
-| M15-S20 | #310 | story | p2 | Zentrale `EmojiPicker.tsx` (volle Standard-Bibliothek via `emojibase-data` = reine Daten-Lib; UI analog `IconPicker.tsx`, Suche Pflicht; ersetzt 12er-Array in ClipEditor) | Ready — durchspezifiziert 2026-07-22 |
+| M15-S20 | #310 | story | p2 | Zentrale `EmojiPicker.tsx` (volle Standard-Bibliothek via `emojibase-data` = reine Daten-Lib; UI analog `IconPicker.tsx`, Suche Pflicht; ersetzt 12er-Array in ClipEditor) | Verified |
 | M15-S21 | #311 | story | p2 | Audio-Soundboard Export/Import (JSON, `schema_version:1`; lokale Dateien = nur Referenz + Re-Link; Import additiv mit `" (2)"`, kein Overwrite) | Ready — durchspezifiziert 2026-07-22 |
 
 **2026-07-23 — S10–S16 implementiert.** Alle sieben Stories in einer Implementation-Agent-Session
@@ -157,6 +157,13 @@ kam damit durch, weil `ThemeToggle`s Mount-Effekt es korrigiert — `ThemeToggle
 
 M15-S20 (#310, Emoji-Picker) und M15-S21 (#311, Export/Import) auf User-Wunsch als Issues angelegt
 (Requirement-Stufe, keine Design-Entscheidung/TDD-Phase bisher) — siehe Stories-Tabelle oben.
+
+**2026-07-25 — M15-S20 implementiert.** `EmojiPicker.tsx` (volle `emojibase-data`-Bibliothek, ~1900 Emoji,
+9 Kategorien, Gruppen-Grid analog `IconPicker.tsx`, Pflicht-Suchfeld) ersetzt `ClipEditor.tsx`s hardcodiertes
+12er-Array; gleiches Trigger+Popover-Muster wie TokenEditor. 32 Tests grün, tsc/lint 0. Zwei Live-Test-Runden
+Politur: (1) Kategorie-Reiter zeigen jetzt neutrale SVG-Icons statt Textlabel (voller Name nur als
+Mouseover-Tooltip), (2) Scrollbalken-Breite der Gruppenliste reserviert, damit kein zweiter horizontaler
+Scrollbalken entsteht. Issue #310 geschlossen.
 
 ## Sources
 
