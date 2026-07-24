@@ -454,7 +454,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     const onMove = (ev: MouseEvent) => {
       const d = tokenScaleDrag.current;
       if (!d) return;
-      const ns = Math.max(0.125, Math.min(12, d.startScale + (ev.clientX - d.startX) / 80));
+      const ns = Math.max(0.25, Math.min(12, d.startScale + (ev.clientX - d.startX) / 80));
       d.last = ns;
       setTokens((prev) => prev.map((t) => (t.id === d.id ? { ...t, scale: ns } : t)));
     };
