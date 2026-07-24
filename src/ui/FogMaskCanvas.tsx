@@ -6,6 +6,7 @@
 // caller (MapViewer) persists it via updateLayer (debounce acceptable).
 import { useEffect, useRef, useState } from 'react';
 import type { FogToolMode, FogToolShape } from './FogTools';
+import type { FogStampGridType, FogStampLevel } from './fogStampGeometry';
 
 export interface FogMaskCanvasProps {
   layerId: string;
@@ -18,6 +19,11 @@ export interface FogMaskCanvasProps {
   feather: number;
   active: boolean;
   onStrokeEnd: (maskDataUrl: string) => void;
+  // #295: grid-aware fog stamp geometry (only relevant when shape ===
+  // 'grid-stamp'). Not yet implemented (RED phase, TDD).
+  gridType?: FogStampGridType;
+  gridCellSize?: number;
+  stampLevel?: FogStampLevel;
 }
 
 export function FogMaskCanvas({

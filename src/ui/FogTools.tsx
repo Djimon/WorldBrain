@@ -2,11 +2,13 @@
 // Brush (size + feather) / rectangle shape, reveal/cover mode. Pure controls
 // component — no canvas/paint logic here (that's FogMaskCanvas.tsx).
 import { useTranslation } from 'react-i18next';
+import type { FogStampGridType, FogStampLevel } from './fogStampGeometry';
 
 export type FogToolMode = 'reveal' | 'cover';
 // brush = round dab, square = rectangular dab (both paint while dragging),
-// region = drag corner-to-corner to fill a rectangle.
-export type FogToolShape = 'brush' | 'square' | 'region';
+// region = drag corner-to-corner to fill a rectangle, grid-stamp = #295
+// grid-aware cell stamp (only offered when a grid is active).
+export type FogToolShape = 'brush' | 'square' | 'region' | 'grid-stamp';
 
 export interface FogToolsProps {
   brushSize: number;
@@ -17,6 +19,12 @@ export interface FogToolsProps {
   onFeatherChange: (feather: number) => void;
   onModeChange: (mode: FogToolMode) => void;
   onShapeChange: (shape: FogToolShape) => void;
+  // #295: grid-aware fog stamp — only rendered when a grid is active
+  // (gridActive === true). Not yet implemented (RED phase, TDD).
+  gridActive?: boolean;
+  gridType?: FogStampGridType;
+  stampLevel?: FogStampLevel;
+  onStampLevelChange?: (level: FogStampLevel) => void;
 }
 
 export function FogTools({
