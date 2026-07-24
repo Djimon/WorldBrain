@@ -214,6 +214,15 @@ Praezisiert D4 ("plugin/user icon set"):
 - Multiplayer (spaeter, #299): Spieler duerfen Chips/Tokens setzen; "in Benutzung"-Umrandung
   in Spielerfarbe als Presence-Signal.
 
+**2026-07-24 — #300 implementiert.** Icon-Set-Registry (Map-backed, Core bei Modul-Load geseedet,
+analog `relation-type-registry.ts`), `IconPicker` (Grid-Popover, Gruppen, Scroll-Sprung-Tabs),
+`MapTokenLayer` (Chip-Icons ueber die Registry aufgeloest inkl. Fallback fuer alte Literal-Glyphs;
+Bogen- vs. Reihen-Layout je `render_style`, waechst bis Vollkreis, Groesse skaliert mit Token-`scale`),
+`TokenEditor` (Freitext-Icon-Feld durch IconPicker-Trigger ersetzt). CORE_ICON_SET von 14 auf die
+spezifizierten 6 V1-Icons gekuerzt (ueberzaehlige SVGs waren ungenutztes Scaffolding). 46 Tests gruen
+(`issue-300-icon-registry`, `issue-300-icon-picker`, `m15-s07-token-layer`), tsc/lint 0, keine Regression.
+Issue #300 geschlossen.
+
 ## Constraints propagated into every Story AC (verbatim)
 
 - AP-001: `database` prop typed as `DatabaseLike` (from `entity-service.ts`); no `unknown` or `as never` casts at call sites.
