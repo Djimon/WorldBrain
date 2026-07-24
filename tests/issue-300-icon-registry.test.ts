@@ -10,12 +10,14 @@ import { describe, expect, it } from 'vitest';
 async function getRegistry() { return import('../src/services/icon-set-registry'); }
 
 describe('#300 icon-set registry', () => {
-  describe('CORE_ICON_SET: fixed default content (V1)', () => {
-    it('has exactly the 6 seed icons: poisoned, armour-break, bleeding, asleep, stunned, blinded', async () => {
+  describe('CORE_ICON_SET: fixed default content (V1, corrected 2026-07-24)', () => {
+    it('has exactly the 14 seed icons', async () => {
       const { CORE_ICON_SET } = await getRegistry();
-      expect(CORE_ICON_SET.icons.map((i) => i.key).sort()).toEqual(
-        ['armour-break', 'asleep', 'bleeding', 'blinded', 'poisoned', 'stunned'],
-      );
+      expect(CORE_ICON_SET.icons.map((i) => i.key).sort()).toEqual([
+        'armour-break', 'asleep', 'bleeding', 'blinded', 'dead', 'frightened',
+        'hasted', 'invisible', 'on-fire', 'poisoned', 'prone', 'restrained',
+        'slowed', 'stunned',
+      ]);
     });
 
     it('has id "core"', async () => {

@@ -204,7 +204,9 @@ Praezisiert D4 ("plugin/user icon set"):
 - **Icon-Set-Registry** (Core + Plugin, analog `relation-type-registry` / `plugin-entity-service`) —
   KEIN Fake-Default-Plugin. Default-Set = Core, fest im App-Code registriert (laeuft ohne Plugin);
   Plugins registrieren zusaetzliche Sets ueber dieselbe API. Icon-Technik: **SVG/PNG oder Icon-Font**.
-- **Default-Set V1:** poisoned, armour-break, bleeding, asleep, stunned, blinded.
+- **Default-Set V1** (korrigiert 2026-07-24 — diese Zeile war veraltet/unvollständig): alle 14
+  generischen Status-Effekte — poisoned, armour-break, bleeding, asleep, stunned, blinded, prone,
+  restrained, frightened, invisible, on-fire, dead, hasted, slowed.
 - **Picker** = Grid-Popover mit Gruppen (default / plugin_name / ...), Reiter nur als
   Scroll-Sprung-Anker, Trennlinie + Gruppenname je Gruppe.
 - **Render:** `token`-Modus -> Bogen ueber dem Token (waechst bis Vollkreis); `plain`-Modus ->
@@ -218,10 +220,15 @@ Praezisiert D4 ("plugin/user icon set"):
 analog `relation-type-registry.ts`), `IconPicker` (Grid-Popover, Gruppen, Scroll-Sprung-Tabs),
 `MapTokenLayer` (Chip-Icons ueber die Registry aufgeloest inkl. Fallback fuer alte Literal-Glyphs;
 Bogen- vs. Reihen-Layout je `render_style`, waechst bis Vollkreis, Groesse skaliert mit Token-`scale`),
-`TokenEditor` (Freitext-Icon-Feld durch IconPicker-Trigger ersetzt). CORE_ICON_SET von 14 auf die
-spezifizierten 6 V1-Icons gekuerzt (ueberzaehlige SVGs waren ungenutztes Scaffolding). 46 Tests gruen
+`TokenEditor` (Freitext-Icon-Feld durch IconPicker-Trigger ersetzt). 46 Tests gruen
 (`issue-300-icon-registry`, `issue-300-icon-picker`, `m15-s07-token-layer`), tsc/lint 0, keine Regression.
 Issue #300 geschlossen.
+
+**Korrektur 2026-07-24 (gleicher Tag):** CORE_ICON_SET faelschlich auf 6 V1-Icons gekuerzt (folgte der
+damals einzigen schriftlichen Quelle — sowohl Issue-Text als auch der o.g. "Default-Set V1"-Satz und
+der pre-written Test nannten nur 6). User korrigierte: alle 14 vorgezeichneten Icons sind Core, nicht
+nur 6. `CORE_ICON_SET` + `issue-300-icon-registry.test.ts` + die Decision-Zeile oben entsprechend
+wiederhergestellt/korrigiert.
 
 **2026-07-24 — #295 implementiert (Zusatz zu S04/#276).** Grid-bewusster Fog-Stempel: `fogStampGeometry.ts`
 (`stampCellCount` geschlossene Formel, `stampCells` per odd-q-Offset<->Cube-Hex-Disk-Algorithmus, exakt
