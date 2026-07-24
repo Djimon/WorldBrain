@@ -22,14 +22,14 @@ function ChipGlyph({ icon }: { icon: string }) {
   return <>{resolved.glyph}</>;
 }
 
-// #300 "Chip-Rendering am Token": chips fan out in an arc around the token
-// (render_style='token'), growing toward a full circle as more chips are
-// added instead of staying squeezed into a narrow arc.
-function chipAngle(index: number, count: number): number {
-  if (count <= 1) return 0;
-  const span = Math.min(360, 100 * (count - 1));
-  const step = span / (count - 1);
-  return -span / 2 + step * index;
+// #300 "Chip-Rendering am Token": chips sit on a fixed circular orbit around
+// the token — a constant angular step between neighbors, placed clockwise
+// starting from the top. NOT resized dynamically by count: more chips just
+// continue further around the same fixed-spacing orbit (wrapping past 360°
+// is fine — CSS rotate() normalizes it visually).
+const CHIP_ORBIT_STEP_DEG = 40;
+function chipAngle(index: number): number {
+  return index * CHIP_ORBIT_STEP_DEG;
 }
 
 export interface MapTokenProps {
@@ -103,7 +103,7 @@ export function MapToken({
             // mapScale)`, which this whole chips container inherits; setting
             // fontSize inline too (even a fixed value) would still shadow
             // whatever CSS says, so CSS wouldn't be the source of truth.
-            const angle = chipAngle(i, token.status_chips.length);
+            const angle = chipAngle(i);
             return (
               <span
                 key={`${chip.icon}-${i}`}
