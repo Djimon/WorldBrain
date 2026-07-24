@@ -38,19 +38,31 @@ export function AudioSoundboardWindow({ dbPath, projectDir }: AudioSoundboardWin
     if (!dbPath) { setMode({ kind: 'no-project' }); return; }
     if (!audioContextRef.current) audioContextRef.current = new AudioContext();
     const audioContext = audioContextRef.current;
+    // Guards the async continuation below — without this, React 18
+    // StrictMode's dev-only mount->cleanup->mount cycle leaves TWO
+    // in-flight openProjectDb() calls (one per pass), each capturing its
+    // OWN audioContext in this closure. Nulling the ref in cleanup (below)
+    // only fixes which context the SECOND pass creates — it does nothing
+    // to stop the FIRST pass's already-in-flight promise from resolving
+    // later and calling setMode() with ITS (by-then-closed) context,
+    // clobbering the correct one depending purely on which async I/O call
+    // happens to finish last. That race is why this looked "fixed" for a
+    // while and then silently broke again with no code changes: whichever
+    // pass won the race varied by timing, not by anything the fix controlled.
+    let cancelled = false;
 
     openProjectDb(dbPath).then((db) => {
+      if (cancelled) return;
+      if (audioContext.state === 'closed') {
+        // Should be unreachable now that the race above is closed — if this
+        // ever fires again, the bug has a THIRD cause we haven't found yet.
+        console.error('[AudioSoundboardWindow] audioContext was closed at mode-ready time — this should not happen; report if seen.');
+      }
       setMode(audioContext.state === 'suspended' ? { kind: 'gate', db, audioContext } : { kind: 'ready', db, audioContext });
     }).catch(console.error);
 
     return () => {
-      // Must null the ref, not just close() — React 18 StrictMode's dev-only
-      // mount->cleanup->mount cycle would otherwise leave the SAME (now
-      // closed) context sitting in the ref, and the guard above
-      // (`if (!audioContextRef.current)`) would skip creating a fresh one
-      // on the second mount. Every Web Audio node built on a closed context
-      // "succeeds" silently (no error, no sound) — this was the reported
-      // "UI shows playing but I hear nothing" bug.
+      cancelled = true;
       void audioContext.close();
       audioContextRef.current = null;
     };
