@@ -63,7 +63,7 @@ export function EmojiPicker({ value, onSelect }: EmojiPickerProps) {
   }, [query]);
 
   function scrollToGroup(key: string) {
-    document.getElementById(groupAnchorId(key))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById(groupAnchorId(key))?.scrollIntoView({ behavior: 'instant', block: 'start' });
   }
 
   return (
