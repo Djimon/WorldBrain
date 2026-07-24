@@ -37,7 +37,7 @@ function makeToken(overrides: Partial<MapTokenRow> = {}): MapTokenRow {
 
 describe('M15-S07 (component): MapToken render', () => {
   function baseProps(overrides: Partial<ComponentProps<typeof MapToken>> = {}) {
-    return { token: makeToken(), scale: 1, ...overrides };
+    return { token: makeToken(), ...overrides };
   }
 
   it('renders a circular portrait, a colored ring and a name pill', () => {
@@ -71,16 +71,20 @@ describe('M15-S07 (component): MapToken render', () => {
     expect(document.querySelectorAll('.map-token__chips .map-token__chip')).toHaveLength(2);
   });
 
-  it('scales inversely with map zoom (scale(1/scale))', () => {
-    render(<MapToken {...baseProps({ scale: 2 })} />);
+  // Regression (2026-07-25, live report): tokens were counter-scaling against
+  // map zoom exactly like pins — never intended. A token is a fixed-size
+  // object relative to the map image (like a physical token on paper); only
+  // its own `scale` (#301, the resize handle) should change its size.
+  it('token size follows only its own scale (#301) — no counter-scaling against map zoom', () => {
+    render(<MapToken {...baseProps({ token: makeToken({ scale: 2 }) })} />);
     const el = document.querySelector('[data-token-id="token_1"]') as HTMLElement;
-    expect(el.style.transform).toContain('scale(0.5)');
+    expect(el.style.transform).toContain('scale(2)');
   });
 });
 
 describe('#300 chip icons resolve via the icon-set registry', () => {
   function baseProps(overrides: Partial<ComponentProps<typeof MapToken>> = {}) {
-    return { token: makeToken(), scale: 1, ...overrides };
+    return { token: makeToken(), ...overrides };
   }
 
   it('renders the resolved glyph for a "set_id:icon_key" chip icon, not the literal ref string', () => {
@@ -98,7 +102,7 @@ describe('#300 chip icons resolve via the icon-set registry', () => {
 // circle instead of truncating.
 describe('#300 chip rendering: arc (token) vs row (plain) layout, overflow, scale', () => {
   function baseProps(overrides: Partial<ComponentProps<typeof MapToken>> = {}) {
-    return { token: makeToken(), scale: 1, ...overrides };
+    return { token: makeToken(), ...overrides };
   }
   function twoChips() {
     return [{ icon: '☠', text: 'Gift' }, { icon: '💤', text: 'Schlaf' }];
@@ -234,7 +238,7 @@ describe('#300 TokenEditor: chip icon field uses IconPicker, not free text', () 
 
 describe('#303 counter badge + stepper: positioning, visibility, ±1, no clamp', () => {
   function baseProps(overrides: Partial<ComponentProps<typeof MapToken>> = {}) {
-    return { token: makeToken({ counter_label: 'HP', counter_value: 10 }), scale: 1, ...overrides };
+    return { token: makeToken({ counter_label: 'HP', counter_value: 10 }), ...overrides };
   }
 
   describe('no counter set => no badge and no stepper', () => {

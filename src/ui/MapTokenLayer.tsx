@@ -5,8 +5,10 @@
 //                           pannable via art_offset_x/y (percent, objectPosition).
 //   render_style 'plain' -> the full artwork, no mask (monster/encounter art).
 // No art yet -> initial-letter placeholder. Presentational only; drag/persist
-// is wired by MapViewer. Base size scales scale(1/mapScale) like pins to stay
-// legible, multiplied by the token's own `scale` (#301).
+// is wired by MapViewer. Unlike pins, tokens do NOT counter-scale against map
+// zoom — they have a fixed size relative to the map image, like a physical
+// token on paper, and simply grow/shrink with it. Only the token's own
+// `scale` (#301, the resize handle) changes its size.
 import { useState } from 'react';
 import type { MapTokenRow } from '../services/map-token-service';
 import { getIcon } from '../services/icon-set-registry';
@@ -34,8 +36,6 @@ function chipAngle(index: number): number {
 
 export interface MapTokenProps {
   token: MapTokenRow;
-  /** Current map zoom (the token counter-scales by 1/scale, times its own scale). */
-  scale: number;
   selected?: boolean;
   /** Transient drag state — shows the outline only, no stepper. */
   dragging?: boolean;
@@ -58,7 +58,7 @@ export function tokenName(token: MapTokenRow): string {
 }
 
 export function MapToken({
-  token, scale, selected = false, dragging = false, resolveAssetUrl,
+  token, selected = false, dragging = false, resolveAssetUrl,
   onPointerDown, onPointerMove, onPointerUp, onSelect, onResizeStart, onCounterStep,
 }: MapTokenProps) {
   // Stepper + full label reveal only when hovering the counter itself (not the
@@ -83,7 +83,7 @@ export function MapToken({
         position: 'absolute',
         left: token.x,
         top: token.y,
-        transform: `scale(${tokenScale / scale}) translate(-50%, -50%)`,
+        transform: `scale(${tokenScale}) translate(-50%, -50%)`,
         transformOrigin: '50% 50%',
       }}
       // Stop the mousedown from reaching the map container (which would start a
@@ -98,11 +98,11 @@ export function MapToken({
         <div className={`map-token__chips map-token__chips--${token.render_style === 'token' ? 'arc' : 'row'}`}>
           {token.status_chips.map((chip, i) => {
             // Base size lives purely in style.css (.map-token__chip font-size)
-            // — no inline fontSize here. The token's own scale already
-            // applies via the token root's `transform: scale(tokenScale/
-            // mapScale)`, which this whole chips container inherits; setting
-            // fontSize inline too (even a fixed value) would still shadow
-            // whatever CSS says, so CSS wouldn't be the source of truth.
+            // — no inline fontSize here. The token's own scale already applies
+            // via the token root's `transform: scale(tokenScale)`, which this
+            // whole chips container inherits; setting fontSize inline too
+            // (even a fixed value) would still shadow whatever CSS says, so
+            // CSS wouldn't be the source of truth.
             const angle = chipAngle(i);
             return (
               <span
