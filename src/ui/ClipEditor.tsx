@@ -10,10 +10,10 @@ import {
 import type { SourceType } from '../services/audio-service';
 import { copyAudioAsset } from '../services/audio-asset';
 import { parseSpotifyUri } from '../services/spotify-uri';
+import { EmojiPicker } from './EmojiPicker';
 
 const DEFAULT_CLIP_COLOR = '#3a3f45';
 
-const EMOJI_CHOICES = ['🎵', '🌧️', '🔥', '⚔️', '👻', '🐉', '🌊', '🌲', '💀', '🔔', '⚡', '🕯️'];
 const COLOR_CHOICES = ['#7b1d1d', '#1d5f7b', '#3c6f3c', '#7b5f1d', '#5f1d7b', '#3a3f45'];
 
 export interface ClipEditorProps {
@@ -36,6 +36,7 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
   const [baseVolume, setBaseVolume] = useState(1);
   const [loop, setLoop] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
   useEffect(() => {
     if (presetId === null) return;
@@ -153,16 +154,21 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
         <span>{Math.round(baseVolume * 100)}%</span>
       </label>
 
-      <div className="clip-editor__icon-picker" role="group" aria-label={t('audioClipIcon', 'Icon')}>
+      <div className="clip-editor__icon-field">
         {t('audioClipIcon', 'Icon')}
-        {EMOJI_CHOICES.map((emoji) => (
-          <button
-            key={emoji} type="button" aria-pressed={icon === emoji}
-            aria-label={emoji} onClick={() => setIcon(emoji)}
-          >
-            {emoji}
-          </button>
-        ))}
+        <button
+          type="button"
+          className="clip-editor__icon-trigger"
+          aria-label={t('audioClipIconPicker', 'Icon wählen')}
+          onClick={() => setIconPickerOpen((open) => !open)}
+        >
+          {icon}
+        </button>
+        {iconPickerOpen && (
+          <div className="clip-editor__icon-popover">
+            <EmojiPicker value={icon} onSelect={(emoji) => { setIcon(emoji); setIconPickerOpen(false); }} />
+          </div>
+        )}
       </div>
 
       <div className="clip-editor__color-picker" role="group" aria-label={t('audioClipColor', 'Farbe')}>

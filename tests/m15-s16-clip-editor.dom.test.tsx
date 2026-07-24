@@ -52,7 +52,8 @@ describe('M15-S16 ClipEditor', () => {
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Thunder' } });
     fireEvent.change(screen.getByLabelText(/Basis-Lautstärke/), { target: { value: '0.5' } });
-    fireEvent.click(screen.getByRole('button', { name: '🔥' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Icon wählen' }));
+    fireEvent.click(screen.getByRole('button', { name: /^fire$/i }));
     fireEvent.click(screen.getByRole('button', { name: '#7b1d1d' }));
     fireEvent.click(screen.getByLabelText(/Endlos wiederholen/));
 
@@ -90,7 +91,7 @@ describe('M15-S16 ClipEditor', () => {
   it('editing an existing clip loads its current values', async () => {
     render(<ClipEditor database={fakeDb} projectDir="/proj" channelId="chan_1" presetId="clip_1" onClose={vi.fn()} onSaved={vi.fn()} />);
     expect(await screen.findByDisplayValue('Rain')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '🌧️', pressed: true })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Icon wählen' }).textContent).toBe('🌧️');
     expect(screen.getByRole('button', { name: '#1d5f7b', pressed: true })).toBeInTheDocument();
     expect(screen.getByLabelText(/Endlos wiederholen/)).toBeChecked();
   });

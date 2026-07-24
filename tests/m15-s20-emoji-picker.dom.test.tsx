@@ -74,7 +74,7 @@ describe('#310 EmojiPicker (grid popover, volle emojibase-data-Bibliothek)', () 
     renderPicker({ onSelect });
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'grinning face' } });
     const grid = document.querySelector('.emoji-picker__groups') as HTMLElement;
-    fireEvent.click(within(grid).getByRole('button', { name: /grinning face/i }));
+    fireEvent.click(within(grid).getByRole('button', { name: /^grinning face$/i }));
     expect(onSelect).toHaveBeenCalledWith('😀');
   });
 
@@ -82,7 +82,7 @@ describe('#310 EmojiPicker (grid popover, volle emojibase-data-Bibliothek)', () 
     renderPicker({ value: '😀' });
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'grinning face' } });
     const grid = document.querySelector('.emoji-picker__groups') as HTMLElement;
-    expect(within(grid).getByRole('button', { name: /grinning face/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(grid).getByRole('button', { name: /^grinning face$/i })).toHaveAttribute('aria-pressed', 'true');
   });
 
   describe('AC 1/3: component is audio-free and reusable (source scan)', () => {
