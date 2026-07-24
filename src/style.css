@@ -4452,7 +4452,7 @@ input {
 .emoji-picker__tab-icon svg { display: block; width: 15px; height: 15px; }
 
 .emoji-picker__groups {
-  max-height: 260px;
+  max-height: 140px;
   overflow-y: auto;
   overflow-x: hidden;
   box-sizing: border-box;
