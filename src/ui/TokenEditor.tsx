@@ -47,6 +47,8 @@ function clampPct(v: number): number {
   return Math.max(-50, Math.min(50, v));
 }
 
+const MAX_STATUS_CHIPS = 12;
+
 export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelete, onClose }: TokenEditorProps) {
   const { t } = useTranslation('map');
   const [label, setLabel] = useState(token.label ?? '');
@@ -88,7 +90,11 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
   function updateChip(i: number, patch: Partial<StatusChip>) {
     setChips((prev) => prev.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
   }
-  function addChip() { setChips((prev) => [...prev, { icon: '', color: '', text: '' }]); }
+  // #300: 12 chips exactly fill one lap of the 30deg-step token orbit
+  // (12 * 30 = 360) — capped so a second lap never starts.
+  function addChip() {
+    setChips((prev) => (prev.length >= MAX_STATUS_CHIPS ? prev : [...prev, { icon: '', color: '', text: '' }]));
+  }
   function removeChip(i: number) { setChips((prev) => prev.filter((_, idx) => idx !== i)); }
 
   function save() {
@@ -208,7 +214,9 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
             <button type="button" onClick={() => removeChip(i)} title={t('token.removeChip', 'Chip entfernen')}>✕</button>
           </div>
         ))}
-        <button type="button" className="token-editor__add-chip" onClick={addChip}>
+        <button type="button" className="token-editor__add-chip" onClick={addChip}
+          disabled={chips.length >= MAX_STATUS_CHIPS}
+          title={chips.length >= MAX_STATUS_CHIPS ? t('token.chipsMaxed', 'Maximal 12 Chips (voller Kreis)') : undefined}>
           {t('token.addChip', '+ Chip')}
         </button>
       </fieldset>

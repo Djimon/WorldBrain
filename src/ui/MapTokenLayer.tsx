@@ -109,7 +109,7 @@ export function MapToken({
                 key={`${chip.icon}-${i}`}
                 className="map-token__chip"
                 style={{
-                  color: chip.color || '#000',
+                  color: chip.color || '#fff',
                   ...(token.render_style === 'token'
                     // rotate to the arc position, translate out, then
                     // counter-rotate back — keeps the glyph itself upright
