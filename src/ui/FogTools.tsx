@@ -85,21 +85,25 @@ export function FogTools({
         </button>
       </div>
 
-      <label className="fog-tools__slider">
-        {t('fog.brushSize', 'Pinselgröße')}
-        <input type="range" aria-label={t('fog.brushSize', 'Pinselgröße')}
-          min={2} max={200} value={brushSize}
-          onChange={(e) => onBrushSizeChange(Number(e.target.value))} />
-        <span className="fog-tools__value">{brushSize}px</span>
-      </label>
+      {(shape === 'brush' || shape === 'square') && (
+        <>
+          <label className="fog-tools__slider">
+            {t('fog.brushSize', 'Pinselgröße')}
+            <input type="range" aria-label={t('fog.brushSize', 'Pinselgröße')}
+              min={2} max={200} value={brushSize}
+              onChange={(e) => onBrushSizeChange(Number(e.target.value))} />
+            <span className="fog-tools__value">{brushSize}px</span>
+          </label>
 
-      <label className="fog-tools__slider">
-        {t('fog.feather', 'Weichzeichnung')}
-        <input type="range" aria-label={t('fog.feather', 'Weichzeichnung')}
-          min={0} max={100} value={feather}
-          onChange={(e) => onFeatherChange(Number(e.target.value))} />
-        <span className="fog-tools__value">{feather}</span>
-      </label>
+          <label className="fog-tools__slider">
+            {t('fog.feather', 'Weichzeichnung')}
+            <input type="range" aria-label={t('fog.feather', 'Weichzeichnung')}
+              min={0} max={100} value={feather}
+              onChange={(e) => onFeatherChange(Number(e.target.value))} />
+            <span className="fog-tools__value">{feather}</span>
+          </label>
+        </>
+      )}
     </div>
   );
 }
