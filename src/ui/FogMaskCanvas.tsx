@@ -130,6 +130,18 @@ export function FogMaskCanvas({
     ctx.fill();
   }
 
+  // #295 preview: same hex-vertex geometry as fillCell, but as an SVG points
+  // string (for the grid-stamp outline preview below) instead of a canvas path.
+  function hexPoints(cell: CellCoord, cellSize: number): string {
+    const cx = cell.col * cellSize * 0.75;
+    const cy = cell.row * cellSize * 0.866 + (cell.col % 2) * cellSize * 0.433;
+    const r = cellSize / 2;
+    return Array.from({ length: 6 }, (_, i) => {
+      const a = (Math.PI / 3) * i;
+      return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
+    }).join(' ');
+  }
+
   // Grid-aware stamp (#295) — covers every cell stampCells() returns for the
   // active level/grid type, centered on the cell under the cursor.
   function stampGrid(ctx: CanvasRenderingContext2D, x: number, y: number) {
@@ -226,6 +238,34 @@ export function FogMaskCanvas({
             filter: feather > 0 ? `blur(${feather / 4}px)` : undefined,
           }}
         />
+      )}
+      {/* #295: grid-stamp preview — outlines the actual cells the stamp would
+          cover, snapped to the grid under the cursor, so the user sees what
+          gets revealed/covered before committing. */}
+      {active && hover && shape === 'grid-stamp' && gridType && gridCellSize && (
+        <svg
+          className="fog-grid-stamp-preview"
+          style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', overflow: 'visible' }}
+          width={imgW}
+          height={imgH}
+        >
+          {stampCells(cellUnderPoint(hover.x, hover.y, gridCellSize), stampLevel ?? 0, gridType).map((cell) => (
+            gridType === 'square' ? (
+              <rect
+                key={`${cell.col}:${cell.row}`}
+                x={cell.col * gridCellSize} y={cell.row * gridCellSize}
+                width={gridCellSize} height={gridCellSize}
+                fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.9)" strokeWidth={2}
+              />
+            ) : (
+              <polygon
+                key={`${cell.col}:${cell.row}`}
+                points={hexPoints(cell, gridCellSize)}
+                fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.9)" strokeWidth={2}
+              />
+            )
+          ))}
+        </svg>
       )}
       {/* Region rubber-band while dragging corner to corner. */}
       {active && hover && shape === 'region' && drawing.current && start.current && (
