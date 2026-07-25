@@ -1,7 +1,7 @@
 // M15-S16 (#287): clip (audio-button) editor — source, base volume, label,
 // icon, color, loop. A playlist URL is saved as-is, one clip (D5) — this
 // editor never decomposes it. Delete uses a rendered confirm (AP-003).
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import {
@@ -11,6 +11,7 @@ import type { SourceType } from '../services/audio-service';
 import { copyAudioAsset } from '../services/audio-asset';
 import { parseSpotifyUri } from '../services/spotify-uri';
 import { EmojiPicker } from './EmojiPicker';
+import { useEmojiPickerHost } from './EmojiPickerHost';
 
 const DEFAULT_CLIP_COLOR = '#3a3f45';
 
@@ -37,20 +38,33 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
   const [loop, setLoop] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
-  // Building the ~1900-emoji grid is genuinely expensive — rendering it
-  // eagerly on mount just moves that cost onto opening the clip editor
-  // itself. Instead, defer it to the browser's idle time (after the rest of
-  // the editor has already painted), so it's warm by the time the user
-  // actually clicks the icon field instead of stalling at that moment.
-  // Clicking the trigger still renders it immediately either way (the `||
-  // iconPickerOpen` below), so this is purely a head start, never a delay.
+  const iconTriggerRef = useRef<HTMLButtonElement | null>(null);
+  // Shared across every clip/channel editor for the soundboard session (see
+  // EmojiPickerHost.tsx) — built once, reused everywhere. Falls back to a
+  // local instance below when no host is mounted (e.g. isolated tests).
+  const emojiPickerHost = useEmojiPickerHost();
+  // Local fallback only: building the ~1900-emoji grid is genuinely
+  // expensive — rendering it eagerly on mount just moves that cost onto
+  // opening the clip editor itself. Deferring to idle time means it's warm
+  // by the time the user actually clicks, instead of stalling at that
+  // moment. Clicking the trigger still renders it immediately either way
+  // (the `|| iconPickerOpen` below), so this is purely a head start.
   const [emojiPickerWarm, setEmojiPickerWarm] = useState(false);
   useEffect(() => {
+    if (emojiPickerHost) return;
     const idle = window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 300));
     const cancel = window.cancelIdleCallback ?? window.clearTimeout;
     const id = idle(() => setEmojiPickerWarm(true));
     return () => cancel(id);
-  }, []);
+  }, [emojiPickerHost]);
+
+  function handleIconTriggerClick() {
+    if (emojiPickerHost && iconTriggerRef.current) {
+      emojiPickerHost.open({ value: icon, onSelect: setIcon, anchor: iconTriggerRef.current });
+    } else {
+      setIconPickerOpen((open) => !open);
+    }
+  }
 
   useEffect(() => {
     if (presetId === null) return;
@@ -171,23 +185,25 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
       <div className="clip-editor__icon-field">
         {t('audioClipIcon', 'Icon')}
         <button
+          ref={iconTriggerRef}
           type="button"
           className="clip-editor__icon-trigger"
           aria-label={t('audioClipIconPicker', 'Icon wählen')}
-          onClick={() => setIconPickerOpen((open) => !open)}
+          onClick={handleIconTriggerClick}
         >
           {icon}
         </button>
-        {/* Rendered (hidden via CSS) as soon as the clip editor itself is
-            open, not gated behind the trigger click — building the ~1900-
-            emoji grid is the expensive part, and doing it now means it's
-            already done by the time the user actually clicks, instead of a
-            visible stall at that moment. */}
-        <div className="clip-editor__icon-popover" hidden={!iconPickerOpen}>
-          {(iconPickerOpen || emojiPickerWarm) && (
-            <EmojiPicker value={icon} onSelect={(emoji) => { setIcon(emoji); setIconPickerOpen(false); }} />
-          )}
-        </div>
+        {/* Fallback path only (no shared host mounted): rendered hidden as
+            soon as the editor itself is open, not gated behind the trigger
+            click — see the emojiPickerWarm comment above. When a host IS
+            mounted, it owns the actual popover via a portal instead. */}
+        {!emojiPickerHost && (
+          <div className="clip-editor__icon-popover" hidden={!iconPickerOpen}>
+            {(iconPickerOpen || emojiPickerWarm) && (
+              <EmojiPicker value={icon} onSelect={(emoji) => { setIcon(emoji); setIconPickerOpen(false); }} />
+            )}
+          </div>
+        )}
       </div>
 
       <div className="clip-editor__color-picker" role="group" aria-label={t('audioClipColor', 'Farbe')}>

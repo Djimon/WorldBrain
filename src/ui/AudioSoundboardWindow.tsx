@@ -17,6 +17,7 @@ import { stopSceneAudio } from '../services/stop-scene-audio';
 import { SceneSwitcher } from './SceneSwitcher';
 import { SoundboardBoard } from './SoundboardBoard';
 import { ClipEditor } from './ClipEditor';
+import { EmojiPickerHostProvider } from './EmojiPickerHost';
 
 type WindowMode =
   | { kind: 'loading' }
@@ -133,30 +134,32 @@ function ReadyBoard({ db, audioContext, projectDir }: ReadyBoardProps) {
   }
 
   return (
-    <div className="audio-soundboard-window">
-      <h1>{t('audioSoundboardWindowTitle', 'Audio-Soundboard')}</h1>
-      <SceneSwitcher database={db} activeSceneId={activeSceneId} onSelectScene={(id) => void handleSelectScene(id)} />
-      {activeSceneId && (
-        <SoundboardBoard
-          database={db}
-          sceneId={activeSceneId}
-          localEngine={localEngineRef.current}
-          youtubeEngine={youtubeEngineRef.current}
-          spotifyEngine={spotifyEngineRef.current}
-          refreshToken={boardRefreshToken}
-          onEditClip={(channelId, presetId) => setEditingClip({ channelId, presetId })}
-        />
-      )}
-      {editingClip && projectDir && (
-        <ClipEditor
-          database={db}
-          projectDir={projectDir}
-          channelId={editingClip.channelId}
-          presetId={editingClip.presetId}
-          onClose={() => setEditingClip(null)}
-          onSaved={() => setBoardRefreshToken((n) => n + 1)}
-        />
-      )}
-    </div>
+    <EmojiPickerHostProvider>
+      <div className="audio-soundboard-window">
+        <h1>{t('audioSoundboardWindowTitle', 'Audio-Soundboard')}</h1>
+        <SceneSwitcher database={db} activeSceneId={activeSceneId} onSelectScene={(id) => void handleSelectScene(id)} />
+        {activeSceneId && (
+          <SoundboardBoard
+            database={db}
+            sceneId={activeSceneId}
+            localEngine={localEngineRef.current}
+            youtubeEngine={youtubeEngineRef.current}
+            spotifyEngine={spotifyEngineRef.current}
+            refreshToken={boardRefreshToken}
+            onEditClip={(channelId, presetId) => setEditingClip({ channelId, presetId })}
+          />
+        )}
+        {editingClip && projectDir && (
+          <ClipEditor
+            database={db}
+            projectDir={projectDir}
+            channelId={editingClip.channelId}
+            presetId={editingClip.presetId}
+            onClose={() => setEditingClip(null)}
+            onSaved={() => setBoardRefreshToken((n) => n + 1)}
+          />
+        )}
+      </div>
+    </EmojiPickerHostProvider>
   );
 }
