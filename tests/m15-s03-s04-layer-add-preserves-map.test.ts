@@ -45,6 +45,25 @@ describe('M15-S04 createFogLayer contract', () => {
   });
 });
 
+// #296 (AP-006 regression guard): buildFullCoverMask previously wrapped
+// db.select in the same try/catch meant for the jsdom-canvas-unavailable
+// guard, silently swallowing real DB errors as "no dimensions -> 1x1
+// placeholder". Fixed by pulling db.select out of the try. This test pins
+// that a DB failure propagates instead of being masked as a placeholder.
+describe('#296 (regression): createFogLayer propagates DB errors instead of swallowing them', () => {
+  it('a db.select failure during buildFullCoverMask rejects createFogLayer, not a silent 1x1 placeholder', async () => {
+    const { db, asyncDb } = createDatabase();
+    const { createFogLayer } = await import('../src/services/map-layer-service');
+    const brokenDb: DatabaseLike = {
+      ...asyncDb,
+      select: async () => { throw new Error('db unavailable'); },
+    };
+    try {
+      await expect(createFogLayer(brokenDb, { map_id: 'm1' })).rejects.toThrow('db unavailable');
+    } finally { db.close(); }
+  });
+});
+
 describe('image layer offset persistence (movable image layers)', () => {
   it('updateLayer writes offset_x/offset_y; new layers default to 0/0', async () => {
     const { db, asyncDb } = createDatabase();
