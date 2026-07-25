@@ -118,6 +118,9 @@ function ReadyBoard({ db, audioContext, projectDir }: ReadyBoardProps) {
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
   const [editingClip, setEditingClip] = useState<{ channelId: string; presetId: string | null } | null>(null);
   const [boardRefreshToken, setBoardRefreshToken] = useState(0);
+  // The EmojiPicker warm-up is low-priority background work — it shouldn't
+  // compete with the channels' own initial load for the main thread.
+  const [boardReady, setBoardReady] = useState(false);
 
   useEffect(() => {
     listScenes(db).then((scenes) => {
@@ -134,7 +137,7 @@ function ReadyBoard({ db, audioContext, projectDir }: ReadyBoardProps) {
   }
 
   return (
-    <EmojiPickerHostProvider>
+    <EmojiPickerHostProvider warmAfter={boardReady}>
       <div className="audio-soundboard-window">
         <h1>{t('audioSoundboardWindowTitle', 'Audio-Soundboard')}</h1>
         <SceneSwitcher database={db} activeSceneId={activeSceneId} onSelectScene={(id) => void handleSelectScene(id)} />
@@ -147,6 +150,7 @@ function ReadyBoard({ db, audioContext, projectDir }: ReadyBoardProps) {
             spotifyEngine={spotifyEngineRef.current}
             refreshToken={boardRefreshToken}
             onEditClip={(channelId, presetId) => setEditingClip({ channelId, presetId })}
+            onReady={() => setBoardReady(true)}
           />
         )}
         {editingClip && projectDir && (

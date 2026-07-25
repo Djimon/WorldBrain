@@ -2,7 +2,7 @@
 // (S11's listScene) and renders one ChannelRow per channel, wiring clip
 // clicks to the correct engine (local S12 for file clips, YouTube S13 for
 // link clips) and mixer changes to both persistence and the live engines.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import type { DatabaseLike } from '../services/entity-service';
@@ -24,6 +24,11 @@ export interface SoundboardBoardProps {
   onEditClip: (channelId: string, presetId: string | null) => void;
   /** Bump to force a reload — e.g. after the clip editor (S16) saves/deletes a preset. */
   refreshToken?: number;
+  /** Fires once, the first time the channels have finished their initial
+      load — lets callers defer unrelated background work (e.g. the
+      EmojiPicker warm-up) until after the board itself is visibly ready,
+      instead of competing with it for the main thread. */
+  onReady?: () => void;
 }
 
 function mixerConfigFor(channel: AudioChannelRow): ChannelMixerConfig {
@@ -40,9 +45,10 @@ function mixerConfigFor(channel: AudioChannelRow): ChannelMixerConfig {
   };
 }
 
-export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine, spotifyEngine, onEditClip, refreshToken }: SoundboardBoardProps) {
+export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine, spotifyEngine, onEditClip, refreshToken, onReady }: SoundboardBoardProps) {
   const { t } = useTranslation('nav');
   const [scene, setScene] = useState<SceneWithChannels | null>(null);
+  const hasFiredReady = useRef(false);
   const [activeByChannel, setActiveByChannel] = useState<Map<string, Set<string>>>(new Map());
   // Whether a channel currently has any paused-in-place clips (real pause,
   // not stopped) — distinguishes "resume where it left off" from "nothing
@@ -80,6 +86,17 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
   }, [database, sceneId, syncLiveVolumes]);
 
   useEffect(() => { reload(); }, [reload, refreshToken]);
+
+  // Fires after the channels have actually committed/painted (not inline in
+  // the reload() promise, which resolves a render before that) — the whole
+  // point is to sequence background work strictly after this, not just
+  // after the data fetch.
+  useEffect(() => {
+    if (scene && !hasFiredReady.current) {
+      hasFiredReady.current = true;
+      onReady?.();
+    }
+  }, [scene, onReady]);
 
   useEffect(() => {
     function recompute() {

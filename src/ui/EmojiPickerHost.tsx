@@ -27,18 +27,28 @@ export function useEmojiPickerHost(): EmojiPickerHostContextValue | null {
   return useContext(EmojiPickerHostContext);
 }
 
-export function EmojiPickerHostProvider({ children }: { children: React.ReactNode }) {
+export interface EmojiPickerHostProviderProps {
+  children: React.ReactNode;
+  /** Only start the idle warm-up once this is true (default true — pass
+      false while other startup work, e.g. loading the board's channels,
+      should get the main thread first). Flipping true later starts the
+      warm-up at that point, not retroactively. */
+  warmAfter?: boolean;
+}
+
+export function EmojiPickerHostProvider({ children, warmAfter = true }: EmojiPickerHostProviderProps) {
   const [warm, setWarm] = useState(false);
   const [request, setRequest] = useState<EmojiPickerOpenRequest | null>(null);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (!warmAfter) return;
     const idle = window.requestIdleCallback ?? ((fn: IdleRequestCallback) => window.setTimeout(fn, 300));
     const cancel = window.cancelIdleCallback ?? window.clearTimeout;
     const id = idle(() => setWarm(true));
     return () => cancel(id as number);
-  }, []);
+  }, [warmAfter]);
 
   const open = useCallback((req: EmojiPickerOpenRequest) => {
     const rect = req.anchor.getBoundingClientRect();
