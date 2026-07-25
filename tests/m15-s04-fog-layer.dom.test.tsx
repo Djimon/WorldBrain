@@ -181,6 +181,54 @@ describe('M15-S04 (UI): FogMaskCanvas', () => {
   });
 });
 
+// #312: Fog "Bereich" (region) rubber-band ghost preview.
+// Root cause: the ghost's visibility gate (FogMaskCanvas.tsx ~line 236) reads
+// `drawing.current && start.current` — plain refs, mutated (not set-state)
+// in handleUp. Mutating a ref never triggers a re-render, so once the ghost
+// has rendered it has no reactive trigger to disappear again after
+// pointerUp — it lingers in the DOM with its last size/position frozen.
+describe('#312 (bugfix): Fog "Bereich" rubber-band ghost', () => {
+  function baseProps(overrides: Partial<ComponentProps<typeof FogMaskCanvas>> = {}) {
+    return {
+      layerId: 'layer_fog_1', maskData: null, imgW: 1000, imgH: 800,
+      mode: 'reveal' as const, shape: 'region' as const, brushSize: 20, feather: 5,
+      active: true, onStrokeEnd: vi.fn(),
+      ...overrides,
+    };
+  }
+
+  it('AC 1: dragging shows a .fog-region-preview ghost sized/positioned from start to cursor', () => {
+    render(<FogMaskCanvas {...baseProps()} />);
+    const canvas = document.querySelector('canvas[data-fog-layer-id="layer_fog_1"]') as HTMLElement;
+    fireEvent.pointerDown(canvas, { clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(canvas, { clientX: 40, clientY: 70 });
+    const ghost = document.querySelector('.fog-region-preview') as HTMLElement;
+    expect(ghost).toBeInTheDocument();
+    expect(ghost.style.width).toBe('30px');
+    expect(ghost.style.height).toBe('60px');
+  });
+
+  it('AC 2/3: the ghost disappears again after pointerUp (state-driven, not ref-gated)', () => {
+    render(<FogMaskCanvas {...baseProps()} />);
+    const canvas = document.querySelector('canvas[data-fog-layer-id="layer_fog_1"]') as HTMLElement;
+    fireEvent.pointerDown(canvas, { clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(canvas, { clientX: 40, clientY: 70 });
+    expect(document.querySelector('.fog-region-preview')).toBeInTheDocument();
+    fireEvent.pointerUp(canvas, { clientX: 40, clientY: 70 });
+    expect(document.querySelector('.fog-region-preview')).not.toBeInTheDocument();
+  });
+
+  it('a subsequent hover-only move (no new drag) does not resurrect a stale ghost', () => {
+    render(<FogMaskCanvas {...baseProps()} />);
+    const canvas = document.querySelector('canvas[data-fog-layer-id="layer_fog_1"]') as HTMLElement;
+    fireEvent.pointerDown(canvas, { clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(canvas, { clientX: 40, clientY: 70 });
+    fireEvent.pointerUp(canvas, { clientX: 40, clientY: 70 });
+    fireEvent.pointerMove(canvas, { clientX: 50, clientY: 80 });
+    expect(document.querySelector('.fog-region-preview')).not.toBeInTheDocument();
+  });
+});
+
 // #295: Grid-bewusster Fog-Stempel — RED-Phase.
 // Wiederverwendet cellKeyFor/MapGrid-Zellgeometrie (keine neue Geometrie);
 // AC 4/5/6/8 s. Issue. AP-008 (RTL): die fünf Stufen-Labels teilen ein

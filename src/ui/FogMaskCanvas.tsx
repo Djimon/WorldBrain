@@ -35,6 +35,10 @@ export function FogMaskCanvas({
   const drawing = useRef(false);
   const start = useRef<{ x: number; y: number } | null>(null);
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
+  // #312: the region ghost's visibility must be state-driven, not gated on
+  // drawing.current/start.current (refs) — mutating a ref never triggers a
+  // re-render, so the ghost had no reactive trigger to appear/disappear.
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
 
   // (Re)load the stored mask onto the canvas whenever it changes.
   useEffect(() => {
@@ -166,6 +170,7 @@ export function FogMaskCanvas({
     drawing.current = true;
     const p = toCanvasCoords(e.clientX, e.clientY);
     start.current = p;
+    if (shape === 'region') setDragStart(p);
     const ctx = canvas.getContext('2d');
     if (ctx) dab(ctx, p.x, p.y); // brush/square paint immediately; region waits for up
     try { canvas.setPointerCapture(e.pointerId); } catch { /* jsdom */ }
@@ -190,6 +195,7 @@ export function FogMaskCanvas({
       stampRect(ctx, start.current.x, start.current.y, p.x, p.y);
     }
     start.current = null;
+    setDragStart(null);
     emit();
   }
 
@@ -228,15 +234,15 @@ export function FogMaskCanvas({
         />
       )}
       {/* Region rubber-band while dragging corner to corner. */}
-      {active && hover && shape === 'region' && drawing.current && start.current && (
+      {active && hover && shape === 'region' && dragStart && (
         <div
           className="fog-region-preview"
           style={{
             position: 'absolute',
-            left: Math.min(start.current.x, hover.x),
-            top: Math.min(start.current.y, hover.y),
-            width: Math.abs(hover.x - start.current.x),
-            height: Math.abs(hover.y - start.current.y),
+            left: Math.min(dragStart.x, hover.x),
+            top: Math.min(dragStart.y, hover.y),
+            width: Math.abs(hover.x - dragStart.x),
+            height: Math.abs(hover.y - dragStart.y),
             pointerEvents: 'none',
             border: '1px dashed rgba(255,255,255,0.9)',
             boxShadow: '0 0 0 1px rgba(0,0,0,0.6)',
