@@ -150,6 +150,13 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   // Fog/move selections belong to one map — drop them when the map changes.
   useEffect(() => { setEditingFogLayerId(null); setMovingLayerId(null); }, [selectedMapId]);
 
+  // #315: also drop them when leaving the maps area — selectedMapId stays
+  // the same across an area switch, so the effect above alone doesn't fire,
+  // and fog-paint mode would otherwise still be active on returning.
+  useEffect(() => {
+    if (activeArea !== 'maps') { setEditingFogLayerId(null); setMovingLayerId(null); }
+  }, [activeArea]);
+
   useEffect(() => {
     listViews(database).then(setSavedViews).catch(console.error);
   }, [database]);
