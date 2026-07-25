@@ -40,7 +40,12 @@ export function FogMaskCanvas({
   // re-render, so the ghost had no reactive trigger to appear/disappear.
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
 
-  // (Re)load the stored mask onto the canvas whenever it changes.
+  // #314: (Re)load the stored mask onto the canvas on mount/layer-switch —
+  // NOT on every maskData change. maskData also changes right after this
+  // canvas's OWN stroke (MapViewer's optimistic setFogLayers echoes it back
+  // as a prop), and reloading a ~2MB data URL the canvas already has the
+  // live pixels for was the flash. Depending on layerId instead still
+  // reloads correctly when the edited/displayed layer actually changes.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -51,7 +56,7 @@ export function FogMaskCanvas({
     const img = new Image();
     img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     img.src = maskData;
-  }, [maskData, imgW, imgH]);
+  }, [layerId, imgW, imgH]);
 
   function toCanvasCoords(clientX: number, clientY: number): { x: number; y: number } {
     const canvas = canvasRef.current!;
