@@ -374,7 +374,11 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     }
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, []);
+    // imgSrc gates an early return (no container div at all while it's
+    // null) — depending on it re-runs this effect once the container
+    // actually mounts, instead of firing once on the empty-state render and
+    // never retrying.
+  }, [imgSrc]);
 
   function toMapCoords(clientX: number, clientY: number) {
     const rect = containerRef.current!.getBoundingClientRect();
