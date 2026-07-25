@@ -68,9 +68,17 @@ export function EmojiPickerHostProvider({ children }: { children: React.ReactNod
           className="emoji-picker-host"
           style={{
             position: 'fixed',
-            top: position?.top ?? -9999,
-            left: position?.left ?? -9999,
-            display: request ? 'block' : 'none',
+            top: request ? (position?.top ?? -9999) : -9999,
+            left: request ? (position?.left ?? -9999) : -9999,
+            // visibility (not display) — display:none removes the subtree
+            // from the render tree entirely, so the browser never lays out
+            // the ~1900-cell grid while idle-warming under display:none, and
+            // the FIRST real open still pays that full layout cost, same as
+            // never warming at all. visibility:hidden still triggers real
+            // layout while off-screen, which is the actual point of warming
+            // this ahead of time.
+            visibility: request ? 'visible' : 'hidden',
+            pointerEvents: request ? 'auto' : 'none',
             zIndex: 1000,
           }}
         >
