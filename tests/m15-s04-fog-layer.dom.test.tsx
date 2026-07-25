@@ -229,6 +229,104 @@ describe('#312 (bugfix): Fog "Bereich" rubber-band ghost', () => {
   });
 });
 
+// #316: Grid-Stempel-Outline-Vorschau (gesnapt aufs Grid, vor dem Commit).
+// War kurz in Commit 8d02d03 vorhanden, wurde aber gemeinsam mit einem
+// gescheiterten Fog-Flash-Fix in 42129da komplett zurückgerollt (die Vorschau
+// selbst war nicht die Ursache der Regression). AC 4: state-getrieben, kein
+// Ref-Gating — gleicher Anti-Pattern wie #312.
+describe('#316 (feature): Grid-Stempel-Outline-Vorschau', () => {
+  function baseProps(overrides: Partial<ComponentProps<typeof FogMaskCanvas>> = {}) {
+    return {
+      layerId: 'layer_fog_1', maskData: null, imgW: 1000, imgH: 800,
+      mode: 'reveal' as const, shape: 'grid-stamp' as const, brushSize: 20, feather: 5,
+      active: true, onStrokeEnd: vi.fn(),
+      gridType: 'square' as const, gridCellSize: 40, stampLevel: 0 as const,
+      ...overrides,
+    };
+  }
+
+  it('AC 1: hovering with an active grid-stamp shows one preview cell for stampLevel r0', () => {
+    render(<FogMaskCanvas {...baseProps()} />);
+    const canvas = document.querySelector('canvas[data-fog-layer-id="layer_fog_1"]') as HTMLElement;
+    fireEvent.pointerMove(canvas, { clientX: 10, clientY: 10 });
+    const cells = document.querySelectorAll('.fog-grid-stamp-preview__cell');
+    expect(cells).toHaveLength(stampCells({ col: 0, row: 0 }, 0, 'square').length);
+  });
+
+  it('AC 1: at stampLevel r1 (square), the preview shows exactly the 9 cells stampCells() returns', () => {
+    render(<FogMaskCanvas {...baseProps({ stampLevel: 1 })} />);
+    const canvas = document.querySelector('canvas[data-fog-layer-id="layer_fog_1"]') as HTMLElement;
+    fireEvent.pointerMove(canvas, { clientX: 100, clientY: 100 });
+    const cells = document.querySelectorAll('.fog-grid-stamp-preview__cell');
+    expect(cells).toHaveLength(9);
+  });
+
+  it('AC 1: the preview is positioned/sized like fillCell\'s square geometry (col*cellSize, row*cellSize, cellSize x cellSize)', () => {
+    render(<FogMaskCanvas {...baseProps()} />);
+    const canvas = document.querySelector('canvas[data-fog-layer-id="layer_fog_1"]') as HTMLElement;
+    // clientX/Y 50/50 -> canvas coords 50/50 -> cell (1,1) at cellSize 40
+    fireEvent.pointerMove(canvas, { clientX: 50, clientY: 50 });
+    const cell = document.querySelector('.fog-grid-stamp-preview__cell') as HTMLElement;
+    expect(cell.style.left).toBe('40px');
+    expect(cell.style.top).toBe('40px');
+    expect(cell.style.width).toBe('40px');
+    expect(cell.style.height).toBe('40px');
+  });
+
+  it('AC 2: snapping — moving within the same grid cell keeps the same center cell (no raw-pixel jitter)', () => {
+    render(<FogMaskCanvas {...baseProps()} />);
+    const canvas = document.querySelector('canvas[data-fog-layer-id="layer_fog_1"]') as HTMLElement;
+    fireEvent.pointerMove(canvas, { clientX: 5, clientY: 5 });
+    const firstKey = (document.querySelector('.fog-grid-stamp-preview__cell') as HTMLElement).dataset.cellKey;
+    fireEvent.pointerMove(canvas, { clientX: 35, clientY: 35 }); // still inside cell (0,0) at cellSize 40
+    const secondKey = (document.querySelector('.fog-grid-stamp-preview__cell') as HTMLElement).dataset.cellKey;
+    expect(secondKey).toBe(firstKey);
+    expect(firstKey).toBe('0:0');
+  });
+
+  it('AC 2: moving into a different grid cell updates the preview to the new center', () => {
+    render(<FogMaskCanvas {...baseProps()} />);
+    const canvas = document.querySelector('canvas[data-fog-layer-id="layer_fog_1"]') as HTMLElement;
+    fireEvent.pointerMove(canvas, { clientX: 5, clientY: 5 });
+    fireEvent.pointerMove(canvas, { clientX: 90, clientY: 90 }); // cell (2,2) at cellSize 40
+    const key = (document.querySelector('.fog-grid-stamp-preview__cell') as HTMLElement).dataset.cellKey;
+    expect(key).toBe('2:2');
+  });
+
+  it('AC 3: hovering (no pointerDown) never commits a mask', () => {
+    const onStrokeEnd = vi.fn();
+    render(<FogMaskCanvas {...baseProps({ onStrokeEnd })} />);
+    const canvas = document.querySelector('canvas[data-fog-layer-id="layer_fog_1"]') as HTMLElement;
+    fireEvent.pointerMove(canvas, { clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(canvas, { clientX: 50, clientY: 50 });
+    expect(onStrokeEnd).not.toHaveBeenCalled();
+  });
+
+  it('AC 4: the preview disappears on pointer leave (state-driven, not ref-gated)', () => {
+    render(<FogMaskCanvas {...baseProps()} />);
+    const canvas = document.querySelector('canvas[data-fog-layer-id="layer_fog_1"]') as HTMLElement;
+    fireEvent.pointerMove(canvas, { clientX: 10, clientY: 10 });
+    expect(document.querySelector('.fog-grid-stamp-preview__cell')).toBeInTheDocument();
+    fireEvent.pointerLeave(canvas);
+    expect(document.querySelector('.fog-grid-stamp-preview__cell')).not.toBeInTheDocument();
+  });
+
+  it('no preview at all when shape is not grid-stamp', () => {
+    render(<FogMaskCanvas {...baseProps({ shape: 'brush' })} />);
+    const canvas = document.querySelector('canvas[data-fog-layer-id="layer_fog_1"]') as HTMLElement;
+    fireEvent.pointerMove(canvas, { clientX: 10, clientY: 10 });
+    expect(document.querySelector('.fog-grid-stamp-preview__cell')).not.toBeInTheDocument();
+  });
+
+  it('the hex-flat grid type also produces a preview matching stampCells() length', () => {
+    render(<FogMaskCanvas {...baseProps({ gridType: 'hex-flat', stampLevel: 1 })} />);
+    const canvas = document.querySelector('canvas[data-fog-layer-id="layer_fog_1"]') as HTMLElement;
+    fireEvent.pointerMove(canvas, { clientX: 100, clientY: 100 });
+    const cells = document.querySelectorAll('.fog-grid-stamp-preview__cell');
+    expect(cells.length).toBe(stampCells({ col: 0, row: 0 }, 1, 'hex-flat').length);
+  });
+});
+
 // #295: Grid-bewusster Fog-Stempel — RED-Phase.
 // Wiederverwendet cellKeyFor/MapGrid-Zellgeometrie (keine neue Geometrie);
 // AC 4/5/6/8 s. Issue. AP-008 (RTL): die fünf Stufen-Labels teilen ein
