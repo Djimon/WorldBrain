@@ -317,14 +317,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
 
   function handleFogStrokeEnd(layerId: string, maskDataUrl: string) {
     setFogLayers((prev) => prev.map((l) => (l.id === layerId ? { ...l, mask_data: maskDataUrl } : l)));
-    // No onLayersChanged() here (unlike the other layer mutations below) —
-    // nothing outside MapViewer/FogMaskCanvas reads mask_data, so the only
-    // effect of notifying would be a redundant full listLayers() refetch
-    // that replaces the just-applied optimistic update with fresh-but-
-    // identical layer objects — a new prop reference FogMaskCanvas then
-    // treats as changed, clearing and reloading its canvas for nothing
-    // (the visible flicker after every stroke).
-    updateLayer(database, layerId, { mask_data: maskDataUrl }).catch(console.error);
+    updateLayer(database, layerId, { mask_data: maskDataUrl }).then(() => onLayersChanged?.()).catch(console.error);
   }
 
   // Selecting an image layer to move (from the LayerPanel) puts the map into
