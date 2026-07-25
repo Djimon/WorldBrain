@@ -350,13 +350,17 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       .catch(console.error);
   }
 
-  // NOTE: onWheel as React synthetic handler works in Tauri (no outer scroll container).
-  // A web port would need addEventListener({ passive: false }) on containerRef instead.
-  function handleWheel(e: React.WheelEvent) {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.15 : 0.87;
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
+  // #313: React 19 registers the delegated `wheel` listener as passive, so
+  // e.preventDefault() inside a synthetic onWheel handler is a no-op and logs
+  // a console warning. A native listener with { passive: false } is required
+  // for preventDefault() to actually suppress the browser's own zoom/scroll.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    function onWheel(e: WheelEvent) {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.15 : 0.87;
+      const rect = el!.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
       setScale((s) => {
@@ -368,7 +372,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         return ns;
       });
     }
-  }
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   function toMapCoords(clientX: number, clientY: number) {
     const rect = containerRef.current!.getBoundingClientRect();
@@ -817,7 +823,6 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#111', cursor }}
         ref={containerRef}
         data-map-canvas
-        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
