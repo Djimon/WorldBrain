@@ -35,21 +35,9 @@ export function FogMaskCanvas({
   const drawing = useRef(false);
   const start = useRef<{ x: number; y: number } | null>(null);
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
-  // The data-URL this canvas itself last emitted (see emit() below). When a
-  // stroke ends, we serialize the canvas's own already-correct pixels to
-  // persist them — that string then comes back down as the maskData prop.
-  // Without tracking this, the reload effect below can't tell "this is just
-  // my own stroke echoing back" from "the mask changed for some other
-  // reason", so it clears and redraws a canvas that's already correct —
-  // the actual cause of the flicker after every stroke (not the onLayers-
-  // Changed()-triggered refetch fixed earlier, which was a real but
-  // separate redundant DB round-trip).
-  const lastEmittedRef = useRef<string | null>(null);
 
-  // (Re)load the stored mask onto the canvas whenever it changes for a
-  // reason other than this canvas's own just-completed stroke.
+  // (Re)load the stored mask onto the canvas whenever it changes.
   useEffect(() => {
-    if (maskData === lastEmittedRef.current) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
