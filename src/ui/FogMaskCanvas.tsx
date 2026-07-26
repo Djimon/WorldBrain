@@ -150,6 +150,43 @@ export function FogMaskCanvas({
     ctx.restore();
   }
 
+  // #316: grid-stamp outline preview — same cellUnderPoint/geometry as the
+  // actual stamp (stampGrid above), rendered as DOM overlays instead of
+  // canvas fills so it can show/hide without touching the mask itself.
+  function gridStampPreviewCells(): { key: string; style: React.CSSProperties }[] {
+    if (!hover || !gridType || !gridCellSize) return [];
+    const center = cellUnderPoint(hover.x, hover.y, gridCellSize);
+    return stampCells(center, stampLevel ?? 0, gridType).map((cell) => {
+      const key = `${cell.col}:${cell.row}`;
+      if (gridType === 'square') {
+        return {
+          key,
+          style: {
+            position: 'absolute',
+            left: cell.col * gridCellSize,
+            top: cell.row * gridCellSize,
+            width: gridCellSize,
+            height: gridCellSize,
+          },
+        };
+      }
+      const cx = cell.col * gridCellSize * 0.75;
+      const cy = cell.row * gridCellSize * 0.866 + (cell.col % 2) * gridCellSize * 0.433;
+      const r = gridCellSize / 2;
+      return {
+        key,
+        style: {
+          position: 'absolute',
+          left: cx - r,
+          top: cy - r,
+          width: r * 2,
+          height: r * 2,
+          clipPath: 'polygon(100% 50%, 75% 93.3%, 25% 93.3%, 0% 50%, 25% 6.7%, 75% 6.7%)',
+        },
+      };
+    });
+  }
+
   function dab(ctx: CanvasRenderingContext2D, x: number, y: number) {
     if (shape === 'brush') stampBrush(ctx, x, y);
     else if (shape === 'square') stampSquare(ctx, x, y);
@@ -255,6 +292,22 @@ export function FogMaskCanvas({
           }}
         />
       )}
+      {/* #316: grid-stamp cell outline, snapped to the grid — no live paint
+          while hovering, applied only on click (stampGrid in handleDown/Move). */}
+      {active && shape === 'grid-stamp' && gridStampPreviewCells().map(({ key, style }) => (
+        <div
+          key={key}
+          className="fog-grid-stamp-preview__cell"
+          data-cell-key={key}
+          style={{
+            ...style,
+            pointerEvents: 'none',
+            border: '1px solid rgba(255,255,255,0.9)',
+            boxShadow: '0 0 0 1px rgba(0,0,0,0.6)',
+            background: 'rgba(255,255,255,0.08)',
+          }}
+        />
+      ))}
     </>
   );
 }
