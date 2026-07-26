@@ -128,7 +128,10 @@ describe('#311 (service): importAudioBoardFromJson — roundtrip (AC 3/5)', () =
 
       const scenes = await listScenes(asyncDb);
       const imported = scenes.find((s) => s.id === result.importedSceneIds[0]);
-      expect(imported?.name).toBe('Tavern');
+      // D-B: the original 'Tavern' scene is still in the DB (never deleted
+      // by export/import), so the re-imported copy collides and gets " (2)"
+      // appended — additive, same as the dedicated D-B test below.
+      expect(imported?.name).toBe('Tavern (2)');
 
       const channels = await listChannels(asyncDb, imported!.id);
       expect(channels).toHaveLength(1);

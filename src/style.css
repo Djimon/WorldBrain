@@ -498,6 +498,16 @@ input {
   border-color: var(--color-accent-strong);
 }
 
+.btn--danger {
+  background: var(--color-status-failure, #c0392b);
+  border-color: var(--color-status-failure, #c0392b);
+  color: #fff;
+}
+
+.btn--danger:hover {
+  filter: brightness(1.1);
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: default;
@@ -3865,16 +3875,18 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
   font-size: 0.8rem;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
 }
 
 .scene-switcher__item button:not(.scene-switcher__select):hover:not(:disabled) {
   background: var(--color-surface-hover);
+  border-color: var(--color-border);
   color: var(--color-text);
 }
 
@@ -3906,6 +3918,61 @@ input {
 
 .scene-switcher__confirm-dialog p { margin: 0; color: var(--color-text-muted); font-size: 0.875rem; }
 .scene-switcher__confirm-actions { display: flex; gap: var(--space-2); }
+
+/* Pop-out (same fixed/centered treatment as .clip-editor), not inline —
+   the export dialog floats over the board instead of pushing content down. */
+.scene-switcher__export-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  width: 360px;
+  max-width: calc(100vw - var(--space-4) * 2);
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: var(--shadow-panel);
+  z-index: 20;
+}
+
+.scene-switcher__export-dialog ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.scene-switcher__export-dialog li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+}
+
+.scene-switcher__export-dialog-title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.scene-switcher__export-select-actions,
+.scene-switcher__export-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.scene-switcher__export-select-actions .btn,
+.scene-switcher__export-actions .btn {
+  flex: 1;
+}
 
 /* Board / channel rows */
 

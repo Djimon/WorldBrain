@@ -3,11 +3,14 @@
 // Delete uses a rendered confirm dialog (AP-003 — never window.confirm()).
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { open, save } from '@tauri-apps/plugin-dialog';
+import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import type { DatabaseLike } from '../services/entity-service';
 import {
   createScene, deleteScene, duplicateScene, listScenes, renameScene, reorderScenes,
 } from '../services/audio-service';
 import type { AudioSceneRow } from '../services/audio-service';
+import { exportScenesToJson, importAudioBoardFromJson } from '../services/audio-export-import-service';
 
 export interface SceneSwitcherProps {
   database: DatabaseLike;
@@ -22,6 +25,9 @@ export function SceneSwitcher({ database, activeSceneId, onSelectScene, onScenes
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [selectedSceneIds, setSelectedSceneIds] = useState<Set<string>>(new Set());
+  const [importError, setImportError] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     listScenes(database).then(setScenes).catch(console.error);
@@ -74,6 +80,42 @@ export function SceneSwitcher({ database, activeSceneId, onSelectScene, onScenes
     reload();
   }
 
+  function handleOpenExportDialog() {
+    setSelectedSceneIds(new Set());
+    setExportDialogOpen(true);
+  }
+
+  function toggleSceneSelected(id: string) {
+    setSelectedSceneIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleExportConfirm() {
+    const payload = await exportScenesToJson(database, Array.from(selectedSceneIds));
+    const path = await save({ filters: [{ name: 'JSON', extensions: ['json'] }], defaultPath: 'soundboard-export.json' });
+    if (!path) return;
+    await writeTextFile(path, JSON.stringify(payload, null, 2));
+    setExportDialogOpen(false);
+  }
+
+  async function handleImportClick() {
+    const path = await open({ filters: [{ name: 'JSON', extensions: ['json'] }] });
+    if (!path || Array.isArray(path)) return;
+    setImportError(null);
+    try {
+      const text = await readTextFile(path);
+      const parsed = JSON.parse(text);
+      await importAudioBoardFromJson(database, parsed);
+      reload();
+      onScenesChanged?.();
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : t('audioImportError', 'Import fehlgeschlagen — ungültige Datei.'));
+    }
+  }
+
   if (confirmDeleteId) {
     return (
       <div className="scene-switcher">
@@ -121,19 +163,66 @@ export function SceneSwitcher({ database, activeSceneId, onSelectScene, onScenes
                 >
                   {scene.name}
                 </button>
-                <button type="button" aria-label={t('audioSceneMoveUp', 'Nach oben')} disabled={i === 0} onClick={() => void handleMove(scene.id, -1)}>↑</button>
-                <button type="button" aria-label={t('audioSceneMoveDown', 'Nach unten')} disabled={i === scenes.length - 1} onClick={() => void handleMove(scene.id, 1)}>↓</button>
-                <button type="button" aria-label={t('audioSceneRename', 'Umbenennen')} onClick={() => { setRenamingId(scene.id); setRenameValue(scene.name); }}>✎</button>
-                <button type="button" aria-label={t('audioSceneDuplicate', 'Duplizieren')} onClick={() => void handleDuplicate(scene.id, scene.name)}>⧉</button>
-                <button type="button" aria-label={t('audioSceneDelete', 'Löschen')} onClick={() => setConfirmDeleteId(scene.id)}>🗑</button>
+                <button type="button" aria-label={t('audioSceneMoveUp', 'Nach oben')} title={t('audioSceneMoveUp', 'Nach oben')} disabled={i === 0} onClick={() => void handleMove(scene.id, -1)}>↑</button>
+                <button type="button" aria-label={t('audioSceneMoveDown', 'Nach unten')} title={t('audioSceneMoveDown', 'Nach unten')} disabled={i === scenes.length - 1} onClick={() => void handleMove(scene.id, 1)}>↓</button>
+                <button type="button" aria-label={t('audioSceneRename', 'Umbenennen')} title={t('audioSceneRename', 'Umbenennen')} onClick={() => { setRenamingId(scene.id); setRenameValue(scene.name); }}>✎</button>
+                <button type="button" aria-label={t('audioSceneDuplicate', 'Duplizieren')} title={t('audioSceneDuplicate', 'Duplizieren')} onClick={() => void handleDuplicate(scene.id, scene.name)}>⧉</button>
+                <button type="button" aria-label={t('audioSceneDelete', 'Löschen')} title={t('audioSceneDelete', 'Löschen')} onClick={() => setConfirmDeleteId(scene.id)}>🗑</button>
               </>
             )}
           </li>
         ))}
       </ul>
-      <button type="button" className="btn" onClick={() => void handleCreate()}>
-        {t('audioSceneCreate', '+ Neue Szene')}
-      </button>
+      <div className="scene-switcher__actions">
+        <button type="button" className="btn" onClick={() => void handleCreate()}>
+          {t('audioSceneCreate', '+ Neue Szene')}
+        </button>
+        <button type="button" className="btn btn--danger" onClick={handleOpenExportDialog}>
+          {t('audioExport', 'Export')}
+        </button>
+        <button type="button" className="btn" onClick={() => void handleImportClick()}>
+          {t('audioImport', 'Import')}
+        </button>
+      </div>
+      {importError && (
+        <div role="alert" className="scene-switcher__import-error">{importError}</div>
+      )}
+      {exportDialogOpen && (
+        <div role="dialog" aria-label={t('audioExportDialogTitle', 'Szenen exportieren')} className="scene-switcher__export-dialog">
+          <h2 className="scene-switcher__export-dialog-title">
+            {t('audioExportDialogHeading', 'Wähle zu exportierende Szenen')}
+          </h2>
+          <div className="scene-switcher__export-select-actions">
+            <button type="button" className="btn" onClick={() => setSelectedSceneIds(new Set(scenes.map((s) => s.id)))}>
+              {t('audioExportSelectAll', 'Alle auswählen')}
+            </button>
+            <button type="button" className="btn" onClick={() => setSelectedSceneIds(new Set())}>
+              {t('audioExportSelectNone', 'Alle abwählen')}
+            </button>
+          </div>
+          <ul>
+            {scenes.map((scene) => (
+              <li key={scene.id}>
+                <input
+                  type="checkbox"
+                  aria-label={scene.name}
+                  checked={selectedSceneIds.has(scene.id)}
+                  onChange={() => toggleSceneSelected(scene.id)}
+                />
+                {' '}{scene.name}
+              </li>
+            ))}
+          </ul>
+          <div className="scene-switcher__export-actions">
+            <button type="button" className="btn" onClick={() => setExportDialogOpen(false)}>
+              {t('audioSceneCancel', 'Abbrechen')}
+            </button>
+            <button type="button" className="btn btn--danger" onClick={() => void handleExportConfirm()}>
+              {t('audioExport', 'Export')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
