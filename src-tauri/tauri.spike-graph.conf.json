@@ -1,0 +1,15 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "graph-spike",
+        "title": "M16 Graph Spike (PoC) — #320",
+        "url": "spike-graph.html",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ]
+  }
+}
