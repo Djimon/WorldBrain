@@ -93,7 +93,10 @@ GraphModel = { nodes: GraphNode[]; links: GraphLink[] }
 
 ## Sources
 
-- Referenzbilder (Galaxy/Ring/Detail) aus einer Datei-KB-Visualisierung — Inspiration.
+- **Design-Referenzen (im Repo, `_design/`):**
+  - Galaxy-Modus → [`_design/knowledgegraph-galaxy-view.png`](../../_design/knowledgegraph-galaxy-view.png) (Cluster-„Sonnensysteme" je Typ, Glow).
+  - Ring-Modus → [`_design/knowledgegraph-ring-view.png`](../../_design/knowledgegraph-ring-view.png) (geordnete Segmente je Typ um eine Mitte).
+  - Detail/Zoom → [`_design/knowledgegraph-layer-view.png`](../../_design/knowledgegraph-layer-view.png) (Hover-Kanten, Fokus auf einen Knoten).
 - Engine: `react-force-graph` (vasturiano, MIT), three.js (MIT). Verifiziert: Lizenz MIT, WebGL, Bloom via `postProcessingComposer`, `nodeThreeObject` Custom-Rendering.
 - Vorhandener (toter) Code: `GlobalEntityGraph.tsx`, `EntityGraph.tsx`; `PropertiesForm.tsx` (`parseMentions`), `relation-service.ts`.
 - Interview 2026-07-23 (Requirement Agent).
