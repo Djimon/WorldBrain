@@ -15,7 +15,7 @@ Grundlage: Handover `docs/handover-player-identity.md` (2026-06-30).
 eigenen Prozess (Rust, eingebettet). Spieler verbinden vom eigenen Handy/Laptop im selben WLAN.
 
 - **Stufe 1** (mehrere Fenster auf der GM-Maschine) ist verworfen — Geheimnis-Leak über geteilten Bildschirm nicht verhinderbar.
-- **Stufe 3** (Internet/Relay/NAT-Traversal) ist **out of scope**, aber die Transport-Schicht wird abstrahiert, damit Stufe 3 später ohne Service-Rewrite ergänzt werden kann.
+- **Stufe 3** (Internet/Relay/NAT-Traversal) ist **out of scope**, aber die Transport-Schicht wird abstrahiert, damit Stufe 3 später ohne Service-Rewrite ergänzt werden kann. **Research zu Stufe 3 (Host-PC = Server, ohne eigene Infrastruktur): `planning/research/multiplayer-internet-hosting.md`** — bestätigt: Listen-Server-Modell, NAT-Traversal via UPnP/STUN gratis, Relay nur als Minderheiten-Fallback (gratis via EOS). Kein bezahlter Backend nötig.
 
 ## Decisions
 
