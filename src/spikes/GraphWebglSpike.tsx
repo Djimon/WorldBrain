@@ -10,8 +10,9 @@ import * as THREE from 'three';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import type { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
-import bubbleSpriteUrl from './assets/bubble.png';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { Pass, FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 
 // Grauschleier-Fix (live vermessen, temp/bloom-repro.html): der Composer-RT
 // enthaelt bereits sRGB-kodierte Werte (Raw-Copy eines Hintergrund-Pixels
@@ -36,6 +37,91 @@ const SRGB_DECODE_SHADER = {
     }`,
 };
 
+// Selektiver Bloom (nur Bubbles gluehen, Links/Pfade NIE; Kerne bleiben
+// scharf) als Photoshop-Stack: unten die scharfe Basis-Szene, darauf der
+// PURE Glow (nur die Bloom-Mips, ohne den Bubble-Render selbst), und die
+// Bubbles bleiben "oben drueber", indem der Glow unter ihnen per Maske
+// ausgestanzt wird: out = base + glow * (1 - bubbleMask). Ein voriger
+// max()-Ansatz scheiterte: der Glow-Buffer enthielt die (geblurrten)
+// Bubbles selbst und war an den Kanten heller als die scharfe Basis.
+const BLOOM_LAYER = 1;
+
+const COPY_SHADER = {
+  uniforms: { tDiffuse: { value: null as THREE.Texture | null } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ gl_FragColor = texture2D(tDiffuse, vUv); }',
+};
+
+class BubbleLayerRenderPass extends RenderPass {
+  constructor(scene: THREE.Scene, camera: THREE.Camera) {
+    // Clear mit Alpha 0: der Buffer-Alpha ist dann exakt das gerenderte
+    // Sprite-Alpha — der MixPass nutzt das als formtreue Stanz-Maske
+    // (Helligkeits-Schwellen erzeugten dunkle Ringe am Bubble-Rand).
+    super(scene, camera, null, new THREE.Color(0, 0, 0), 0);
+  }
+
+  render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget, deltaTime: number, maskActive: boolean) {
+    const savedMask = this.camera.layers.mask;
+    this.camera.layers.set(BLOOM_LAYER);
+    super.render(renderer, writeBuffer, readBuffer, deltaTime, maskActive);
+    this.camera.layers.mask = savedMask;
+  }
+}
+
+class SelectiveBloomMixPass extends Pass {
+  private readonly material: THREE.ShaderMaterial;
+  private readonly fsQuad: FullScreenQuad;
+
+  constructor(
+    private readonly bloomComposer: EffectComposer,
+    private readonly bloomPass: UnrealBloomPass,
+  ) {
+    super();
+    this.material = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null }, tGlow: { value: null }, tBubbles: { value: null } },
+      vertexShader: SRGB_DECODE_SHADER.vertexShader,
+      // tGlow = PURER Bloom (nur Blur-Mips); tBubbles = scharfer
+      // Bubbles-only-Render als Stanz-Maske. Wo eine Bubble ist, kommt
+      // KEIN Glow drauf -> Kern bleibt exakt die scharfe Basis-Szene.
+      fragmentShader: `
+        uniform sampler2D tDiffuse; uniform sampler2D tGlow; uniform sampler2D tBubbles;
+        varying vec2 vUv;
+        void main(){
+          vec4 base = texture2D(tDiffuse, vUv);
+          vec3 glow = texture2D(tGlow, vUv).rgb;
+          float mask = texture2D(tBubbles, vUv).a;
+          gl_FragColor = vec4(base.rgb + glow * (1.0 - mask), base.a);
+        }`,
+    });
+    this.fsQuad = new FullScreenQuad(this.material);
+  }
+
+  render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget) {
+    this.bloomComposer.render();
+    this.material.uniforms.tDiffuse.value = readBuffer.texture;
+    // renderTargetsHorizontal[0] haelt das Composite aller Blur-Mips
+    // (inkl. Strength/Radius) BEVOR der Pass es additiv verblendet —
+    // das ist der pure Glow ohne die Bubbles selbst.
+    this.material.uniforms.tGlow.value = this.bloomPass.renderTargetsHorizontal[0].texture;
+    // Buffer-Choreografie im Glow-Composer (Render->Decode->Copy->Bloom):
+    // nach dem Copy-Swap blendet Bloom in die Kopie; der writeBuffer
+    // haelt danach noch den unverblurrten Bubbles-only-Render.
+    this.material.uniforms.tBubbles.value = this.bloomComposer.writeBuffer.texture;
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    this.fsQuad.render(renderer);
+  }
+
+  dispose() {
+    // EffectComposer.dispose() raeumt nur die eigenen RenderTargets ab,
+    // nicht die addPass()-Paesse — die haengen an diesem Composer und
+    // muessen hier mit weg.
+    for (const pass of this.bloomComposer.passes) pass.dispose();
+    this.bloomComposer.dispose();
+    this.material.dispose();
+    this.fsQuad.dispose();
+  }
+}
+
 interface SpikeNode {
   id: string;
   group: number;
@@ -52,10 +138,14 @@ interface SpikeLink {
 }
 
 const GROUP_COUNT = 8;
-const GROUP_COLORS = ['#ff6b6b', '#4dabf7', '#69db7c', '#ffa94d', '#da77f2', '#63e6be', '#ffd43b', '#e599f7'];
+// Pastell-Palette nach den Referenzbildern (_design/knowledgegraph-*.png):
+// Hellblau, Rosa, Hellgruen, Lavendel, Orange, Gelb, Lachs, Himmelblau.
+const GROUP_COLORS = ['#6cb8f0', '#f07ad0', '#8fd97a', '#b39df5', '#f5923e', '#f2c94c', '#f0716a', '#a8cdec'];
+// Referenz: Links sind hauchduenn und fast unsichtbar — beide Arten
+// graulich-dezent, Unterscheidung nur warm (relation) vs kalt (mention).
 const LINK_KIND_COLOR: Record<LinkKind, string> = {
-  relation: '#ff8c69', // solid, thicker on average — an authored relation
-  mention: '#5a6672', // fainter — a looser text mention
+  relation: '#d9b08c',
+  mention: '#7a8494',
 };
 // Uneven cluster sizes and link density — some clusters bigger/denser than
 // others, mirroring the reference (a few tight hubs, a few sparse ones)
@@ -150,72 +240,61 @@ function generateGraph(nodeCount: number, linkCount: number): { nodes: SpikeNode
   return { nodes, links };
 }
 
-// Solid core texture, from the actual reference sprite (_design/bubble.png,
-// a real shaded-sphere render) instead of a hand-rolled canvas gradient —
-// several rounds of guessing at gradient stops blind never matched what was
-// wanted. The source PNG's background is opaque white, not alpha-
-// transparent, so this draws it through a circular clip: a hard geometric
-// mask (not a color/luminance guess) that leaves everything outside the
-// sphere's own circle transparent, avoiding a white square behind every
-// node. Colored per group via SpriteMaterial.color, same as before.
-//
-// Image loading is async; the same THREE.Texture object is returned
-// immediately (so sprites can reference it right away) and its content is
-// filled in once the image actually loads (needsUpdate re-uploads it to the
-// GPU) — any sprite created before that point just updates in place.
-let solidTexture: THREE.Texture | null = null;
-function getSolidTexture(): THREE.Texture {
-  if (solidTexture) return solidTexture;
+// Fake-Glow wie im Referenz-Mockup: ein weich auslaufender Kreis UNTER der
+// Kugel, in Kugelfarbe — pro Node ein zweites Sprite statt Fullscreen-
+// Post-Processing. Deterministisch, billig, brennt nicht aus.
+let glowTexture: THREE.Texture | null = null;
+function getGlowTexture(): THREE.Texture {
+  if (glowTexture) return glowTexture;
   const size = 256;
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
-  solidTexture = new THREE.CanvasTexture(canvas);
-
-  const img = new Image();
-  img.onload = () => {
-    const ctx = canvas.getContext('2d')!;
-    ctx.clearRect(0, 0, size, size);
-    ctx.save();
-    ctx.beginPath();
-    // Slightly inset (98%) so no sliver of the source's white background
-    // survives at the very edge.
-    ctx.arc(size / 2, size / 2, (size / 2) * 0.98, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(img, 0, 0, size, size);
-    ctx.restore();
-    solidTexture!.needsUpdate = true;
-  };
-  img.src = bubbleSpriteUrl;
-
-  return solidTexture;
+  const ctx = canvas.getContext('2d')!;
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, 'rgba(255,255,255,0.55)');
+  gradient.addColorStop(0.3, 'rgba(255,255,255,0.32)');
+  gradient.addColorStop(0.6, 'rgba(255,255,255,0.1)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  glowTexture = new THREE.CanvasTexture(canvas);
+  glowTexture.colorSpace = THREE.SRGBColorSpace;
+  return glowTexture;
 }
 
-const solidMaterialCache = new Map<string, THREE.SpriteMaterial>();
-function getSolidMaterial(color: string): THREE.SpriteMaterial {
-  const cached = solidMaterialCache.get(color);
+const glowMaterialCache = new Map<string, THREE.SpriteMaterial>();
+function getGlowMaterial(color: string): THREE.SpriteMaterial {
+  const cached = glowMaterialCache.get(color);
   if (cached) return cached;
   const material = new THREE.SpriteMaterial({
-    map: getSolidTexture(),
+    map: getGlowTexture(),
     color,
     transparent: true,
-    // depthWrite ON (was off) — with the texture now essentially opaque,
-    // this registers the sphere's actual depth so links passing behind it
-    // get properly occluded instead of drawing straight through it.
-    depthWrite: true,
-    // A Sprite's actual geometry is a full square quad — depthWrite alone
-    // writes depth for the WHOLE square, including the fully-transparent
-    // corners outside the circular gradient. Those invisible corners then
-    // incorrectly occlude whatever's behind them (links, other nodes),
-    // showing up as rectangular artifacts. alphaTest discards fragments
-    // below this threshold before they ever reach the depth buffer, so
-    // only the actually-visible circular part occludes anything.
-    alphaTest: 0.05,
-    // Nodes opt out of the scene fog below — only links should fade with
-    // distance, not the spheres themselves.
+    // Additiv: ueberlappende Glows in Clustern summieren sich zum weichen
+    // Nebel wie in der Galaxy-Referenz; depthWrite aus, damit der Glow
+    // nichts verdeckt.
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
     fog: false,
   });
-  solidMaterialCache.set(color, material);
+  glowMaterialCache.set(color, material);
+  return material;
+}
+
+// Referenz (bubble.png = matte GRAUE Kugel mit Licht von oben, zum Tinten
+// gedacht): das ist schlicht eine ECHTE, beleuchtete 3D-Kugel — kein Sprite-
+// Trick. 3d-force-graph bringt AmbientLight(0xcccccc, PI) + Directional-
+// Light von oben (0.6*PI) bereits mit; MeshLambert (matt, nur diffus)
+// reproduziert die Referenz-Schattierung aus jedem Blickwinkel.
+// Geometrie geteilt (Durchmesser 1, per Node skaliert), Material pro Farbe.
+const NODE_SPHERE_GEOMETRY = new THREE.SphereGeometry(0.5, 24, 16);
+const sphereMaterialCache = new Map<string, THREE.MeshLambertMaterial>();
+function getSphereMaterial(color: string): THREE.MeshLambertMaterial {
+  const cached = sphereMaterialCache.get(color);
+  if (cached) return cached;
+  const material = new THREE.MeshLambertMaterial({ color, fog: false });
+  sphereMaterialCache.set(color, material);
   return material;
 }
 
@@ -240,10 +319,17 @@ const LINK_FADE_FRAGMENT_SHADER = `
   uniform float uFadeFar;
   uniform float uFadeEnabled;
   varying vec3 vWorldPosition;
+  // Encode auf sRGB wie die Built-in-Materialien: der Composer-Buffer haelt
+  // kodierte Werte und der Decode-Pass linearisiert ALLES — ein Custom-
+  // Shader ohne Encode wird dabei doppelt abgedunkelt (Links wurden zu
+  // schwarzen Strichen, sobald Bloom aktiv war).
+  vec3 linearToSrgb(vec3 c) {
+    return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c));
+  }
   void main() {
     float dist = distance(cameraPosition, vWorldPosition);
     float fade = mix(1.0, 1.0 - smoothstep(uFadeNear, uFadeFar, dist), uFadeEnabled);
-    gl_FragColor = vec4(uColor, uOpacity * fade);
+    gl_FragColor = vec4(linearToSrgb(uColor), uOpacity * fade);
   }
 `;
 
@@ -287,8 +373,8 @@ export function GraphWebglSpike() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const [nodeCount, setNodeCount] = useState(10000);
-  const [linkCount, setLinkCount] = useState(15000);
+  const [nodeCount, setNodeCount] = useState(1000);
+  const [linkCount, setLinkCount] = useState(2500);
   const [genKey, setGenKey] = useState(0);
   const [dims, setDims] = useState<1 | 2 | 3>(3);
 
@@ -297,32 +383,40 @@ export function GraphWebglSpike() {
   // rechnet jetzt auf LINEAREN Werten, dadurch wirken Threshold/Strength
   // anders als vorher — ggf. neu einstellen.
   //
-  // Separate, still-true limitation: true "selective bloom" (only specific
-  // objects glow, background never touched, even with high density/strength)
-  // needs a two-composer setup — render bloom-only objects to an offscreen
-  // buffer, then additively combine with the normal render via a custom
-  // shader. This library owns its own render loop and only exposes one
-  // shared composer, so that isn't reachable without patching its internals.
+  // Selektiver Bloom ist inzwischen UMGESETZT (BubbleLayerRenderPass +
+  // SelectiveBloomMixPass oben): der frueher noetige Zwei-Composer-Aufbau
+  // laesst sich doch fahren, indem der eigene Glow-Composer aus einem
+  // Custom-Pass INNERHALB des Library-Composers getrieben wird. Nur die
+  // Sprites liegen auf BLOOM_LAYER — Links/Pfade gluehen nie. Gilt nur im
+  // Custom-Node-Rendering; die Library-Spheres (Original-Modus) haben den
+  // Layer nicht und bekommen keinen Glow.
   // Defaults auf LINEARE Werte kalibriert (Decode-Fix): linear ist alles
   // dunkler als sRGB (0.5 -> 0.21), darum Strength hoeher als frueher.
   // Threshold 0: der Cut vergleicht LUMINANZ (G ~0.71, R ~0.21, B ~0.07),
   // dadurch springt jede Gruppenfarbe bei anderem Wert an — bei 0 glueht
   // alles proportional zur eigenen Helligkeit, Hintergrund (~0) bleibt
   // schwarz. Dosierung ueber Strength/Radius.
-  const [bloomEnabled, setBloomEnabled] = useState(true);
+  // Fake-Glow (Referenz-Ansatz): weicher Farbkreis pro Node UNTER der Kugel
+  // — Default-Glow statt Bloom-Post-Processing. Bloom bleibt als A/B-Option.
+  const [glowEnabled, setGlowEnabled] = useState(true);
+  const [glowScale, setGlowScale] = useState(2.2);
+  const [glowOpacity, setGlowOpacity] = useState(0.6);
+  const [bloomEnabled, setBloomEnabled] = useState(false);
   const [bloomStrength, setBloomStrength] = useState(1.7);
   const [bloomRadius, setBloomRadius] = useState(0.6);
   const [bloomThreshold, setBloomThreshold] = useState(0);
-  // ACES drueckt Near-Black mit runter (Toe-Crush) — killt die schwachen
-  // aeusseren Glow-Auslaeufer. Neutral/Reinhard lassen den Low-Range ~1:1
-  // und komprimieren nur Highlights. Default Neutral, live umschaltbar.
-  const [toneMappingMode, setToneMappingMode] = useState<'neutral' | 'aces' | 'reinhard' | 'none'>('neutral');
+  // Default KEIN ToneMapping: Decode+Encode heben sich exakt auf, Bloom-an
+  // ist damit farbgleich zu Bloom-aus (Referenzfarben bleiben 1:1) — ACES
+  // drueckte die Pastellfarben sichtbar ab ("Multiply-Optik"). Kompressoren
+  // bleiben zum A/B im Select.
+  const [toneMappingMode, setToneMappingMode] = useState<'neutral' | 'aces' | 'reinhard' | 'none'>('none');
   const [showLinks, setShowLinks] = useState(true);
   // ACHTUNG Perf: curved links (>0) erzwingen per-link Curve-Geometrie statt
   // plain THREE.Line — hat bei 15k Links fps getankt (live-confirmed).
   // 0.15 ist der Look-getunte Default; bei grossen Datensaetzen auf 0.
   const [linkCurvature, setLinkCurvature] = useState(0.15);
-  const [linkOpacity, setLinkOpacity] = useState(0.5);
+  // Referenz: Links kaum sichtbar — Struktur kommt aus den Dots.
+  const [linkOpacity, setLinkOpacity] = useState(0.25);
   const [relationColor, setRelationColor] = useState(LINK_KIND_COLOR.relation);
   const [mentionColor, setMentionColor] = useState(LINK_KIND_COLOR.mention);
   // Real distance-based alpha fade for links (getLinkFadeMaterial's shader)
@@ -336,6 +430,10 @@ export function GraphWebglSpike() {
   // spheres via nodeAutoColorBy) against the hand-tuned sprite rendering
   // below, live, instead of guessing blind at which one you actually want.
   const [useCustomNodeRender, setUseCustomNodeRender] = useState(true);
+  // Headlight-Richtung kamera-lokal, per Regler drehbar. 0/0 = exakt hinter
+  // dem Betrachter; horizontal dreht um die Hochachse, vertikal hebt/senkt.
+  const [lightAzimuth, setLightAzimuth] = useState(-10);
+  const [lightElevation, setLightElevation] = useState(10);
 
   const [fps, setFps] = useState(0);
   const [engineStopMs, setEngineStopMs] = useState<number | null>(null);
@@ -389,12 +487,29 @@ export function GraphWebglSpike() {
       // Kette gegen den Grauschleier (Herleitung am SRGB_DECODE_SHADER):
       // Decode (RT -> linear), Bloom rechnet linear, OutputPass macht
       // ToneMapping + die eine finale sRGB-Kodierung.
+      // Glow-Zweig (Herleitung an BLOOM_LAYER): rendert NUR die Bubbles
+      // (Kamera auf Bloom-Layer), dekodiert, bloomt. renderToScreen false —
+      // das Ergebnis wird vom MixPass im Haupt-Composer abgeholt.
+      // Lichter auf den Bloom-Layer mitnehmen: der Glow-Zweig rendert mit
+      // Kamera NUR auf BLOOM_LAYER — die Lambert-Kugeln waeren dort sonst
+      // unbeleuchtet (= schwarz) und Bloom haette keine Quelle.
+      fg.lights().forEach((light) => light.layers.enable(BLOOM_LAYER));
+      const bloomComposer = new EffectComposer(renderer);
+      bloomComposer.renderToScreen = false;
+      bloomComposer.setSize(size.x, size.y);
+      const glowBloomPass = new UnrealBloomPass(
+        new THREE.Vector2(size.x * pixelRatio, size.y * pixelRatio),
+        bloomStrength, bloomRadius, bloomThreshold,
+      );
+      bloomComposer.addPass(new BubbleLayerRenderPass(fg.scene(), fg.camera()));
+      bloomComposer.addPass(new ShaderPass(SRGB_DECODE_SHADER));
+      // Copy vor Bloom: opfert einen Blit, damit der scharfe Bubbles-only-
+      // Render den Bloom-Blend ueberlebt (Stanz-Maske im MixPass).
+      bloomComposer.addPass(new ShaderPass(COPY_SHADER));
+      bloomComposer.addPass(glowBloomPass);
       const passes: Pass[] = [
         new ShaderPass(SRGB_DECODE_SHADER),
-        new UnrealBloomPass(
-          new THREE.Vector2(size.x * pixelRatio, size.y * pixelRatio),
-          bloomStrength, bloomRadius, bloomThreshold,
-        ),
+        new SelectiveBloomMixPass(bloomComposer, glowBloomPass),
         new OutputPass(),
       ];
       for (const pass of passes) composer.addPass(pass);
@@ -416,6 +531,39 @@ export function GraphWebglSpike() {
       material.uniforms.uFadeEnabled.value = fogEnabled ? 1 : 0;
     });
   }, [linkOpacity, fogNear, fogFar, fogEnabled, relationColor, mentionColor]);
+
+  // Glow-Deckkraft in die gecachten (pro Farbe geteilten) Materialien pushen.
+  useEffect(() => {
+    for (const material of glowMaterialCache.values()) material.opacity = glowOpacity;
+  }, [glowOpacity]);
+
+  // Headlight: das Lib-DirectionalLight haengt fix im Weltraum — beim
+  // Orbiten schaut man auf unbeleuchtete Rueckseiten. Licht UND Target an
+  // die Kamera geparentet = Sonne beim Betrachter; Richtung per Regler.
+  useEffect(() => {
+    const fg = fgRef.current;
+    if (!fg) return;
+    const camera = fg.camera();
+    const dirLight = fg.lights().find(
+      (l): l is THREE.DirectionalLight => (l as THREE.DirectionalLight).isDirectionalLight,
+    );
+    if (!dirLight) return;
+    if (dirLight.parent !== camera) {
+      // Kamera muss im Szenengraph haengen, sonst rendern ihre Kinder nicht.
+      fg.scene().add(camera);
+      camera.add(dirLight);
+      camera.add(dirLight.target);
+    }
+    // Kamera-lokal: +z = hinter dem Betrachter, -z = Blickrichtung.
+    // Az/El 0/0 = Licht exakt hinter der Kamera, zielt durch sie hindurch.
+    const az = THREE.MathUtils.degToRad(lightAzimuth);
+    const el = THREE.MathUtils.degToRad(lightElevation);
+    const x = Math.sin(az) * Math.cos(el);
+    const y = Math.sin(el);
+    const z = Math.cos(az) * Math.cos(el);
+    dirLight.position.set(x, y, z);
+    dirLight.target.position.set(-x, -y, -z);
+  }, [useCustomNodeRender, lightAzimuth, lightElevation]);
 
   // Manual rAF fps counter — react-force-graph-3d has no built-in readout.
   useEffect(() => {
@@ -461,10 +609,24 @@ export function GraphWebglSpike() {
         nodeAutoColorBy={useCustomNodeRender ? undefined : 'group'}
         nodeThreeObject={useCustomNodeRender ? (n: NodeObject<SpikeNode>) => {
           const color = GROUP_COLORS[n.group % GROUP_COLORS.length];
-          const core = new THREE.Sprite(getSolidMaterial(color));
+          const group = new THREE.Group();
           const coreSize = 5 + n.val * 2.5;
-          core.scale.set(coreSize, coreSize, 1);
-          return core;
+          if (glowEnabled) {
+            const glow = new THREE.Sprite(getGlowMaterial(color));
+            glow.scale.set(coreSize * glowScale, coreSize * glowScale, 1);
+            // renderOrder: Glow zuerst, Kugel deckend drueber.
+            glow.renderOrder = 1;
+            group.add(glow);
+          }
+          // Echte beleuchtete Kugel (Referenz-Look), geteilte Geometrie.
+          const core = new THREE.Mesh(NODE_SPHERE_GEOMETRY, getSphereMaterial(color));
+          core.scale.setScalar(coreSize);
+          core.renderOrder = 2;
+          // Layer 0 bleibt AN (Haupt-Render), Bloom-Layer kommt dazu —
+          // nur was hier liegt, geht in den (optionalen) Bloom-Glow-Zweig.
+          core.layers.enable(BLOOM_LAYER);
+          group.add(core);
+          return group;
         } : undefined}
         nodeThreeObjectExtend={false}
         linkVisibility={() => showLinks}
@@ -556,8 +718,34 @@ export function GraphWebglSpike() {
         <hr style={hrStyle} />
 
         <label style={rowStyle}>
+          Licht horizontal ({lightAzimuth}°)
+          <input type="range" min={-180} max={180} step={5} value={lightAzimuth} onChange={(e) => setLightAzimuth(Number(e.target.value))} />
+        </label>
+        <label style={rowStyle}>
+          Licht vertikal ({lightElevation}°)
+          <input type="range" min={-90} max={90} step={5} value={lightElevation} onChange={(e) => setLightElevation(Number(e.target.value))} />
+        </label>
+
+        <hr style={hrStyle} />
+
+        <label style={rowStyle}>
+          <input type="checkbox" checked={glowEnabled} onChange={(e) => setGlowEnabled(e.target.checked)} />
+          Node-Glow (Sprite)
+        </label>
+        <label style={rowStyle}>
+          Glow-Groesse ({glowScale.toFixed(1)}x)
+          <input type="range" min={1.2} max={6} step={0.2} value={glowScale} disabled={!glowEnabled} onChange={(e) => setGlowScale(Number(e.target.value))} />
+        </label>
+        <label style={rowStyle}>
+          Glow-Deckkraft ({glowOpacity.toFixed(2)})
+          <input type="range" min={0.1} max={1} step={0.05} value={glowOpacity} disabled={!glowEnabled} onChange={(e) => setGlowOpacity(Number(e.target.value))} />
+        </label>
+
+        <hr style={hrStyle} />
+
+        <label style={rowStyle}>
           <input type="checkbox" checked={bloomEnabled} onChange={(e) => setBloomEnabled(e.target.checked)} />
-          Bloom aktiv
+          Bloom aktiv (Post-FX, A/B)
         </label>
         <label style={rowStyle}>
           Strength ({bloomStrength.toFixed(2)})
