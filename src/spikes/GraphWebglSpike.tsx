@@ -430,10 +430,6 @@ export function GraphWebglSpike() {
   // spheres via nodeAutoColorBy) against the hand-tuned sprite rendering
   // below, live, instead of guessing blind at which one you actually want.
   const [useCustomNodeRender, setUseCustomNodeRender] = useState(true);
-  // Headlight-Richtung kamera-lokal, per Regler drehbar. 0/0 = exakt hinter
-  // dem Betrachter; horizontal dreht um die Hochachse, vertikal hebt/senkt.
-  const [lightAzimuth, setLightAzimuth] = useState(-10);
-  const [lightElevation, setLightElevation] = useState(10);
 
   const [fps, setFps] = useState(0);
   const [engineStopMs, setEngineStopMs] = useState<number | null>(null);
@@ -555,15 +551,15 @@ export function GraphWebglSpike() {
       camera.add(dirLight.target);
     }
     // Kamera-lokal: +z = hinter dem Betrachter, -z = Blickrichtung.
-    // Az/El 0/0 = Licht exakt hinter der Kamera, zielt durch sie hindurch.
-    const az = THREE.MathUtils.degToRad(lightAzimuth);
-    const el = THREE.MathUtils.degToRad(lightElevation);
+    // Richtung fix (vom User getuned): -25 Grad horizontal, 20 Grad vertikal.
+    const az = THREE.MathUtils.degToRad(-25);
+    const el = THREE.MathUtils.degToRad(20);
     const x = Math.sin(az) * Math.cos(el);
     const y = Math.sin(el);
     const z = Math.cos(az) * Math.cos(el);
     dirLight.position.set(x, y, z);
     dirLight.target.position.set(-x, -y, -z);
-  }, [useCustomNodeRender, lightAzimuth, lightElevation]);
+  }, [useCustomNodeRender]);
 
   // Manual rAF fps counter — react-force-graph-3d has no built-in readout.
   useEffect(() => {
@@ -713,17 +709,6 @@ export function GraphWebglSpike() {
             <option value={3}>3D</option>
             <option value={2}>2D (flach, top-down)</option>
           </select>
-        </label>
-
-        <hr style={hrStyle} />
-
-        <label style={rowStyle}>
-          Licht horizontal ({lightAzimuth}°)
-          <input type="range" min={-180} max={180} step={5} value={lightAzimuth} onChange={(e) => setLightAzimuth(Number(e.target.value))} />
-        </label>
-        <label style={rowStyle}>
-          Licht vertikal ({lightElevation}°)
-          <input type="range" min={-90} max={90} step={5} value={lightElevation} onChange={(e) => setLightElevation(Number(e.target.value))} />
         </label>
 
         <hr style={hrStyle} />
