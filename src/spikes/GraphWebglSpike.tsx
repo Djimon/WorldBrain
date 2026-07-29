@@ -126,6 +126,7 @@ interface SpikeNode {
   id: string;
   group: number;
   val: number; // degree-based size — hub nodes render bigger, mirrors real entity importance
+  degreeNorm: number; // 0..1 (sqrt-skaliert relativ zum Max-Degree) — Basis fuer den Spread-Slider
 }
 
 type LinkKind = 'relation' | 'mention';
@@ -144,8 +145,8 @@ const GROUP_COLORS = ['#6cb8f0', '#f07ad0', '#8fd97a', '#b39df5', '#f5923e', '#f
 // Referenz: Links sind hauchduenn und fast unsichtbar — beide Arten
 // graulich-dezent, Unterscheidung nur warm (relation) vs kalt (mention).
 const LINK_KIND_COLOR: Record<LinkKind, string> = {
-  relation: '#d9b08c',
-  mention: '#7a8494',
+  relation: '#ffffff',
+  mention: '#ff3526',
 };
 // Uneven cluster sizes and link density — some clusters bigger/denser than
 // others, mirroring the reference (a few tight hubs, a few sparse ones)
@@ -233,9 +234,10 @@ function generateGraph(nodeCount: number, linkCount: number): { nodes: SpikeNode
     degree[Number(link.target.slice(1))]++;
   }
   const maxDegree = Math.max(...degree, 1);
-  const nodes: SpikeNode[] = groupOfNode.map((group, i) => ({
-    id: `n${i}`, group, val: 1 + Math.sqrt(degree[i] / maxDegree) * 6,
-  }));
+  const nodes: SpikeNode[] = groupOfNode.map((group, i) => {
+    const degreeNorm = Math.sqrt(degree[i] / maxDegree);
+    return { id: `n${i}`, group, val: 1 + degreeNorm * 6, degreeNorm };
+  });
 
   return { nodes, links };
 }
@@ -298,6 +300,26 @@ function getSphereMaterial(color: string): THREE.MeshLambertMaterial {
   return material;
 }
 
+// Ego-Dim-Variante: ausgegraut (Richtung Grau gelerpt) + 30% Deckkraft,
+// bleibt anklickbar. Eigene Instanz pro Farbe, da Materialien geteilt sind.
+const sphereDimMaterialCache = new Map<string, THREE.MeshLambertMaterial>();
+function getSphereDimMaterial(color: string): THREE.MeshLambertMaterial {
+  const cached = sphereDimMaterialCache.get(color);
+  if (cached) return cached;
+  const greyed = new THREE.Color(color).lerp(new THREE.Color('#888888'), 0.6);
+  const material = new THREE.MeshLambertMaterial({
+    color: greyed,
+    fog: false,
+    transparent: true,
+    opacity: 0.3,
+    // kein Depth-Write: halbtransparente Dimm-Kugeln sollen die aktiven
+    // dahinter nicht wegstanzen
+    depthWrite: false,
+  });
+  sphereDimMaterialCache.set(color, material);
+  return material;
+}
+
 // Real distance-based alpha fade for links — THREE.Fog only blends color
 // toward the fog color (never touches alpha), which reads as a harsh dark
 // smear rather than "fading to invisible". This shader instead computes the
@@ -338,12 +360,15 @@ function getLinkFadeMaterial(kind: LinkKind): THREE.ShaderMaterial {
   const cached = linkFadeMaterialCache.get(kind);
   if (cached) return cached;
   const material = new THREE.ShaderMaterial({
+    // Startwerte = UI-Defaults (fogEnabled true, 270/1950, Deckkraft 0.25):
+    // der erste Frame rendert sonst mit falschen Werten, bis der Sync-
+    // Effect feuert — Fade wirkte erst nach einmal Aus/Anklicken.
     uniforms: {
       uColor: { value: new THREE.Color(LINK_KIND_COLOR[kind]) },
-      uOpacity: { value: 0.85 },
-      uFadeNear: { value: 100 },
-      uFadeFar: { value: 800 },
-      uFadeEnabled: { value: 0 },
+      uOpacity: { value: 0.25 },
+      uFadeNear: { value: 270 },
+      uFadeFar: { value: 1950 },
+      uFadeEnabled: { value: 1 },
     },
     vertexShader: LINK_FADE_VERTEX_SHADER,
     fragmentShader: LINK_FADE_FRAGMENT_SHADER,
@@ -402,7 +427,7 @@ export function GraphWebglSpike() {
   const [glowScale, setGlowScale] = useState(2.8);
   const [glowOpacity, setGlowOpacity] = useState(0.75);
   const [bloomEnabled, setBloomEnabled] = useState(true);
-  const [bloomStrength, setBloomStrength] = useState(0.6);
+  const [bloomStrength, setBloomStrength] = useState(0.5);
   const [bloomRadius, setBloomRadius] = useState(0.85);
   const [bloomThreshold, setBloomThreshold] = useState(0);
   // Default KEIN ToneMapping: Decode+Encode heben sich exakt auf, Bloom-an
@@ -416,7 +441,7 @@ export function GraphWebglSpike() {
   // 0.15 ist der Look-getunte Default; bei grossen Datensaetzen auf 0.
   const [linkCurvature, setLinkCurvature] = useState(0.15);
   // Referenz: Links kaum sichtbar — Struktur kommt aus den Dots.
-  const [linkOpacity, setLinkOpacity] = useState(0.25);
+  const [linkOpacity, setLinkOpacity] = useState(1.0);
   const [relationColor, setRelationColor] = useState(LINK_KIND_COLOR.relation);
   const [mentionColor, setMentionColor] = useState(LINK_KIND_COLOR.mention);
   // Real distance-based alpha fade for links (getLinkFadeMaterial's shader)
@@ -424,8 +449,8 @@ export function GraphWebglSpike() {
   // toward the fog color and never touches alpha, so it faded to a harsh
   // near-black tint instead of actually disappearing.
   const [fogEnabled, setFogEnabled] = useState(true);
-  const [fogNear, setFogNear] = useState(270);
-  const [fogFar, setFogFar] = useState(1950);
+  const [fogNear, setFogNear] = useState(180);
+  const [fogFar, setFogFar] = useState(850);
   // Lets you A/B the library's own default node rendering (real lit 3D
   // spheres via nodeAutoColorBy) against the hand-tuned sprite rendering
   // below, live, instead of guessing blind at which one you actually want.
@@ -442,6 +467,44 @@ export function GraphWebglSpike() {
   // genKey forces a fresh dataset when "Neu generieren" is clicked, even if
   // node/link counts are unchanged.
   const graphData = useMemo(() => generateGraph(nodeCount, linkCount), [nodeCount, linkCount, genKey]);
+
+  // Groessen-Spread: Faktor zwischen kleinster (Degree 0) und groesster
+  // Kugel (Max-Degree). 0 = alle gleich gross; 6 = bisheriges Verhalten.
+  const [sizeSpread, setSizeSpread] = useState(25);
+
+  // Ego-View: Klick auf Kugel -> nur sie + Nachbarn + deren Links.
+  // dim = Rest ausgegraut/30% (bleibt klickbar), hide = Rest komplett weg.
+  const [egoNodeId, setEgoNodeId] = useState<string | null>(null);
+  const [egoMode, setEgoMode] = useState<'dim' | 'hide'>('dim');
+  // Ego-Zustand als Ref: nodeThreeObject liest ihn bei JEDEM (Re-)Bau der
+  // Node-Objekte — die Lib baut nach Prop-Aenderungen neu und wuerde einen
+  // rein imperativen Material-Swap sofort wieder ueberschreiben (Dim war
+  // nur 1 Frame sichtbar).
+  const egoStateRef = useRef<{ id: string | null; mode: 'dim' | 'hide'; neighbors: Set<string> | null }>(
+    { id: null, mode: 'dim', neighbors: null },
+  );
+  // Adjazenz aus den frischen Daten (source/target sind hier noch die
+  // String-IDs; die Force-Engine ersetzt sie spaeter durch Node-Objekte).
+  const neighborsOf = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const link of graphData.links) {
+      if (!map.has(link.source)) map.set(link.source, new Set());
+      if (!map.has(link.target)) map.set(link.target, new Set());
+      map.get(link.source)!.add(link.target);
+      map.get(link.target)!.add(link.source);
+    }
+    return map;
+  }, [graphData]);
+  // Nach dem Engine-Start sind link.source/target Node-Objekte.
+  const endpointId = (end: string | NodeObject<SpikeNode>): string =>
+    typeof end === 'string' ? end : end.id;
+  // Im Render-Body aktualisiert, damit der Ref VOR dem naechsten
+  // Objekt-(Re-)Bau der Lib garantiert frisch ist.
+  egoStateRef.current = {
+    id: egoNodeId,
+    mode: egoMode,
+    neighbors: egoNodeId ? neighborsOf.get(egoNodeId) ?? null : null,
+  };
 
   // Bloom post-processing pass — re-applied whenever params/genKey change,
   // since the composer can be a fresh instance after a data reset OR after
@@ -537,32 +600,71 @@ export function GraphWebglSpike() {
     for (const material of glowMaterialCache.values()) material.opacity = glowOpacity;
   }, [glowOpacity]);
 
+  // Ego-Dim: nicht-Nachbarn ausgrauen statt versteckt — Material-Swap auf
+  // den bestehenden Node-Objekten (kein Rebuild), Glow-Sprite dabei aus.
+  // Nur im Custom-Rendering (Library-Spheres haben eigene Materialien).
+  useEffect(() => {
+    if (!useCustomNodeRender) return;
+    const neighbors = egoNodeId ? neighborsOf.get(egoNodeId) : null;
+    for (const node of graphData.nodes as (SpikeNode & { __threeObj?: THREE.Group })[]) {
+      const obj = node.__threeObj;
+      if (!obj) continue;
+      const active = !egoNodeId || node.id === egoNodeId || (neighbors?.has(node.id) ?? false);
+      const dimmed = egoMode === 'dim' && !active;
+      const color = GROUP_COLORS[node.group % GROUP_COLORS.length];
+      for (const child of obj.children) {
+        if ((child as THREE.Mesh).isMesh) {
+          (child as THREE.Mesh).material = dimmed ? getSphereDimMaterial(color) : getSphereMaterial(color);
+        } else if ((child as THREE.Sprite).isSprite) {
+          child.visible = !dimmed;
+        }
+      }
+    }
+  }, [egoNodeId, egoMode, useCustomNodeRender, graphData, neighborsOf]);
+
   // Headlight: das Lib-DirectionalLight haengt fix im Weltraum — beim
   // Orbiten schaut man auf unbeleuchtete Rueckseiten. Licht UND Target an
   // die Kamera geparentet = Sonne beim Betrachter; Richtung per Regler.
   useEffect(() => {
     const fg = fgRef.current;
     if (!fg) return;
-    const camera = fg.camera();
-    const dirLight = fg.lights().find(
-      (l): l is THREE.DirectionalLight => (l as THREE.DirectionalLight).isDirectionalLight,
-    );
-    if (!dirLight) return;
-    if (dirLight.parent !== camera) {
-      // Kamera muss im Szenengraph haengen, sonst rendern ihre Kinder nicht.
-      fg.scene().add(camera);
-      camera.add(dirLight);
-      camera.add(dirLight.target);
-    }
-    // Kamera-lokal: +z = hinter dem Betrachter, -z = Blickrichtung.
-    // Az/El 0/0 = Licht exakt hinter der Kamera, zielt durch sie hindurch.
-    const az = THREE.MathUtils.degToRad(lightAzimuth);
-    const el = THREE.MathUtils.degToRad(lightElevation);
-    const x = Math.sin(az) * Math.cos(el);
-    const y = Math.sin(el);
-    const z = Math.cos(az) * Math.cos(el);
-    dirLight.position.set(x, y, z);
-    dirLight.target.position.set(-x, -y, -z);
+
+    const applyHeadlight = () => {
+      const camera = fg.camera();
+      const dirLight = fg.lights().find(
+        (l): l is THREE.DirectionalLight => (l as THREE.DirectionalLight).isDirectionalLight,
+      );
+      if (!dirLight) return;
+      if (dirLight.parent !== camera) {
+        // Kamera muss im Szenengraph haengen, sonst rendern ihre Kinder nicht.
+        fg.scene().add(camera);
+        camera.add(dirLight);
+        camera.add(dirLight.target);
+      }
+      // Kamera-lokal: +z = hinter dem Betrachter, -z = Blickrichtung.
+      // Az/El 0/0 = Licht exakt hinter der Kamera, zielt durch sie hindurch.
+      const az = THREE.MathUtils.degToRad(lightAzimuth);
+      const el = THREE.MathUtils.degToRad(lightElevation);
+      const x = Math.sin(az) * Math.cos(el);
+      const y = Math.sin(el);
+      const z = Math.cos(az) * Math.cos(el);
+      dirLight.position.set(x, y, z);
+      dirLight.target.position.set(-x, -y, -z);
+    };
+
+    applyHeadlight();
+    // Die Lib wendet ihre lights-Property verzoegert (Kapsule-Digest) an
+    // und haengt das Licht dabei zurueck in die Szene — das Headlight sass
+    // deshalb beim Start falsch, bis ein Slider-Move den Effect neu feuerte.
+    // Waechter holt es zurueck, sobald es geklaut wurde.
+    const guard = setInterval(() => {
+      const camera = fg.camera();
+      const dirLight = fg.lights().find(
+        (l): l is THREE.DirectionalLight => (l as THREE.DirectionalLight).isDirectionalLight,
+      );
+      if (dirLight && dirLight.parent !== camera) applyHeadlight();
+    }, 250);
+    return () => clearInterval(guard);
   }, [useCustomNodeRender, lightAzimuth, lightElevation]);
 
   // Manual rAF fps counter — react-force-graph-3d has no built-in readout.
@@ -590,7 +692,7 @@ export function GraphWebglSpike() {
   }, [genKey, nodeCount, linkCount]);
 
   return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh', background: '#0b0d10' }}>
+    <div style={{ position: 'relative', width: '100vw', height: '100vh', background: '#37265a' }}>
       <ForceGraph3D
         // Force a clean remount on mode switch — toggling nodeThreeObject
         // between a function and undefined at runtime left orphaned Sprite
@@ -604,14 +706,23 @@ export function GraphWebglSpike() {
         height={viewportSize.height}
         graphData={graphData}
         numDimensions={dims}
-        nodeVal={(n: NodeObject<SpikeNode>) => n.val}
+        nodeVal={(n: NodeObject<SpikeNode>) => Math.pow(1 + sizeSpread, n.degreeNorm - 0.5)}
         nodeLabel={(n: NodeObject<SpikeNode>) => `${n.id} (Gruppe ${n.group})`}
         nodeAutoColorBy={useCustomNodeRender ? undefined : 'group'}
         nodeThreeObject={useCustomNodeRender ? (n: NodeObject<SpikeNode>) => {
           const color = GROUP_COLORS[n.group % GROUP_COLORS.length];
+          // Ego-Dim direkt beim Objektbau anwenden — die Lib baut die
+          // Objekte nach Prop-Aenderungen neu, ein nachtraeglicher Swap
+          // allein wird dabei ueberschrieben.
+          const ego = egoStateRef.current;
+          const active = !ego.id || n.id === ego.id || (ego.neighbors?.has(n.id) ?? false);
+          const dimmed = ego.mode === 'dim' && ego.id !== null && !active;
           const group = new THREE.Group();
-          const coreSize = 5 + n.val * 2.5;
-          if (glowEnabled) {
+          // Spreizung symmetrisch um die feste Mittelgroesse 10: kleine
+          // Kugeln schrumpfen, grosse wachsen. Ratio kleinste:groesste =
+          // 1:(1+Spread); Spread 0 = alle gleich gross.
+          const coreSize = 10 * Math.pow(1 + sizeSpread, n.degreeNorm - 0.5);
+          if (glowEnabled && !dimmed) {
             const glow = new THREE.Sprite(getGlowMaterial(color));
             glow.scale.set(coreSize * glowScale, coreSize * glowScale, 1);
             // renderOrder: Glow zuerst, Kugel deckend drueber.
@@ -619,7 +730,7 @@ export function GraphWebglSpike() {
             group.add(glow);
           }
           // Echte beleuchtete Kugel (Referenz-Look), geteilte Geometrie.
-          const core = new THREE.Mesh(NODE_SPHERE_GEOMETRY, getSphereMaterial(color));
+          const core = new THREE.Mesh(NODE_SPHERE_GEOMETRY, dimmed ? getSphereDimMaterial(color) : getSphereMaterial(color));
           core.scale.setScalar(coreSize);
           core.renderOrder = 2;
           // Layer 0 bleibt AN (Haupt-Render), Bloom-Layer kommt dazu —
@@ -629,20 +740,28 @@ export function GraphWebglSpike() {
           return group;
         } : undefined}
         nodeThreeObjectExtend={false}
-        linkVisibility={() => showLinks}
+        nodeVisibility={(n: NodeObject<SpikeNode>) =>
+          egoMode === 'dim' || !egoNodeId || n.id === egoNodeId || (neighborsOf.get(egoNodeId)?.has(n.id) ?? false)}
+        linkVisibility={(l: LinkObject<SpikeNode, SpikeLink>) =>
+          showLinks && (!egoNodeId || endpointId(l.source) === egoNodeId || endpointId(l.target) === egoNodeId)}
         linkMaterial={(l: LinkObject<SpikeNode, SpikeLink>) => getLinkFadeMaterial(l.kind)}
         linkCurvature={linkCurvature}
         cooldownTicks={100}
+        onNodeClick={(n: NodeObject<SpikeNode>) => setEgoNodeId((prev) => (prev === n.id ? null : n.id))}
+        onBackgroundClick={() => setEgoNodeId(null)}
         onEngineStop={() => setEngineStopMs(Math.round(performance.now() - warmupStartRef.current))}
         enableNavigationControls
         showNavInfo={false}
-        backgroundColor="#0b0d10"
+        backgroundColor="#37265a"
       />
       <div style={panelStyle}>
         <div style={{ fontWeight: 600, marginBottom: 6 }}>#320 Graph-Spike — Live-Messwerte</div>
         <div>fps: <b style={{ color: fps >= 45 ? '#4caf50' : fps >= 25 ? '#e0a53f' : '#e05353' }}>{fps}</b></div>
         <div>Nodes: {graphData.nodes.length.toLocaleString('de-DE')} · Links: {graphData.links.length.toLocaleString('de-DE')}</div>
         <div>Force-Sim Konvergenz: {engineStopMs === null ? 'läuft…' : `${engineStopMs} ms`}</div>
+        {egoNodeId && (
+          <div>Ego-View: <b>{egoNodeId}</b> ({neighborsOf.get(egoNodeId)?.size ?? 0} Nachbarn) — Klick auf Hintergrund = alles</div>
+        )}
 
         <hr style={hrStyle} />
 
@@ -655,6 +774,17 @@ export function GraphWebglSpike() {
           <input type="number" min={100} step={500} value={linkCount} onChange={(e) => setLinkCount(Number(e.target.value))} style={inputStyle} />
         </label>
         <button type="button" onClick={() => setGenKey((k) => k + 1)} style={btnStyle}>Neu generieren</button>
+        <label style={rowStyle}>
+          Groessen-Spread ({sizeSpread.toFixed(1)})
+          <input type="range" min={0} max={30} step={0.5} value={sizeSpread} onChange={(e) => setSizeSpread(Number(e.target.value))} />
+        </label>
+        <label style={rowStyle}>
+          Ego-Modus
+          <select value={egoMode} onChange={(e) => setEgoMode(e.target.value as 'dim' | 'hide')} style={inputStyle}>
+            <option value="dim">Abdunkeln (klickbar)</option>
+            <option value="hide">Ausblenden</option>
+          </select>
+        </label>
 
         <hr style={hrStyle} />
 
