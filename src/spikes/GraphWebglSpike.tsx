@@ -432,8 +432,8 @@ export function GraphWebglSpike() {
   const [useCustomNodeRender, setUseCustomNodeRender] = useState(true);
   // Headlight-Richtung kamera-lokal, per Regler drehbar. 0/0 = exakt hinter
   // dem Betrachter; horizontal dreht um die Hochachse, vertikal hebt/senkt.
-  const [lightAzimuth, setLightAzimuth] = useState(-10);
-  const [lightElevation, setLightElevation] = useState(10);
+  const [lightAzimuth, setLightAzimuth] = useState(0);
+  const [lightElevation, setLightElevation] = useState(0);
 
   const [fps, setFps] = useState(0);
   const [engineStopMs, setEngineStopMs] = useState<number | null>(null);
