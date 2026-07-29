@@ -399,17 +399,17 @@ export function GraphWebglSpike() {
   // Fake-Glow (Referenz-Ansatz): weicher Farbkreis pro Node UNTER der Kugel
   // — Default-Glow statt Bloom-Post-Processing. Bloom bleibt als A/B-Option.
   const [glowEnabled, setGlowEnabled] = useState(true);
-  const [glowScale, setGlowScale] = useState(2.2);
-  const [glowOpacity, setGlowOpacity] = useState(0.6);
-  const [bloomEnabled, setBloomEnabled] = useState(false);
-  const [bloomStrength, setBloomStrength] = useState(1.7);
-  const [bloomRadius, setBloomRadius] = useState(0.6);
+  const [glowScale, setGlowScale] = useState(2.8);
+  const [glowOpacity, setGlowOpacity] = useState(0.75);
+  const [bloomEnabled, setBloomEnabled] = useState(true);
+  const [bloomStrength, setBloomStrength] = useState(0.6);
+  const [bloomRadius, setBloomRadius] = useState(0.85);
   const [bloomThreshold, setBloomThreshold] = useState(0);
   // Default KEIN ToneMapping: Decode+Encode heben sich exakt auf, Bloom-an
   // ist damit farbgleich zu Bloom-aus (Referenzfarben bleiben 1:1) — ACES
   // drueckte die Pastellfarben sichtbar ab ("Multiply-Optik"). Kompressoren
   // bleiben zum A/B im Select.
-  const [toneMappingMode, setToneMappingMode] = useState<'neutral' | 'aces' | 'reinhard' | 'none'>('none');
+  const [toneMappingMode, setToneMappingMode] = useState<'neutral' | 'aces' | 'reinhard' | 'none'>('neutral');
   const [showLinks, setShowLinks] = useState(true);
   // ACHTUNG Perf: curved links (>0) erzwingen per-link Curve-Geometrie statt
   // plain THREE.Line — hat bei 15k Links fps getankt (live-confirmed).
