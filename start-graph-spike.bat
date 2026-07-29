@@ -1,6 +1,8 @@
 @echo off
 set PATH=C:\Program Files\nodejs;%PATH%
 cd /d "%~dp0"
+echo Sync npm-Pakete (nach Pull koennen neue Dependencies fehlen)...
+call npm install --no-audit --no-fund
 echo Starte M16 Graph-Spike (#320) in eigenem Fenster...
-npm run desktop:spike-graph
+call npm run desktop:spike-graph
 pause

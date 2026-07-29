@@ -8,7 +8,33 @@ import ForceGraph3D from 'react-force-graph-3d';
 import type { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-3d';
 import * as THREE from 'three';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import type { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import bubbleSpriteUrl from './assets/bubble.png';
+
+// Grauschleier-Fix (live vermessen, temp/bloom-repro.html): der Composer-RT
+// enthaelt bereits sRGB-kodierte Werte (Raw-Copy eines Hintergrund-Pixels
+// liefert unveraendert 11,13,16). Jeder finale Blit — Blooms renderToScreen
+// genauso wie ein nachgehaengter OutputPass — kodiert ERNEUT: 11 -> 59,
+// exakt sRGB(sRGB(x)). Deshalb brachte "OutputPass anhaengen" allein auch
+// nichts. Fix: einmal dekodieren (sRGB -> Linear) BEVOR Bloom rechnet,
+// OutputPass macht am Ende ToneMapping + die eine korrekte Kodierung.
+// Decode -> Bloom(0) -> Output ohne ToneMapping reproduziert die Referenz
+// pixelgenau (11,13,16); mit ACES wird Near-Black zu 1,2,3 (satter).
+const SRGB_DECODE_SHADER = {
+  uniforms: { tDiffuse: { value: null as THREE.Texture | null } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: `
+    uniform sampler2D tDiffuse; varying vec2 vUv;
+    vec3 srgbToLinear(vec3 c){
+      return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
+    }
+    void main(){
+      vec4 t = texture2D(tDiffuse, vUv);
+      gl_FragColor = vec4(srgbToLinear(t.rgb), t.a);
+    }`,
+};
 
 interface SpikeNode {
   id: string;
@@ -244,7 +270,7 @@ function getLinkFadeMaterial(kind: LinkKind): THREE.ShaderMaterial {
 
 export function GraphWebglSpike() {
   const fgRef = useRef<ForceGraphMethods<NodeObject<SpikeNode>, LinkObject<SpikeNode, SpikeLink>>>(undefined);
-  const bloomPassRef = useRef<UnrealBloomPass | null>(null);
+  const bloomPassesRef = useRef<Pass[]>([]);
 
   // react-force-graph-3d only measures its container once at mount unless
   // given explicit width/height — without these, resizing the actual OS
@@ -264,13 +290,12 @@ export function GraphWebglSpike() {
   const [nodeCount, setNodeCount] = useState(10000);
   const [linkCount, setLinkCount] = useState(15000);
   const [genKey, setGenKey] = useState(0);
-  const [dims, setDims] = useState<1 | 2 | 3>(2);
+  const [dims, setDims] = useState<1 | 2 | 3>(3);
 
-  // NOTE: the earlier "grey haze over everything" was live-confirmed to NOT
-  // be about these values (it persisted even at strength=0) — root cause
-  // still open, an OutputPass/color-space fix was tried and reverted (no
-  // visible difference). These defaults are just a reasonable starting
-  // point, not a workaround for that bug.
+  // Der fruehere "Grauschleier sobald Bloom aktiv" ist GEFIXT — Ursache war
+  // doppelte sRGB-Kodierung, siehe SRGB_DECODE_SHADER oben. ACHTUNG: Bloom
+  // rechnet jetzt auf LINEAREN Werten, dadurch wirken Threshold/Strength
+  // anders als vorher — ggf. neu einstellen.
   //
   // Separate, still-true limitation: true "selective bloom" (only specific
   // objects glow, background never touched, even with high density/strength)
@@ -278,16 +303,26 @@ export function GraphWebglSpike() {
   // buffer, then additively combine with the normal render via a custom
   // shader. This library owns its own render loop and only exposes one
   // shared composer, so that isn't reachable without patching its internals.
+  // Defaults auf LINEARE Werte kalibriert (Decode-Fix): linear ist alles
+  // dunkler als sRGB (0.5 -> 0.21), darum Strength hoeher als frueher.
+  // Threshold 0: der Cut vergleicht LUMINANZ (G ~0.71, R ~0.21, B ~0.07),
+  // dadurch springt jede Gruppenfarbe bei anderem Wert an — bei 0 glueht
+  // alles proportional zur eigenen Helligkeit, Hintergrund (~0) bleibt
+  // schwarz. Dosierung ueber Strength/Radius.
   const [bloomEnabled, setBloomEnabled] = useState(true);
-  const [bloomStrength, setBloomStrength] = useState(0.6);
-  const [bloomRadius, setBloomRadius] = useState(0.25);
-  const [bloomThreshold, setBloomThreshold] = useState(0.85);
+  const [bloomStrength, setBloomStrength] = useState(1.7);
+  const [bloomRadius, setBloomRadius] = useState(0.6);
+  const [bloomThreshold, setBloomThreshold] = useState(0);
+  // ACES drueckt Near-Black mit runter (Toe-Crush) — killt die schwachen
+  // aeusseren Glow-Auslaeufer. Neutral/Reinhard lassen den Low-Range ~1:1
+  // und komprimieren nur Highlights. Default Neutral, live umschaltbar.
+  const [toneMappingMode, setToneMappingMode] = useState<'neutral' | 'aces' | 'reinhard' | 'none'>('neutral');
   const [showLinks, setShowLinks] = useState(true);
-  // Default OFF (straight lines) — curved links force per-link curve/tube
-  // geometry instead of a plain THREE.Line, which tanked fps at 15k links
-  // (live-confirmed). Slider stays available to deliberately re-test it.
-  const [linkCurvature, setLinkCurvature] = useState(0);
-  const [linkOpacity, setLinkOpacity] = useState(0.85);
+  // ACHTUNG Perf: curved links (>0) erzwingen per-link Curve-Geometrie statt
+  // plain THREE.Line — hat bei 15k Links fps getankt (live-confirmed).
+  // 0.15 ist der Look-getunte Default; bei grossen Datensaetzen auf 0.
+  const [linkCurvature, setLinkCurvature] = useState(0.15);
+  const [linkOpacity, setLinkOpacity] = useState(0.5);
   const [relationColor, setRelationColor] = useState(LINK_KIND_COLOR.relation);
   const [mentionColor, setMentionColor] = useState(LINK_KIND_COLOR.mention);
   // Real distance-based alpha fade for links (getLinkFadeMaterial's shader)
@@ -295,8 +330,8 @@ export function GraphWebglSpike() {
   // toward the fog color and never touches alpha, so it faded to a harsh
   // near-black tint instead of actually disappearing.
   const [fogEnabled, setFogEnabled] = useState(true);
-  const [fogNear, setFogNear] = useState(100);
-  const [fogFar, setFogFar] = useState(800);
+  const [fogNear, setFogNear] = useState(270);
+  const [fogFar, setFogFar] = useState(1950);
   // Lets you A/B the library's own default node rendering (real lit 3D
   // spheres via nodeAutoColorBy) against the hand-tuned sprite rendering
   // below, live, instead of guessing blind at which one you actually want.
@@ -321,17 +356,27 @@ export function GraphWebglSpike() {
     if (!fg) return;
     const composer = fg.postProcessingComposer();
     const renderer = fg.renderer();
-    if (bloomPassRef.current) {
-      composer.removePass(bloomPassRef.current);
-      bloomPassRef.current = null;
+    // dispose(): UnrealBloomPass haelt eigene RenderTargets — ohne dispose
+    // leakt jeder Slider-/Resize-Durchlauf GPU-Speicher.
+    for (const pass of bloomPassesRef.current) {
+      composer.removePass(pass);
+      pass.dispose();
     }
+    bloomPassesRef.current = [];
     // UnrealBloomPass's own source (three/examples/jsm/postprocessing/
     // UnrealBloomPass.js) states directly in its JSDoc: "When using this
     // pass, tone mapping must be enabled in the renderer settings." This
     // renderer defaults to NoToneMapping (3d-force-graph never sets it,
     // since it wasn't built assuming bloom would be added) — a documented
     // requirement this was missing entirely, not a guess.
-    renderer.toneMapping = bloomEnabled ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+    // OutputPass liest renderer.toneMapping pro Frame — Umschalten wirkt live.
+    const TONE_MAPPINGS = {
+      neutral: THREE.NeutralToneMapping,
+      aces: THREE.ACESFilmicToneMapping,
+      reinhard: THREE.ReinhardToneMapping,
+      none: THREE.NoToneMapping,
+    } as const;
+    renderer.toneMapping = bloomEnabled ? TONE_MAPPINGS[toneMappingMode] : THREE.NoToneMapping;
     if (bloomEnabled) {
       // window.innerWidth/innerHeight are CSS pixels; the actual WebGL
       // drawing buffer is that times devicePixelRatio. Passing the CSS size
@@ -341,14 +386,21 @@ export function GraphWebglSpike() {
       // rectangle covering only part of the screen once bloom was enabled.
       const size = renderer.getSize(new THREE.Vector2());
       const pixelRatio = renderer.getPixelRatio();
-      const pass = new UnrealBloomPass(
-        new THREE.Vector2(size.x * pixelRatio, size.y * pixelRatio),
-        bloomStrength, bloomRadius, bloomThreshold,
-      );
-      composer.addPass(pass);
-      bloomPassRef.current = pass;
+      // Kette gegen den Grauschleier (Herleitung am SRGB_DECODE_SHADER):
+      // Decode (RT -> linear), Bloom rechnet linear, OutputPass macht
+      // ToneMapping + die eine finale sRGB-Kodierung.
+      const passes: Pass[] = [
+        new ShaderPass(SRGB_DECODE_SHADER),
+        new UnrealBloomPass(
+          new THREE.Vector2(size.x * pixelRatio, size.y * pixelRatio),
+          bloomStrength, bloomRadius, bloomThreshold,
+        ),
+        new OutputPass(),
+      ];
+      for (const pass of passes) composer.addPass(pass);
+      bloomPassesRef.current = passes;
     }
-  }, [bloomEnabled, bloomStrength, bloomRadius, bloomThreshold, genKey, useCustomNodeRender, viewportSize]);
+  }, [bloomEnabled, bloomStrength, bloomRadius, bloomThreshold, toneMappingMode, genKey, useCustomNodeRender, viewportSize]);
 
   // Pushes the current slider/picker values into the two shared link-fade
   // shader materials (one per LinkKind) — no need to recreate them, just
@@ -509,7 +561,7 @@ export function GraphWebglSpike() {
         </label>
         <label style={rowStyle}>
           Strength ({bloomStrength.toFixed(2)})
-          <input type="range" min={0} max={3} step={0.05} value={bloomStrength} disabled={!bloomEnabled} onChange={(e) => setBloomStrength(Number(e.target.value))} />
+          <input type="range" min={0} max={8} step={0.1} value={bloomStrength} disabled={!bloomEnabled} onChange={(e) => setBloomStrength(Number(e.target.value))} />
         </label>
         <label style={rowStyle}>
           Radius ({bloomRadius.toFixed(2)})
@@ -518,6 +570,20 @@ export function GraphWebglSpike() {
         <label style={rowStyle}>
           Threshold ({bloomThreshold.toFixed(2)})
           <input type="range" min={0} max={1} step={0.05} value={bloomThreshold} disabled={!bloomEnabled} onChange={(e) => setBloomThreshold(Number(e.target.value))} />
+        </label>
+        <label style={rowStyle}>
+          ToneMapping
+          <select
+            value={toneMappingMode}
+            disabled={!bloomEnabled}
+            onChange={(e) => setToneMappingMode(e.target.value as 'neutral' | 'aces' | 'reinhard' | 'none')}
+            style={inputStyle}
+          >
+            <option value="neutral">Neutral (Glow bleibt)</option>
+            <option value="aces">ACES (filmisch, dunkelt)</option>
+            <option value="reinhard">Reinhard (weich)</option>
+            <option value="none">Keins (Clipping)</option>
+          </select>
         </label>
       </div>
     </div>
