@@ -551,9 +551,9 @@ export function GraphWebglSpike() {
       camera.add(dirLight.target);
     }
     // Kamera-lokal: +z = hinter dem Betrachter, -z = Blickrichtung.
-    // Richtung fix (vom User getuned): -25 Grad horizontal, 20 Grad vertikal.
-    const az = THREE.MathUtils.degToRad(-25);
-    const el = THREE.MathUtils.degToRad(20);
+    // Richtung fix (vom User getuned): -10 Grad horizontal, 10 Grad vertikal.
+    const az = THREE.MathUtils.degToRad(-10);
+    const el = THREE.MathUtils.degToRad(10);
     const x = Math.sin(az) * Math.cos(el);
     const y = Math.sin(el);
     const z = Math.cos(az) * Math.cos(el);
