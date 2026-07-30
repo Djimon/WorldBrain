@@ -36,10 +36,12 @@ weil es die Kosten niedrig hält und trotzdem jeden joinen lässt" (Unity-Doku).
 - **Serverloses Signaling (Connection-Code copy-paste)** → bei WebRTC tauschen die zwei Peers ihre
   Verbindungsinfo per **kopiertem Code** (DM schickt dem Spieler einen „Beitritts-String"). **Kein
   Signaling-Server.** Clunky, aber null Infra.
-- **Gratis-Relay: Epic Online Services (EOS)** → **kostenloser** Relay + NAT-Traversal + Lobbies, von Indies
-  genutzt. „Der EOS-Relay erlaubt Hosts, ohne externe IP vom Provider und ohne Port-Forwarding zu
-  arbeiten." → **null eigene Infra, gratis**, deckt auch den symmetrischen-NAT-Fallback. Trade: Abhängigkeit
-  von Epics Dienst + deren Terms.
+- **Gratis-Relay: Epic Online Services (EOS)** → technisch ideal (kostenloser Relay + NAT-Traversal +
+  Lobbies, deckt symmetrisches NAT). **⚠️ ABER: EOS-ToS beschränkt auf „video games and game-related
+  applications" — „not for applications not related to video games."** WorldBuilderX ist ein
+  Kreativ-/Vorbereitungs-Tool, kein Video-Game → **wahrscheinlich NICHT lizenzberechtigt** (Grauzone
+  „game-related" höchstens). Für ein kommerzielles Produkt zu riskant (Epic kann Zugang kündigen →
+  Multiplayer tot; GameSpy-Lehre + ToS-Risiko). **EOS daher raus.** Quelle: https://onlineservices.epicgames.com/licensing
 - **Öffentliches/selbst gehostetes STUN** → Googles Public-STUN für Demos; für Produktion **coturn**
   (freie Open-Source-STUN/TURN) auf einem kleinen VPS (Cent-Beträge).
 
@@ -54,14 +56,20 @@ weil es die Kosten niedrig hält und trotzdem jeden joinen lässt" (Unity-Doku).
 ## Bezug zu M10
 
 - **Stufe 2 (LAN) ist bereits korrekt** und braucht null Infrastruktur.
-- **Stufe 3 (Internet)** kann — dank M10 **Decision 1 (Transport abstrahiert)** — jede der obigen Optionen
-  ohne Service-Rewrite adoptieren. Empfohlene Reihenfolge nach Kosten/Aufwand:
-  1. **UPnP-Port-Forward** (null Infra, einfachster Einstieg, Host-PC = Server).
-  2. **WebRTC + freies STUN + minimales/serverloses Signaling** (glatter, near-zero Infra).
-  3. **EOS-Free-Relay** (null eigene Infra, gratis, deckt symmetrisches NAT) — falls die EOS-Abhängigkeit ok ist.
-  4. **Selbst gehostetes coturn** (kleiner VPS) — nur wenn volle Kontrolle über den Relay gewünscht.
-- **Fazit:** Kommerzialisierung erzwingt **keinen** bezahlten Backend. Der Host-PC ist der Server; die
-  NAT-Traversal-Helfer sind gratis/billig, und ein Relay braucht's nur als Minderheiten-Fallback (gratis via EOS).
+- **LAN zuerst, NICHT skippen.** Dank M10 **Decision 1 (Transport abstrahiert)** ist „LAN vs. Internet" kein
+  Entweder-oder. LAN ist der **billigste erste Transport**, um die Session-Maschinerie (Join/Approve/
+  Visibility/Live-Updates) zu bauen und zu testen — ohne Accounts, NAT, Internet — **und** bleibt als
+  Null-Abhängigkeits-Fallback (am Tisch/offline). Erst Session-Logik transport-agnostisch über LAN grün
+  kriegen, dann den Internet-Transport dazu.
+- **Stufe 3 (Internet) — lizenzfreie Reihenfolge** (EOS raus, s.o.):
+  1. **WebRTC + freies STUN** → ~80–90 % verbinden per Hole-Punching, **null eigene Infra**; Signaling minimal
+     oder serverlos (Einladungscode). Anwender konfiguriert **nichts** am Router.
+  2. **Selbst gehostetes coturn (freie Open-Source-TURN)** auf einem Cent-VPS → Fallback für die ~10–20 %
+     symmetrischen NATs. Der **einzige** kleine Kostenpunkt, und optional (ohne TURN fällt nur die Minderheit raus).
+  3. **UPnP-Port-Forward** als zusätzliche Direkt-Option (null Infra), wo verfügbar.
+- **Fazit:** Kommerzialisierung erzwingt **keinen** bezahlten Backend. Der Host-PC ist der Server; STUN ist
+  gratis, coturn kostet Cent-Beträge nur für den Minderheiten-Fallback. **EOS wäre technisch ideal, ist aber
+  für ein Nicht-Video-Game laut ToS nicht nutzbar** — daher der WebRTC/coturn-Weg.
 
 ## Sources
 
