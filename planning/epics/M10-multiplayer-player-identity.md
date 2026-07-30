@@ -15,7 +15,9 @@ Grundlage: Handover `docs/handover-player-identity.md` (2026-06-30).
 eigenen Prozess (Rust, eingebettet). Spieler verbinden vom eigenen Handy/Laptop im selben WLAN.
 
 - **Stufe 1** (mehrere Fenster auf der GM-Maschine) ist verworfen — Geheimnis-Leak über geteilten Bildschirm nicht verhinderbar.
-- **Stufe 3** (Internet/Relay/NAT-Traversal) ist **out of scope**, aber die Transport-Schicht wird abstrahiert, damit Stufe 3 später ohne Service-Rewrite ergänzt werden kann. **Research zu Stufe 3 (Host-PC = Server, ohne eigene Infrastruktur): `planning/research/multiplayer-internet-hosting.md`** — bestätigt: Listen-Server-Modell, NAT-Traversal via STUN gratis (Anwender konfiguriert nichts), coturn-TURN nur als Minderheiten-Fallback (Cent-VPS). **EOS ist für ein Nicht-Video-Game laut ToS raus** → lizenzfreier WebRTC/coturn-Weg. LAN (Stufe 2) bleibt als Dev-Vehikel + Fallback, nicht skippen.
+- **Stufe 3** (Internet/Relay/NAT-Traversal) ist **out of scope**, aber die Transport-Schicht wird abstrahiert, damit Stufe 3 später ohne Service-Rewrite ergänzt werden kann. **Research zu Stufe 3 (Host-PC = Server, ohne eigene Infrastruktur): `planning/research/multiplayer-internet-hosting.md`** — bestätigt: Listen-Server-Modell, NAT-Traversal via STUN gratis (Anwender konfiguriert nichts), coturn-TURN nur als Minderheiten-Fallback (Cent-VPS). **EOS ist für ein Nicht-Video-Game laut ToS raus** → lizenzfreier WebRTC/STUN-Weg. LAN (Stufe 2) bleibt als Dev-Vehikel + Fallback, nicht skippen.
+
+  **Konkreter Stufe-3-Plan (Reihenfolge: erst LAN/Stufe 2, dann):** **M10-S11 (#322)** WebRTC-DataChannel-Transport + STUN (Host-PC = Peer, Anwender konfiguriert nichts) und **M10-S12 (#323)** serverloses Signaling (Connection-Code-Austausch). **Bewusst NICHT in V1:** TURN/coturn-Relay (self-hosted Infra — daher scheitern ~10–20 % symmetrische NATs mit klarer Meldung) und ein gehosteter Signaling-Server (Signaling ist manuell/copy-paste). Beide sind hinter Interfaces vorgesehen, später ohne Rewrite nachrüstbar. Blocked ← #195 (Transport-Abstraktion aus S01).
 
 ## Decisions
 
@@ -201,6 +203,8 @@ eigenen Prozess (Rust, eingebettet). Spieler verbinden vom eigenen Handy/Laptop 
 | M10-S08 | #202 | p1 | #166 | Spieler-Charaktererstellung im Join-Flow |
 | M10-S09 | #203 | p0 | — | Spieler-Live-Sicht (gefilterte Inhalte) |
 | M10-S10 | #204 | p1 | — | Reconnect & Token-Persistenz |
+| M10-S11 | #322 | p2 | #195 | **Stufe 3:** Internet-Transport via WebRTC-DataChannel + STUN (ohne TURN) |
+| M10-S12 | #323 | p2 | #195 | **Stufe 3:** Serverloses Signaling — Connection-Code-Austausch (kein Hosted-Server) |
 
 ## Abhängigkeiten
 
