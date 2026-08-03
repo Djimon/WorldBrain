@@ -15,53 +15,58 @@ import type { DatabaseLike } from '../src/services/entity-service';
 import type { GraphLink, GraphNode } from '../src/services/graph-model';
 
 // ── Fake Pixi (spy-friendly, event-emitter based) ────────────────────────────
-class FakeDisplayObject {
-  children: FakeDisplayObject[] = [];
-  listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
-  eventMode = 'auto';
-  x = 0; y = 0; alpha = 1;
-  addChild<T extends FakeDisplayObject>(c: T): T { this.children.push(c); return c; }
-  removeChild(): void { /* no-op */ }
-  on(event: string, cb: (...args: unknown[]) => void) {
-    (this.listeners[event] ??= []).push(cb);
-    return this;
+// vi.hoisted() ensures these classes exist when vi.mock()'s hoisted factory
+// runs — plain class declarations would be in the TDZ at that point.
+const pixi = vi.hoisted(() => {
+  class FakeDisplayObject {
+    children: FakeDisplayObject[] = [];
+    listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
+    eventMode = 'auto';
+    x = 0; y = 0; alpha = 1;
+    addChild<T extends FakeDisplayObject>(c: T): T { this.children.push(c); return c; }
+    removeChild(): void { /* no-op */ }
+    on(event: string, cb: (...args: unknown[]) => void) {
+      (this.listeners[event] ??= []).push(cb);
+      return this;
+    }
+    emit(event: string, ...args: unknown[]) {
+      (this.listeners[event] ?? []).forEach((cb) => cb(...args));
+    }
+    destroy(): void { /* no-op */ }
   }
-  emit(event: string, ...args: unknown[]) {
-    (this.listeners[event] ?? []).forEach((cb) => cb(...args));
+  class FakeGraphics extends FakeDisplayObject {
+    circle() { return this; }
+    fill() { return this; }
+    stroke() { return this; }
+    rect() { return this; }
+    moveTo() { return this; }
+    lineTo() { return this; }
+    clear() { return this; }
   }
-  destroy(): void { /* no-op */ }
-}
-class FakeGraphics extends FakeDisplayObject {
-  circle() { return this; }
-  fill() { return this; }
-  stroke() { return this; }
-  rect() { return this; }
-  moveTo() { return this; }
-  lineTo() { return this; }
-  clear() { return this; }
-}
-const createdGraphics: FakeGraphics[] = [];
-class FakeGraphicsTracked extends FakeGraphics {
-  constructor() { super(); createdGraphics.push(this); }
-}
-class FakeApplication {
-  stage = new FakeDisplayObject();
-  canvas = document.createElement('canvas');
-  async init() { /* no-op */ }
-  destroy() { /* no-op */ }
-}
+  const createdGraphics: FakeGraphics[] = [];
+  class FakeGraphicsTracked extends FakeGraphics {
+    constructor() { super(); createdGraphics.push(this); }
+  }
+  class FakeApplication {
+    stage = new FakeDisplayObject();
+    canvas = document.createElement('canvas');
+    async init() { /* no-op */ }
+    destroy() { /* no-op */ }
+  }
+  return { FakeDisplayObject, FakeGraphicsTracked, FakeApplication, createdGraphics };
+});
 
 vi.mock('pixi.js', () => ({
-  Application: FakeApplication,
-  Container: FakeDisplayObject,
-  Graphics: FakeGraphicsTracked,
+  Application: pixi.FakeApplication,
+  Container: pixi.FakeDisplayObject,
+  Graphics: pixi.FakeGraphicsTracked,
 }));
 
 import { GraphCanvas } from '../src/ui/GraphCanvas';
 import { edgeStyle, nodeStyle } from '../src/services/graph-style';
 
 afterEach(() => {
-  createdGraphics.length = 0;
+  pixi.createdGraphics.length = 0;
   vi.clearAllMocks();
 });
 
@@ -90,16 +95,16 @@ describe('#324 (contract): GraphCanvas — the ONE renderer core (D12)', () => {
 
   it('creates one Graphics object per node (never a single shared display object)', async () => {
     render(<GraphCanvas {...baseCanvasProps()} />);
-    await waitFor(() => expect(createdGraphics.length).toBeGreaterThanOrEqual(NODES.length));
+    await waitFor(() => expect(pixi.createdGraphics.length).toBeGreaterThanOrEqual(NODES.length));
   });
 
   it('clicking a node (pointerdown) calls onNavigate with that node\'s id', async () => {
     const onNavigate = vi.fn();
     render(<GraphCanvas {...baseCanvasProps({ onNavigate })} />);
-    await waitFor(() => expect(createdGraphics.length).toBeGreaterThanOrEqual(1));
+    await waitFor(() => expect(pixi.createdGraphics.length).toBeGreaterThanOrEqual(1));
     // Simulate a click on the first node's Graphics object via its captured
     // pointerdown listener (this IS how Pixi delivers pointer events).
-    createdGraphics[0].emit('pointerdown');
+    pixi.createdGraphics[0].emit('pointerdown');
     expect(onNavigate).toHaveBeenCalledWith(expect.any(String));
     expect(onNavigate.mock.calls[0][0]).toMatch(/^e[12]$/);
   });
@@ -107,17 +112,17 @@ describe('#324 (contract): GraphCanvas — the ONE renderer core (D12)', () => {
   it('hovering a node (pointerover) calls onHoverNode with that node\'s id', async () => {
     const onHoverNode = vi.fn();
     render(<GraphCanvas {...baseCanvasProps({ onHoverNode })} />);
-    await waitFor(() => expect(createdGraphics.length).toBeGreaterThanOrEqual(1));
-    createdGraphics[0].emit('pointerover');
+    await waitFor(() => expect(pixi.createdGraphics.length).toBeGreaterThanOrEqual(1));
+    pixi.createdGraphics[0].emit('pointerover');
     expect(onHoverNode).toHaveBeenCalledWith(expect.any(String));
   });
 
   it('un-hovering a node (pointerout) calls onHoverNode with null', async () => {
     const onHoverNode = vi.fn();
     render(<GraphCanvas {...baseCanvasProps({ onHoverNode })} />);
-    await waitFor(() => expect(createdGraphics.length).toBeGreaterThanOrEqual(1));
-    createdGraphics[0].emit('pointerover');
-    createdGraphics[0].emit('pointerout');
+    await waitFor(() => expect(pixi.createdGraphics.length).toBeGreaterThanOrEqual(1));
+    pixi.createdGraphics[0].emit('pointerover');
+    pixi.createdGraphics[0].emit('pointerout');
     expect(onHoverNode).toHaveBeenLastCalledWith(null);
   });
 
@@ -131,10 +136,10 @@ describe('#324 (contract): GraphCanvas — the ONE renderer core (D12)', () => {
 describe('#324 (D2): per-node glow halo is OFF by default', () => {
   it('without glowEnabled, no additional halo Graphics beyond one per node is created', async () => {
     render(<GraphCanvas {...baseCanvasProps()} />);
-    await waitFor(() => expect(createdGraphics.length).toBeGreaterThanOrEqual(NODES.length));
+    await waitFor(() => expect(pixi.createdGraphics.length).toBeGreaterThanOrEqual(NODES.length));
     // Default (glowEnabled omitted/false): exactly one Graphics per node, no
     // extra halo sprite/graphics per node.
-    expect(createdGraphics.length).toBe(NODES.length);
+    expect(pixi.createdGraphics.length).toBe(NODES.length);
   });
 });
 
