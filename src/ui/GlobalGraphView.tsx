@@ -3,10 +3,9 @@
 // the single shared renderer core (D12). Ego (S07 #321) will hand the same
 // GraphCanvas only { focus + N neighbors } — no separate renderer.
 //
-// S06 (#319): GraphControlsBar manages { mode, showMentions, glowEnabled }.
-// Start-Default: Galaxy (D4). mention-Links werden clientseitig gefiltert —
-// das Modell bleibt unverändert, nur die an GraphCanvas gereichten Links
-// werden beim Rendern gefiltert.
+// S06 (#319): GraphControlsBar manages { mode, showMentions, glowEnabled,
+// nodeSizeScale, spreadScale }. Start-Default: Galaxy (D4). mention-Links
+// werden clientseitig gefiltert — das Modell bleibt unverändert.
 import { useEffect, useState } from 'react';
 import type { DatabaseLike } from '../services/entity-service';
 import { getAllRelations } from '../services/relation-service';
@@ -32,6 +31,10 @@ interface EntityRow {
 }
 
 const GALAXY_CLUSTER_STRENGTH = 0.3;
+// Improved physics defaults for visual quality — stronger repulsion + longer
+// link springs than the galaxy-layout.ts test-stable defaults (-60, 20).
+const GALAXY_CHARGE_STRENGTH = -200;
+const GALAXY_LINK_DISTANCE = 80;
 
 export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps): React.ReactElement {
   const [model, setModel] = useState<GraphModel | null>(null);
@@ -39,6 +42,8 @@ export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps):
   const [mode, setMode] = useState<'galaxy' | 'ring'>('galaxy');
   const [showMentions, setShowMentions] = useState(true);
   const [glowEnabled, setGlowEnabled] = useState(false);
+  const [nodeSizeScale, setNodeSizeScale] = useState(1.0);
+  const [spreadScale, setSpreadScale] = useState(1.0);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,24 +72,37 @@ export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps):
     : model.links.filter((l) => l.kind !== 'mention');
 
   return (
-    <div className="graph-view" style={{ width: '100%', height: '100%' }}>
+    <div className="graph-view" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <GraphControlsBar
         mode={mode}
         showMentions={showMentions}
         glowEnabled={glowEnabled}
+        nodeSizeScale={nodeSizeScale}
+        spreadScale={spreadScale}
         onModeChange={setMode}
         onShowMentionsChange={setShowMentions}
         onGlowChange={setGlowEnabled}
+        onNodeSizeScaleChange={setNodeSizeScale}
+        onSpreadScaleChange={setSpreadScale}
       />
-      <GraphCanvas
-        nodes={model.nodes}
-        links={visibleLinks}
-        nodeStyle={(node) => nodeStyle(node, degreeRange)}
-        edgeStyle={edgeStyle}
-        layout={{ mode, clusterStrength: GALAXY_CLUSTER_STRENGTH }}
-        glowEnabled={glowEnabled}
-        onNavigate={onNavigate}
-      />
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <GraphCanvas
+          nodes={model.nodes}
+          links={visibleLinks}
+          nodeStyle={(node) => nodeStyle(node, degreeRange)}
+          edgeStyle={edgeStyle}
+          layout={{
+            mode,
+            clusterStrength: GALAXY_CLUSTER_STRENGTH,
+            chargeStrength: GALAXY_CHARGE_STRENGTH,
+            linkDistance: GALAXY_LINK_DISTANCE,
+            spreadScale,
+          }}
+          glowEnabled={glowEnabled}
+          nodeSizeScale={nodeSizeScale}
+          onNavigate={onNavigate}
+        />
+      </div>
     </div>
   );
 }

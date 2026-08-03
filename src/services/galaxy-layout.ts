@@ -19,11 +19,20 @@ export interface GalaxyLayoutOptions {
   ticks?: number;
   // Determinism for testing: fixed seed for d3-force's initial jitter.
   seed?: number;
+  // d3-force charge (repulsion). Kept at -60 as default for test stability
+  // (S04 tests pin relative distances); callers that want visual spread pass
+  // a stronger value (e.g. GraphCanvas uses -200 by default).
+  chargeStrength?: number;
+  // d3-force link spring rest length. Default 20 (test-stable); visual
+  // callers use 80.
+  linkDistance?: number;
 }
 
 const DEFAULT_CLUSTER_STRENGTH = 0.3;
 const DEFAULT_TICKS = 300;
 const DEFAULT_SEED = 1;
+const DEFAULT_CHARGE_STRENGTH = -60;
+const DEFAULT_LINK_DISTANCE = 20;
 
 type SimNode = GraphNode & SimulationNodeDatum;
 
@@ -77,7 +86,13 @@ export function computeGalaxyLayout(
   links: GraphLink[],
   options: GalaxyLayoutOptions = {},
 ): PositionedNode[] {
-  const { clusterStrength = DEFAULT_CLUSTER_STRENGTH, ticks = DEFAULT_TICKS, seed = DEFAULT_SEED } = options;
+  const {
+    clusterStrength = DEFAULT_CLUSTER_STRENGTH,
+    ticks = DEFAULT_TICKS,
+    seed = DEFAULT_SEED,
+    chargeStrength = DEFAULT_CHARGE_STRENGTH,
+    linkDistance = DEFAULT_LINK_DISTANCE,
+  } = options;
   const rng = mulberry32(seed);
   const simNodes: SimNode[] = nodes.map((n) => ({
     ...n,
@@ -89,8 +104,8 @@ export function computeGalaxyLayout(
   const simLinks = links.map((l) => ({ ...l })) as unknown as SimulationLinkDatum<SimNode>[];
 
   const simulation = forceSimulation(simNodes)
-    .force('charge', forceManyBody().strength(-60))
-    .force('link', forceLink<SimNode, SimulationLinkDatum<SimNode>>(simLinks).id((d) => d.id).distance(20))
+    .force('charge', forceManyBody().strength(chargeStrength))
+    .force('link', forceLink<SimNode, SimulationLinkDatum<SimNode>>(simLinks).id((d) => d.id).distance(linkDistance))
     .force('center', forceCenter(0, 0))
     .force('cluster', forceCluster(simNodes, clusterStrength))
     .stop();

@@ -16,6 +16,8 @@
   "graphGlow": "Glow",
   "graphLegendRelation": "Relation (thick)",
   "graphLegendMention": "Mention (thin)",
+  "graphNodeSize": "Node size",
+  "graphSpread": "Spread",
   "project": "Project",
   "recentlyOpened": "Recently opened",
   "newProject": "New project",
