@@ -25,14 +25,25 @@ Skaliert auf **3.000–10.000 Nodes** (High-End-Worldbuilder mit Tausenden Eintr
 
 ## Decisions
 
-- **D1 — Engine: `react-force-graph` (WebGL).** MIT-lizenziert → **frei für kommerzielle Nutzung, keine
-  Gebühren** (der Grund gegen Cosmograph). Nutzt three.js/WebGL, schafft die 3k–10k-Node-Skala. Liefert
-  Rendering, Force-Simulation (`d3-force-3d`, eingebaut), Pan/Zoom, Klick/Hover **out of the box** — wir
-  konfigurieren, statt selbst zu zeichnen. Neue Deps: `react-force-graph-3d` (+ Peer `three`).
-- **D2 — 3D-Engine „2D genutzt" + Bloom für den Glow-Look.** Kamera top-down/flach (z≈0), damit's aussieht
-  wie die 2D-Referenzen; der Neon-/Galaxy-Schimmer kommt aus **Bloom-Post-Processing** (three.js
-  `UnrealBloomPass`, via `postProcessingComposer`) + glühenden Node-Sprites. Ohne Bloom sieht die Engine
-  „flat" aus — der Bloom macht den Unterschied „ok → geil".
+> ⚠️ **RENDERER GEÄNDERT (2026-07-23): `react-force-graph`/three.js → `PixiJS` (2D WebGL) + `d3-force`.**
+> Grund: „echtes 3D" war die falsche Prämisse. Die Anforderungen (Pseudo-3D-Kugeln, optionales Leuchten,
+> Such-Ausblenden, Ego-Graph) sind allesamt **2D mit Node-Styling** — kein 3D-Freiflug, keine Kamera-Orbit,
+> kein Bloom-Post-Processing nötig, und der three.js-Weg brachte GPU-Fallback-Risiko + dauerhaften
+> Library-Kampf (siehe Spike-Verdict `planning/research/graph-webgl-tauri-spike.md`, #320). D1/D2/D8/D10/D11
+> unten sind entsprechend aktualisiert; die renderer-**neutralen** Decisions (D3/D4/D5/D6/D7/D9) und das
+> Datenmodell bleiben unverändert gültig.
+
+- **D1 — Renderer: `PixiJS` (2D WebGL) + `d3-force` (Layout).** Beide **MIT/ISC-lizenziert → frei für
+  kommerzielle Nutzung, keine Gebühren**. Pixi batcht tausende Sprites (3k–10k-Skala), `d3-force` liefert
+  das Force-Layout (Positionen). Kein „echtes 3D": kein three.js, keine Kamera-Orbit. Preis: Pan/Zoom,
+  Hit-Testing, Kanten-Rendering und die Ego/Such-Sichtbarkeit bauen wir selbst (Fleißarbeit, kein
+  Forschungsrisiko; Referenz: Graphifys D3-`graph.html` bzw. offener Obsidian-Graph-Klon). Neue Deps:
+  `pixi.js`, `d3-force` (+ ggf. `pixi-filters` für den Glow). **`react-force-graph-3d`/`three` entfallen.**
+- **D2 — 2D-Render + Pseudo-3D-Kugeln + Per-Node-Glow (kein Bloom).** Der „3D-Effekt" der Knoten ist ein
+  **Radial-Gradient/vorgebackenes Kugel-Sprite** (Lichtpunkt oben-links = glänzende Kugel), **kein** echtes
+  3D. Das Leuchten ist ein **Halo pro Node** (weiches Sprite dahinter, additiv / `pixi-filters` GlowFilter),
+  pro Node an-/ausschaltbar — **nicht** Full-Screen-Bloom (teuer, GPU-Risiko; der Spike hat das bestätigt:
+  Per-Node-Halo schlägt Bloom). Kanten-Unterscheidung visuell frei (Stärke/Deckkraft, D5), nicht gestrichelt.
 - **D3 — Gruppierung nach Entity-Typ.** Galaxy-Cluster + Ring-Segmente nach `type`; Knotenfarbe = Typ-Farbe
   (EPIC-003-Mapping wiederverwenden falls vorhanden, sonst deterministische Palette).
 - **D4 — Zwei Layout-Modi, umschaltbar; Ring = Default.** Ring geordnet/ruhig (für 2D-Scheue), Galaxy zuschaltbar.
@@ -46,15 +57,18 @@ Skaliert auf **3.000–10.000 Nodes** (High-End-Worldbuilder mit Tausenden Eintr
 - **D9 — Relation subsumiert Mention.** Existiert zwischen zwei Knoten eine `relation`, wird eine `mention`
   desselben (ungeordneten) Paars verworfen — keine doppelte Linie.
 - **D10 — LOD/Performance ist reale Anforderung (3k–10k Nodes).** Label-Culling beim Rauszoomen (Labels erst nah),
-  `cooldownTicks`/`autoPauseRedraw` der Engine, Layout **vorberechnen** statt live jede Frame zu simulieren.
-  Der Spike (S00) validiert, ob die Engine-Defaults + diese Config bei 10k in Tauri reichen.
-- **D11 — Eine Engine für BEIDE Graphen.** Der globale Graph (S03) **und** der Ego-Graph (S07) laufen auf
-  react-force-graph → einheitlicher Look. Danach **Cytoscape vollständig entfernt** (`cytoscape` +
+  `d3-force`-Simulation **vorberechnen/stoppen** (`alphaTarget`→0, nicht jede Frame live simulieren),
+  Sprite-Batching nutzen; **Default-View gefiltert/Ego**, damit selten alle Nodes+Kanten gleichzeitig
+  gerendert werden (Kanten sind Pixis Schwachpunkt → gebündeltes Kanten-Rendering, nicht Linie-für-Linie).
+  ⚠️ **Perf noch offen:** der Spike lief nur auf einem Software-Renderer (GPU-lose VM) → **Re-Run auf echter
+  GPU** vor jeder Perf-Zusage.
+- **D11 — Ein Renderer für BEIDE Graphen.** Der globale Graph (S03) **und** der Ego-Graph (S07) laufen auf
+  `PixiJS` + `d3-force` → einheitlicher Look. Danach **Cytoscape vollständig entfernt** (`cytoscape` +
   `@types/cytoscape` aus package.json, beide alten Komponenten gelöscht).
 
 ## Datenmodell (gepinnt für S02)
 
-react-force-graph erwartet `{ nodes, links }`:
+Die Force-Sim (`d3-force`) und der Pixi-Renderer teilen sich `{ nodes, links }` (renderer-neutral):
 ```
 GraphNode = { id: string; type: string; label: string; degree: number }
 GraphLink = { source: string; target: string; kind: 'relation' | 'mention' }
@@ -65,14 +79,14 @@ GraphModel = { nodes: GraphNode[]; links: GraphLink[] }
 
 | Story | Issue | Kern (ein Verhalten) | hängt an |
 |---|---|---|---|
-| M16-S00 | #320 | **Spike:** react-force-graph-3d + Bloom + ~10k synthetische Nodes in echter Tauri-WebView flüssig? (p0) | — |
+| M16-S00 | #320 | ~~Spike react-force-graph-3d~~ **GELÖST/CLOSED:** Verdict = PixiJS+d3-force (2D), nicht react-force-graph-3d. Perf-Zahlen ungültig (Software-Renderer) → GPU-Re-Run offen | — |
 | M16-S01 | #288 | Mention-Kanten-Extraktion (`buildMentionEdges`, reine Fn) — unverändert | — |
 | M16-S02 | #317 | Graph-Datenmodell `buildGraphModel` → `{nodes, links}` (Typ+degree, Relation/Mention, D9-Subsumption) | S01 |
-| M16-S03 | #289 | **Globaler Graph auf react-force-graph** + eigener Menüpunkt: Node/Link-Styling (D5/D6) + Bloom (D2) + Klick/Hover + LOD-Config (D10) | S00, S02 |
+| M16-S03 | #324 | **Globaler Graph auf PixiJS + d3-force** + eigener Menüpunkt: Node/Link-Styling (D5/D6) + Per-Node-Glow (D2) + Klick/Hover + LOD-Config (D10) — *(#289 verworfen, war react-force-graph)* | S02 |
 | M16-S04 | #318 | **Galaxy-Modus:** Cluster-nach-Typ-Kraft in der eingebauten Force-Sim | S03 |
 | M16-S05 | #290 | **Ring-Modus:** deterministische Radial-Positionen, in der Engine fixiert (fx/fy) | S03 |
 | M16-S06 | #319 | Controls: Switcher Galaxy⇄Ring (Ring=Default) + Verlinkungen-Toggle + Legende | S04+S05 |
-| M16-S07 | #321 | **Ego-Graph auf dieselbe Engine** + in Entity-Detailseite verdrahten; **Cytoscape komplett raus** | S03 |
+| M16-S07 | #321 | **Ego-Graph auf PixiJS + d3-force** + in Entity-Detailseite verdrahten; **Cytoscape komplett raus** | S03 (#324) |
 
 **Achse:** S00 → S01 → S02 → S03 → (S04, S05) → S06 → S07.
 
@@ -97,6 +111,6 @@ GraphModel = { nodes: GraphNode[]; links: GraphLink[] }
   - Galaxy-Modus → [`_design/knowledgegraph-galaxy-view.png`](../../_design/knowledgegraph-galaxy-view.png) (Cluster-„Sonnensysteme" je Typ, Glow).
   - Ring-Modus → [`_design/knowledgegraph-ring-view.png`](../../_design/knowledgegraph-ring-view.png) (geordnete Segmente je Typ um eine Mitte).
   - Detail/Zoom → [`_design/knowledgegraph-layer-view.png`](../../_design/knowledgegraph-layer-view.png) (Hover-Kanten, Fokus auf einen Knoten).
-- Engine: `react-force-graph` (vasturiano, MIT), three.js (MIT). Verifiziert: Lizenz MIT, WebGL, Bloom via `postProcessingComposer`, `nodeThreeObject` Custom-Rendering.
+- Renderer: **PixiJS** (2D WebGL, MIT) + **d3-force** (Layout, ISC) — beide frei kommerziell. Referenz-Rezept: Obsidian-Graph (Pixi+d3-force) und Graphifys D3-`graph.html`. Spike-Verdict: `planning/research/graph-webgl-tauri-spike.md`. *(Zuvor react-force-graph-3d/three.js — verworfen 2026-07-23, siehe D1.)*
 - Vorhandener (toter) Code: `GlobalEntityGraph.tsx`, `EntityGraph.tsx`; `PropertiesForm.tsx` (`parseMentions`), `relation-service.ts`.
 - Interview 2026-07-23 (Requirement Agent).
