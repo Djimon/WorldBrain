@@ -3,19 +3,19 @@
 // the single shared renderer core (D12). Ego (S07 #321) will hand the same
 // GraphCanvas only { focus + N neighbors } — no separate renderer.
 //
-// Implementation contract: listEntitiesByType (or an all-entities listing)
-// + getAllRelations(db) (relation-service.ts) + buildMentionEdges(entities)
-// (mention-graph.ts, S01 #288) -> buildGraphModel(...) (graph-model.ts, S02
-// #317) -> { nodes, links }. degree + D9 subsumption come from S02, not
-// rebuilt here.
+// S06 (#319): GraphControlsBar manages { mode, showMentions, glowEnabled }.
+// Start-Default: Galaxy (D4). mention-Links werden clientseitig gefiltert —
+// das Modell bleibt unverändert, nur die an GraphCanvas gereichten Links
+// werden beim Rendern gefiltert.
 import { useEffect, useState } from 'react';
 import type { DatabaseLike } from '../services/entity-service';
 import { getAllRelations } from '../services/relation-service';
 import { buildMentionEdges } from '../services/mention-graph';
 import { buildGraphModel } from '../services/graph-model';
-import type { GraphModel } from '../services/graph-model';
+import type { GraphLink, GraphModel } from '../services/graph-model';
 import { edgeStyle, nodeStyle } from '../services/graph-style';
 import { GraphCanvas } from './GraphCanvas';
+import { GraphControlsBar } from './GraphControlsBar';
 
 export interface GlobalGraphViewProps {
   database: DatabaseLike;
@@ -31,8 +31,14 @@ interface EntityRow {
   body_json: string | null;
 }
 
+const GALAXY_CLUSTER_STRENGTH = 0.3;
+
 export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps): React.ReactElement {
   const [model, setModel] = useState<GraphModel | null>(null);
+  // D4: Galaxy is the start default (shows cluster structure immediately).
+  const [mode, setMode] = useState<'galaxy' | 'ring'>('galaxy');
+  const [showMentions, setShowMentions] = useState(true);
+  const [glowEnabled, setGlowEnabled] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,14 +62,27 @@ export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps):
     max: degrees.length ? Math.max(...degrees) : 0,
   };
 
+  const visibleLinks: GraphLink[] = showMentions
+    ? model.links
+    : model.links.filter((l) => l.kind !== 'mention');
+
   return (
     <div className="graph-view" style={{ width: '100%', height: '100%' }}>
+      <GraphControlsBar
+        mode={mode}
+        showMentions={showMentions}
+        glowEnabled={glowEnabled}
+        onModeChange={setMode}
+        onShowMentionsChange={setShowMentions}
+        onGlowChange={setGlowEnabled}
+      />
       <GraphCanvas
         nodes={model.nodes}
-        links={model.links}
+        links={visibleLinks}
         nodeStyle={(node) => nodeStyle(node, degreeRange)}
         edgeStyle={edgeStyle}
-        layout={{ mode: 'force' }}
+        layout={{ mode, clusterStrength: GALAXY_CLUSTER_STRENGTH }}
+        glowEnabled={glowEnabled}
         onNavigate={onNavigate}
       />
     </div>
