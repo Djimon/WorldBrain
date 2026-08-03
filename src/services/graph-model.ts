@@ -37,10 +37,58 @@ export interface GraphModel {
 // present in `entities` (dangling), and self-links (source === target).
 // degree: count of remaining links (post subsumption/dedup/drop) touching
 // the node — undirected.
+function pairKey(a: string, b: string): string {
+  return a < b ? `${a} ${b}` : `${b} ${a}`;
+}
+
 export function buildGraphModel(
-  _entities: GraphEntityInput[],
-  _relationLinks: GraphLinkInput[],
-  _mentionLinks: GraphLinkInput[],
+  entities: GraphEntityInput[],
+  relationLinks: GraphLinkInput[],
+  mentionLinks: GraphLinkInput[],
 ): GraphModel {
-  throw new Error('not implemented');
+  const idSet = new Set(entities.map((e) => e.id));
+
+  function toValidLinks(raw: GraphLinkInput[], kind: GraphLink['kind']): GraphLink[] {
+    return raw
+      .filter((l) => l.source !== l.target && idSet.has(l.source) && idSet.has(l.target))
+      .map((l) => ({ source: l.source, target: l.target, kind }));
+  }
+
+  // Dedup at most one link per (unordered pair, kind) — independent of the
+  // order source/target were given in.
+  function dedupe(links: GraphLink[]): GraphLink[] {
+    const seen = new Set<string>();
+    const out: GraphLink[] = [];
+    for (const l of links) {
+      const key = `${l.kind} ${pairKey(l.source, l.target)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(l);
+    }
+    return out;
+  }
+
+  const relationCandidates = toValidLinks(relationLinks, 'relation');
+  const mentionCandidates = toValidLinks(mentionLinks, 'mention');
+
+  // D9: a relation link subsumes every mention link for the same unordered pair.
+  const relationPairs = new Set(relationCandidates.map((l) => pairKey(l.source, l.target)));
+  const mentionSurvivors = mentionCandidates.filter((l) => !relationPairs.has(pairKey(l.source, l.target)));
+
+  const links = [...dedupe(relationCandidates), ...dedupe(mentionSurvivors)];
+
+  const degree = new Map<string, number>(entities.map((e) => [e.id, 0]));
+  for (const l of links) {
+    degree.set(l.source, (degree.get(l.source) ?? 0) + 1);
+    degree.set(l.target, (degree.get(l.target) ?? 0) + 1);
+  }
+
+  const nodes: GraphNode[] = entities.map((e) => ({
+    id: e.id,
+    type: e.type,
+    label: e.title,
+    degree: degree.get(e.id) ?? 0,
+  }));
+
+  return { nodes, links };
 }

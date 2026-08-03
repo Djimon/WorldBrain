@@ -34,6 +34,7 @@ import { SessionClock } from './SessionClock';
 import { SnapshotManager } from './SnapshotManager';
 import { UpdateNotification } from './UpdateNotification';
 import { MapViewer } from './MapViewer';
+import { GlobalGraphView } from './GlobalGraphView';
 import { LayerPanel } from './LayerPanel';
 import { MapsSidebarTabs } from './MapsSidebarTabs';
 import { MapFolderTree } from './MapFolderTree';
@@ -56,6 +57,7 @@ type Area =
   | 'rules'
   | 'session'
   | 'audio'
+  | 'graph'
   | 'project';
 
 interface CalendarRow {
@@ -89,6 +91,7 @@ const AREAS: { id: Area; icon: string }[] = [
   { id: 'rules',    icon: '📖' },
   { id: 'session',  icon: '🎲' },
   { id: 'audio',    icon: '🎧' },
+  { id: 'graph',    icon: '🕸' },
   { id: 'project',  icon: '⚙' },
 ];
 
@@ -815,6 +818,13 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 {soundboardOpen ? t('audioSoundboardRunning', 'Audio-Player läuft bereits') : t('audioSoundboardStart', 'Audio-Player starten')}
               </button>
             </div>
+          </div>
+        );
+
+      case 'graph':
+        return (
+          <div className="workspace-area">
+            <GlobalGraphView database={database} onNavigate={navigateToEntity} />
           </div>
         );
 
