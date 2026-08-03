@@ -60,6 +60,7 @@ export function GraphCanvas({
     if (!mountEl) return;
 
     let destroyed = false;
+    let appReady = false;
     const app = new Application();
     const width = mountEl.clientWidth || FALLBACK_WIDTH;
     const height = mountEl.clientHeight || FALLBACK_HEIGHT;
@@ -94,7 +95,8 @@ export function GraphCanvas({
     }
 
     void app.init({ width, height, backgroundAlpha: 0, antialias: true }).then(() => {
-      if (destroyed) return;
+      if (destroyed) { app.destroy({ removeView: true }, true); return; }
+      appReady = true;
       mountEl.appendChild(app.canvas);
 
       for (const node of nodes) {
@@ -144,7 +146,9 @@ export function GraphCanvas({
 
     return () => {
       destroyed = true;
-      app.destroy({ removeView: true }, true);
+      if (appReady) app.destroy({ removeView: true }, true);
+      // if !appReady, init() is still pending — its .then() sees destroyed=true
+      // and calls destroy() there (avoids destroy() before _cancelResize is set).
     };
     // Positions/handlers are fully recomputed from these inputs each mount —
     // an intentional full remount on any change, not a live-diffed update.
