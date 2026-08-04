@@ -41,10 +41,13 @@ Skaliert auf **3.000–10.000 Nodes** (High-End-Worldbuilder mit Tausenden Eintr
   D3-`graph.html` bzw. offener Obsidian-Graph-Klon). Neue Deps: **`pixi.js` (v8), `d3-force` (v3)** —
   `pixi-filters` **nicht** nötig (Halo = Sprite, Default-AUS). **`react-force-graph-3d`/`three` entfallen.**
 - **D2 — 2D-Render + Pseudo-3D-Kugeln + Per-Node-Glow (kein Bloom).** Der „3D-Effekt" der Knoten ist ein
-  **Radial-Gradient/vorgebackenes Kugel-Sprite** (Lichtpunkt oben-links = glänzende Kugel), **kein** echtes
-  3D. Das Leuchten ist ein **Halo pro Node** (weiches Sprite dahinter, additiv / `pixi-filters` GlowFilter),
-  pro Node an-/ausschaltbar — **nicht** Full-Screen-Bloom (teuer, GPU-Risiko; der Spike hat das bestätigt:
-  Per-Node-Halo schlägt Bloom). Kanten-Unterscheidung visuell frei (Stärke/Deckkraft, D5), nicht gestrichelt.
+  **Radial-Gradient-Sprite** (Lichtpunkt oben-links = glänzende Kugel), **kein** echtes 3D, **NICHT** ein
+  flacher `circle().fill()`. Das Leuchten ist ein **Halo pro Node** (weiches Sprite dahinter, additiv),
+  pro Node an-/ausschaltbar — **nicht** Full-Screen-Bloom. **Der Look ist im Spike
+  `src/spikes/GraphWebglSpike.tsx` bereits getunt und wird PORTIERT, nicht neu erfunden** (renderer-neutrale
+  Canvas-/Gradient-Technik): `getGlowTexture()` (Halo), die Pastell-Palette, der Größen-Spread
+  `(1+spread)^(degreeNorm−0.5)`. Der Spike ist die **Referenz = Anforderung**, kein optionales Vorbild.
+  Kanten-Unterscheidung visuell frei (Stärke/Deckkraft, D5), nicht gestrichelt.
 - **D3 — Gruppierung nach Entity-Typ.** Galaxy-Cluster + Ring-Segmente nach `type`; Knotenfarbe = Typ-Farbe
   über **einen** `typeColor(type): number`-Resolver (siehe D6). ⚠️ Korrektur: `src/blocks/entity-type-colors.ts`
   (`ENTITY_TYPE_COLORS`) enthält nur **Token-Namen** (`'purple'`…), **hat keine Hex-Auflösung und wird nirgends
