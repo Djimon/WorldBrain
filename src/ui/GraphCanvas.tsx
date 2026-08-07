@@ -3,18 +3,14 @@
 // with a different {nodes, links} slice + layout config. No graph "kind"
 // branches here; the caller decides what to render.
 //
-// Renderer = three.js (raw), decided in the open bench #326 (real GPU-3D beat
-// Pixi/Sigma on look). NOT react-force-graph-3d (Kapsule deferred-digest
-// workarounds, see #320). Recipe ported from the bench threeAdapter:
-//   - nodes: ONE InstancedMesh (per-instance color+scale) -> few draw calls
-//   - edges: TWO fat LineSegments2 (relation/mention), real px width
-//   - camera headlight, OrbitControls (rotate/pan/zoom)
-//   - SELECTIVE bloom (nodes only, never edges) when glowEnabled (D2, off default)
-//   - click/hover via Raycaster on the InstancedMesh
-//   - optional: hide edges, reveal only the n-hop neighborhood on hover/click
-// Layout is 3D (computeGalaxyLayout3D); a caller may pass precomputed
-// `positions` to skip the force sim (look-tuning harness, later S10 #327).
-// Look knobs live in `look` (GraphLookConfig); DEFAULT_LOOK = production look.
+// Renderer = three.js (raw), decided in the open bench #326. NOT
+// react-force-graph-3d (Kapsule workarounds, #320).
+//
+// LIVE-APPLY architecture: the scene + camera + renderer are built ONCE (only
+// nodes/positions/layout/look force a rebuild). Everything a settings panel can
+// toggle — colors, node sizes, edge visibility/form/width, glow — is applied
+// IMPERATIVELY by secondary effects, so toggling a setting never remounts the
+// scene and never resets the camera.
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -38,7 +34,6 @@ export interface GraphLayoutConfig {
   spreadScale?: number;
 }
 
-// Every hardcoded look value, tunable. Defaults ARE the production look.
 export interface GraphLookConfig {
   bloomStrength: number;
   bloomRadius: number;
@@ -61,8 +56,8 @@ export const DEFAULT_LOOK: GraphLookConfig = {
   bloomRadius: 0.75,
   bloomThreshold: 0,
   radiusScale: 0.4,
-  lightAzimuth: Math.atan2(-0.4, 1),   // -0.3805 rad (horizontal -21.8deg)
-  lightElevation: Math.atan2(0.4, Math.hypot(-0.4, 1)), // 0.3556 rad (vertical 20.4deg)
+  lightAzimuth: Math.atan2(-0.4, 1),
+  lightElevation: Math.atan2(0.4, Math.hypot(-0.4, 1)),
   lightIntensity: 1.4,
   ambientIntensity: 0.55,
   dimFactor: 0.2,
@@ -73,9 +68,6 @@ export const DEFAULT_LOOK: GraphLookConfig = {
 };
 
 export interface GraphPosition { id: string; x: number; y: number; z: number; }
-
-// edge rendering form: solid line, dashed line, or dashed with a moving
-// dash-offset ("marching ants" flow).
 export type EdgeForm = 'solid' | 'dashed' | 'animated';
 
 export interface GraphCanvasProps {
@@ -88,10 +80,8 @@ export interface GraphCanvasProps {
   look?: Partial<GraphLookConfig>;
   glowEnabled?: boolean;
   nodeSizeScale?: number;
-  // Hide all edges; reveal only the hovered/clicked node's n-hop neighborhood.
   edgesHidden?: boolean;
-  edgeRevealDepth?: number; // BFS hops (default 1)
-  // Line form per kind (solid/dashed/animated). Default solid.
+  edgeRevealDepth?: number;
   relationForm?: EdgeForm;
   mentionForm?: EdgeForm;
   onNavigate: (id: string) => void;
@@ -100,10 +90,12 @@ export interface GraphCanvasProps {
 
 const FALLBACK_W = 800;
 const FALLBACK_H = 600;
+const EDGE_MIN_PX = 1;   // floor so edges never render sub-pixel (invisible)
+const DASH_SIZE = 10;
+const GAP_SIZE = 8;
+const ANIM_SPEED = 0.6;
 
-// additive mix of base scene + bloom-of-nodes (selective bloom).
 const MIX_SHADER = {
-  uniforms: { baseTexture: { value: null as THREE.Texture | null }, bloomTexture: { value: null as THREE.Texture | null } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader: `
     varying vec2 vUv; uniform sampler2D baseTexture; uniform sampler2D bloomTexture;
@@ -111,34 +103,62 @@ const MIX_SHADER = {
   `,
 };
 
-const DASH_SIZE = 10;
-const GAP_SIZE = 8;
-const ANIM_SPEED = 0.6; // world units per frame for the dash-offset flow
+interface GraphState {
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  renderer: THREE.WebGLRenderer;
+  controls: OrbitControls;
+  mesh: THREE.InstancedMesh;
+  worldById: Map<string, THREE.Vector3>;
+  baseColors: THREE.Color[];
+  neighbors: Map<string, Set<string>>;
+  revealGroup: THREE.Group;
+  revealKids: LineSegments2[];
+  fullLines: LineSegments2[];
+  lineMaterials: Set<LineMaterial>;
+  composers: { bloom: EffectComposer; final: EffectComposer } | null;
+  buildFatLines: (subset: GraphLink[], kind: 'relation' | 'mention') => LineSegments2 | null;
+  rebuildEdges: () => void;
+  rebuildReveal: (focusId: string | null) => void;
+  applyColorsAndSizes: () => void;
+  L: GraphLookConfig;
+  width: number;
+  height: number;
+  hoveredId: string | null;
+  pinnedId: string | null;
+  disposed: boolean;
+}
 
-export function GraphCanvas({
-  nodes, links, nodeStyle, edgeStyle, layout, positions, look, glowEnabled, nodeSizeScale,
-  edgesHidden, edgeRevealDepth, relationForm, mentionForm, onNavigate, onHoverNode,
-}: GraphCanvasProps): React.ReactElement {
+export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
+  const {
+    nodes, links, positions, look, layout, glowEnabled,
+    edgesHidden, edgeRevealDepth, relationForm, mentionForm, nodeStyle, edgeStyle, nodeSizeScale,
+  } = props;
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const gRef = useRef<GraphState | null>(null);
+
+  // latest props for imperative reads (handlers/build read these, so they are
+  // not effect deps and don't force a rebuild).
+  const p = useRef(props);
+  p.current = props;
+
   const lookKey = JSON.stringify(look ?? {});
   const posKey = positions ? `p${positions.length}` : 'auto';
+  const layoutKey = `${layout?.mode}|${layout?.clusterStrength}|${layout?.chargeStrength}|${layout?.linkDistance}|${layout?.spreadScale}`;
 
+  // ── build once (rebuild only on data/layout/look) ─────────────────────────
   useEffect(() => {
     const mountEl = mountRef.current;
     if (!mountEl) return;
 
-    const L: GraphLookConfig = { ...DEFAULT_LOOK, ...look };
+    const L: GraphLookConfig = { ...DEFAULT_LOOK, ...p.current.look };
     const width = mountEl.clientWidth || FALLBACK_W;
     const height = mountEl.clientHeight || FALLBACK_H;
-    const sizeScale = nodeSizeScale ?? 1.0;
-    const spreadScale = layout?.spreadScale ?? 1.0;
-    const revealDepth = Math.max(1, edgeRevealDepth ?? 1);
-    const hideEdges = !!edgesHidden;
+    const spreadScale = p.current.layout?.spreadScale ?? 1.0;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, width / height, 1, 20000);
     camera.position.set(0, 0, L.fit * L.camDistanceFactor);
-
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(width, height);
@@ -155,57 +175,70 @@ export function GraphCanvas({
     camera.add(headlight.target);
     scene.add(camera);
 
-    const positioned: GraphPosition[] = positions ?? computeGalaxyLayout3D(nodes, links, {
-      clusterStrength: layout?.clusterStrength,
-      chargeStrength: layout?.chargeStrength,
-      linkDistance: layout?.linkDistance,
+    const positioned: GraphPosition[] = p.current.positions ?? computeGalaxyLayout3D(nodes, links, {
+      clusterStrength: p.current.layout?.clusterStrength,
+      chargeStrength: p.current.layout?.chargeStrength,
+      linkDistance: p.current.layout?.linkDistance,
     });
     let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity, zMin = Infinity, zMax = -Infinity;
-    for (const p of positioned) {
-      if (p.x < xMin) xMin = p.x; if (p.x > xMax) xMax = p.x;
-      if (p.y < yMin) yMin = p.y; if (p.y > yMax) yMax = p.y;
-      if (p.z < zMin) zMin = p.z; if (p.z > zMax) zMax = p.z;
+    for (const q of positioned) {
+      if (q.x < xMin) xMin = q.x; if (q.x > xMax) xMax = q.x;
+      if (q.y < yMin) yMin = q.y; if (q.y > yMax) yMax = q.y;
+      if (q.z < zMin) zMin = q.z; if (q.z > zMax) zMax = q.z;
     }
     const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2, cz = (zMin + zMax) / 2;
     const extent = Math.max(xMax - xMin, yMax - yMin, zMax - zMin) || 1;
     const norm = ((2 * L.fit) / extent) * spreadScale;
     const worldById = new Map<string, THREE.Vector3>();
-    for (const p of positioned) {
-      worldById.set(p.id, new THREE.Vector3((p.x - cx) * norm, (p.y - cy) * norm, (p.z - cz) * norm));
+    for (const q of positioned) {
+      worldById.set(q.id, new THREE.Vector3((q.x - cx) * norm, (q.y - cy) * norm, (q.z - cz) * norm));
     }
 
-    const neighbors = new Map<string, Set<string>>();
-    for (const l of links) {
-      (neighbors.get(l.source) ?? neighbors.set(l.source, new Set()).get(l.source)!).add(l.target);
-      (neighbors.get(l.target) ?? neighbors.set(l.target, new Set()).get(l.target)!).add(l.source);
-    }
-
-    // ── nodes: ONE InstancedMesh ──────────────────────────────────────────
     const geo = new THREE.SphereGeometry(1, 16, 12);
     const mat = new THREE.MeshLambertMaterial();
     const mesh = new THREE.InstancedMesh(geo, mat, nodes.length);
-    const dummy = new THREE.Object3D();
-    const baseColors: THREE.Color[] = [];
-    nodes.forEach((n, i) => {
-      const w = worldById.get(n.id);
-      const style = nodeStyle(n);
-      dummy.position.copy(w ?? new THREE.Vector3());
-      dummy.scale.setScalar(Math.max(0.001, style.radius * L.radiusScale * sizeScale));
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-      const c = new THREE.Color(style.color);
-      baseColors.push(c);
-      mesh.setColorAt(i, c);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     scene.add(mesh);
 
-    // ── edges: fat LineSegments2 (real px width), per kind ────────────────
-    // animated materials are updated in the frame loop (dash-offset flow).
-    const lineMaterials = new Set<LineMaterial>();
-    function buildFatLines(subset: GraphLink[], kind: 'relation' | 'mention', form: EdgeForm): LineSegments2 | null {
-      const style = edgeStyle({ source: '', target: '', kind });
+    const revealGroup = new THREE.Group();
+    scene.add(revealGroup);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    const state: GraphState = {
+      scene, camera, renderer, controls, mesh, worldById,
+      baseColors: [], neighbors: new Map(), revealGroup, revealKids: [], fullLines: [],
+      lineMaterials: new Set(), composers: null,
+      buildFatLines: () => null, rebuildEdges: () => {}, rebuildReveal: () => {}, applyColorsAndSizes: () => {},
+      L, width, height, hoveredId: null, pinnedId: null, disposed: false,
+    };
+    gRef.current = state;
+
+    // colors + per-instance scale (called from the size/color effect too)
+    state.applyColorsAndSizes = () => {
+      const dummy = new THREE.Object3D();
+      const cur = p.current;
+      const sizeScale = cur.nodeSizeScale ?? 1.0;
+      state.baseColors = [];
+      nodes.forEach((n, i) => {
+        const w = worldById.get(n.id);
+        const style = cur.nodeStyle(n);
+        dummy.position.copy(w ?? new THREE.Vector3());
+        dummy.scale.setScalar(Math.max(0.001, style.radius * L.radiusScale * sizeScale));
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+        const c = new THREE.Color(style.color);
+        state.baseColors.push(c);
+        mesh.setColorAt(i, c);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    };
+
+    state.buildFatLines = (subset, kind) => {
+      const cur = p.current;
+      const style = cur.edgeStyle({ source: '', target: '', kind });
+      const form = kind === 'relation' ? (cur.relationForm ?? 'solid') : (cur.mentionForm ?? 'solid');
       const pts: number[] = [];
       for (const l of subset) {
         if (l.kind !== kind) continue;
@@ -219,7 +252,7 @@ export function GraphCanvas({
       const dashed = form !== 'solid';
       const m = new LineMaterial({
         color: style.color,
-        linewidth: Math.max(0.1, style.width * L.edgeWidthScale),
+        linewidth: Math.max(EDGE_MIN_PX, style.width * L.edgeWidthScale),
         transparent: true,
         opacity: Math.min(1, style.alpha * L.edgeOpacityScale),
         dashed,
@@ -227,94 +260,65 @@ export function GraphCanvas({
         gapSize: GAP_SIZE,
       });
       m.resolution.set(width, height);
+      m.userData = { animated: form === 'animated' };
       const seg = new LineSegments2(g, m);
       if (dashed) seg.computeLineDistances();
-      m.userData = { animated: form === 'animated' };
-      lineMaterials.add(m);
+      state.lineMaterials.add(m);
       return seg;
-    }
-    const relForm = relationForm ?? 'solid';
-    const menForm = mentionForm ?? 'solid';
-    const relFull = buildFatLines(links, 'relation', relForm);
-    const menFull = buildFatLines(links, 'mention', menForm);
-    if (relFull) { relFull.visible = !hideEdges; scene.add(relFull); }
-    if (menFull) { menFull.visible = !hideEdges; scene.add(menFull); }
+    };
 
-    // reveal group (n-hop neighborhood when edges hidden)
-    const revealGroup = new THREE.Group();
-    scene.add(revealGroup);
-    let revealKids: LineSegments2[] = [];
-    function clearReveal() {
-      for (const s of revealKids) {
+    state.rebuildReveal = (focusId) => {
+      for (const s of state.revealKids) {
         revealGroup.remove(s);
         s.geometry.dispose();
-        lineMaterials.delete(s.material as LineMaterial);
+        state.lineMaterials.delete(s.material as LineMaterial);
         (s.material as THREE.Material).dispose();
       }
-      revealKids = [];
-    }
-    function nodesWithin(focus: string, depth: number): Set<string> {
-      const seen = new Set<string>([focus]);
-      let frontier = [focus];
+      state.revealKids = [];
+      const cur = p.current;
+      if (!cur.edgesHidden || !focusId) return;
+      const depth = Math.max(1, cur.edgeRevealDepth ?? 1);
+      const seen = new Set<string>([focusId]);
+      let frontier = [focusId];
       for (let d = 0; d < depth; d++) {
         const next: string[] = [];
-        for (const f of frontier) {
-          for (const nb of neighbors.get(f) ?? []) {
-            if (!seen.has(nb)) { seen.add(nb); next.push(nb); }
-          }
+        for (const f of frontier) for (const nb of state.neighbors.get(f) ?? []) {
+          if (!seen.has(nb)) { seen.add(nb); next.push(nb); }
         }
         frontier = next;
       }
-      return seen;
-    }
-    function rebuildReveal(focusId: string | null) {
-      clearReveal();
-      if (!hideEdges || !focusId) return;
-      const set = nodesWithin(focusId, revealDepth);
-      const subset = links.filter((l) => set.has(l.source) && set.has(l.target));
+      const subset = cur.links.filter((l) => seen.has(l.source) && seen.has(l.target));
       for (const kind of ['relation', 'mention'] as const) {
-        const seg = buildFatLines(subset, kind, kind === 'relation' ? relForm : menForm);
-        if (seg) { revealGroup.add(seg); revealKids.push(seg); }
+        const seg = state.buildFatLines(subset, kind);
+        if (seg) { revealGroup.add(seg); state.revealKids.push(seg); }
       }
-    }
+    };
 
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
+    state.rebuildEdges = () => {
+      for (const s of state.fullLines) {
+        scene.remove(s);
+        s.geometry.dispose();
+        state.lineMaterials.delete(s.material as LineMaterial);
+        (s.material as THREE.Material).dispose();
+      }
+      state.fullLines = [];
+      const cur = p.current;
+      state.neighbors = new Map();
+      for (const l of cur.links) {
+        (state.neighbors.get(l.source) ?? state.neighbors.set(l.source, new Set()).get(l.source)!).add(l.target);
+        (state.neighbors.get(l.target) ?? state.neighbors.set(l.target, new Set()).get(l.target)!).add(l.source);
+      }
+      const hide = !!cur.edgesHidden;
+      for (const kind of ['relation', 'mention'] as const) {
+        const seg = state.buildFatLines(cur.links, kind);
+        if (seg) { seg.visible = !hide; scene.add(seg); state.fullLines.push(seg); }
+      }
+      state.rebuildReveal(state.pinnedId ?? state.hoveredId);
+    };
 
-    // ── SELECTIVE bloom: nodes only, never edges (two composers) ──────────
-    let bloomComposer: EffectComposer | null = null;
-    let finalComposer: EffectComposer | null = null;
-    let mixPass: ShaderPass | null = null;
-    if (glowEnabled) {
-      bloomComposer = new EffectComposer(renderer);
-      bloomComposer.renderToScreen = false;
-      bloomComposer.addPass(new RenderPass(scene, camera));
-      bloomComposer.addPass(new UnrealBloomPass(new THREE.Vector2(width, height), L.bloomStrength, L.bloomRadius, L.bloomThreshold));
-
-      finalComposer = new EffectComposer(renderer);
-      finalComposer.addPass(new RenderPass(scene, camera));
-      mixPass = new ShaderPass(
-        new THREE.ShaderMaterial({
-          uniforms: {
-            baseTexture: { value: null },
-            bloomTexture: { value: bloomComposer.renderTarget2.texture },
-          },
-          vertexShader: MIX_SHADER.vertexShader,
-          fragmentShader: MIX_SHADER.fragmentShader,
-        }),
-        'baseTexture',
-      );
-      mixPass.needsSwap = true;
-      finalComposer.addPass(mixPass);
-      finalComposer.addPass(new OutputPass());
-    }
-
-    // ── hover dim + click via Raycaster ───────────────────────────────────
+    // ── interaction ──
     const raycaster = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
-    let hoveredId: string | null = null;
-    let pinnedId: string | null = null;
-
     function pickId(ev: PointerEvent): string | null {
       const rect = renderer.domElement.getBoundingClientRect();
       ndc.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
@@ -325,87 +329,122 @@ export function GraphCanvas({
       return id ?? null;
     }
     function applyHoverDim(id: string | null) {
-      const keep = id ? (neighbors.get(id) ?? new Set<string>()) : null;
+      const keep = id ? (state.neighbors.get(id) ?? new Set<string>()) : null;
       nodes.forEach((n, i) => {
         const full = !keep || n.id === id || keep.has(n.id);
-        const base = baseColors[i];
+        const base = state.baseColors[i];
+        if (!base) return;
         mesh.setColorAt(i, full ? base : new THREE.Color(base.r * L.dimFactor, base.g * L.dimFactor, base.b * L.dimFactor));
       });
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
     function onMove(ev: PointerEvent) {
       const id = pickId(ev);
-      if (id === hoveredId) return;
-      hoveredId = id;
-      applyHoverDim(id ?? pinnedId);
-      rebuildReveal(id ?? pinnedId);
-      onHoverNode?.(id);
+      if (id === state.hoveredId) return;
+      state.hoveredId = id;
+      applyHoverDim(id ?? state.pinnedId);
+      state.rebuildReveal(id ?? state.pinnedId);
+      p.current.onHoverNode?.(id);
     }
     let downX = 0, downY = 0;
     function onDown(ev: PointerEvent) { downX = ev.clientX; downY = ev.clientY; }
     function onUp(ev: PointerEvent) {
-      if (Math.hypot(ev.clientX - downX, ev.clientY - downY) > 4) return; // drag, not click
+      if (Math.hypot(ev.clientX - downX, ev.clientY - downY) > 4) return;
       const id = pickId(ev);
-      pinnedId = id;            // click a node pins it; click background clears
+      state.pinnedId = id;
       applyHoverDim(id);
-      rebuildReveal(id);
-      if (id) onNavigate(id);
+      state.rebuildReveal(id);
+      if (id) p.current.onNavigate(id);
     }
     renderer.domElement.addEventListener('pointermove', onMove);
     renderer.domElement.addEventListener('pointerdown', onDown);
     renderer.domElement.addEventListener('pointerup', onUp);
 
     let raf = 0;
-    let disposed = false;
     function frame() {
-      if (disposed) return;
+      if (state.disposed) return;
       controls.update();
-      for (const m of lineMaterials) {
-        if (m.userData?.animated) m.dashOffset -= ANIM_SPEED;
-      }
-      if (bloomComposer && finalComposer) {
-        // bloom pass sees ONLY nodes -> hide every edge object first
-        const rv = relFull?.visible, mv = menFull?.visible, gv = revealGroup.visible;
-        if (relFull) relFull.visible = false;
-        if (menFull) menFull.visible = false;
+      for (const m of state.lineMaterials) if (m.userData?.animated) m.dashOffset -= ANIM_SPEED;
+      if (state.composers) {
+        const vis = state.fullLines.map((s) => s.visible);
+        const gv = revealGroup.visible;
+        for (const s of state.fullLines) s.visible = false;
         revealGroup.visible = false;
-        bloomComposer.render();
-        if (relFull) relFull.visible = rv ?? false;
-        if (menFull) menFull.visible = mv ?? false;
+        state.composers.bloom.render();
+        state.fullLines.forEach((s, i) => { s.visible = vis[i]; });
         revealGroup.visible = gv;
-        finalComposer.render();
+        state.composers.final.render();
       } else {
         renderer.render(scene, camera);
       }
       raf = requestAnimationFrame(frame);
     }
+
+    // initial fill
+    state.applyColorsAndSizes();
+    state.rebuildEdges();
     raf = requestAnimationFrame(frame);
 
     return () => {
-      disposed = true;
+      state.disposed = true;
       cancelAnimationFrame(raf);
       renderer.domElement.removeEventListener('pointermove', onMove);
       renderer.domElement.removeEventListener('pointerdown', onDown);
       renderer.domElement.removeEventListener('pointerup', onUp);
       controls.dispose();
-      bloomComposer?.dispose();
-      finalComposer?.dispose();
-      clearReveal();
+      state.composers?.bloom.dispose();
+      state.composers?.final.dispose();
+      for (const s of [...state.fullLines, ...state.revealKids]) {
+        s.geometry.dispose();
+        (s.material as THREE.Material).dispose();
+      }
       geo.dispose();
       mat.dispose();
-      for (const seg of [relFull, menFull]) {
-        if (!seg) continue;
-        seg.geometry.dispose();
-        (seg.material as THREE.Material).dispose();
-      }
       renderer.dispose();
       renderer.domElement.remove();
+      gRef.current = null;
     };
-  }, [
-    nodes, links, nodeStyle, edgeStyle, posKey, positions, lookKey,
-    layout?.mode, layout?.clusterStrength, layout?.chargeStrength, layout?.linkDistance, layout?.spreadScale,
-    glowEnabled, nodeSizeScale, edgesHidden, edgeRevealDepth, relationForm, mentionForm, onNavigate, onHoverNode,
-  ]);
+  }, [nodes, posKey, layoutKey, lookKey]);
+
+  // ── live: colors + sizes ──
+  useEffect(() => {
+    gRef.current?.applyColorsAndSizes();
+  }, [nodeStyle, nodeSizeScale, lookKey]);
+
+  // ── live: edges (visibility / form / color / width / topology) ──
+  useEffect(() => {
+    gRef.current?.rebuildEdges();
+  }, [links, edgeStyle, relationForm, mentionForm, edgesHidden, edgeRevealDepth, lookKey]);
+
+  // ── live: glow on/off ──
+  useEffect(() => {
+    const g = gRef.current;
+    if (!g) return;
+    g.composers?.bloom.dispose();
+    g.composers?.final.dispose();
+    g.composers = null;
+    if (glowEnabled) {
+      const L = g.L;
+      const bloom = new EffectComposer(g.renderer);
+      bloom.renderToScreen = false;
+      bloom.addPass(new RenderPass(g.scene, g.camera));
+      bloom.addPass(new UnrealBloomPass(new THREE.Vector2(g.width, g.height), L.bloomStrength, L.bloomRadius, L.bloomThreshold));
+      const final = new EffectComposer(g.renderer);
+      final.addPass(new RenderPass(g.scene, g.camera));
+      const mixPass = new ShaderPass(
+        new THREE.ShaderMaterial({
+          uniforms: { baseTexture: { value: null }, bloomTexture: { value: bloom.renderTarget2.texture } },
+          vertexShader: MIX_SHADER.vertexShader,
+          fragmentShader: MIX_SHADER.fragmentShader,
+        }),
+        'baseTexture',
+      );
+      mixPass.needsSwap = true;
+      final.addPass(mixPass);
+      final.addPass(new OutputPass());
+      g.composers = { bloom, final };
+    }
+  }, [glowEnabled, lookKey]);
 
   return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />;
 }

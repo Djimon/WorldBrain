@@ -38,9 +38,12 @@ interface EntityRow {
 const GALAXY_CLUSTER_STRENGTH = 0.3;
 const GALAXY_CHARGE_STRENGTH = -200;
 const GALAXY_LINK_DISTANCE = 80;
-// Size-spread by degree (tuned): radius = 12 * (1+spread)^(degreeNorm - 0.5).
+// Size-spread by degree (tuned): radius = 12 * (1+spread)^(degreeNorm - 0.5),
+// floored at SIZE_MIN so unconnected/low-degree nodes stay visible (they'd be
+// ~1px otherwise). Floor makes the smallest ~5x bigger than the raw formula.
 const SIZE_SPREAD = 30;
 const SIZE_MID = 12;
+const SIZE_MIN = 11;
 
 const DEFAULT_SETTINGS: GraphSettings = {
   colorMode: 'entity',
@@ -85,7 +88,7 @@ export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps):
 
   const nodeStyle = useCallback(
     (n: GraphNode) => {
-      const radius = SIZE_MID * Math.pow(1 + SIZE_SPREAD, Math.sqrt(n.degree / maxDeg) - 0.5);
+      const radius = Math.max(SIZE_MIN, SIZE_MID * Math.pow(1 + SIZE_SPREAD, Math.sqrt(n.degree / maxDeg) - 0.5));
       if (settings.colorMode === 'cluster') {
         const p = posById.get(n.id);
         return { color: p ? positionColor(p.x, p.y, p.z) : typeColor(n.type), radius };
