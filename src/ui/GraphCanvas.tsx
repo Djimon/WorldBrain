@@ -84,6 +84,9 @@ export interface GraphCanvasProps {
   edgeRevealDepth?: number;
   relationForm?: EdgeForm;
   mentionForm?: EdgeForm;
+  // show relation-type chips on ALL relation edges permanently (ego mode),
+  // instead of only the selected node's incident edges.
+  alwaysShowChips?: boolean;
   onNavigate: (id: string) => void;
   onHoverNode?: (id: string | null) => void;
 }
@@ -342,16 +345,18 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
         if (seg) { seg.visible = !hide; scene.add(seg); state.fullLines.push(seg); }
       }
       state.rebuildReveal(state.pinnedId ?? state.hoveredId);
+      if (p.current.alwaysShowChips) state.updateChips(null); // permanent chips (ego)
     };
 
     // edge-type chips on the focus node's incident (visible) edges.
     state.updateChips = (focusId) => {
       for (const ch of state.chips) ch.el.remove();
       state.chips = [];
-      if (!focusId) return;
+      const all = !!p.current.alwaysShowChips;
+      if (!all && !focusId) return;
       for (const l of p.current.links) {
-        if (l.source !== focusId && l.target !== focusId) continue;
         if (l.kind !== 'relation') continue; // mentions already visually distinct -> no chip
+        if (!all && l.source !== focusId && l.target !== focusId) continue;
         const a = worldById.get(l.source), b = worldById.get(l.target);
         if (!a || !b) continue;
         const text = l.relation_type ?? 'Relation';

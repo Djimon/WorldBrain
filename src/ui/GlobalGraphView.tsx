@@ -189,6 +189,7 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
         }}
         glowEnabled={egoFocusId ? true : settings.glow}
         edgesHidden={egoFocusId ? false : !settings.showAllEdges}
+        alwaysShowChips={!!egoFocusId}
         edgeRevealDepth={1}
         relationForm={settings.relationForm}
         mentionForm={settings.mentionForm}
