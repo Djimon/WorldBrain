@@ -16,6 +16,7 @@ const BASE: GraphSettings = {
   relationColor: '#d0d0d0',
   mentionForm: 'solid',
   relationForm: 'solid',
+  hiddenRelationTypes: [],
 };
 
 describe('#324: graph settings gear panel', () => {

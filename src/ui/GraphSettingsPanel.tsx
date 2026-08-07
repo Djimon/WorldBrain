@@ -15,6 +15,9 @@ export interface GraphSettings {
   relationColor: string;  // hex
   mentionForm: EdgeForm;
   relationForm: EdgeForm;
+  // relation_type values whose edges are hidden (filter pane). Persisted;
+  // stays hidden even when showAllEdges is on.
+  hiddenRelationTypes: string[];
 }
 
 export interface GraphSettingsPanelProps {

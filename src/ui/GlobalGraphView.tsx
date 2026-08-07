@@ -8,7 +8,7 @@
 // behavioural settings + baked size-spread. The 3D layout is computed ONCE
 // here and passed to GraphCanvas (also feeds the spatial "cluster" coloring),
 // so toggling settings never recomputes the force sim.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { getAllRelations } from '../services/relation-service';
@@ -21,6 +21,7 @@ import { GraphCanvas } from './GraphCanvas';
 import type { GraphPosition } from './GraphCanvas';
 import { GraphSettingsPanel } from './GraphSettingsPanel';
 import type { GraphSettings } from './GraphSettingsPanel';
+import { GraphFilterPanel } from './GraphFilterPanel';
 import { EntityDetailView } from './EntityDetailView';
 
 export interface GlobalGraphViewProps {
@@ -60,6 +61,7 @@ const DEFAULT_SETTINGS: GraphSettings = {
   relationColor: '#d0d0d0',
   mentionForm: 'solid',
   relationForm: 'solid',
+  hiddenRelationTypes: [],
 };
 
 function hexToNum(hex: string): number {
@@ -85,6 +87,9 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
   // area switch. The panel offers an explicit "open" to navigate for real.
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [settings, setSettings] = useState<GraphSettings>(loadSettings);
+  const [query, setQuery] = useState('');
+  const [focusReq, setFocusReq] = useState<{ id: string; nonce: number } | undefined>(undefined);
+  const focusNonce = useRef(0);
   const patch = useCallback((p: Partial<GraphSettings>) => setSettings((s) => {
     const next = { ...s, ...p };
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
@@ -129,11 +134,22 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
   );
   const posById = useMemo(() => new Map(positions.map((p) => [p.id, p])), [positions]);
 
-  // Degree from the VISIBLE links (mentions on -> counted, off -> relations
-  // only), so toggling "Mentions zeigen" rescales the spheres live.
+  // all relation_type values present (dynamic) -> filter pane checkboxes.
+  const relationTypes = useMemo(() => {
+    const s = new Set<string>();
+    for (const l of base.links) if (l.kind === 'relation' && l.relation_type) s.add(l.relation_type);
+    return [...s].sort();
+  }, [base]);
+  const hiddenSet = useMemo(() => new Set(settings.hiddenRelationTypes), [settings.hiddenRelationTypes]);
+
+  // VISIBLE links: mentions gated by "Mentions zeigen", relations dropped when
+  // their type is filtered out (independent of showAllEdges). Degree (and thus
+  // sphere size) follows the visible set.
   const links = useMemo<GraphLink[]>(
-    () => (settings.showMentions ? base.links : base.links.filter((l) => l.kind !== 'mention')),
-    [base, settings.showMentions],
+    () => base.links.filter((l) => (l.kind === 'mention'
+      ? settings.showMentions
+      : !hiddenSet.has(l.relation_type ?? ''))),
+    [base, settings.showMentions, hiddenSet],
   );
   const degreeByVisible = useMemo(() => {
     const m = new Map<string, number>();
@@ -171,6 +187,26 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
     [mentionColorNum, relationColorNum],
   );
 
+  // local name autocomplete over the (sub)graph nodes.
+  const suggestions = useMemo<GraphNode[]>(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return base.nodes.filter((n) => n.label.toLowerCase().includes(q)).slice(0, 8);
+  }, [query, base.nodes]);
+
+  const selectNode = useCallback((id: string) => {
+    setSelectedId(id);
+    focusNonce.current += 1;
+    setFocusReq({ id, nonce: focusNonce.current }); // triggers GraphCanvas zoom+select
+    setQuery('');
+  }, []);
+
+  const toggleRelType = useCallback((tp: string) => {
+    const cur = settings.hiddenRelationTypes;
+    patch({ hiddenRelationTypes: cur.includes(tp) ? cur.filter((x) => x !== tp) : [...cur, tp] });
+  }, [settings.hiddenRelationTypes, patch]);
+  const setHiddenAll = useCallback((hidden: string[]) => patch({ hiddenRelationTypes: hidden }), [patch]);
+
   if (!model) return <div className="graph-view graph-view--loading" style={{ width: '100%', height: '100%' }} />;
 
   return (
@@ -194,8 +230,51 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
         edgeRevealDepth={1}
         relationForm={settings.relationForm}
         mentionForm={settings.mentionForm}
+        focusRequest={focusReq}
         onNavigate={setSelectedId}
       />
+
+      {!egoFocusId && (
+        <div style={{ position: 'absolute', top: 12, left: 12, width: 260, zIndex: 6 }}>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t('graphSearchPlaceholder', 'Suchen…')}
+            aria-label={t('graphSearch', 'Suche')}
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '6px 10px', borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(20,24,30,0.9)', color: '#e8eef5',
+            }}
+          />
+          {suggestions.length > 0 && (
+            <div style={{
+              marginTop: 4, background: 'rgba(20,24,30,0.96)', borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden',
+            }}>
+              {suggestions.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => selectNode(n.id)}
+                  style={{
+                    display: 'block', width: '100%', textAlign: 'left', padding: '6px 10px', cursor: 'pointer',
+                    border: 'none', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'transparent', color: '#e8eef5', fontSize: 13,
+                  }}
+                >{n.label} <span style={{ opacity: 0.5, fontSize: 11 }}>· {n.type}</span></button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!egoFocusId && (
+        <GraphFilterPanel
+          types={relationTypes}
+          hidden={settings.hiddenRelationTypes}
+          onToggle={toggleRelType}
+          onSetAll={setHiddenAll}
+        />
+      )}
 
       {selectedId && (
         <div style={{

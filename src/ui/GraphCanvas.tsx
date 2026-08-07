@@ -89,6 +89,9 @@ export interface GraphCanvasProps {
   alwaysShowChips?: boolean;
   // show every node's name permanently (ego mode), not just on hover/select.
   alwaysShowLabels?: boolean;
+  // programmatic focus (search select): focuses + zooms the node like a click.
+  // nonce must change to re-trigger the same id.
+  focusRequest?: { id: string; nonce: number };
   onNavigate: (id: string) => void;
   onHoverNode?: (id: string | null) => void;
 }
@@ -141,6 +144,7 @@ interface GraphState {
   ambient: THREE.AmbientLight;
   headlight: THREE.DirectionalLight;
   tween: { camFrom: THREE.Vector3; camTo: THREE.Vector3; tgtFrom: THREE.Vector3; tgtTo: THREE.Vector3; step: number } | null;
+  focusNode: (id: string | null) => void;
   L: GraphLookConfig;
   width: number;
   height: number;
@@ -152,7 +156,7 @@ interface GraphState {
 export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
   const {
     nodes, links, positions, look, layout, glowEnabled,
-    edgesHidden, edgeRevealDepth, relationForm, mentionForm, nodeStyle, edgeStyle, nodeSizeScale,
+    edgesHidden, edgeRevealDepth, relationForm, mentionForm, nodeStyle, edgeStyle, nodeSizeScale, focusRequest,
   } = props;
   const mountRef = useRef<HTMLDivElement | null>(null);
   const gRef = useRef<GraphState | null>(null);
@@ -242,7 +246,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       buildFatLines: () => null, rebuildEdges: () => {}, rebuildReveal: () => {}, applyColorsAndSizes: () => {},
       chipLayer, chips: [], updateChips: () => {},
       labelLayer, labels: [], updateLabels: () => {},
-      ambient, headlight, tween: null,
+      ambient, headlight, tween: null, focusNode: () => {},
       L, width, height, hoveredId: null, pinnedId: null, disposed: false,
     };
     gRef.current = state;
@@ -428,32 +432,35 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       state.updateLabels();
       p.current.onHoverNode?.(id);
     }
-    let downX = 0, downY = 0;
-    function onDown(ev: PointerEvent) { downX = ev.clientX; downY = ev.clientY; }
-    function onUp(ev: PointerEvent) {
-      if (Math.hypot(ev.clientX - downX, ev.clientY - downY) > 4) return;
-      const id = pickId(ev);
+    // focus (click OR programmatic search-select): pin + highlight + zoom.
+    function focusNode(id: string | null) {
       state.pinnedId = id;
       applyHoverDim(id);
       state.rebuildReveal(id);
       state.updateChips(id);
       state.updateLabels();
-      if (id) {
-        const pos = worldById.get(id);
-        if (pos) {
-          const dist = camera.position.distanceTo(pos);
-          const newDist = Math.max(L.fit * 0.15, dist * 0.55); // zoom in a bit
-          const dir = camera.position.clone().sub(controls.target).normalize();
-          state.tween = {
-            camFrom: camera.position.clone(),
-            camTo: pos.clone().add(dir.multiplyScalar(newDist)),
-            tgtFrom: controls.target.clone(),
-            tgtTo: pos.clone(),
-            step: 0,
-          };
-        }
-        p.current.onNavigate(id);
+      if (!id) return;
+      const pos = worldById.get(id);
+      if (pos) {
+        const dist = camera.position.distanceTo(pos);
+        const newDist = Math.max(L.fit * 0.15, dist * 0.55); // zoom in a bit
+        const dir = camera.position.clone().sub(controls.target).normalize();
+        state.tween = {
+          camFrom: camera.position.clone(),
+          camTo: pos.clone().add(dir.multiplyScalar(newDist)),
+          tgtFrom: controls.target.clone(),
+          tgtTo: pos.clone(),
+          step: 0,
+        };
       }
+      p.current.onNavigate(id);
+    }
+    state.focusNode = focusNode;
+    let downX = 0, downY = 0;
+    function onDown(ev: PointerEvent) { downX = ev.clientX; downY = ev.clientY; }
+    function onUp(ev: PointerEvent) {
+      if (Math.hypot(ev.clientX - downX, ev.clientY - downY) > 4) return;
+      focusNode(pickId(ev));
     }
     renderer.domElement.addEventListener('pointermove', onMove);
     renderer.domElement.addEventListener('pointerdown', onDown);
@@ -597,6 +604,11 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       g.composers = { bloom, final };
     }
   }, [glowEnabled, lookKey]);
+
+  // programmatic focus from search-select (nonce re-triggers same id).
+  useEffect(() => {
+    if (focusRequest?.id) gRef.current?.focusNode(focusRequest.id);
+  }, [focusRequest?.nonce, focusRequest?.id]);
 
   // position:relative so the chip/label overlays (position:absolute; inset:0)
   // anchor to THIS box, not some ancestor -> otherwise labels get displaced.
