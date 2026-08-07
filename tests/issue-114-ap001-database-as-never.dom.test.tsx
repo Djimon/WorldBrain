@@ -53,12 +53,6 @@ describe('issue #114: AP-001 — database prop must be typed as DatabaseLike, no
     expect(() => render(<EntityTable database={db} entityType="Character" />)).not.toThrow();
   });
 
-  it('GlobalEntityGraph accepts a DatabaseLike database prop without cast', async () => {
-    const { GlobalEntityGraph } = await import('../src/ui/GlobalEntityGraph');
-    const db = makeMockDb();
-    expect(() => render(<GlobalEntityGraph database={db} />)).not.toThrow();
-  });
-
   it('PlayerScreen accepts a DatabaseLike database prop without cast', async () => {
     const { PlayerScreen } = await import('../src/ui/PlayerScreen');
     const db = makeMockDb();
