@@ -1,0 +1,15 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "graph-look",
+        "title": "M16 Look-Tuner (GraphCanvas) — #324",
+        "url": "look-graph.html",
+        "width": 1500,
+        "height": 950,
+        "minWidth": 900,
+        "minHeight": 600
+      }
+    ]
+  }
+}

@@ -17,6 +17,7 @@
     "desktop:dev": "tauri dev",
     "desktop:spike-graph": "tauri dev --config src-tauri/tauri.spike-graph.conf.json",
     "desktop:bench-graph": "tauri dev --config src-tauri/tauri.bench-graph.conf.json",
+    "desktop:look-graph": "tauri dev --config src-tauri/tauri.look-graph.conf.json",
     "desktop:build": "tauri build",
     "build:desktop": "tauri build",
     "test": "node --test tests/*.test.mjs && npm run test:dom",
