@@ -55,20 +55,21 @@ export interface GraphLookConfig {
   edgeOpacityScale: number;
 }
 
+// Tuned in the look harness (#324, 2026-08-07) — the final production look.
 export const DEFAULT_LOOK: GraphLookConfig = {
-  bloomStrength: 0.7,
-  bloomRadius: 0.85,
+  bloomStrength: 0.5,
+  bloomRadius: 0.75,
   bloomThreshold: 0,
-  radiusScale: 0.6,
-  lightAzimuth: Math.atan2(-0.4, 1),
-  lightElevation: Math.atan2(0.4, Math.hypot(-0.4, 1)),
+  radiusScale: 0.4,
+  lightAzimuth: Math.atan2(-0.4, 1),   // -0.3805 rad (horizontal -21.8deg)
+  lightElevation: Math.atan2(0.4, Math.hypot(-0.4, 1)), // 0.3556 rad (vertical 20.4deg)
   lightIntensity: 1.4,
   ambientIntensity: 0.55,
-  dimFactor: 0.22,
-  fit: 600,
-  camDistanceFactor: 2.4,
-  edgeWidthScale: 1,
-  edgeOpacityScale: 1,
+  dimFactor: 0.2,
+  fit: 425,
+  camDistanceFactor: 2.7,
+  edgeWidthScale: 0.3,
+  edgeOpacityScale: 0.6,
 };
 
 export interface GraphPosition { id: string; x: number; y: number; z: number; }
