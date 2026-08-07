@@ -83,6 +83,18 @@ export function typeColor(type: string): number {
   return hslToHex(hashString(type) % 360, 0.55, 0.55);
 }
 
+// Spatial "cluster" color: hue from the node's angle around the layout center,
+// lightness from its depth. The force sim already pulls similarly-connected
+// nodes close together, so nearby nodes get near-identical colors -> visual
+// clusters, with NO extra community computation (D14/Louvain deliberately not
+// used — the user's "cluster" = geographic nearness in the layout).
+export function positionColor(x: number, y: number, z: number): number {
+  const hue = (((Math.atan2(y, x) / Math.PI) * 180) + 360) % 360;
+  const depth = Math.atan2(z, Math.hypot(x, y)) / Math.PI; // -0.5 .. 0.5
+  const light = Math.min(0.75, Math.max(0.35, 0.5 + depth * 0.4));
+  return hslToHex(hue, 0.6, light);
+}
+
 // Radius = degree linearly scaled into [NODE_RADIUS_MIN, NODE_RADIUS_MAX]
 // over the observed degree range across the whole graph. An empty graph /
 // degree 0 (or a degenerate range where min===max) -> NODE_RADIUS_MIN.

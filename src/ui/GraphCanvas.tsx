@@ -74,6 +74,10 @@ export const DEFAULT_LOOK: GraphLookConfig = {
 
 export interface GraphPosition { id: string; x: number; y: number; z: number; }
 
+// edge rendering form: solid line, dashed line, or dashed with a moving
+// dash-offset ("marching ants" flow).
+export type EdgeForm = 'solid' | 'dashed' | 'animated';
+
 export interface GraphCanvasProps {
   nodes: GraphNode[];
   links: GraphLink[];
@@ -87,6 +91,9 @@ export interface GraphCanvasProps {
   // Hide all edges; reveal only the hovered/clicked node's n-hop neighborhood.
   edgesHidden?: boolean;
   edgeRevealDepth?: number; // BFS hops (default 1)
+  // Line form per kind (solid/dashed/animated). Default solid.
+  relationForm?: EdgeForm;
+  mentionForm?: EdgeForm;
   onNavigate: (id: string) => void;
   onHoverNode?: (id: string | null) => void;
 }
@@ -104,9 +111,13 @@ const MIX_SHADER = {
   `,
 };
 
+const DASH_SIZE = 10;
+const GAP_SIZE = 8;
+const ANIM_SPEED = 0.6; // world units per frame for the dash-offset flow
+
 export function GraphCanvas({
   nodes, links, nodeStyle, edgeStyle, layout, positions, look, glowEnabled, nodeSizeScale,
-  edgesHidden, edgeRevealDepth, onNavigate, onHoverNode,
+  edgesHidden, edgeRevealDepth, relationForm, mentionForm, onNavigate, onHoverNode,
 }: GraphCanvasProps): React.ReactElement {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const lookKey = JSON.stringify(look ?? {});
@@ -191,7 +202,9 @@ export function GraphCanvas({
     scene.add(mesh);
 
     // ── edges: fat LineSegments2 (real px width), per kind ────────────────
-    function buildFatLines(subset: GraphLink[], kind: 'relation' | 'mention'): LineSegments2 | null {
+    // animated materials are updated in the frame loop (dash-offset flow).
+    const lineMaterials = new Set<LineMaterial>();
+    function buildFatLines(subset: GraphLink[], kind: 'relation' | 'mention', form: EdgeForm): LineSegments2 | null {
       const style = edgeStyle({ source: '', target: '', kind });
       const pts: number[] = [];
       for (const l of subset) {
@@ -203,17 +216,27 @@ export function GraphCanvas({
       if (pts.length === 0) return null;
       const g = new LineSegmentsGeometry();
       g.setPositions(pts);
+      const dashed = form !== 'solid';
       const m = new LineMaterial({
         color: style.color,
         linewidth: Math.max(0.1, style.width * L.edgeWidthScale),
         transparent: true,
         opacity: Math.min(1, style.alpha * L.edgeOpacityScale),
+        dashed,
+        dashSize: DASH_SIZE,
+        gapSize: GAP_SIZE,
       });
       m.resolution.set(width, height);
-      return new LineSegments2(g, m);
+      const seg = new LineSegments2(g, m);
+      if (dashed) seg.computeLineDistances();
+      m.userData = { animated: form === 'animated' };
+      lineMaterials.add(m);
+      return seg;
     }
-    const relFull = buildFatLines(links, 'relation');
-    const menFull = buildFatLines(links, 'mention');
+    const relForm = relationForm ?? 'solid';
+    const menForm = mentionForm ?? 'solid';
+    const relFull = buildFatLines(links, 'relation', relForm);
+    const menFull = buildFatLines(links, 'mention', menForm);
     if (relFull) { relFull.visible = !hideEdges; scene.add(relFull); }
     if (menFull) { menFull.visible = !hideEdges; scene.add(menFull); }
 
@@ -225,6 +248,7 @@ export function GraphCanvas({
       for (const s of revealKids) {
         revealGroup.remove(s);
         s.geometry.dispose();
+        lineMaterials.delete(s.material as LineMaterial);
         (s.material as THREE.Material).dispose();
       }
       revealKids = [];
@@ -249,7 +273,7 @@ export function GraphCanvas({
       const set = nodesWithin(focusId, revealDepth);
       const subset = links.filter((l) => set.has(l.source) && set.has(l.target));
       for (const kind of ['relation', 'mention'] as const) {
-        const seg = buildFatLines(subset, kind);
+        const seg = buildFatLines(subset, kind, kind === 'relation' ? relForm : menForm);
         if (seg) { revealGroup.add(seg); revealKids.push(seg); }
       }
     }
@@ -336,6 +360,9 @@ export function GraphCanvas({
     function frame() {
       if (disposed) return;
       controls.update();
+      for (const m of lineMaterials) {
+        if (m.userData?.animated) m.dashOffset -= ANIM_SPEED;
+      }
       if (bloomComposer && finalComposer) {
         // bloom pass sees ONLY nodes -> hide every edge object first
         const rv = relFull?.visible, mv = menFull?.visible, gv = revealGroup.visible;
@@ -377,7 +404,7 @@ export function GraphCanvas({
   }, [
     nodes, links, nodeStyle, edgeStyle, posKey, positions, lookKey,
     layout?.mode, layout?.clusterStrength, layout?.chargeStrength, layout?.linkDistance, layout?.spreadScale,
-    glowEnabled, nodeSizeScale, edgesHidden, edgeRevealDepth, onNavigate, onHoverNode,
+    glowEnabled, nodeSizeScale, edgesHidden, edgeRevealDepth, relationForm, mentionForm, onNavigate, onHoverNode,
   ]);
 
   return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />;

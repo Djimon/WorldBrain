@@ -3,19 +3,23 @@
 // the single shared renderer core (D12). Ego (S07 #321) will hand the same
 // GraphCanvas only { focus + N neighbors }.
 //
-// No controls UI for now (the old GraphControlsBar was removed on request —
-// new controls come later). The final tuned look lives in GraphCanvas
-// (DEFAULT_LOOK); this view just bakes the behavioural choices: glow on,
-// edges hidden (reveal 1-hop neighborhood on hover/click), size-spread by
-// degree.
-import { useCallback, useEffect, useState } from 'react';
+// Settings live in a small gear panel (GraphSettingsPanel, bottom right). The
+// final tuned look lives in GraphCanvas (DEFAULT_LOOK); this view owns the
+// behavioural settings + baked size-spread. The 3D layout is computed ONCE
+// here and passed to GraphCanvas (also feeds the spatial "cluster" coloring),
+// so toggling settings never recomputes the force sim.
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DatabaseLike } from '../services/entity-service';
 import { getAllRelations } from '../services/relation-service';
 import { buildMentionEdges } from '../services/mention-graph';
 import { buildGraphModel } from '../services/graph-model';
-import type { GraphModel, GraphNode } from '../services/graph-model';
-import { edgeStyle, typeColor } from '../services/graph-style';
+import type { GraphLink, GraphModel, GraphNode } from '../services/graph-model';
+import { edgeStyle, positionColor, typeColor } from '../services/graph-style';
+import { computeGalaxyLayout3D } from '../services/galaxy-layout';
 import { GraphCanvas } from './GraphCanvas';
+import type { GraphPosition } from './GraphCanvas';
+import { GraphSettingsPanel } from './GraphSettingsPanel';
+import type { GraphSettings } from './GraphSettingsPanel';
 
 export interface GlobalGraphViewProps {
   database: DatabaseLike;
@@ -38,8 +42,24 @@ const GALAXY_LINK_DISTANCE = 80;
 const SIZE_SPREAD = 30;
 const SIZE_MID = 12;
 
+const DEFAULT_SETTINGS: GraphSettings = {
+  colorMode: 'entity',
+  glow: false,
+  showAllEdges: false,
+  showMentions: true,
+  mentionColor: '#ff3b30',
+  mentionForm: 'solid',
+  relationForm: 'solid',
+};
+
+function hexToNum(hex: string): number {
+  return parseInt(hex.replace('#', ''), 16) || 0;
+}
+
 export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps): React.ReactElement {
   const [model, setModel] = useState<GraphModel | null>(null);
+  const [settings, setSettings] = useState<GraphSettings>(DEFAULT_SETTINGS);
+  const patch = useCallback((p: Partial<GraphSettings>) => setSettings((s) => ({ ...s, ...p })), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,35 +75,63 @@ export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps):
     return () => { cancelled = true; };
   }, [database]);
 
-  const maxDeg = model ? Math.max(1, ...model.nodes.map((n) => n.degree)) : 1;
+  // 3D layout computed ONCE per model (also feeds cluster coloring).
+  const positions = useMemo<GraphPosition[]>(() => {
+    if (!model) return [];
+    return computeGalaxyLayout3D(model.nodes, model.links).map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z }));
+  }, [model]);
+  const posById = useMemo(() => new Map(positions.map((p) => [p.id, p])), [positions]);
+  const maxDeg = useMemo(() => (model ? Math.max(1, ...model.nodes.map((n) => n.degree)) : 1), [model]);
+
   const nodeStyle = useCallback(
-    (n: GraphNode) => ({
-      color: typeColor(n.type),
-      radius: SIZE_MID * Math.pow(1 + SIZE_SPREAD, Math.sqrt(n.degree / maxDeg) - 0.5),
-    }),
-    [maxDeg],
+    (n: GraphNode) => {
+      const radius = SIZE_MID * Math.pow(1 + SIZE_SPREAD, Math.sqrt(n.degree / maxDeg) - 0.5);
+      if (settings.colorMode === 'cluster') {
+        const p = posById.get(n.id);
+        return { color: p ? positionColor(p.x, p.y, p.z) : typeColor(n.type), radius };
+      }
+      return { color: typeColor(n.type), radius };
+    },
+    [settings.colorMode, posById, maxDeg],
+  );
+
+  const mentionColorNum = hexToNum(settings.mentionColor);
+  const styledEdge = useCallback(
+    (l: GraphLink) => (l.kind === 'mention'
+      ? { ...edgeStyle(l), color: mentionColorNum }
+      : edgeStyle(l)),
+    [mentionColorNum],
+  );
+
+  const links = useMemo<GraphLink[]>(
+    () => (model ? (settings.showMentions ? model.links : model.links.filter((l) => l.kind !== 'mention')) : []),
+    [model, settings.showMentions],
   );
 
   if (!model) return <div className="graph-view graph-view--loading" style={{ width: '100%', height: '100%' }} />;
 
   return (
-    <div className="graph-view" style={{ width: '100%', height: '100%' }}>
+    <div className="graph-view" style={{ width: '100%', height: '100%', position: 'relative' }}>
       <GraphCanvas
         nodes={model.nodes}
-        links={model.links}
+        links={links}
+        positions={positions}
         nodeStyle={nodeStyle}
-        edgeStyle={edgeStyle}
+        edgeStyle={styledEdge}
         layout={{
           mode: 'galaxy',
           clusterStrength: GALAXY_CLUSTER_STRENGTH,
           chargeStrength: GALAXY_CHARGE_STRENGTH,
           linkDistance: GALAXY_LINK_DISTANCE,
         }}
-        glowEnabled
-        edgesHidden
+        glowEnabled={settings.glow}
+        edgesHidden={!settings.showAllEdges}
         edgeRevealDepth={1}
+        relationForm={settings.relationForm}
+        mentionForm={settings.mentionForm}
         onNavigate={onNavigate}
       />
+      <GraphSettingsPanel value={settings} onChange={patch} />
     </div>
   );
 }
