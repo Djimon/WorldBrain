@@ -25,7 +25,23 @@ Skaliert auf **3.000–10.000 Nodes** (High-End-Worldbuilder mit Tausenden Eintr
 
 ## Decisions
 
-> ⚠️ **RENDERER GEÄNDERT (2026-07-23): `react-force-graph`/three.js → `PixiJS` (2D WebGL) + `d3-force`.**
+> 🔴 **RENDERER-ENTSCHEIDUNG WIEDER OFFEN (2026-08).** Die 2D-Pixi-Festlegung unten ist **provisorisch**, nicht
+> gesichert. Grund: die Spike-Spec (#320) war auf **eine einzige vorgewählte Lösung** verengt („validiere
+> `react-force-graph-3d` + Bloom") statt den Optionsraum zu erkunden — der Spike selbst war ok, seine **Spec**
+> war der Fehler. Als die eine Lösung (auf **GPU-loser VM**, also kaputten Bedingungen) zickte, wurde vorschnell
+> auf die nächste einzelne Antwort (2D-Pixi) umgeschwenkt und als Fakt zementiert. **Gegenbeleg:** ausgereifte
+> echte-3D-Graphen laufen in WebViews (`3d-force-graph`/three.js = obsidian-3d-graph; Dutzende MIT-Forks). **Nächster
+> Schritt: ein OFFENER Spike (#326, ersetzt #320).** Kandidaten (erkunden, nicht vorpicken; **nur frei-kommerziell**):
+> **`3d-force-graph`/three.js** (echtes 3D, MIT — Zielbild), **Pixi v8 + d3-force** (Inkumbent), optional **Sigma.js**.
+> **Ausgeschlossen (User): `cosmos.gl` und alle bezahlten/nicht-kommerziellen** (Cosmograph CC-BY-NC, Ogma, yFiles,
+> Graphistry). Frei zu verwerfen + neu zu recherchieren; gemessen bei **3k–10k auf echter GPU UND schwachem/VM-Ziel**
+> (inkl. WebGL-Fail: WebView2 v144+ hat den SwiftShader-Fallback entfernt → GPU-Detektion Pflicht). Erst dessen
+> Ergebnis fixiert D1/D2. **Volle verifizierte Landschaft: `planning/research/graph-view-landscape-2026-08.md`**
+> (4-Agenten-Deep-Research 2026-08). Bis dahin sind alle renderer-spezifischen Entscheidungen
+> (D1, D2, teils D6/D7/D10/D11/D12) **unter Vorbehalt**; die renderer-**neutralen** (Datenmodell, D3/D4/D5/D9)
+> bleiben gültig.
+
+> ⚠️ **(überholt, 2026-07-23) RENDERER GEÄNDERT: `react-force-graph`/three.js → `PixiJS` (2D WebGL) + `d3-force`.**
 > Grund: „echtes 3D" war die falsche Prämisse. Die Anforderungen (Pseudo-3D-Kugeln, optionales Leuchten,
 > Such-Ausblenden, Ego-Graph) sind allesamt **2D mit Node-Styling** — kein 3D-Freiflug, keine Kamera-Orbit,
 > kein Bloom-Post-Processing nötig, und der three.js-Weg brachte GPU-Fallback-Risiko + dauerhaften
@@ -37,8 +53,8 @@ Skaliert auf **3.000–10.000 Nodes** (High-End-Worldbuilder mit Tausenden Eintr
   kommerzielle Nutzung, keine Gebühren**. Pixi batcht tausende Sprites (3k–10k-Skala), `d3-force` liefert
   das Force-Layout (Positionen). **Pixi im WebGL-Modus, nicht WebGPU** (verschärft den Software-Fallback nicht).
   Kein „echtes 3D": kein three.js, keine Kamera-Orbit. Preis: Pan/Zoom, Hit-Testing, Kanten-Rendering und
-  die Ego/Such-Sichtbarkeit bauen wir selbst (Fleißarbeit, kein Forschungsrisiko; Referenz: Graphifys
-  D3-`graph.html` bzw. offener Obsidian-Graph-Klon). Neue Deps: **`pixi.js` (v8), `d3-force` (v3)** —
+  die Ego/Such-Sichtbarkeit bauen wir selbst (Fleißarbeit, kein Forschungsrisiko; Referenz-Rezept:
+  Obsidian-Graph = Pixi+d3-force, unser Vorbild für Look **und** Skala). Neue Deps: **`pixi.js` (v8), `d3-force` (v3)** —
   `pixi-filters` **nicht** nötig (Halo = Sprite, Default-AUS). **`react-force-graph-3d`/`three` entfallen.**
 - **D2 — 2D-Render + Pseudo-3D-Kugeln + Per-Node-Glow (kein Bloom).** Der „3D-Effekt" der Knoten ist ein
   **Radial-Gradient-Sprite** (Lichtpunkt oben-links = glänzende Kugel), **kein** echtes 3D, **NICHT** ein
@@ -75,6 +91,10 @@ Skaliert auf **3.000–10.000 Nodes** (High-End-Worldbuilder mit Tausenden Eintr
   gerendert werden (Kanten sind Pixis Schwachpunkt → gebündeltes Kanten-Rendering, nicht Linie-für-Linie).
   ⚠️ **Perf noch offen:** der Spike lief nur auf einem Software-Renderer (GPU-lose VM) → **Re-Run auf echter
   GPU** vor jeder Perf-Zusage.
+  - **Force-Sim im Web Worker (belegter Obsidian-Ansatz).** Obsidians Hochleistungs-Graph (Pixi v8 + d3-force,
+    10k@50fps) rechnet die Physik in einem **Web Worker**, der UI-Thread rendert nur. → `d3-force` in einen
+    Worker auslagern (Positionen per Message zurück an `GraphCanvas`), damit die Sim das UI nie blockiert.
+    Ziel-Referenz für „schafft 10k?". Quelle: Obsidian Advanced Graph View (Pixi v8 + d3-force im Worker).
 - **D11 — Ein Renderer für BEIDE Graphen.** Der globale Graph (S03) **und** der Ego-Graph (S07) laufen auf
   `PixiJS` + `d3-force` → einheitlicher Look. Danach **Cytoscape vollständig entfernt** (`cytoscape` +
   `@types/cytoscape` aus package.json, beide alten Komponenten gelöscht).
@@ -94,35 +114,62 @@ Skaliert auf **3.000–10.000 Nodes** (High-End-Worldbuilder mit Tausenden Eintr
   neuer `registerEntityTab({ id:'graph', … })` in `src/tab-wiring.tsx` (der alte `EntityGraph.tsx` ruft das
   **nie** auf → Dead-Wiring-Ursache). `TabDefinition.render` liefert `{ entityId, database, onNavigate }`.
 
+### Datenmodell-Upgrade (2026-08, User-Entscheidung: in M16 aufnehmen — renderer-unabhängig)
+
+Aus dem Deep-Research (`planning/research/graph-view-landscape-2026-08.md`): der **eigentliche Differenzierer ist
+das Datenmodell, nicht der Renderer**. LLM-Graph-Tools konvergieren auf SPO-Tripel + Provenienz + Community-Färbung
++ vorberechnete Positionen. **An unsere Realität angepasst** (unsere Kanten sind **user-authored**, nicht
+LLM-extrahiert — daher NICHT alles 1:1 übernehmen):
+
+- **D14 — Community-Detection → Färbung/Cluster (⚠️ `needs-decision`, GEPARKT).** Idee: Leiden/Louvain
+  (z.B. `graphology-communities-louvain`, MIT) → `community`-Id je Node, als **alternative Färbung** neben Typ-Farbe.
+  **Noch nicht committed** (User: „needs-decision") — offene Frage u.a.: ersetzt oder ergänzt sie die Typ-Farbe (D3)?
+  Kein Issue, bis entschieden. Der Spike (#326) kann die Färbung optional testweise zeigen, falls Daten vorliegen.
+- **D15 — Vorberechnete + gecachte Layout-Positionen (IN Scope, S10/#327).** Force-Layout **einmal** headless
+  (Worker) rechnen, Positionen je Node über Struktur-Hash cachen → Client rendert **sofort** ohne Kalt-Physik
+  (großer UX/Perf-Win bei 10k, renderer-unabhängig). Recompute bei Datenänderung. Ergänzt D10.
+- **Provenienz — schon vorhanden, NICHT neu erfinden.** Unser `kind: 'relation' | 'mention'` **ist** die
+  Provenienz/Quelle (explizit-typisiert vs. @-abgeleitet, D5). **Kein** `confidence`-Feld jetzt: unsere Relations
+  sind user-authored, ein Confidence-Wert wäre spekulativ (siehe „keine speculative Felder"). Reserviert für später,
+  falls je LLM-**inferred** Kanten dazukommen — dann erst `origin: 'user' | 'inferred'` + `confidence`.
+
 ## Datenmodell (gepinnt für S02)
 
-Die Force-Sim (`d3-force`) und der Pixi-Renderer teilen sich `{ nodes, links }` (renderer-neutral):
+Die Force-Sim (`d3-force`) und der Renderer teilen sich `{ nodes, links }` (renderer-neutral):
 ```
-GraphNode = { id: string; type: string; label: string; degree: number }
-GraphLink = { source: string; target: string; kind: 'relation' | 'mention' }
+GraphNode = { id: string; type: string; label: string; degree: number; community?: number }
+GraphLink = { source: string; target: string; kind: 'relation' | 'mention'; relation_type?: string }
 GraphModel = { nodes: GraphNode[]; links: GraphLink[] }
 ```
+- `relation_type?` — gesetzt für `kind:'relation'` (aus `getAllRelations`), ermöglicht **Kantenfarbe nach Relation-Typ** (D5-Erweiterung; im Spike #326 als Regler). `mention`-Kanten haben keinen. **S02 (#317) muss es mitliefern.**
+- `community?` — aus D14 (Louvain, S09), optionale Community-Färbung. Von S02 optional, sonst per S09-Pass ergänzt.
 
 ## Stories
 
 | Story | Issue | Kern (ein Verhalten) | hängt an |
 |---|---|---|---|
-| M16-S00 | #320 | ~~Spike react-force-graph-3d~~ **GELÖST/CLOSED:** Verdict = PixiJS+d3-force (2D), nicht react-force-graph-3d. Perf-Zahlen ungültig (Software-Renderer) → GPU-Re-Run offen | — |
-| M16-S01 | #288 | Mention-Kanten-Extraktion (`buildMentionEdges`, reine Fn) — unverändert | — |
+| M16-S00 | #320 | ~~Spike react-force-graph-3d~~ **GELÖST/CLOSED** (Spec zu eng, VM-Bedingungen) → ersetzt durch #326 | — |
+| **M16-S00b** | **#326** | **OFFENER Renderer-Spike** (`3d-force-graph` vs Pixi+d3 vs Sigma; kein cosmos/paid) bei 10k auf echter GPU + schwachem Ziel, inkl. WebGL-Fail. Fixiert D1/D2 (`p0`) | — |
+| M16-S01 | #288 | Mention-Kanten-Extraktion (`buildMentionEdges`, reine Fn) — **✅ fertig** (Fn + Test existieren) | — |
 | M16-S02 | #317 | Graph-Datenmodell `buildGraphModel` → `{nodes, links}` (Typ+degree, Relation/Mention, D9-Subsumption) | S01 |
-| M16-S03 | #324 | **Globaler Graph auf PixiJS + d3-force** + eigener Menüpunkt + **geteilter `GraphCanvas`-Core (D12)**: Node/Link-Styling (D5/D6) + Per-Node-Halo Default-AUS (D2) + Klick/Hover + LOD (D10) — *(#289 verworfen, war react-force-graph)* | S02 |
-| M16-S04 | #318 | **Galaxy-Modus:** Cluster-nach-Typ-Kraft in der eingebauten Force-Sim | S03 |
+| M16-S03 | #324 | **Globaler Graph auf dem #326-Renderer** + eigener Menüpunkt + **geteilter `GraphCanvas`-Core (D12)**: Styling (D5/D6) + Glow Default-AUS (D2) + Klick/Hover + LOD (D10) | S02, **S00b** |
+| M16-S04 | #318 | **Galaxy-Modus:** Cluster-nach-Typ-Kraft in der Force-Sim (auf dem #326-Renderer) | S03 |
 | M16-S05 | #290 | **Ring-Modus** ⚠️ `needs-design`: soll in **„Areas" unterteilt** werden (nicht bloße 2D-Typ-Projektion) — aktueller Body ist Platzhalter, Neu-Interview offen | S03 |
 | M16-S06 | #319 | Controls: Switcher Galaxy⇄Ring + Verlinkungen-Toggle + **Glow-Schalter** + Legende + **Start-Default-Wahl** | S04+S05 |
 | M16-S07 | #321 | **Ego-Graph auf `GraphCanvas`-Core** + in Entity-Detail verdrahten (voller Umfang: Tiefe 1/2/3 + Relations-Typ-Filter + inaktiv; BFS über relations+mentions); **Cytoscape komplett raus** — **bewusst zuletzt (`p2`)** | S03 (#324) |
+| M16-S09 | _(kein Issue)_ | **Community-Färbung** ⚠️ `needs-decision` (D14) — geparkt bis entschieden (ersetzt/ergänzt Typ-Farbe?) | S02 |
+| M16-S10 | #327 | **Vorberechnete + gecachte Layout-Positionen** (headless d3-force im Worker, Struktur-Hash-Cache, Sofort-Render) (D15) — `p1` | S02 (2D/3D folgt S00b) |
 | M16-S08 | _(offen)_ | Software-WebGL erkennen (`WEBGL_debug_renderer_info`) + dezente Warnung (Spike-Risiko). Aus S03 herausgehalten. | S03 |
 
 **Bau-Reihenfolge (rekursiv nach blocked-by aufgelöst; Ziel: Galaxy-Kernelement so früh wie möglich sichtbar, Ego zuletzt):**
 
-`S01 (#288, ✅ fertig)` → `S02 (#317)` → `S03 (#324) = Element steht, globaler Graph erstmals sichtbar` → **`S04 (#318) = Galaxy-Graph steht ◀ Kernelement sichtbar`** → `S05 (#290, Ring)` → `S06 (#319, Controls/Default)` → `S07 (#321, Ego — zuletzt)`. `S08` optional, jederzeit nach S03.
+**`S00b (#326, OFFENER Spike) = Renderer entschieden`** + `S01 (#288, ✅ fertig)` → `S02 (#317)` → `S03 (#324) = Element steht, globaler Graph erstmals sichtbar` → **`S04 (#318) = Galaxy-Graph steht ◀ Kernelement sichtbar`** → `S05 (#290, Ring)` → `S06 (#319, Controls/Default)` → `S07 (#321, Ego — zuletzt)`.
 
-- **Kürzester Pfad zum sichtbaren Galaxy:** S02 → S03 → S04. Kein Switcher (S06) nötig, um die Galaxie zu sehen: bis S05/S06 existieren, rendert `GraphCanvas` das laufende Force-Layout, und S04 macht daraus die Cluster-Galaxie.
-- **Ego (S07) hängt nur an S03**, wäre also technisch früh baubar — wird aber **per Wunsch ans Ende** gestellt (`p2`), damit zuerst das Kernelement/Galaxy steht.
+- **S00b (Spike) ist die Wurzel:** er fixiert D1/D2 (welcher Renderer), MUSS vor S03 stehen. S01+S02 (renderer-neutrale Daten) laufen parallel dazu.
+- **Kürzester Pfad zum sichtbaren Galaxy:** S00b → S02 → S03 → S04.
+- **Datenmodell-Stories (S09 Community-Färbung, S10 vorberechnete Positionen)** hängen an S02, renderer-unabhängig → jederzeit parallel nach S02 baubar; S10 profitiert vom Spike-Renderer (S00b).
+- **Ego (S07) hängt nur an S03**, wäre früh baubar — steht aber **per Wunsch ans Ende** (`p2`).
+- **S08** (Software-WebGL-Warnung) optional, jederzeit nach S03.
 
 ## Constraints (verbatim in jede betroffene Story-AC)
 
@@ -134,7 +181,7 @@ GraphModel = { nodes: GraphNode[]; links: GraphLink[] }
 
 ## Out Of Scope
 
-- Graph-Analytik (Zentralität, kürzeste Pfade, Community-Detection).
+- Graph-Analytik: **Community-Detection = `needs-decision`** (D14/S09, geparkt — nicht bestätigt in-scope). Weiterhin **out**: Zentralitäts-Maße (Betweenness etc.), kürzeste Pfade — später, falls überhaupt.
 - Editieren von Relations/Mentions aus dem Graphen (nur lesen + navigieren).
 - 3D-Freiflug — die 3D-Engine wird bewusst 2D genutzt (D2).
 - Der exakte 1:1-Nachbau eines bestimmten Referenzbildes — Look-Familie (Glow/Galaxy/Ring) ja, Pixel-Kopie nein.
@@ -145,6 +192,7 @@ GraphModel = { nodes: GraphNode[]; links: GraphLink[] }
   - Galaxy-Modus → [`_design/knowledgegraph-galaxy-view.png`](../../_design/knowledgegraph-galaxy-view.png) (Cluster-„Sonnensysteme" je Typ, Glow).
   - Ring-Modus → [`_design/knowledgegraph-ring-view.png`](../../_design/knowledgegraph-ring-view.png) (geordnete Segmente je Typ um eine Mitte).
   - Detail/Zoom → [`_design/knowledgegraph-layer-view.png`](../../_design/knowledgegraph-layer-view.png) (Hover-Kanten, Fokus auf einen Knoten).
-- Renderer: **PixiJS** (2D WebGL, MIT) + **d3-force** (Layout, ISC) — beide frei kommerziell. Referenz-Rezept: Obsidian-Graph (Pixi+d3-force) und Graphifys D3-`graph.html`. Spike-Verdict: `planning/research/graph-webgl-tauri-spike.md`. *(Zuvor react-force-graph-3d/three.js — verworfen 2026-07-23, siehe D1.)*
+- Renderer: **PixiJS** (2D WebGL, MIT) + **d3-force** (Layout, ISC) — beide frei kommerziell. Referenz-Rezept: Obsidian-Graph (Pixi+d3-force). Spike-Verdict: `planning/research/graph-webgl-tauri-spike.md`. *(Zuvor react-force-graph-3d/three.js — verworfen 2026-07-23, siehe D1.)*
+- **Landschaft der Vergleichs-Repos (verifiziert 2026-08 aus deren Code):** `claude-obsidian` baut **keinen** Renderer (Python; Screenshot = Obsidians nativer Graph = **Pixi/WebGL 2D**). `StellarGraph` = Obsidian-Plugin, **handgerolltes Canvas-2D + manuelle 3D-Projektion**, 0 Libs (skaliert nur auf Hunderte Nodes). `Graphify` (YC S26, Python) = **`vis-network@9.1.6`** (Canvas-2D + eingebaute Physik). → **Keiner nutzt echtes three.js-3D; der einzige, der auf 10k skaliert, ist Obsidian = unser Stack.**
 - Vorhandener (toter) Code: `GlobalEntityGraph.tsx`, `EntityGraph.tsx`; `PropertiesForm.tsx` (`parseMentions`), `relation-service.ts`.
 - Interview 2026-07-23 (Requirement Agent).

@@ -72,6 +72,7 @@ Four phases, separate sessions, linear.
 Interview until Epic splits into Stories. A good Story: one behavior, one owner area, explicit AC, testable, reviewable independently. Split when crossing architecture boundaries or mixing UI + persistence.
 
 Mandatory before AC:
+- Specify the HOW, not just the WHAT: pin mechanism, UI structure, interfaces, named components, controls, interactions, and how it's measured/compared — a Story that only states goals ("compare 3 renderers") drifts. Unclear HOW → ask, don't guess.
 - Read `ANTI_PATTERNS.md` — copy relevant constraints verbatim into AC
 - Propagate Epic Decisions into every affected Story AC verbatim (not "see Decisions")
 - Output-producing Stories: add AC "All user-supplied strings HTML-escaped; no raw template injection"
