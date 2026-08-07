@@ -380,9 +380,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
         const text = l.relation_type ?? 'Relation';
         const el = document.createElement('div');
         el.textContent = text;
-        el.style.cssText = 'position:absolute;transform:translate(-50%,-50%);padding:1px 6px;border-radius:8px;'
-          + 'font:11px system-ui,sans-serif;white-space:nowrap;color:#e8eef5;background:rgba(20,24,30,0.85);'
-          + 'border:1px solid rgba(255,255,255,0.18);pointer-events:none;';
+        el.className = 'gv-chip';
         chipLayer.appendChild(el);
         state.chips.push({ el, a, b });
       }
@@ -405,8 +403,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
         if (!pos) continue;
         const el = document.createElement('div');
         el.textContent = labelById.get(id) ?? id;
-        el.style.cssText = 'position:absolute;transform:translate(-50%,-140%);white-space:nowrap;'
-          + 'font:12px system-ui,sans-serif;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.9);pointer-events:none;';
+        el.className = 'gv-node-label';
         labelLayer.appendChild(el);
         state.labels.push({ el, pos });
       }

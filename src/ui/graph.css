@@ -1,19 +1,21 @@
 /* M16 graph view — overlay controls (search, layout toggle, detail panel,
-   settings gear, relation-type filter). The 3D canvas is always dark, so these
-   floating panels use a local dark palette (not the theme tokens) for contrast
-   regardless of light/dark mode. Scoped under .graph-view. */
+   settings gear, relation-type filter). The renderer is alpha:true, so the
+   canvas shows the page background -> follows light/dark. Overlays are
+   theme-aware: local --gv-* vars derive from the theme tokens (translucent
+   surface for the glass look via color-mix). Scoped under .graph-view. */
 .graph-view {
   width: 100%;
   height: 100%;
   position: relative;
-  --gv-panel-bg: rgba(20, 24, 30, 0.94);
-  --gv-panel-bg-strong: rgba(18, 22, 28, 0.96);
-  --gv-border: rgba(255, 255, 255, 0.15);
-  --gv-border-soft: rgba(255, 255, 255, 0.1);
-  --gv-border-faint: rgba(255, 255, 255, 0.06);
-  --gv-text: #e8eef5;
-  --gv-accent: #3a6ea5;
-  --gv-danger: #f0716a;
+  --gv-panel-bg: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  --gv-panel-bg-strong: color-mix(in srgb, var(--color-surface) 96%, transparent);
+  --gv-border: var(--color-border);
+  --gv-border-soft: color-mix(in srgb, var(--color-border) 60%, transparent);
+  --gv-border-faint: color-mix(in srgb, var(--color-border) 30%, transparent);
+  --gv-text: var(--color-text);
+  --gv-accent: var(--color-accent);
+  --gv-on-accent: #fff;
+  --gv-danger: var(--color-status-failure);
 }
 
 /* segmented button bars (color mode, ring fill) */
@@ -22,7 +24,7 @@
   flex: 1; padding: 5px 6px; border-radius: 6px; cursor: pointer;
   color: var(--gv-text); border: 1px solid var(--gv-border); background: transparent; font-size: 13px;
 }
-.gv-segbar__btn[aria-pressed='true'] { background: var(--gv-accent); }
+.gv-segbar__btn[aria-pressed='true'] { background: var(--gv-accent); color: var(--gv-on-accent); }
 
 /* layout toggle (top-right, borderless buttons inside a framed pill) */
 .gv-layout-toggle {
@@ -33,7 +35,7 @@
   padding: 5px 12px; border-radius: 6px; cursor: pointer; color: var(--gv-text);
   font-size: 13px; border: none; background: transparent;
 }
-.gv-layout-toggle__btn[aria-pressed='true'] { background: var(--gv-accent); }
+.gv-layout-toggle__btn[aria-pressed='true'] { background: var(--gv-accent); color: var(--gv-on-accent); }
 
 /* name search (top-left) */
 .gv-search { position: absolute; top: 12px; left: 12px; width: 260px; z-index: 6; }
@@ -68,7 +70,7 @@
   padding: 4px 10px; border-radius: 6px; cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: var(--gv-text);
 }
-.gv-btn--primary { background: var(--gv-accent); color: #fff; }
+.gv-btn--primary { background: var(--gv-accent); color: var(--gv-on-accent); }
 
 /* settings gear + panel (bottom-right) */
 .gv-gear-wrap {
@@ -110,3 +112,16 @@
 }
 .gv-check--inline { display: flex; gap: 6px; align-items: center; font-size: 12px; }
 .gv-muted { opacity: 0.6; font-size: 12px; }
+
+/* projected overlays drawn by GraphCanvas (three.js layer). Positioning
+   (left/top/display) is set per frame in JS; visual styling lives here so it
+   follows the theme. */
+.gv-chip {
+  position: absolute; transform: translate(-50%, -50%); padding: 1px 6px; border-radius: 8px;
+  font: 11px system-ui, sans-serif; white-space: nowrap; pointer-events: none;
+  color: var(--gv-text); background: var(--gv-panel-bg); border: 1px solid var(--gv-border-soft);
+}
+.gv-node-label {
+  position: absolute; transform: translate(-50%, -140%); white-space: nowrap; pointer-events: none;
+  font: 12px system-ui, sans-serif; color: var(--gv-text); text-shadow: 0 1px 3px var(--color-background);
+}
