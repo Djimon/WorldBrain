@@ -51,20 +51,6 @@ export function GraphSettingsPanel({ value, onChange, theme }: GraphSettingsPane
         <div className="gv-panel" role="group" aria-label={t('graphSettings', 'Graph-Einstellungen')}>
           <strong>{t('graphSettings', 'Graph-Einstellungen')}</strong>
 
-          <div className="gv-field">
-            <span className="gv-field__label">{t('graphColorMode', 'Farb-Modus')}</span>
-            <div className="gv-segbar">
-              {(['entity', 'cluster'] as const).map((m) => (
-                <button
-                  key={m}
-                  className="gv-segbar__btn"
-                  onClick={() => onChange({ colorMode: m })}
-                  aria-pressed={value.colorMode === m}
-                >{m === 'entity' ? t('graphColorEntity', 'nach Entity') : t('graphColorCluster', 'nach Cluster')}</button>
-              ))}
-            </div>
-          </div>
-
           <label className="gv-check">
             <input type="checkbox" checked={value.glow} onChange={(e) => onChange({ glow: e.target.checked })} />
             {t('graphGlow', 'Glow')}

@@ -38,14 +38,6 @@ describe('#324: graph settings gear panel', () => {
     expect(onChange).toHaveBeenCalledWith({ glow: true });
   });
 
-  it('choosing color mode "nach Cluster" reports onChange({ colorMode: "cluster" })', () => {
-    const onChange = vi.fn();
-    render(<GraphSettingsPanel value={BASE} onChange={onChange} theme="dark" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Graph-Einstellungen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'nach Cluster' }));
-    expect(onChange).toHaveBeenCalledWith({ colorMode: 'cluster' });
-  });
-
   it('changing mention form reports onChange({ mentionForm })', () => {
     const onChange = vi.fn();
     render(<GraphSettingsPanel value={BASE} onChange={onChange} theme="dark" />);
