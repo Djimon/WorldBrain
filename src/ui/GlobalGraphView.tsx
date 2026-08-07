@@ -64,8 +64,8 @@ const DEFAULT_SETTINGS: GraphSettings = {
   mentionForm: 'solid',
   relationForm: 'solid',
   hiddenRelationTypes: [],
-  ringFill: 'organic',
-  ringSpacing: 1,
+  ringFill: 'ordered',
+  ringSpacing: 0.5,
 };
 
 function hexToNum(hex: string): number {
@@ -321,7 +321,7 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
               aria-pressed={layoutMode === m}
               style={{
                 padding: '5px 12px', borderRadius: 6, cursor: 'pointer', color: '#e8eef5', fontSize: 13,
-                border: '1px solid rgba(255,255,255,0.12)',
+                border: 'none',
                 background: layoutMode === m ? '#3a6ea5' : 'transparent',
               }}
             >{m === 'galaxy' ? t('graphLayoutGalaxy', 'Galaxy') : t('graphLayoutDisc', 'Disc')}</button>

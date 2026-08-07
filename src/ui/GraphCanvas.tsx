@@ -458,7 +458,8 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       state.updateLabels();
       if (!id) return;
       const local = worldById.get(id);
-      if (local) {
+      // ring/disc is a flat overview -> selecting must not zoom the camera.
+      if (local && p.current.layout?.mode !== 'ring') {
         const pos = local.clone().applyMatrix4(contentGroup.matrixWorld);
         const dist = camera.position.distanceTo(pos);
         const newDist = Math.max(L.fit * 0.15, dist * 0.55); // zoom in a bit
