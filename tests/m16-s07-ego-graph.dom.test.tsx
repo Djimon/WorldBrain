@@ -1,16 +1,16 @@
-// M16-S07 (#321): Ego-Graph tab shows only the focus entity + its N-hop
-// neighborhood (a BFS subgraph), rendered through the shared GraphCanvas.
-// GraphCanvas is stubbed (no WebGL in jsdom) — we assert the SUBGRAPH the tab
-// hands it. AP-005 ESM import; AP-008 anchored RTL.
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+// M16-S07 (#321): Ego-Graph = the SAME GlobalGraphView, only filtered to the
+// focus entity + its 1-hop neighborhood via `egoFocusId`, with edges + bloom
+// forced on. No ego-specific renderer. GraphCanvas is stubbed (no WebGL in
+// jsdom) — we assert the subgraph + the forced overrides it receives.
+import { render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DatabaseLike } from '../src/services/entity-service';
 import type { GraphNode } from '../src/services/graph-model';
 
-const gc = vi.hoisted(() => ({ lastNodes: [] as GraphNode[] }));
+const gc = vi.hoisted(() => ({ props: null as null | { nodes: GraphNode[]; edgesHidden?: boolean; glowEnabled?: boolean } }));
 vi.mock('../src/ui/GraphCanvas', () => ({
-  GraphCanvas: (props: { nodes: GraphNode[] }) => {
-    gc.lastNodes = props.nodes;
+  GraphCanvas: (props: { nodes: GraphNode[]; edgesHidden?: boolean; glowEnabled?: boolean }) => {
+    gc.props = props;
     return <div data-testid="gc" data-nodes={props.nodes.length} />;
   },
 }));
@@ -21,7 +21,7 @@ vi.mock('../src/services/relation-service', () => ({
 }));
 vi.mock('../src/services/mention-graph', () => ({ buildMentionEdges: vi.fn(() => []) }));
 
-import { EntityGraphTab } from '../src/ui/EntityGraphTab';
+import { GlobalGraphView } from '../src/ui/GlobalGraphView';
 
 const ENTITIES = [
   { id: 'a', type: 'Character', title: 'Ada', summary: '', properties_json: '{}', body_json: '{}' },
@@ -32,26 +32,21 @@ function makeDb(): DatabaseLike {
   return { select: vi.fn(async () => ENTITIES), execute: vi.fn(async () => {}) } as unknown as DatabaseLike;
 }
 
-afterEach(() => { gc.lastNodes = []; vi.clearAllMocks(); });
+afterEach(() => { gc.props = null; vi.clearAllMocks(); });
 
-describe('#321: Ego-Graph tab', () => {
-  it('renders only the focus + its neighbors (isolated nodes excluded)', async () => {
-    render(<EntityGraphTab entityId="a" database={makeDb()} onNavigate={vi.fn()} />);
-    await waitFor(() => expect(screen.getByTestId('gc')).toBeInTheDocument());
-    // a (focus) + b (neighbor); c is isolated -> excluded
-    expect(screen.getByTestId('gc').getAttribute('data-nodes')).toBe('2');
-    const ids = gc.lastNodes.map((n) => n.id).sort();
-    expect(ids).toEqual(['a', 'b']);
+describe('#321: Ego mode of GlobalGraphView (egoFocusId)', () => {
+  it('renders only the focus + neighbors, with edges + bloom forced on', async () => {
+    render(<GlobalGraphView database={makeDb()} onNavigate={vi.fn()} egoFocusId="a" />);
+    await waitFor(() => expect(gc.props).not.toBeNull());
+    const p = gc.props!;
+    expect(p.nodes.map((n) => n.id).sort()).toEqual(['a', 'b']); // c isolated -> excluded
+    expect(p.edgesHidden).toBe(false); // edges always on in ego
+    expect(p.glowEnabled).toBe(true);  // bloom always on in ego
   });
 
-  it('offers depth controls (1/2/3)', async () => {
-    render(<EntityGraphTab entityId="a" database={makeDb()} onNavigate={vi.fn()} />);
-    await waitFor(() => expect(screen.getByTestId('gc')).toBeInTheDocument());
-    for (const d of ['1', '2', '3']) {
-      expect(screen.getByRole('button', { name: d })).toBeInTheDocument();
-    }
-    fireEvent.click(screen.getByRole('button', { name: '2' }));
-    // still contains the focus after depth change
-    await waitFor(() => expect(gc.lastNodes.map((n) => n.id)).toContain('a'));
+  it('full mode (no egoFocusId) renders all nodes', async () => {
+    render(<GlobalGraphView database={makeDb()} onNavigate={vi.fn()} />);
+    await waitFor(() => expect(gc.props).not.toBeNull());
+    expect(gc.props!.nodes.length).toBe(3);
   });
 });

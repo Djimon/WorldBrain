@@ -2,7 +2,7 @@ import React from 'react';
 import { registerEntityTab } from './ui/EntityDetailView';
 import { RelationsTab } from './ui/RelationsTab';
 import { BacklinksTab } from './ui/BacklinksTab';
-import { EntityGraphTab } from './ui/EntityGraphTab';
+import { GlobalGraphView } from './ui/GlobalGraphView';
 import type { DatabaseLike } from './services/entity-service';
 
 registerEntityTab({
@@ -19,9 +19,11 @@ registerEntityTab({
     database ? <BacklinksTab entityId={entityId} database={database} onNavigate={onNavigate} /> : null,
 });
 
+// Ego-Graph = the SAME GlobalGraphView + user settings, only filtered to the
+// focus entity's neighborhood (egoFocusId). No ego-specific renderer code.
 registerEntityTab({
   id: 'graph',
   label: 'Graph',
   render: ({ entityId, database, onNavigate }: { entityId: string; database?: DatabaseLike; onNavigate?: (id: string) => void }) =>
-    database ? <EntityGraphTab entityId={entityId} database={database} onNavigate={onNavigate} /> : null,
+    database ? <GlobalGraphView database={database} onNavigate={onNavigate ?? (() => {})} egoFocusId={entityId} /> : null,
 });

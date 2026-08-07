@@ -26,6 +26,10 @@ import { EntityDetailView } from './EntityDetailView';
 export interface GlobalGraphViewProps {
   database: DatabaseLike;
   onNavigate: (id: string) => void;
+  // Ego mode: render only the focus entity + its 1-hop neighborhood. Uses the
+  // exact same view + the user's saved settings; only edges + bloom are forced
+  // on. Undefined = full global graph.
+  egoFocusId?: string;
 }
 
 interface EntityRow {
@@ -74,7 +78,7 @@ function loadSettings(): GraphSettings {
   return DEFAULT_SETTINGS;
 }
 
-export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps): React.ReactElement {
+export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGraphViewProps): React.ReactElement {
   const { t } = useTranslation('nav');
   const [model, setModel] = useState<GraphModel | null>(null);
   // Click a node -> preview in a side panel (stay in the graph), NOT a full
@@ -101,18 +105,35 @@ export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps):
     return () => { cancelled = true; };
   }, [database]);
 
-  // 3D layout computed ONCE per model (also feeds cluster coloring).
-  const positions = useMemo<GraphPosition[]>(() => {
-    if (!model) return [];
-    return computeGalaxyLayout3D(model.nodes, model.links).map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z }));
-  }, [model]);
+  // Ego mode: reduce the model to the focus + its 1-hop neighborhood. Full
+  // mode: the whole model. Everything downstream is identical.
+  const base = useMemo<{ nodes: GraphNode[]; links: GraphLink[] }>(() => {
+    if (!model) return { nodes: [], links: [] };
+    if (!egoFocusId) return { nodes: model.nodes, links: model.links };
+    const adj = new Map<string, Set<string>>();
+    for (const l of model.links) {
+      (adj.get(l.source) ?? adj.set(l.source, new Set()).get(l.source)!).add(l.target);
+      (adj.get(l.target) ?? adj.set(l.target, new Set()).get(l.target)!).add(l.source);
+    }
+    const seen = new Set<string>([egoFocusId, ...(adj.get(egoFocusId) ?? [])]);
+    return {
+      nodes: model.nodes.filter((n) => seen.has(n.id)),
+      links: model.links.filter((l) => seen.has(l.source) && seen.has(l.target)),
+    };
+  }, [model, egoFocusId]);
+
+  // 3D layout computed ONCE per (sub)model (also feeds cluster coloring).
+  const positions = useMemo<GraphPosition[]>(
+    () => computeGalaxyLayout3D(base.nodes, base.links).map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z })),
+    [base],
+  );
   const posById = useMemo(() => new Map(positions.map((p) => [p.id, p])), [positions]);
 
   // Degree from the VISIBLE links (mentions on -> counted, off -> relations
   // only), so toggling "Mentions zeigen" rescales the spheres live.
   const links = useMemo<GraphLink[]>(
-    () => (model ? (settings.showMentions ? model.links : model.links.filter((l) => l.kind !== 'mention')) : []),
-    [model, settings.showMentions],
+    () => (settings.showMentions ? base.links : base.links.filter((l) => l.kind !== 'mention')),
+    [base, settings.showMentions],
   );
   const degreeByVisible = useMemo(() => {
     const m = new Map<string, number>();
@@ -155,7 +176,7 @@ export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps):
   return (
     <div className="graph-view" style={{ width: '100%', height: '100%', position: 'relative' }}>
       <GraphCanvas
-        nodes={model.nodes}
+        nodes={base.nodes}
         links={links}
         positions={positions}
         nodeStyle={nodeStyle}
@@ -166,8 +187,8 @@ export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps):
           chargeStrength: GALAXY_CHARGE_STRENGTH,
           linkDistance: GALAXY_LINK_DISTANCE,
         }}
-        glowEnabled={settings.glow}
-        edgesHidden={!settings.showAllEdges}
+        glowEnabled={egoFocusId ? true : settings.glow}
+        edgesHidden={egoFocusId ? false : !settings.showAllEdges}
         edgeRevealDepth={1}
         relationForm={settings.relationForm}
         mentionForm={settings.mentionForm}
