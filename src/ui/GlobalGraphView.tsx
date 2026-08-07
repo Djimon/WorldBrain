@@ -254,6 +254,7 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
           chargeStrength: GALAXY_CHARGE_STRENGTH,
           linkDistance: GALAXY_LINK_DISTANCE,
           spreadScale: layoutMode === 'ring' ? ringSpread : undefined,
+          fill: layoutMode === 'ring' ? settings.ringFill : undefined,
         }}
         glowEnabled={egoFocusId ? true : settings.glow}
         edgesHidden={egoFocusId ? false : !settings.showAllEdges}
