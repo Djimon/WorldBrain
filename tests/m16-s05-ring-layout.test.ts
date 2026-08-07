@@ -99,6 +99,15 @@ describe('#290: fixed, bounded positions (no live sim drift)', () => {
     }
   });
 
+  it('fills the wedge radially — spread across the band, not piled on the rim', () => {
+    const nodes = nodesOfType('A', 40);
+    const R = 500;
+    const pos = computeRingLayout(nodes, [], { radius: R, innerRatio: 0.15 });
+    const radii = [...pos.values()].map((p) => Math.hypot(p.x, p.y));
+    expect(Math.max(...radii)).toBeGreaterThan(0.6 * R); // reaches the outer edge
+    expect(Math.min(...radii)).toBeLessThan(0.4 * R);    // ...and the inner band, not a thin ring
+  });
+
   it('a single type fills the whole circle (one sector, 2π wide)', () => {
     const nodes = nodesOfType('A', 5);
     const sectors = computeRingSectors(nodes, []);
