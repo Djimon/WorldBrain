@@ -5,6 +5,12 @@
 // die Cluster-Kraft kommt additiv dazu.
 import { forceCenter, forceLink, forceManyBody, forceSimulation } from 'd3-force';
 import type { SimulationLinkDatum, SimulationNodeDatum } from 'd3-force';
+import {
+  forceCenter as forceCenter3d,
+  forceLink as forceLink3d,
+  forceManyBody as forceManyBody3d,
+  forceSimulation as forceSimulation3d,
+} from 'd3-force-3d';
 import type { GraphLink, GraphNode } from './graph-model';
 
 export interface PositionedNode extends GraphNode {
@@ -113,4 +119,74 @@ export function computeGalaxyLayout(
   for (let i = 0; i < ticks; i++) simulation.tick();
 
   return simNodes.map((n) => ({ ...n, x: n.x ?? 0, y: n.y ?? 0 }));
+}
+
+// ── 3D variant (M16-S03, Renderer = three.js, Spike #326) ────────────────────
+// Same idea in 3D via d3-force-3d: real volumetric galaxy (x/y/z), consumed by
+// the three.js GraphCanvas. The 2D fns above stay for the S04 tests + any 2D
+// use. Worker offloading of this is a later story (S10 #327).
+
+export interface PositionedNode3D extends GraphNode {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface Sim3DNode extends GraphNode {
+  x: number; y: number; z: number;
+  vx: number; vy: number; vz: number;
+}
+
+// 3D analogue of forceCluster: pulls each node toward its type-centroid in x/y/z.
+export function forceCluster3D(nodes: GraphNode[], strength = DEFAULT_CLUSTER_STRENGTH): (alpha: number) => void {
+  const simNodes = nodes as Sim3DNode[];
+  return (alpha: number) => {
+    const centroids = new Map<string, { x: number; y: number; z: number; count: number }>();
+    for (const n of simNodes) {
+      const c = centroids.get(n.type) ?? { x: 0, y: 0, z: 0, count: 0 };
+      c.x += n.x ?? 0; c.y += n.y ?? 0; c.z += n.z ?? 0; c.count += 1;
+      centroids.set(n.type, c);
+    }
+    for (const c of centroids.values()) { c.x /= c.count; c.y /= c.count; c.z /= c.count; }
+    for (const n of simNodes) {
+      const c = centroids.get(n.type)!;
+      n.vx += (c.x - n.x) * strength * alpha;
+      n.vy += (c.y - n.y) * strength * alpha;
+      n.vz += (c.z - n.z) * strength * alpha;
+    }
+  };
+}
+
+export function computeGalaxyLayout3D(
+  nodes: GraphNode[],
+  links: GraphLink[],
+  options: GalaxyLayoutOptions = {},
+): PositionedNode3D[] {
+  const {
+    clusterStrength = DEFAULT_CLUSTER_STRENGTH,
+    ticks = DEFAULT_TICKS,
+    seed = DEFAULT_SEED,
+    chargeStrength = DEFAULT_CHARGE_STRENGTH,
+    linkDistance = DEFAULT_LINK_DISTANCE,
+  } = options;
+  const rng = mulberry32(seed);
+  const simNodes: Sim3DNode[] = nodes.map((n) => ({
+    ...n,
+    x: (rng() - 0.5) * 400,
+    y: (rng() - 0.5) * 400,
+    z: (rng() - 0.5) * 400,
+    vx: 0, vy: 0, vz: 0,
+  }));
+  const simLinks = links.map((l) => ({ source: l.source, target: l.target }));
+
+  const simulation = forceSimulation3d(simNodes, 3)
+    .force('charge', forceManyBody3d().strength(chargeStrength))
+    .force('link', forceLink3d(simLinks).id((d) => d.id as string).distance(linkDistance))
+    .force('center', forceCenter3d())
+    .force('cluster', forceCluster3D(simNodes, clusterStrength))
+    .stop();
+
+  simulation.tick(ticks);
+
+  return simNodes.map((n) => ({ ...n, x: n.x ?? 0, y: n.y ?? 0, z: n.z ?? 0 }));
 }

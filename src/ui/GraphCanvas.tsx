@@ -1,39 +1,36 @@
-// M16-S03 (#324): the ONE renderer core for every graph view (D12, hard
-// requirement) — global force graph (this story), Galaxy (S04 #318), Ring
-// (S05 #290), Ego (S07 #321) are all THIS component with a different
-// `layout` config and a different `{nodes, links}` slice. No graph "kind"
-// hardcoded here (no global-vs-ego branching); the caller decides what to
-// render, this component only draws it.
+// M16-S03 (#324) — the ONE renderer core for every graph view (D12): global
+// (this story), Galaxy (S04), Ring (S05), Ego (S07) are all THIS component
+// with a different {nodes, links} slice + layout config. No graph "kind"
+// branches here; the caller decides what to render.
 //
-// Implementation contract (Pixi v8, WebGL — not WebGPU):
-//   const app = new Application();
-//   await app.init({ width, height, backgroundAlpha: 0, antialias: true });
-//   mountEl.appendChild(app.canvas);
-//   // one bundled Graphics/Mesh batch for ALL edges (never one display
-//   // object per line — Pixi's weak point at 3-5x nodes edge count).
-//   // one Container (or Sprite) per node, eventMode='static',
-//   // .on('pointerdown', () => onNavigate(node.id))
-//   // .on('pointerover'/'pointerout', ...) for hover-highlight.
-//   // d3-force pre-computed and stopped (alpha decays to 0) per D10 — never
-//   // simulated live once the layout has settled.
-//   // on unmount: app.destroy({ removeView: true }).
+// Renderer = three.js (raw), decided in the open bench #326 (real GPU-3D beat
+// Pixi/Sigma on look). NOT react-force-graph-3d (Kapsule deferred-digest
+// workarounds, see #320). Recipe ported from src/spikes/graph-bench/adapters/
+// threeAdapter.ts:
+//   - nodes: ONE InstancedMesh (per-instance color+scale) -> few draw calls
+//   - edges: TWO LineSegments (relation/mention)
+//   - camera headlight, OrbitControls (rotate/pan/zoom)
+//   - Bloom (UnrealBloomPass + sRGB-decode) ONLY when glowEnabled (D2, default off)
+//   - click/hover via Raycaster on the InstancedMesh
+// Layout is 3D (computeGalaxyLayout3D); worker offload is a later story (S10).
 import { useEffect, useRef } from 'react';
-import { Application, Graphics } from 'pixi.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import type { GraphLink, GraphNode } from '../services/graph-model';
 import type { EdgeVisualStyle, NodeVisualStyle } from '../services/graph-style';
-import { computeGalaxyLayout } from '../services/galaxy-layout';
+import { computeGalaxyLayout3D } from '../services/galaxy-layout';
 
 export interface GraphLayoutConfig {
   mode: 'force' | 'galaxy' | 'ring';
-  // S04 (#318): additive cluster-by-type force strength (galaxy only).
   clusterStrength?: number;
-  // d3-force charge (repulsion). Default in canvas: -200 (good visual spread).
-  // The galaxy-layout service default (-60) is kept for backward-compat tests.
   chargeStrength?: number;
-  // d3-force link spring rest length. Canvas default: 80.
   linkDistance?: number;
-  // Visual spread multiplier applied AFTER position normalization — >1 zooms
-  // in (nodes spread out, some may clip), <1 zooms out (more whitespace).
+  // Visual spread multiplier applied after position normalization (>1 spreads out).
   spreadScale?: number;
 }
 
@@ -43,35 +40,31 @@ export interface GraphCanvasProps {
   nodeStyle: (node: GraphNode) => NodeVisualStyle;
   edgeStyle: (link: GraphLink) => EdgeVisualStyle;
   layout?: GraphLayoutConfig;
-  // D2: per-node glow halo — OFF by default; on/off via S06 (#319).
+  // D2: per-node bloom glow — OFF by default; on/off via S06.
   glowEnabled?: boolean;
-  // Uniform multiplier on node radius (0.5 = half size, 2.0 = double). Default 1.
+  // Uniform multiplier on node radius. Default 1.
   nodeSizeScale?: number;
   onNavigate: (id: string) => void;
   onHoverNode?: (id: string | null) => void;
 }
 
-const DEFAULT_GALAXY_CLUSTER_STRENGTH = 0.3;
-// Better visual defaults for GraphCanvas — do NOT change galaxy-layout.ts
-// defaults (those are pinned by the S04 tests).
-const DEFAULT_CHARGE_STRENGTH = -200;
-const DEFAULT_LINK_DISTANCE = 80;
-const CANVAS_PADDING = 60;
-const HALO_RADIUS_FACTOR = 1.8;
-const HALO_ALPHA = 0.35;
-const DIM_ALPHA = 0.25;
-const FALLBACK_WIDTH = 800;
-const FALLBACK_HEIGHT = 600;
+const FIT = 600; // target half-extent in world units
+const WORLD_RADIUS_SCALE = 0.6; // maps style radius [6..22] into world units
+const DIM_FACTOR = 0.22; // non-neighbor darkening on hover
+const FALLBACK_W = 800;
+const FALLBACK_H = 600;
 
-// D2: pseudo-3D sphere (Radial-Gradient-Approximation via layered circles).
-// Base circle in node color + top-left highlight + bright core = "shiny ball"
-// look without a real radial gradient (PixiJS v8 Graphics has no native
-// radial gradient; layered-circle approach is the PixiJS-idiomatic way).
-function drawSphere(g: Graphics, radius: number, color: number): void {
-  g.circle(0, 0, radius).fill(color);
-  g.circle(-radius * 0.28, -radius * 0.30, radius * 0.45).fill(0xffffff, 0.45);
-  g.circle(-radius * 0.33, -radius * 0.36, radius * 0.18).fill(0xffffff, 0.80);
-}
+// sRGB->linear decode so Bloom runs in linear light and OutputPass's re-encode
+// is not a double-encode (the grey-haze bug — see spike memory).
+const SRGB_DECODE = {
+  uniforms: { tDiffuse: { value: null as THREE.Texture | null } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+  fragmentShader: `
+    varying vec2 vUv; uniform sampler2D tDiffuse;
+    vec3 s2l(vec3 c){ return mix(c/12.92, pow((c+0.055)/1.055,vec3(2.4)), step(0.04045,c)); }
+    void main(){ vec4 t=texture2D(tDiffuse,vUv); gl_FragColor=vec4(s2l(t.rgb),t.a); }
+  `,
+};
 
 export function GraphCanvas({
   nodes, links, nodeStyle, edgeStyle, layout, glowEnabled, nodeSizeScale, onNavigate, onHoverNode,
@@ -82,137 +75,185 @@ export function GraphCanvas({
     const mountEl = mountRef.current;
     if (!mountEl) return;
 
-    let destroyed = false;
-    let appReady = false;
-    const app = new Application();
-    const width = mountEl.clientWidth || FALLBACK_WIDTH;
-    const height = mountEl.clientHeight || FALLBACK_HEIGHT;
-
-    const clusterStrength = layout?.mode === 'galaxy'
-      ? (layout.clusterStrength ?? DEFAULT_GALAXY_CLUSTER_STRENGTH)
-      : 0;
-    const chargeStrength = layout?.chargeStrength ?? DEFAULT_CHARGE_STRENGTH;
-    const linkDistance = layout?.linkDistance ?? DEFAULT_LINK_DISTANCE;
-    const spreadScale = layout?.spreadScale ?? 1.0;
+    const width = mountEl.clientWidth || FALLBACK_W;
+    const height = mountEl.clientHeight || FALLBACK_H;
     const sizeScale = nodeSizeScale ?? 1.0;
+    const spreadScale = layout?.spreadScale ?? 1.0;
 
-    const positioned = computeGalaxyLayout(nodes, links, {
-      clusterStrength,
-      chargeStrength,
-      linkDistance,
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, width / height, 1, 20000);
+    camera.position.set(0, 0, FIT * 2.4);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(width, height);
+    mountEl.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    const headlight = new THREE.DirectionalLight(0xffffff, 1.4);
+    headlight.position.set(-0.4, 0.4, 1); // horizontal -10deg / vertical 10deg feel
+    camera.add(headlight);
+    camera.add(headlight.target);
+    scene.add(camera);
+
+    // 3D layout + normalize into a centered cube of half-extent FIT*spread.
+    const positioned = computeGalaxyLayout3D(nodes, links, {
+      clusterStrength: layout?.clusterStrength,
+      chargeStrength: layout?.chargeStrength,
+      linkDistance: layout?.linkDistance,
     });
-
-    // Normalize physics positions so the graph fills the canvas evenly,
-    // independent of the raw force-sim coordinate scale.
-    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity, zMin = Infinity, zMax = -Infinity;
     for (const p of positioned) {
-      if (p.x < xMin) xMin = p.x;
-      if (p.x > xMax) xMax = p.x;
-      if (p.y < yMin) yMin = p.y;
-      if (p.y > yMax) yMax = p.y;
+      if (p.x < xMin) xMin = p.x; if (p.x > xMax) xMax = p.x;
+      if (p.y < yMin) yMin = p.y; if (p.y > yMax) yMax = p.y;
+      if (p.z < zMin) zMin = p.z; if (p.z > zMax) zMax = p.z;
     }
-    const xRange = xMax - xMin || 1;
-    const yRange = yMax - yMin || 1;
-    const normScale =
-      Math.min((width - 2 * CANVAS_PADDING) / xRange, (height - 2 * CANVAS_PADDING) / yRange) *
-      spreadScale;
-    const dataCx = (xMin + xMax) / 2;
-    const dataCy = (yMin + yMax) / 2;
+    const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2, cz = (zMin + zMax) / 2;
+    const extent = Math.max(xMax - xMin, yMax - yMin, zMax - zMin) || 1;
+    const norm = ((2 * FIT) / extent) * spreadScale;
+    const worldById = new Map<string, THREE.Vector3>();
+    for (const p of positioned) {
+      worldById.set(p.id, new THREE.Vector3((p.x - cx) * norm, (p.y - cy) * norm, (p.z - cz) * norm));
+    }
 
-    // Screen coordinates for each node (center of canvas = (width/2, height/2)).
-    const screenById = new Map(
-      positioned.map((n) => [
-        n.id,
-        {
-          sx: (n.x - dataCx) * normScale + width / 2,
-          sy: (n.y - dataCy) * normScale + height / 2,
-        },
-      ]),
-    );
-
+    // adjacency (for hover dim)
     const neighbors = new Map<string, Set<string>>();
     for (const l of links) {
-      if (!neighbors.has(l.source)) neighbors.set(l.source, new Set());
-      if (!neighbors.has(l.target)) neighbors.set(l.target, new Set());
-      neighbors.get(l.source)!.add(l.target);
-      neighbors.get(l.target)!.add(l.source);
+      (neighbors.get(l.source) ?? neighbors.set(l.source, new Set()).get(l.source)!).add(l.target);
+      (neighbors.get(l.target) ?? neighbors.set(l.target, new Set()).get(l.target)!).add(l.source);
     }
 
-    const nodeGraphicsById = new Map<string, Graphics>();
-
-    function dimForHover(hoveredId: string) {
-      const keep = neighbors.get(hoveredId) ?? new Set<string>();
-      for (const [id, gfx] of nodeGraphicsById) {
-        gfx.alpha = (id === hoveredId || keep.has(id)) ? 1 : DIM_ALPHA;
-      }
-    }
-    function clearHoverDim() {
-      for (const gfx of nodeGraphicsById.values()) gfx.alpha = 1;
-    }
-
-    void app.init({ width, height, backgroundAlpha: 0, antialias: true }).then(() => {
-      if (destroyed) { app.destroy({ removeView: true }, true); return; }
-      appReady = true;
-      mountEl.appendChild(app.canvas);
-
-      for (const node of nodes) {
-        const screen = screenById.get(node.id);
-        if (!screen) continue;
-        const style = nodeStyle(node);
-        const radius = style.radius * sizeScale;
-
-        // D2: per-node glow halo — soft additive circle behind the sphere.
-        if (glowEnabled) {
-          const halo = new Graphics();
-          halo.circle(0, 0, radius * HALO_RADIUS_FACTOR).fill(style.color, HALO_ALPHA);
-          halo.x = screen.sx;
-          halo.y = screen.sy;
-          app.stage.addChild(halo);
-        }
-
-        const g = new Graphics();
-
-        // D5: bundled edge rendering — edges drawn onto the node's own
-        // Graphics object (relative coords from node center to target).
-        for (const link of links) {
-          if (link.source !== node.id) continue;
-          const target = screenById.get(link.target);
-          if (!target) continue;
-          const edge = edgeStyle(link);
-          g.moveTo(0, 0)
-            .lineTo(target.sx - screen.sx, target.sy - screen.sy)
-            .stroke({ width: edge.width, color: edge.color, alpha: edge.alpha });
-        }
-
-        // D2: pseudo-3D sphere (base + highlight + bright core).
-        drawSphere(g, radius, style.color);
-
-        g.x = screen.sx;
-        g.y = screen.sy;
-        g.eventMode = 'static';
-        g.cursor = 'pointer';
-        g.on('pointerdown', () => onNavigate(node.id));
-        g.on('pointerover', () => { onHoverNode?.(node.id); dimForHover(node.id); });
-        g.on('pointerout', () => { onHoverNode?.(null); clearHoverDim(); });
-
-        app.stage.addChild(g);
-        nodeGraphicsById.set(node.id, g);
-      }
+    // ── nodes: ONE InstancedMesh ──────────────────────────────────────────
+    const geo = new THREE.SphereGeometry(1, 16, 12);
+    const mat = new THREE.MeshLambertMaterial();
+    const mesh = new THREE.InstancedMesh(geo, mat, nodes.length);
+    const dummy = new THREE.Object3D();
+    const baseColors: THREE.Color[] = [];
+    const indexById = new Map<string, number>();
+    nodes.forEach((n, i) => {
+      const w = worldById.get(n.id);
+      const style = nodeStyle(n);
+      dummy.position.copy(w ?? new THREE.Vector3());
+      dummy.scale.setScalar(Math.max(0.001, style.radius * WORLD_RADIUS_SCALE * sizeScale));
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      const c = new THREE.Color(style.color);
+      baseColors.push(c);
+      mesh.setColorAt(i, c);
+      indexById.set(n.id, i);
     });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    scene.add(mesh);
+
+    // ── edges: TWO LineSegments (relation / mention) ──────────────────────
+    function buildLines(kind: 'relation' | 'mention'): THREE.LineSegments {
+      const style = edgeStyle({ source: '', target: '', kind });
+      const pts: number[] = [];
+      for (const l of links) {
+        if (l.kind !== kind) continue;
+        const a = worldById.get(l.source), b = worldById.get(l.target);
+        if (!a || !b) continue;
+        pts.push(a.x, a.y, a.z, b.x, b.y, b.z);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+      const m = new THREE.LineBasicMaterial({ color: style.color, transparent: true, opacity: style.alpha });
+      return new THREE.LineSegments(g, m);
+    }
+    const relLines = buildLines('relation');
+    const menLines = buildLines('mention');
+    scene.add(relLines, menLines);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    // ── bloom composer (only when glow on) ────────────────────────────────
+    let composer: EffectComposer | null = null;
+    if (glowEnabled) {
+      composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+      composer.addPass(new ShaderPass(SRGB_DECODE));
+      composer.addPass(new UnrealBloomPass(new THREE.Vector2(width, height), 0.7, 0.85, 0));
+      composer.addPass(new OutputPass());
+    }
+
+    // ── hover dim + click via Raycaster on the InstancedMesh ──────────────
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    let hoveredId: string | null = null;
+
+    function pickId(ev: PointerEvent): string | null {
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObject(mesh);
+      const id = hits.length > 0 && hits[0].instanceId != null ? nodes[hits[0].instanceId]?.id : undefined;
+      return id ?? null;
+    }
+    function applyHoverDim(id: string | null) {
+      const keep = id ? (neighbors.get(id) ?? new Set<string>()) : null;
+      nodes.forEach((n, i) => {
+        const full = !keep || n.id === id || keep.has(n.id);
+        const base = baseColors[i];
+        mesh.setColorAt(i, full ? base : new THREE.Color(base.r * DIM_FACTOR, base.g * DIM_FACTOR, base.b * DIM_FACTOR));
+      });
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
+    function onMove(ev: PointerEvent) {
+      const id = pickId(ev);
+      if (id === hoveredId) return;
+      hoveredId = id;
+      applyHoverDim(id);
+      onHoverNode?.(id);
+    }
+    // click that is not a drag (OrbitControls owns drag) -> navigate
+    let downX = 0, downY = 0;
+    function onDown(ev: PointerEvent) { downX = ev.clientX; downY = ev.clientY; }
+    function onUp(ev: PointerEvent) {
+      if (Math.hypot(ev.clientX - downX, ev.clientY - downY) > 4) return; // was a drag
+      const id = pickId(ev);
+      if (id) onNavigate(id);
+    }
+    renderer.domElement.addEventListener('pointermove', onMove);
+    renderer.domElement.addEventListener('pointerdown', onDown);
+    renderer.domElement.addEventListener('pointerup', onUp);
+
+    let raf = 0;
+    let disposed = false;
+    function frame() {
+      if (disposed) return;
+      controls.update();
+      if (composer) composer.render();
+      else renderer.render(scene, camera);
+      raf = requestAnimationFrame(frame);
+    }
+    raf = requestAnimationFrame(frame);
 
     return () => {
-      destroyed = true;
-      if (appReady) app.destroy({ removeView: true }, true);
-      // if !appReady, init() is still pending — its .then() sees destroyed=true
-      // and calls destroy() there (avoids destroy() before _cancelResize is set).
+      disposed = true;
+      cancelAnimationFrame(raf);
+      renderer.domElement.removeEventListener('pointermove', onMove);
+      renderer.domElement.removeEventListener('pointerdown', onDown);
+      renderer.domElement.removeEventListener('pointerup', onUp);
+      controls.dispose();
+      composer?.dispose();
+      geo.dispose();
+      mat.dispose();
+      relLines.geometry.dispose();
+      (relLines.material as THREE.Material).dispose();
+      menLines.geometry.dispose();
+      (menLines.material as THREE.Material).dispose();
+      renderer.dispose();
+      renderer.domElement.remove();
     };
-    // Positions/handlers are fully recomputed from these inputs each mount —
-    // an intentional full remount on any change, not a live-diffed update.
+    // Full remount on any input change — positions/handlers are rebuilt from
+    // scratch (intentional, not a live-diffed update).
   }, [
-    nodes, links,
-    layout?.mode, layout?.clusterStrength, layout?.chargeStrength,
-    layout?.linkDistance, layout?.spreadScale,
-    glowEnabled, nodeSizeScale,
+    nodes, links, nodeStyle, edgeStyle,
+    layout?.mode, layout?.clusterStrength, layout?.chargeStrength, layout?.linkDistance, layout?.spreadScale,
+    glowEnabled, nodeSizeScale, onNavigate, onHoverNode,
   ]);
 
   return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />;

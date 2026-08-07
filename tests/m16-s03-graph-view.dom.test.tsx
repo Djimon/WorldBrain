@@ -1,72 +1,50 @@
-// M16-S03: Globaler Graph auf PixiJS + d3-force + eigener Menüpunkt (#324)
+// M16-S03: Globaler Graph auf three.js + d3-force-3d + eigener Menüpunkt (#324)
 // See: https://github.com/Djimon/WorldBrain/issues/324
 //
-// Pixi is mocked entirely (per the issue's own testability requirement —
-// styling is pure/GPU-free, tested in m16-s03-graph-style.test.ts; this file
-// only pins the CONTRACT GraphCanvas is expected to use: new Application(),
-// await app.init(...), one Container/Graphics per node with
-// `.on('pointerdown'/'pointerover'/'pointerout', ...)`, app.destroy() on
-// unmount). AP-005: ESM import only, no require(). AP-008 (RTL): anchored
-// queries, no wildcard catch-alls.
+// Renderer = three.js (bench #326). three's WebGLRenderer + OrbitControls +
+// postprocessing are mocked (jsdom has NO WebGL, and picking/bloom are GPU —
+// verified in-app, not here). This file pins the renderer-AGNOSTIC contract:
+// GraphCanvas mounts a canvas, calls nodeStyle once per node + edgeStyle,
+// builds NO bloom composer unless glowEnabled (D2 default-off), and disposes
+// cleanly on unmount. Node styling itself is pure/tested in
+// m16-s03-graph-style.test.ts. AP-005: ESM import only. AP-008 (RTL): anchored.
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DatabaseLike } from '../src/services/entity-service';
 import type { GraphLink, GraphNode } from '../src/services/graph-model';
 
-// ── Fake Pixi (spy-friendly, event-emitter based) ────────────────────────────
-// vi.hoisted() ensures these classes exist when vi.mock()'s hoisted factory
-// runs — plain class declarations would be in the TDZ at that point.
-const pixi = vi.hoisted(() => {
-  class FakeDisplayObject {
-    children: FakeDisplayObject[] = [];
-    listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
-    eventMode = 'auto';
-    x = 0; y = 0; alpha = 1;
-    addChild<T extends FakeDisplayObject>(c: T): T { this.children.push(c); return c; }
-    removeChild(): void { /* no-op */ }
-    on(event: string, cb: (...args: unknown[]) => void) {
-      (this.listeners[event] ??= []).push(cb);
-      return this;
-    }
-    emit(event: string, ...args: unknown[]) {
-      (this.listeners[event] ?? []).forEach((cb) => cb(...args));
-    }
-    destroy(): void { /* no-op */ }
+// ── Mock three's GPU/DOM-heavy pieces; keep the pure-JS math/scene classes ───
+const composerCtor = vi.hoisted(() => vi.fn());
+
+vi.mock('three', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('three')>();
+  class FakeWebGLRenderer {
+    domElement = document.createElement('canvas');
+    setPixelRatio(): void { /* no-op */ }
+    setSize(): void { /* no-op */ }
+    render(): void { /* no-op */ }
+    dispose(): void { /* no-op */ }
   }
-  class FakeGraphics extends FakeDisplayObject {
-    circle() { return this; }
-    fill() { return this; }
-    stroke() { return this; }
-    rect() { return this; }
-    moveTo() { return this; }
-    lineTo() { return this; }
-    clear() { return this; }
-  }
-  const createdGraphics: FakeGraphics[] = [];
-  class FakeGraphicsTracked extends FakeGraphics {
-    constructor() { super(); createdGraphics.push(this); }
-  }
-  class FakeApplication {
-    stage = new FakeDisplayObject();
-    canvas = document.createElement('canvas');
-    async init() { /* no-op */ }
-    destroy() { /* no-op */ }
-  }
-  return { FakeDisplayObject, FakeGraphicsTracked, FakeApplication, createdGraphics };
+  return { ...actual, WebGLRenderer: FakeWebGLRenderer };
 });
 
-vi.mock('pixi.js', () => ({
-  Application: pixi.FakeApplication,
-  Container: pixi.FakeDisplayObject,
-  Graphics: pixi.FakeGraphicsTracked,
+vi.mock('three/examples/jsm/controls/OrbitControls.js', () => ({
+  OrbitControls: class { enableDamping = false; update(): void {} dispose(): void {} },
 }));
+vi.mock('three/examples/jsm/postprocessing/EffectComposer.js', () => ({
+  EffectComposer: class { constructor() { composerCtor(); } addPass(): void {} render(): void {} dispose(): void {} setSize(): void {} },
+}));
+vi.mock('three/examples/jsm/postprocessing/RenderPass.js', () => ({ RenderPass: class {} }));
+vi.mock('three/examples/jsm/postprocessing/ShaderPass.js', () => ({ ShaderPass: class {} }));
+vi.mock('three/examples/jsm/postprocessing/UnrealBloomPass.js', () => ({ UnrealBloomPass: class {} }));
+vi.mock('three/examples/jsm/postprocessing/OutputPass.js', () => ({ OutputPass: class {} }));
 
 import { GraphCanvas } from '../src/ui/GraphCanvas';
 import { edgeStyle, nodeStyle } from '../src/services/graph-style';
 
 afterEach(() => {
-  pixi.createdGraphics.length = 0;
+  composerCtor.mockClear();
   vi.clearAllMocks();
 });
 
@@ -87,66 +65,43 @@ function baseCanvasProps(overrides: Partial<React.ComponentProps<typeof GraphCan
   };
 }
 
-describe('#324 (contract): GraphCanvas — the ONE renderer core (D12)', () => {
-  it('mounts a Pixi application and appends its canvas into the DOM', async () => {
+describe('#324 (contract): GraphCanvas — the ONE renderer core (D12, three.js)', () => {
+  it('mounts a three.js renderer and appends its canvas into the DOM', () => {
     const { container } = render(<GraphCanvas {...baseCanvasProps()} />);
-    await waitFor(() => expect(container.querySelector('canvas')).toBeInTheDocument());
+    expect(container.querySelector('canvas')).toBeInTheDocument();
   });
 
-  it('creates one Graphics object per node (never a single shared display object)', async () => {
-    render(<GraphCanvas {...baseCanvasProps()} />);
-    await waitFor(() => expect(pixi.createdGraphics.length).toBeGreaterThanOrEqual(NODES.length));
+  it('resolves a style for every node (one nodeStyle call per node) + edges', () => {
+    const nodeStyleSpy = vi.fn((n: GraphNode) => nodeStyle(n, { min: 1, max: 2 }));
+    const edgeStyleSpy = vi.fn(edgeStyle);
+    render(<GraphCanvas {...baseCanvasProps({ nodeStyle: nodeStyleSpy, edgeStyle: edgeStyleSpy })} />);
+    expect(nodeStyleSpy).toHaveBeenCalledTimes(NODES.length);
+    expect(edgeStyleSpy).toHaveBeenCalled();
   });
 
-  it('clicking a node (pointerdown) calls onNavigate with that node\'s id', async () => {
-    const onNavigate = vi.fn();
-    render(<GraphCanvas {...baseCanvasProps({ onNavigate })} />);
-    await waitFor(() => expect(pixi.createdGraphics.length).toBeGreaterThanOrEqual(1));
-    // Simulate a click on the first node's Graphics object via its captured
-    // pointerdown listener (this IS how Pixi delivers pointer events).
-    pixi.createdGraphics[0].emit('pointerdown');
-    expect(onNavigate).toHaveBeenCalledWith(expect.any(String));
-    expect(onNavigate.mock.calls[0][0]).toMatch(/^e[12]$/);
-  });
-
-  it('hovering a node (pointerover) calls onHoverNode with that node\'s id', async () => {
-    const onHoverNode = vi.fn();
-    render(<GraphCanvas {...baseCanvasProps({ onHoverNode })} />);
-    await waitFor(() => expect(pixi.createdGraphics.length).toBeGreaterThanOrEqual(1));
-    pixi.createdGraphics[0].emit('pointerover');
-    expect(onHoverNode).toHaveBeenCalledWith(expect.any(String));
-  });
-
-  it('un-hovering a node (pointerout) calls onHoverNode with null', async () => {
-    const onHoverNode = vi.fn();
-    render(<GraphCanvas {...baseCanvasProps({ onHoverNode })} />);
-    await waitFor(() => expect(pixi.createdGraphics.length).toBeGreaterThanOrEqual(1));
-    pixi.createdGraphics[0].emit('pointerover');
-    pixi.createdGraphics[0].emit('pointerout');
-    expect(onHoverNode).toHaveBeenLastCalledWith(null);
-  });
-
-  it('destroys the Pixi application on unmount (no leaked app/canvas)', async () => {
+  it('destroys the renderer on unmount (no leaked canvas, no throw)', () => {
     const { unmount, container } = render(<GraphCanvas {...baseCanvasProps()} />);
-    await waitFor(() => expect(container.querySelector('canvas')).toBeInTheDocument());
+    expect(container.querySelector('canvas')).toBeInTheDocument();
     expect(() => unmount()).not.toThrow();
   });
 });
 
-describe('#324 (D2): per-node glow halo is OFF by default', () => {
-  it('without glowEnabled, no additional halo Graphics beyond one per node is created', async () => {
+describe('#324 (D2): bloom glow is OFF by default', () => {
+  it('without glowEnabled, no bloom EffectComposer is constructed', () => {
     render(<GraphCanvas {...baseCanvasProps()} />);
-    await waitFor(() => expect(pixi.createdGraphics.length).toBeGreaterThanOrEqual(NODES.length));
-    // Default (glowEnabled omitted/false): exactly one Graphics per node, no
-    // extra halo sprite/graphics per node.
-    expect(pixi.createdGraphics.length).toBe(NODES.length);
+    expect(composerCtor).not.toHaveBeenCalled();
+  });
+
+  it('with glowEnabled, a bloom EffectComposer IS constructed', () => {
+    render(<GraphCanvas {...baseCanvasProps({ glowEnabled: true })} />);
+    expect(composerCtor).toHaveBeenCalled();
   });
 });
 
 // ── Menu wiring (WorkspaceShell) ─────────────────────────────────────────────
-// GlobalGraphView itself stays a black box here (stubbed) — this only pins
-// the exact wiring the issue mandates: a 'graph' area + menu entry + a
-// switch case that mounts GlobalGraphView.
+// GlobalGraphView itself stays a black box here (stubbed) — this only pins the
+// exact wiring the issue mandates: a 'graph' area + menu entry + a switch case
+// that mounts GlobalGraphView.
 
 const h = vi.hoisted(() => ({
   fakeDb: { select: vi.fn(async () => []), execute: vi.fn(async () => {}) } as unknown as DatabaseLike,

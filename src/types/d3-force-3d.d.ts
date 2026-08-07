@@ -1,5 +1,6 @@
-// d3-force-3d ships no types. Minimal ambient decl for the bench worker —
-// only the pieces we call (3D force sim). Throwaway spike scope.
+// d3-force-3d ships no types. Minimal ambient decl for the pieces we call
+// (3D force simulation) — used by the graph 3D layout (galaxy-layout.ts) and
+// the renderer bench. Extend as needed.
 declare module 'd3-force-3d' {
   interface SimNode {
     id?: string;
@@ -10,7 +11,7 @@ declare module 'd3-force-3d' {
     [k: string]: unknown;
   }
   interface Simulation {
-    nodes(nodes: SimNode[]): Simulation;
+    nodes(nodes: unknown[]): Simulation;
     force(name: string, force: unknown): Simulation;
     numDimensions(n: number): Simulation;
     stop(): Simulation;
@@ -25,7 +26,7 @@ declare module 'd3-force-3d' {
   interface ForceManyBody {
     strength(s: number): ForceManyBody;
   }
-  export function forceSimulation(nodes?: SimNode[], numDimensions?: number): Simulation;
+  export function forceSimulation(nodes?: unknown[], numDimensions?: number): Simulation;
   export function forceManyBody(): ForceManyBody;
   export function forceLink(links: unknown[]): ForceLink;
   export function forceCenter(x?: number, y?: number, z?: number): unknown;
