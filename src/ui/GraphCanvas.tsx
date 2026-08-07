@@ -102,7 +102,7 @@ export interface GraphCanvasProps {
 const FALLBACK_W = 800;
 const FALLBACK_H = 600;
 const EDGE_MIN_PX = 1.5;   // floor so edges never render sub-pixel (invisible)
-const EDGE_LIGHT_BOOST = 0.5; // light theme: edges a touch thicker (less contrast on white)
+const EDGE_LIGHT_BOOST = 1; // light theme: edges a touch thicker (less contrast on white)
 const DASH_SIZE = 10;   // 'dashed': long dashes
 const GAP_SIZE = 8;
 const DOT_SIZE = 1.5;   // 'animated': tiny dashes -> dotted, then flowed
@@ -111,6 +111,7 @@ const ANIM_SPEED = 0.6;
 // Without bloom the scene looks flat/grey -> brighter lights when glow is off.
 const NOBLOOM_LIGHT = 3;
 const NOBLOOM_AMBIENT = 1.75;
+const LIGHT_DIM_MIX = 0.55; // light theme dim: how far dimmed nodes fade toward white
 const ZOOM_STEPS = 24;   // click-to-zoom tween length in frames
 
 const MIX_SHADER = {
@@ -310,6 +311,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
         dashSize: form === 'animated' ? DOT_SIZE : DASH_SIZE,
         gapSize: form === 'animated' ? DOT_GAP : GAP_SIZE,
       });
+      m.depthWrite = false; // transparent edges must not write depth -> no self-occlusion flicker
       m.resolution.set(state.width, state.height);
       m.userData = { animated: form === 'animated' };
       const seg = new LineSegments2(g, m);
@@ -432,10 +434,11 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
         const full = !keep || n.id === id || keep.has(n.id);
         const base = state.baseColors[i];
         if (!base) return;
-        // dark theme: fade toward black (*f). light theme: fade toward white
-        // (lerp base -> white by 1-f) so dimmed nodes recede on a light bg.
+        // dark theme: fade toward black (*f). light theme: lerp toward white by
+        // LIGHT_DIM_MIX (softer -> pale tint, not a solid white overwrite).
+        const m = LIGHT_DIM_MIX;
         const dim = light
-          ? new THREE.Color(base.r + (1 - base.r) * (1 - f), base.g + (1 - base.g) * (1 - f), base.b + (1 - base.b) * (1 - f))
+          ? new THREE.Color(base.r + (1 - base.r) * m, base.g + (1 - base.g) * m, base.b + (1 - base.b) * m)
           : new THREE.Color(base.r * f, base.g * f, base.b * f);
         mesh.setColorAt(i, full ? base : dim);
       });
@@ -511,14 +514,25 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       controls.update();
       for (const m of state.lineMaterials) if (m.userData?.animated) m.dashOffset -= ANIM_SPEED;
       if (state.composers) {
+        // Edges are EXCLUDED from the whole bloom pipeline: the additive MixPass
+        // would otherwise wash thin/transparent edges (esp. red mentions on a
+        // light bg). Both composer passes render nodes-only; edges are drawn as
+        // a plain overlay on top afterwards, untouched by the bloom.
         const vis = state.fullLines.map((s) => s.visible);
         const gv = revealGroup.visible;
         for (const s of state.fullLines) s.visible = false;
         revealGroup.visible = false;
-        state.composers.bloom.render();
+        state.composers.bloom.render();  // nodes-only glow
+        state.composers.final.render();  // nodes + glow composited to screen
         state.fullLines.forEach((s, i) => { s.visible = vis[i]; });
         revealGroup.visible = gv;
-        state.composers.final.render();
+        // overlay edges on top of the composite (own depth, not bloom-washed)
+        mesh.visible = false;
+        renderer.autoClear = false;
+        renderer.clearDepth();
+        renderer.render(scene, camera);
+        renderer.autoClear = true;
+        mesh.visible = true;
       } else {
         renderer.render(scene, camera);
       }
