@@ -115,10 +115,11 @@ das Datenmodell, nicht der Renderer**. LLM-Graph-Tools konvergieren auf SPO-Trip
 + vorberechnete Positionen. **An unsere Realität angepasst** (unsere Kanten sind **user-authored**, nicht
 LLM-extrahiert — daher NICHT alles 1:1 übernehmen):
 
-- **D14 — Community-Detection → Färbung/Cluster (⚠️ `needs-decision`, GEPARKT).** Idee: Leiden/Louvain
-  (z.B. `graphology-communities-louvain`, MIT) → `community`-Id je Node, als **alternative Färbung** neben Typ-Farbe.
-  **Noch nicht committed** (User: „needs-decision") — offene Frage u.a.: ersetzt oder ergänzt sie die Typ-Farbe (D3)?
-  Kein Issue, bis entschieden. Der Spike (#326) kann die Färbung optional testweise zeigen, falls Daten vorliegen.
+- **D14 — Community-Detection → Färbung/Cluster (❌ VERWORFEN 2026-08, S09 obsolet).** Idee war Leiden/Louvain
+  → `community`-Id je Node als alternative Färbung. **Ersetzt durch die billigere Variante "Farb-Modus: nach
+  Cluster" = räumliche Nähe im Layout** (`positionColor` in graph-style, Hue aus Winkel + Helligkeit aus Tiefe):
+  die Force-Sim gruppiert ähnlich Verbundene ohnehin räumlich → keine teure Community-Analyse nötig. `louvain`-Dep
+  wieder entfernt. `community?`-Feld im Datenmodell nicht genutzt. S09 damit erledigt (kein Issue).
 - **D15 — Vorberechnete + gecachte Layout-Positionen (IN Scope, S10/#327).** Force-Layout **einmal** headless
   (Worker) rechnen, Positionen je Node über Struktur-Hash cachen → Client rendert **sofort** ohne Kalt-Physik
   (großer UX/Perf-Win bei 10k, renderer-unabhängig). Recompute bei Datenänderung. Ergänzt D10.
@@ -151,7 +152,7 @@ GraphModel = { nodes: GraphNode[]; links: GraphLink[] }
 | M16-S05 | #290 | **Ring-Modus** ⚠️ `needs-design`: soll in **„Areas" unterteilt** werden (nicht bloße 2D-Typ-Projektion) — aktueller Body ist Platzhalter, Neu-Interview offen | S03 |
 | M16-S06 | #319 | Controls: Switcher Galaxy⇄Ring + Verlinkungen-Toggle + **Glow-Schalter** + Legende + **Start-Default-Wahl** | S04+S05 |
 | M16-S07 | #321 | **Ego-Graph auf `GraphCanvas`-Core** + in Entity-Detail verdrahten (voller Umfang: Tiefe 1/2/3 + Relations-Typ-Filter + inaktiv; BFS über relations+mentions); **Cytoscape komplett raus** — **bewusst zuletzt (`p2`)** | S03 (#324) |
-| M16-S09 | _(kein Issue)_ | **Community-Färbung** ⚠️ `needs-decision` (D14) — geparkt bis entschieden (ersetzt/ergänzt Typ-Farbe?) | S02 |
+| M16-S09 | _(kein Issue)_ | ~~**Community-Färbung** (D14)~~ ❌ VERWORFEN 2026-08 — ersetzt durch Farb-Modus "nach Cluster" (räumlich, `positionColor`) | — |
 | M16-S10 | #327 | **Vorberechnete + gecachte Layout-Positionen** (headless `d3-force-3d` im Worker, Struktur-Hash-Cache, Sofort-Render) (D15) — `p1` | S02 |
 | M16-S08 | _(offen)_ | Software-WebGL erkennen (`WEBGL_debug_renderer_info`) + dezente Warnung (Spike-Risiko). Aus S03 herausgehalten. | S03 |
 
@@ -175,7 +176,7 @@ GraphModel = { nodes: GraphNode[]; links: GraphLink[] }
 
 ## Out Of Scope
 
-- Graph-Analytik: **Community-Detection = `needs-decision`** (D14/S09, geparkt — nicht bestätigt in-scope). Weiterhin **out**: Zentralitäts-Maße (Betweenness etc.), kürzeste Pfade — später, falls überhaupt.
+- Graph-Analytik: **Community-Detection VERWORFEN** (D14/S09 — ersetzt durch räumliches Cluster-Coloring). Weiterhin **out**: Zentralitäts-Maße (Betweenness etc.), kürzeste Pfade — später, falls überhaupt.
 - Editieren von Relations/Mentions aus dem Graphen (nur lesen + navigieren).
 - Der exakte 1:1-Nachbau eines bestimmten Referenzbildes — Look-Familie (Glow/Galaxy/Ring) ja, Pixel-Kopie nein.
 
