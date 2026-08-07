@@ -39,6 +39,8 @@ const DEFAULT_RADIUS = 500;
 const DEFAULT_INNER_RATIO = 0.15;
 const DEFAULT_CHARGE_STRENGTH = -120;
 const DEFAULT_LINK_DISTANCE = 30;
+const GAP_ANGLE = 0.05;        // ~3° guard band per wedge side (empty zone between areas)
+const GAP_MAX_RATIO = 0.2;     // ...but never eat more than 20% of a small wedge
 const TAU = Math.PI * 2;
 
 // Seedable PRNG (mulberry32) — deterministic init + deterministic jiggle for
@@ -207,10 +209,14 @@ export function computeRingLayout(
       if (b.y < minY) minY = b.y; if (b.y > maxY) maxY = b.y;
     }
     const exX = maxX - minX, exY = maxY - minY;
+    // empty guard band between areas so neighbouring wedges don't touch/merge.
+    const gap = Math.min(GAP_ANGLE, width * GAP_MAX_RATIO);
+    const a0 = sec.startAngle + gap;
+    const aw = Math.max(0, (sec.endAngle - gap) - a0);
     for (const b of blob) {
       const u = exX > 1e-9 ? (b.x - minX) / exX : 0.5;
       const v = exY > 1e-9 ? (b.y - minY) / exY : 0.5;
-      const angle = sec.startAngle + u * width;
+      const angle = a0 + u * aw;
       const r = Math.sqrt(rInner2 + v * band);
       out.set(b.id, { x: Math.cos(angle) * r, y: Math.sin(angle) * r });
     }
