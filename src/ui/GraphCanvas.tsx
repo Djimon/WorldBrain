@@ -624,7 +624,10 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       final.addPass(new OutputPass());
       g.composers = { bloom, final };
     }
-  }, [glowEnabled, lookKey]);
+    // layoutKey/posKey/nodes are the scene-rebuild keys: after a rebuild (e.g.
+    // Galaxy<->Disc) the fresh scene starts with glow-on light defaults and no
+    // composer, so re-apply the correct lights + bloom here.
+  }, [glowEnabled, lookKey, layoutKey, posKey, nodes]);
 
   // programmatic focus from search-select (nonce re-triggers same id).
   useEffect(() => {
