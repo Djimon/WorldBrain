@@ -91,8 +91,10 @@ export interface GraphCanvasProps {
 const FALLBACK_W = 800;
 const FALLBACK_H = 600;
 const EDGE_MIN_PX = 1.5;   // floor so edges never render sub-pixel (invisible)
-const DASH_SIZE = 10;
+const DASH_SIZE = 10;   // 'dashed': long dashes
 const GAP_SIZE = 8;
+const DOT_SIZE = 1.5;   // 'animated': tiny dashes -> dotted, then flowed
+const DOT_GAP = 7;
 const ANIM_SPEED = 0.6;
 
 const MIX_SHADER = {
@@ -256,8 +258,8 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
         transparent: true,
         opacity: Math.min(1, style.alpha * L.edgeOpacityScale),
         dashed,
-        dashSize: DASH_SIZE,
-        gapSize: GAP_SIZE,
+        dashSize: form === 'animated' ? DOT_SIZE : DASH_SIZE,
+        gapSize: form === 'animated' ? DOT_GAP : GAP_SIZE,
       });
       m.resolution.set(width, height);
       m.userData = { animated: form === 'animated' };
