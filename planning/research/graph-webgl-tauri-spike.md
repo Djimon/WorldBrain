@@ -47,18 +47,24 @@ fairen Bedingungen. Vollständige Landschaft: [`graph-view-landscape-2026-08.md`
 
 ## Was gemessen wird — fair, gleiche Bedingungen
 
-Alle drei rendern **denselben synthetischen Graphen** (`generateBenchGraph`, deterministisch) mit **derselben
-Layout-Berechnung** (`d3-force`/`d3-force-3d` **im Web Worker**, blockiert das UI nicht). Isoliert damit
-**Render-Leistung** von **Layout-Leistung**. Jede Engine 10k-fair gebaut (kein künstliches Handicap):
+Alle drei rendern **dieselbe rotierbare 3D-Galaxy** aus **demselben synthetischen Graphen**
+(`generateBenchGraph`, deterministisch) mit **derselben 3D-Layout-Berechnung** (`d3-force-3d`, `numDimensions=3`,
+**im Web Worker**, blockiert das UI nicht). Isoliert **Render-Leistung** von **Layout-Leistung**.
 
-| Engine | Nodes | Kanten | 3D | Glow | Nav |
+**Die eigentliche Spike-Frage** (Korrektur nach User-Feedback): nicht „3D-Engine vs. 2D-Engine" — sondern
+**kann eine 2D-Engine dieselbe rotierbare 3D-Galaxy liefern, indem sie die 3D→2D-Projektion pro Frame selbst
+rechnet** (Muster: StellarGraph = handgerollte Projektion auf Canvas2D)? three.js macht 3D nativ; Pixi und
+Sigma reprojizieren **jeden Frame** auf der CPU. Genau diese CPU-Reprojektion bei 3k/10k ist der Prüfstein.
+
+| Engine | Nodes | Kanten | 3D-Weg | Glow | Nav |
 |---|---|---|---|---|---|
-| **three.js** (raw) | 1 InstancedMesh (per-instance Farbe+Scale) | 2 LineSegments (relation/mention) | echt (OrbitControls) | UnrealBloomPass nativ (+ sRGB-Decode-Fix) | Rotate/Pan/Zoom |
-| **Pixi v8** | 1 Sprite-Batch (geteilte Kugel-Textur, Tint) | **1 Graphics, 2 Stroke-Batches** | Fake (2D + Kugel-Sprite) | additiver Halo-Sprite pro Node | Pan/Zoom (Stage-Transform) |
-| **Sigma v3** | graphology, size=degree | eingebaut, size/color | 2D | **nicht nativ** (bräuchte eigenes WebGL-Node-Program) | eingebaut |
+| **three.js** (raw) | 1 InstancedMesh (per-instance Farbe+Scale) | 2 LineSegments (relation/mention) | **nativ** (GPU, OrbitControls) | UnrealBloomPass nativ (+ sRGB-Decode-Fix) | Rotate/Pan/Zoom |
+| **Pixi v8** | 1 Sprite-Batch (geteilte Kugel-Textur, Tint) | **1 Graphics, jeden Frame neu, 2 Stroke-Batches** | **manuelle CPU-Projektion/Frame** (Sprites reprojiziert + depth-sort/-scale) | additiver Halo-Sprite pro Node | Rotate (Drag) / Zoom |
+| **Sigma v3** | graphology, size=degree | eingebaut, size/color | **manuell: 10k x/y-Attribut-Rewrites/Frame + refresh** | **nicht nativ** (eigenes WebGL-Node-Program nötig) | Rotate (Drag) / Zoom (Kamera) |
 
 Metriken im Overlay: **fps** (rolling avg), **Layout-ms** (Worker), Node/Kanten-Count, **GPU-Info**
 (`WEBGL_debug_renderer_info` → echte GPU / Software-WebGL / Kontext-Fail = die Pflicht-Metrik aus Teil 1).
+**Wichtig:** fps wird beim *Rotieren* gemessen (Dauer-Reprojektion) — genau dann trennt sich die Spreu.
 
 ## So läuft der Bench
 

@@ -52,7 +52,7 @@ export function GraphBench(): React.ReactElement {
     const model = generateBenchGraph(nodeCount, edgeFactor);
     setEdgeCount(model.links.length);
 
-    const dims: 2 | 3 = renderer === 'three' ? 3 : 2;
+    const dims: 2 | 3 = 3; // all engines render the 3D galaxy now (2D via manual projection)
     // more ticks for smaller graphs (cheap); fewer for 10k (still settles enough)
     const ticks = nodeCount <= 1000 ? 300 : nodeCount <= 3000 ? 200 : 120;
 
