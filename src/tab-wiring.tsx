@@ -2,6 +2,7 @@ import React from 'react';
 import { registerEntityTab } from './ui/EntityDetailView';
 import { RelationsTab } from './ui/RelationsTab';
 import { BacklinksTab } from './ui/BacklinksTab';
+import { EntityGraphTab } from './ui/EntityGraphTab';
 import type { DatabaseLike } from './services/entity-service';
 
 registerEntityTab({
@@ -16,4 +17,11 @@ registerEntityTab({
   label: 'Verlinkungen',
   render: ({ entityId, database, onNavigate }: { entityId: string; database?: DatabaseLike; onNavigate?: (id: string) => void }) =>
     database ? <BacklinksTab entityId={entityId} database={database} onNavigate={onNavigate} /> : null,
+});
+
+registerEntityTab({
+  id: 'graph',
+  label: 'Graph',
+  render: ({ entityId, database, onNavigate }: { entityId: string; database?: DatabaseLike; onNavigate?: (id: string) => void }) =>
+    database ? <EntityGraphTab entityId={entityId} database={database} onNavigate={onNavigate} /> : null,
 });
