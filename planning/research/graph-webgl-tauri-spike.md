@@ -76,38 +76,31 @@ Status Bau: TypeScript sauber, alle Module in Vite-WebView2 auflösbar (headless
 **Live-fps-Messung steht aus** — auf dieser Maschine laufen 3k entspannt, 10k **nicht simulierbar**
 → 10k-Zeile auf echter/starker GPU messen.
 
-## Messwerte (auszufüllen)
+## Messergebnis (User, 2026-08-07 — 3k auf dieser Maschine; 10k nicht simulierbar)
 
-**Diese Maschine** (GPU-Info aus Overlay: `__________`):
-
-| Engine | 1k fps | 3k fps | 10k fps | Layout-ms (10k) | Glow-Kosten | Notiz |
-|---|---|---|---|---|---|---|
-| three.js | | | (n/a hier) | | | |
-| Pixi v8 | | | (n/a hier) | | | |
-| Sigma v3 | | | (n/a hier) | | | |
-
-**Starke Maschine / echte GPU** (GPU-Info: `__________`):
-
-| Engine | 3k fps | 10k fps | Layout-ms (10k) | 10k mit Glow | Notiz |
+| Engine | Perf @3k | 3D-Optik | Kugeln | Glow | Fazit |
 |---|---|---|---|---|---|
-| three.js | | | | | |
-| Pixi v8 | | | | | |
-| Sigma v3 | | | | | |
+| **three.js** | entspannt (minimal langsamer als Pixi) | echt | **deutlich am besten** | **bester** (nativer Bloom) | **GEWINNER** |
+| **Pixi v8** | entspannt, **minimal beste Perf** | ok (CPU-Projektion trägt @3k) | schlechter als three | **„absolut Müll"** | verliert auf Look |
+| **Sigma v3** | — | — | — | — | **„kann gar nichts"** — disqualifiziert |
 
-**WebGL-Fail-Verhalten** (Ziel ohne GPU-Beschleunigung, falls testbar): Kontext ok? Software-Fallback? fps-Einbruch je Engine: `__________`
+**Kernbefund:** Perf-Unterschied three ↔ Pixi @3k ist **marginal** (Pixi sogar minimal vorn) — **nicht** der Entscheider.
+Entscheidend ist der **Look**: three.js' echte beleuchtete Kugeln + nativer Bloom schlagen Pixis Sprite-Kugeln +
+Fake-Glow klar. Sigma liefert die 3D-Galaxy gar nicht brauchbar (10k x/y-Rewrites/Frame + Glow-Fehlanzeige). 10k-fps
+auf starker GPU noch offen, kippt die Wahl aber nicht.
 
 ## Entscheidung (2026-08-07)
 
-**Renderer: three.js (raw) — mit Abstand am besten.** Im direkten Bench (gleicher Graph, gleiches
-d3-force-3d-Layout, rotierbare 3D-Galaxy in allen drei) gewinnt three.js **deutlich**:
+**Renderer: three.js (raw).** Im direkten Bench (gleicher Graph, gleiches d3-force-3d-Layout, rotierbare
+3D-Galaxy in allen drei) gewinnt three.js — **auf dem Look, nicht der Perf**:
 
-- **Echtes GPU-3D** statt CPU-Reprojektion pro Frame. Pixi und Sigma müssen die 3D→2D-Projektion bei
-  jedem Frame auf der CPU rechnen (Pixi: Sprites + Kanten-Graphics neu; Sigma: 10k x/y-Rewrites + refresh)
-  — der Flaschenhals, den three.js gar nicht hat (Instancing, GPU-Transform).
-- **Look**: nativer Bloom + Tiefe/Parallax kommen bei three.js umsonst; bei den 2D-Engines sind sie
-  Handarbeit und teurer.
-- three.js war die klar flüssigste, sauberste 3D-Galaxy — Qualitätsabstand so groß, dass die exakten
-  10k-fps-Zahlen die Wahl nicht mehr kippen (Tabellen oben bleiben optional zum Nachtragen).
+- **Perf ist Parität** @3k: Pixi war sogar **minimal schneller**, beide entspannt. Perf ist also NICHT der
+  Entscheider. (Die CPU-Reprojektion pro Frame — Pixi Sprites+Kanten neu, Sigma 10k x/y-Rewrites — ist eher
+  ein 10k-Skalierungsrisiko der 2D-Engines; three.js umgeht sie via Instancing/GPU-Transform.)
+- **Look entscheidet**: three.js' **echte beleuchtete Kugeln** + **nativer Bloom** schlagen Pixis Sprite-Kugeln
+  klar; **Pixis Fake-Glow war „absolut Müll"** (User). Tiefe/Parallax + Bloom kommen bei three.js umsonst,
+  bei 2D nur als teure Handarbeit.
+- **Sigma disqualifiziert**: liefert die 3D-Galaxy nicht brauchbar („kann gar nichts").
 
 **Wichtige Bau-Vorgabe: raw three.js (InstancedMesh + eigene Passes), NICHT `react-force-graph-3d`.**
 Der #320-Spike zeigte, dass die Kapsule-Lib (verzögerter Prop-Digest, re-parentet Lichter, baut Nodes neu)

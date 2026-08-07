@@ -27,8 +27,9 @@ Skaliert auf **3.000–10.000 Nodes** (High-End-Worldbuilder mit Tausenden Eintr
 
 > ✅ **RENDERER ENTSCHIEDEN (2026-08-07, Spike #326): `three.js` (raw) + `d3-force-3d`.** Der offene Bench
 > (three.js vs Pixi vs Sigma, gleicher Graph + gleiches 3D-Layout, rotierbare Galaxy in allen drei) ergab
-> three.js **mit Abstand** am besten: **echtes GPU-3D** statt CPU-Reprojektion pro Frame (der Flaschenhals,
-> an dem Pixi/Sigma hingen), nativer Bloom + Tiefe/Parallax umsonst. **Bau roh** (InstancedMesh + eigene
+> three.js am besten — **auf dem Look, nicht der Perf**: Perf @3k Parität (Pixi sogar minimal schneller,
+> beide entspannt), aber three.js' **echte beleuchtete Kugeln + nativer Bloom** schlagen Pixis Sprite-Kugeln
+> klar (Pixis Fake-Glow „absolut Müll"); **Sigma disqualifiziert** („kann gar nichts"). **Bau roh** (InstancedMesh + eigene
 > Passes + `d3-force-3d` im Worker), **NICHT `react-force-graph-3d`** (Kapsule-Dauer-Workarounds aus #320).
 > Referenz-Rezept: `src/spikes/graph-bench/adapters/threeAdapter.ts`. Verdikt: Teil 2 in
 > `planning/research/graph-webgl-tauri-spike.md`. **D1/D2 (+ D6/D7/D10/D11/D12) unten sind auf three.js
@@ -79,11 +80,12 @@ Skaliert auf **3.000–10.000 Nodes** (High-End-Worldbuilder mit Tausenden Eintr
   desselben (ungeordneten) Paars verworfen — keine doppelte Linie.
 - **D10 — LOD/Performance ist reale Anforderung (3k–10k Nodes).** Label-Culling beim Rauszoomen (Labels erst nah),
   `d3-force-3d` **vorberechnen/stoppen** (Worker, `alpha`→0, nicht jede Frame live simulieren), **InstancedMesh**
-  fuer Nodes + gebuendelte `LineSegments` fuer Kanten (three.js zeichnet 10k Nodes in wenigen Draw-Calls — genau
-  der GPU-Vorteil gegen die CPU-Reprojektion, an der Pixi/Sigma im Bench scheiterten); **Default-View
-  gefiltert/Ego**, damit selten alle Nodes+Kanten gleichzeitig gerendert werden.
-  ⚠️ **Renderer-Wahl steht (three.js, #326);** exakte 10k-fps auf starker GPU noch nachzumessen (diese Maschine
-  fuhr 3k fluessig, 10k nicht simulierbar) — das kippt die Wahl aber nicht mehr.
+  fuer Nodes + gebuendelte `LineSegments` fuer Kanten (three.js zeichnet 10k Nodes in wenigen Draw-Calls — umgeht
+  die CPU-Reprojektion, die bei den 2D-Engines ein 10k-Skalierungsrisiko ist; im Bench fiel Sigma aus, Pixi lief
+  @3k noch entspannt); **Default-View gefiltert/Ego**, damit selten alle Nodes+Kanten gleichzeitig gerendert werden.
+  ⚠️ **Renderer-Wahl steht (three.js, #326) — getrieben vom Look, nicht der Perf** (Perf @3k war Parität, Pixi
+  minimal vorn). Exakte 10k-fps auf starker GPU noch nachzumessen (diese Maschine fuhr 3k fluessig, 10k nicht
+  simulierbar) — kippt die Wahl nicht.
   - **Layout im Web Worker.** `d3-force-3d` rechnet die 3D-Positionen in einem **Worker** (Positionen per
     Message an den Renderer), damit die Sim den UI-Thread nie blockiert. Im Bench
     (`src/spikes/graph-bench/layoutWorker.ts`) bereits so gebaut = Referenz.
