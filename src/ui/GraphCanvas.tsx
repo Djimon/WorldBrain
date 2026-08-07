@@ -89,6 +89,9 @@ export interface GraphCanvasProps {
   alwaysShowChips?: boolean;
   // show every node's name permanently (ego mode), not just on hover/select.
   alwaysShowLabels?: boolean;
+  // page theme is light (canvas bg light) -> thicker edges + fade-to-white on
+  // hover/select dim, instead of the dark-mode fade-to-black.
+  lightTheme?: boolean;
   // programmatic focus (search select): focuses + zooms the node like a click.
   // nonce must change to re-trigger the same id.
   focusRequest?: { id: string; nonce: number };
@@ -99,6 +102,7 @@ export interface GraphCanvasProps {
 const FALLBACK_W = 800;
 const FALLBACK_H = 600;
 const EDGE_MIN_PX = 1.5;   // floor so edges never render sub-pixel (invisible)
+const EDGE_LIGHT_BOOST = 0.5; // light theme: edges a touch thicker (less contrast on white)
 const DASH_SIZE = 10;   // 'dashed': long dashes
 const GAP_SIZE = 8;
 const DOT_SIZE = 1.5;   // 'animated': tiny dashes -> dotted, then flowed
@@ -135,6 +139,7 @@ interface GraphState {
   rebuildEdges: () => void;
   rebuildReveal: (focusId: string | null) => void;
   applyColorsAndSizes: () => void;
+  applyHoverDim: (id: string | null) => void;
   chipLayer: HTMLDivElement;
   chips: { el: HTMLDivElement; a: THREE.Vector3; b: THREE.Vector3 }[];
   updateChips: (focusId: string | null) => void;
@@ -156,7 +161,7 @@ interface GraphState {
 export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
   const {
     nodes, links, positions, look, layout, glowEnabled,
-    edgesHidden, edgeRevealDepth, relationForm, mentionForm, nodeStyle, edgeStyle, nodeSizeScale, focusRequest,
+    edgesHidden, edgeRevealDepth, relationForm, mentionForm, nodeStyle, edgeStyle, nodeSizeScale, focusRequest, lightTheme,
   } = props;
   const mountRef = useRef<HTMLDivElement | null>(null);
   const gRef = useRef<GraphState | null>(null);
@@ -252,7 +257,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       scene, camera, renderer, controls, mesh, worldById,
       baseColors: [], neighbors: new Map(), revealGroup, revealKids: [], fullLines: [],
       lineMaterials: new Set(), composers: null,
-      buildFatLines: () => null, rebuildEdges: () => {}, rebuildReveal: () => {}, applyColorsAndSizes: () => {},
+      buildFatLines: () => null, rebuildEdges: () => {}, rebuildReveal: () => {}, applyColorsAndSizes: () => {}, applyHoverDim: () => {},
       chipLayer, chips: [], updateChips: () => {},
       labelLayer, labels: [], updateLabels: () => {},
       ambient, headlight, tween: null, focusNode: () => {},
@@ -298,7 +303,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       const dashed = form !== 'solid';
       const m = new LineMaterial({
         color: style.color,
-        linewidth: Math.max(EDGE_MIN_PX, style.width * L.edgeWidthScale),
+        linewidth: Math.max(EDGE_MIN_PX, style.width * L.edgeWidthScale) + (p.current.lightTheme ? EDGE_LIGHT_BOOST : 0),
         transparent: true,
         opacity: Math.min(1, style.alpha * L.edgeOpacityScale),
         dashed,
@@ -421,14 +426,22 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     }
     function applyHoverDim(id: string | null) {
       const keep = id ? (state.neighbors.get(id) ?? new Set<string>()) : null;
+      const f = L.dimFactor;
+      const light = !!p.current.lightTheme;
       nodes.forEach((n, i) => {
         const full = !keep || n.id === id || keep.has(n.id);
         const base = state.baseColors[i];
         if (!base) return;
-        mesh.setColorAt(i, full ? base : new THREE.Color(base.r * L.dimFactor, base.g * L.dimFactor, base.b * L.dimFactor));
+        // dark theme: fade toward black (*f). light theme: fade toward white
+        // (lerp base -> white by 1-f) so dimmed nodes recede on a light bg.
+        const dim = light
+          ? new THREE.Color(base.r + (1 - base.r) * (1 - f), base.g + (1 - base.g) * (1 - f), base.b + (1 - base.b) * (1 - f))
+          : new THREE.Color(base.r * f, base.g * f, base.b * f);
+        mesh.setColorAt(i, full ? base : dim);
       });
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
+    state.applyHoverDim = applyHoverDim;
     function onMove(ev: PointerEvent) {
       if (rolling && p.current.layout?.mode === 'ring') {
         contentGroup.rotation.z += (ev.clientX - lastRollX) * 0.005;
@@ -589,7 +602,13 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
   // ── live: edges (visibility / form / color / width / topology) ──
   useEffect(() => {
     gRef.current?.rebuildEdges();
-  }, [links, edgeStyle, relationForm, mentionForm, edgesHidden, edgeRevealDepth, lookKey]);
+  }, [links, edgeStyle, relationForm, mentionForm, edgesHidden, edgeRevealDepth, lookKey, lightTheme]);
+
+  // ── live: theme flip re-dims the current hover/selection (fade to white vs black) ──
+  useEffect(() => {
+    const g = gRef.current;
+    if (g && (g.pinnedId || g.hoveredId)) g.applyHoverDim(g.pinnedId ?? g.hoveredId);
+  }, [lightTheme]);
 
   // ── live: glow on/off ──
   useEffect(() => {

@@ -281,6 +281,7 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
         edgeRevealDepth={1}
         relationForm={settings.relationForm}
         mentionForm={settings.mentionForm}
+        lightTheme={!isDark}
         focusRequest={focusReq}
         onNavigate={setSelectedId}
       />
