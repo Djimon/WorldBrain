@@ -17,6 +17,8 @@
   "graphGlow": "Glow",
   "graphShowAllEdges": "Alle Kanten zeigen",
   "graphShowMentions": "Mentions zeigen",
+  "graphRelationGroup": "Relationen",
+  "graphMentionGroup": "Mentions",
   "graphMentionColor": "Mention-Farbe",
   "graphRelationColor": "Relation-Farbe",
   "graphMentionForm": "Mention-Form",

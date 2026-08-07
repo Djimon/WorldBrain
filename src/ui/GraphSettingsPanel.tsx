@@ -59,32 +59,38 @@ export function GraphSettingsPanel({ value, onChange, theme }: GraphSettingsPane
             <input type="checkbox" checked={value.showAllEdges} onChange={(e) => onChange({ showAllEdges: e.target.checked })} />
             {t('graphShowAllEdges', 'Alle Kanten zeigen')}
           </label>
-          <label className="gv-check">
-            <input type="checkbox" checked={value.showMentions} onChange={(e) => onChange({ showMentions: e.target.checked })} />
-            {t('graphShowMentions', 'Mentions zeigen')}
-          </label>
 
-          <label className="gv-row">
-            {t('graphMentionColor', 'Mention-Farbe')}
-            <input type="color" value={value[mentionKey]} onChange={(e) => onChange({ [mentionKey]: e.target.value } as Partial<GraphSettings>)} />
-          </label>
-          <label className="gv-row">
-            {t('graphRelationColor', 'Relation-Farbe')}
-            <input type="color" value={value[relationKey]} onChange={(e) => onChange({ [relationKey]: e.target.value } as Partial<GraphSettings>)} />
-          </label>
+          <div className="gv-group">
+            <span className="gv-group__title">{t('graphRelationGroup', 'Relationen')}</span>
+            <label className="gv-row">
+              {t('graphRelationColor', 'Relation-Farbe')}
+              <input type="color" value={value[relationKey]} onChange={(e) => onChange({ [relationKey]: e.target.value } as Partial<GraphSettings>)} />
+            </label>
+            <label className="gv-field">
+              <span className="gv-field__label">{t('graphRelationForm', 'Relation-Form')}</span>
+              <select value={value.relationForm} onChange={(e) => onChange({ relationForm: e.target.value as EdgeForm })}>
+                {forms.map((f) => <option key={f} value={f}>{formLabel(f)}</option>)}
+              </select>
+            </label>
+          </div>
 
-          <label className="gv-field">
-            <span className="gv-field__label">{t('graphMentionForm', 'Mention-Form')}</span>
-            <select value={value.mentionForm} onChange={(e) => onChange({ mentionForm: e.target.value as EdgeForm })}>
-              {forms.map((f) => <option key={f} value={f}>{formLabel(f)}</option>)}
-            </select>
-          </label>
-          <label className="gv-field">
-            <span className="gv-field__label">{t('graphRelationForm', 'Relation-Form')}</span>
-            <select value={value.relationForm} onChange={(e) => onChange({ relationForm: e.target.value as EdgeForm })}>
-              {forms.map((f) => <option key={f} value={f}>{formLabel(f)}</option>)}
-            </select>
-          </label>
+          <div className="gv-group">
+            <span className="gv-group__title">{t('graphMentionGroup', 'Mentions')}</span>
+            <label className="gv-check">
+              <input type="checkbox" checked={value.showMentions} onChange={(e) => onChange({ showMentions: e.target.checked })} />
+              {t('graphShowMentions', 'Mentions zeigen')}
+            </label>
+            <label className="gv-row">
+              {t('graphMentionColor', 'Mention-Farbe')}
+              <input type="color" value={value[mentionKey]} onChange={(e) => onChange({ [mentionKey]: e.target.value } as Partial<GraphSettings>)} />
+            </label>
+            <label className="gv-field">
+              <span className="gv-field__label">{t('graphMentionForm', 'Mention-Form')}</span>
+              <select value={value.mentionForm} onChange={(e) => onChange({ mentionForm: e.target.value as EdgeForm })}>
+                {forms.map((f) => <option key={f} value={f}>{formLabel(f)}</option>)}
+              </select>
+            </label>
+          </div>
         </div>
       )}
 

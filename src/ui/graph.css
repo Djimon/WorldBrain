@@ -90,6 +90,11 @@
 .gv-field__label { opacity: 0.75; font-size: 11px; }
 .gv-check { display: flex; gap: 8px; align-items: center; }
 .gv-row { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.gv-group {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 8px; border-top: 1px solid var(--gv-border-soft);
+}
+.gv-group__title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
 
 /* relation-type filter (bottom pane + funnel FAB) */
 .gv-fab {
