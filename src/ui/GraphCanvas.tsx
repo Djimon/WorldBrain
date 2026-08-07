@@ -5,17 +5,16 @@
 //
 // Renderer = three.js (raw), decided in the open bench #326 (real GPU-3D beat
 // Pixi/Sigma on look). NOT react-force-graph-3d (Kapsule deferred-digest
-// workarounds, see #320). Recipe ported from src/spikes/graph-bench/adapters/
-// threeAdapter.ts:
+// workarounds, see #320). Recipe ported from the bench threeAdapter:
 //   - nodes: ONE InstancedMesh (per-instance color+scale) -> few draw calls
-//   - edges: TWO LineSegments (relation/mention)
+//   - edges: TWO fat LineSegments2 (relation/mention), real px width
 //   - camera headlight, OrbitControls (rotate/pan/zoom)
-//   - Bloom (UnrealBloomPass + sRGB-decode) ONLY when glowEnabled (D2, default off)
+//   - SELECTIVE bloom (nodes only, never edges) when glowEnabled (D2, off default)
 //   - click/hover via Raycaster on the InstancedMesh
+//   - optional: hide edges, reveal only the n-hop neighborhood on hover/click
 // Layout is 3D (computeGalaxyLayout3D); a caller may pass precomputed
 // `positions` to skip the force sim (look-tuning harness, later S10 #327).
-// All look knobs live in `look` (GraphLookConfig) with DEFAULT_LOOK = the
-// tuned production values; omit it and production behaviour is unchanged.
+// Look knobs live in `look` (GraphLookConfig); DEFAULT_LOOK = production look.
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -24,6 +23,9 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import type { GraphLink, GraphNode } from '../services/graph-model';
 import type { EdgeVisualStyle, NodeVisualStyle } from '../services/graph-style';
 import { computeGalaxyLayout3D } from '../services/galaxy-layout';
@@ -33,7 +35,6 @@ export interface GraphLayoutConfig {
   clusterStrength?: number;
   chargeStrength?: number;
   linkDistance?: number;
-  // Visual spread multiplier applied after position normalization (>1 spreads out).
   spreadScale?: number;
 }
 
@@ -42,14 +43,16 @@ export interface GraphLookConfig {
   bloomStrength: number;
   bloomRadius: number;
   bloomThreshold: number;
-  radiusScale: number;        // style.radius [6..22] -> world units
-  lightAzimuth: number;       // radians (horizontal)
-  lightElevation: number;     // radians (vertical)
+  radiusScale: number;
+  lightAzimuth: number;
+  lightElevation: number;
   lightIntensity: number;
   ambientIntensity: number;
-  dimFactor: number;          // non-neighbor darkening on hover
-  fit: number;                // half-extent in world units
-  camDistanceFactor: number;  // camera z = fit * this
+  dimFactor: number;
+  fit: number;
+  camDistanceFactor: number;
+  edgeWidthScale: number;
+  edgeOpacityScale: number;
 }
 
 export const DEFAULT_LOOK: GraphLookConfig = {
@@ -57,7 +60,6 @@ export const DEFAULT_LOOK: GraphLookConfig = {
   bloomRadius: 0.85,
   bloomThreshold: 0,
   radiusScale: 0.6,
-  // reproduces the original (-0.4, 0.4, 1) headlight direction
   lightAzimuth: Math.atan2(-0.4, 1),
   lightElevation: Math.atan2(0.4, Math.hypot(-0.4, 1)),
   lightIntensity: 1.4,
@@ -65,6 +67,8 @@ export const DEFAULT_LOOK: GraphLookConfig = {
   dimFactor: 0.22,
   fit: 600,
   camDistanceFactor: 2.4,
+  edgeWidthScale: 1,
+  edgeOpacityScale: 1,
 };
 
 export interface GraphPosition { id: string; x: number; y: number; z: number; }
@@ -75,14 +79,13 @@ export interface GraphCanvasProps {
   nodeStyle: (node: GraphNode) => NodeVisualStyle;
   edgeStyle: (link: GraphLink) => EdgeVisualStyle;
   layout?: GraphLayoutConfig;
-  // Precomputed 3D positions — if given, the force sim is skipped (lets a
-  // tuner re-render on look changes without recomputing the layout).
   positions?: GraphPosition[];
   look?: Partial<GraphLookConfig>;
-  // D2: per-node bloom glow — OFF by default; on/off via S06.
   glowEnabled?: boolean;
-  // Uniform multiplier on node radius. Default 1.
   nodeSizeScale?: number;
+  // Hide all edges; reveal only the hovered/clicked node's n-hop neighborhood.
+  edgesHidden?: boolean;
+  edgeRevealDepth?: number; // BFS hops (default 1)
   onNavigate: (id: string) => void;
   onHoverNode?: (id: string | null) => void;
 }
@@ -90,20 +93,19 @@ export interface GraphCanvasProps {
 const FALLBACK_W = 800;
 const FALLBACK_H = 600;
 
-// sRGB->linear decode so Bloom runs in linear light and OutputPass's re-encode
-// is not a double-encode (the grey-haze bug — see spike memory).
-const SRGB_DECODE = {
-  uniforms: { tDiffuse: { value: null as THREE.Texture | null } },
+// additive mix of base scene + bloom-of-nodes (selective bloom).
+const MIX_SHADER = {
+  uniforms: { baseTexture: { value: null as THREE.Texture | null }, bloomTexture: { value: null as THREE.Texture | null } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader: `
-    varying vec2 vUv; uniform sampler2D tDiffuse;
-    vec3 s2l(vec3 c){ return mix(c/12.92, pow((c+0.055)/1.055,vec3(2.4)), step(0.04045,c)); }
-    void main(){ vec4 t=texture2D(tDiffuse,vUv); gl_FragColor=vec4(s2l(t.rgb),t.a); }
+    varying vec2 vUv; uniform sampler2D baseTexture; uniform sampler2D bloomTexture;
+    void main(){ gl_FragColor = texture2D(baseTexture,vUv) + texture2D(bloomTexture,vUv); }
   `,
 };
 
 export function GraphCanvas({
-  nodes, links, nodeStyle, edgeStyle, layout, positions, look, glowEnabled, nodeSizeScale, onNavigate, onHoverNode,
+  nodes, links, nodeStyle, edgeStyle, layout, positions, look, glowEnabled, nodeSizeScale,
+  edgesHidden, edgeRevealDepth, onNavigate, onHoverNode,
 }: GraphCanvasProps): React.ReactElement {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const lookKey = JSON.stringify(look ?? {});
@@ -118,6 +120,8 @@ export function GraphCanvas({
     const height = mountEl.clientHeight || FALLBACK_H;
     const sizeScale = nodeSizeScale ?? 1.0;
     const spreadScale = layout?.spreadScale ?? 1.0;
+    const revealDepth = Math.max(1, edgeRevealDepth ?? 1);
+    const hideEdges = !!edgesHidden;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, width / height, 1, 20000);
@@ -130,16 +134,15 @@ export function GraphCanvas({
 
     scene.add(new THREE.AmbientLight(0xffffff, L.ambientIntensity));
     const headlight = new THREE.DirectionalLight(0xffffff, L.lightIntensity);
-    const dx = Math.sin(L.lightAzimuth) * Math.cos(L.lightElevation);
-    const dy = Math.sin(L.lightElevation);
-    const dz = Math.cos(L.lightAzimuth) * Math.cos(L.lightElevation);
-    headlight.position.set(dx, dy, dz);
+    headlight.position.set(
+      Math.sin(L.lightAzimuth) * Math.cos(L.lightElevation),
+      Math.sin(L.lightElevation),
+      Math.cos(L.lightAzimuth) * Math.cos(L.lightElevation),
+    );
     camera.add(headlight);
     camera.add(headlight.target);
     scene.add(camera);
 
-    // 3D positions: precomputed (skip sim) or force layout, then normalize into
-    // a centered cube of half-extent L.fit*spread.
     const positioned: GraphPosition[] = positions ?? computeGalaxyLayout3D(nodes, links, {
       clusterStrength: layout?.clusterStrength,
       chargeStrength: layout?.chargeStrength,
@@ -159,7 +162,6 @@ export function GraphCanvas({
       worldById.set(p.id, new THREE.Vector3((p.x - cx) * norm, (p.y - cy) * norm, (p.z - cz) * norm));
     }
 
-    // adjacency (for hover dim)
     const neighbors = new Map<string, Set<string>>();
     for (const l of links) {
       (neighbors.get(l.source) ?? neighbors.set(l.source, new Set()).get(l.source)!).add(l.target);
@@ -187,42 +189,106 @@ export function GraphCanvas({
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     scene.add(mesh);
 
-    // ── edges: TWO LineSegments (relation / mention) ──────────────────────
-    function buildLines(kind: 'relation' | 'mention'): THREE.LineSegments {
+    // ── edges: fat LineSegments2 (real px width), per kind ────────────────
+    function buildFatLines(subset: GraphLink[], kind: 'relation' | 'mention'): LineSegments2 | null {
       const style = edgeStyle({ source: '', target: '', kind });
       const pts: number[] = [];
-      for (const l of links) {
+      for (const l of subset) {
         if (l.kind !== kind) continue;
         const a = worldById.get(l.source), b = worldById.get(l.target);
         if (!a || !b) continue;
         pts.push(a.x, a.y, a.z, b.x, b.y, b.z);
       }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-      const m = new THREE.LineBasicMaterial({ color: style.color, transparent: true, opacity: style.alpha });
-      return new THREE.LineSegments(g, m);
+      if (pts.length === 0) return null;
+      const g = new LineSegmentsGeometry();
+      g.setPositions(pts);
+      const m = new LineMaterial({
+        color: style.color,
+        linewidth: Math.max(0.1, style.width * L.edgeWidthScale),
+        transparent: true,
+        opacity: Math.min(1, style.alpha * L.edgeOpacityScale),
+      });
+      m.resolution.set(width, height);
+      return new LineSegments2(g, m);
     }
-    const relLines = buildLines('relation');
-    const menLines = buildLines('mention');
-    scene.add(relLines, menLines);
+    const relFull = buildFatLines(links, 'relation');
+    const menFull = buildFatLines(links, 'mention');
+    if (relFull) { relFull.visible = !hideEdges; scene.add(relFull); }
+    if (menFull) { menFull.visible = !hideEdges; scene.add(menFull); }
+
+    // reveal group (n-hop neighborhood when edges hidden)
+    const revealGroup = new THREE.Group();
+    scene.add(revealGroup);
+    let revealKids: LineSegments2[] = [];
+    function clearReveal() {
+      for (const s of revealKids) {
+        revealGroup.remove(s);
+        s.geometry.dispose();
+        (s.material as THREE.Material).dispose();
+      }
+      revealKids = [];
+    }
+    function nodesWithin(focus: string, depth: number): Set<string> {
+      const seen = new Set<string>([focus]);
+      let frontier = [focus];
+      for (let d = 0; d < depth; d++) {
+        const next: string[] = [];
+        for (const f of frontier) {
+          for (const nb of neighbors.get(f) ?? []) {
+            if (!seen.has(nb)) { seen.add(nb); next.push(nb); }
+          }
+        }
+        frontier = next;
+      }
+      return seen;
+    }
+    function rebuildReveal(focusId: string | null) {
+      clearReveal();
+      if (!hideEdges || !focusId) return;
+      const set = nodesWithin(focusId, revealDepth);
+      const subset = links.filter((l) => set.has(l.source) && set.has(l.target));
+      for (const kind of ['relation', 'mention'] as const) {
+        const seg = buildFatLines(subset, kind);
+        if (seg) { revealGroup.add(seg); revealKids.push(seg); }
+      }
+    }
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
-    // ── bloom composer (only when glow on) ────────────────────────────────
-    let composer: EffectComposer | null = null;
+    // ── SELECTIVE bloom: nodes only, never edges (two composers) ──────────
+    let bloomComposer: EffectComposer | null = null;
+    let finalComposer: EffectComposer | null = null;
+    let mixPass: ShaderPass | null = null;
     if (glowEnabled) {
-      composer = new EffectComposer(renderer);
-      composer.addPass(new RenderPass(scene, camera));
-      composer.addPass(new ShaderPass(SRGB_DECODE));
-      composer.addPass(new UnrealBloomPass(new THREE.Vector2(width, height), L.bloomStrength, L.bloomRadius, L.bloomThreshold));
-      composer.addPass(new OutputPass());
+      bloomComposer = new EffectComposer(renderer);
+      bloomComposer.renderToScreen = false;
+      bloomComposer.addPass(new RenderPass(scene, camera));
+      bloomComposer.addPass(new UnrealBloomPass(new THREE.Vector2(width, height), L.bloomStrength, L.bloomRadius, L.bloomThreshold));
+
+      finalComposer = new EffectComposer(renderer);
+      finalComposer.addPass(new RenderPass(scene, camera));
+      mixPass = new ShaderPass(
+        new THREE.ShaderMaterial({
+          uniforms: {
+            baseTexture: { value: null },
+            bloomTexture: { value: bloomComposer.renderTarget2.texture },
+          },
+          vertexShader: MIX_SHADER.vertexShader,
+          fragmentShader: MIX_SHADER.fragmentShader,
+        }),
+        'baseTexture',
+      );
+      mixPass.needsSwap = true;
+      finalComposer.addPass(mixPass);
+      finalComposer.addPass(new OutputPass());
     }
 
-    // ── hover dim + click via Raycaster on the InstancedMesh ──────────────
+    // ── hover dim + click via Raycaster ───────────────────────────────────
     const raycaster = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
     let hoveredId: string | null = null;
+    let pinnedId: string | null = null;
 
     function pickId(ev: PointerEvent): string | null {
       const rect = renderer.domElement.getBoundingClientRect();
@@ -246,14 +312,18 @@ export function GraphCanvas({
       const id = pickId(ev);
       if (id === hoveredId) return;
       hoveredId = id;
-      applyHoverDim(id);
+      applyHoverDim(id ?? pinnedId);
+      rebuildReveal(id ?? pinnedId);
       onHoverNode?.(id);
     }
     let downX = 0, downY = 0;
     function onDown(ev: PointerEvent) { downX = ev.clientX; downY = ev.clientY; }
     function onUp(ev: PointerEvent) {
-      if (Math.hypot(ev.clientX - downX, ev.clientY - downY) > 4) return; // was a drag
+      if (Math.hypot(ev.clientX - downX, ev.clientY - downY) > 4) return; // drag, not click
       const id = pickId(ev);
+      pinnedId = id;            // click a node pins it; click background clears
+      applyHoverDim(id);
+      rebuildReveal(id);
       if (id) onNavigate(id);
     }
     renderer.domElement.addEventListener('pointermove', onMove);
@@ -265,8 +335,20 @@ export function GraphCanvas({
     function frame() {
       if (disposed) return;
       controls.update();
-      if (composer) composer.render();
-      else renderer.render(scene, camera);
+      if (bloomComposer && finalComposer) {
+        // bloom pass sees ONLY nodes -> hide every edge object first
+        const rv = relFull?.visible, mv = menFull?.visible, gv = revealGroup.visible;
+        if (relFull) relFull.visible = false;
+        if (menFull) menFull.visible = false;
+        revealGroup.visible = false;
+        bloomComposer.render();
+        if (relFull) relFull.visible = rv ?? false;
+        if (menFull) menFull.visible = mv ?? false;
+        revealGroup.visible = gv;
+        finalComposer.render();
+      } else {
+        renderer.render(scene, camera);
+      }
       raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
@@ -278,22 +360,23 @@ export function GraphCanvas({
       renderer.domElement.removeEventListener('pointerdown', onDown);
       renderer.domElement.removeEventListener('pointerup', onUp);
       controls.dispose();
-      composer?.dispose();
+      bloomComposer?.dispose();
+      finalComposer?.dispose();
+      clearReveal();
       geo.dispose();
       mat.dispose();
-      relLines.geometry.dispose();
-      (relLines.material as THREE.Material).dispose();
-      menLines.geometry.dispose();
-      (menLines.material as THREE.Material).dispose();
+      for (const seg of [relFull, menFull]) {
+        if (!seg) continue;
+        seg.geometry.dispose();
+        (seg.material as THREE.Material).dispose();
+      }
       renderer.dispose();
       renderer.domElement.remove();
     };
-    // Full remount on any input change — rebuilt from scratch (intentional).
-    // Passing `positions` avoids the expensive relayout on look-only changes.
   }, [
     nodes, links, nodeStyle, edgeStyle, posKey, positions, lookKey,
     layout?.mode, layout?.clusterStrength, layout?.chargeStrength, layout?.linkDistance, layout?.spreadScale,
-    glowEnabled, nodeSizeScale, onNavigate, onHoverNode,
+    glowEnabled, nodeSizeScale, edgesHidden, edgeRevealDepth, onNavigate, onHoverNode,
   ]);
 
   return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />;

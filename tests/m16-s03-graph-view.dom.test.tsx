@@ -33,10 +33,18 @@ vi.mock('three/examples/jsm/controls/OrbitControls.js', () => ({
   OrbitControls: class { enableDamping = false; update(): void {} dispose(): void {} },
 }));
 vi.mock('three/examples/jsm/postprocessing/EffectComposer.js', () => ({
-  EffectComposer: class { constructor() { composerCtor(); } addPass(): void {} render(): void {} dispose(): void {} setSize(): void {} },
+  EffectComposer: class {
+    renderToScreen = false;
+    renderTarget2 = { texture: {} };
+    constructor() { composerCtor(); }
+    addPass(): void {}
+    render(): void {}
+    dispose(): void {}
+    setSize(): void {}
+  },
 }));
 vi.mock('three/examples/jsm/postprocessing/RenderPass.js', () => ({ RenderPass: class {} }));
-vi.mock('three/examples/jsm/postprocessing/ShaderPass.js', () => ({ ShaderPass: class {} }));
+vi.mock('three/examples/jsm/postprocessing/ShaderPass.js', () => ({ ShaderPass: class { needsSwap = false; uniforms = {}; } }));
 vi.mock('three/examples/jsm/postprocessing/UnrealBloomPass.js', () => ({ UnrealBloomPass: class {} }));
 vi.mock('three/examples/jsm/postprocessing/OutputPass.js', () => ({ OutputPass: class {} }));
 

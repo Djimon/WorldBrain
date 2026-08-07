@@ -60,6 +60,10 @@ export function GraphLookTuner(): React.ReactElement {
   const [fit, setFit] = useState(DEFAULT_LOOK.fit);
   const [camDistanceFactor, setCamDistanceFactor] = useState(DEFAULT_LOOK.camDistanceFactor);
   const [sizeSpread, setSizeSpread] = useState(6);
+  const [edgeWidthScale, setEdgeWidthScale] = useState(DEFAULT_LOOK.edgeWidthScale);
+  const [edgeOpacityScale, setEdgeOpacityScale] = useState(DEFAULT_LOOK.edgeOpacityScale);
+  const [edgesHidden, setEdgesHidden] = useState(true);
+  const [revealDepth, setRevealDepth] = useState(1);
 
   const model = useMemo(() => benchToModel(nodeCount), [nodeCount]);
   const maxDeg = useMemo(() => Math.max(1, ...model.nodes.map((n) => n.degree)), [model]);
@@ -95,11 +99,12 @@ export function GraphLookTuner(): React.ReactElement {
     bloomStrength, bloomRadius, bloomThreshold, radiusScale,
     lightAzimuth: lightAzDeg * DEG2RAD, lightElevation: lightElDeg * DEG2RAD,
     lightIntensity, ambientIntensity, dimFactor, fit, camDistanceFactor,
-  }), [bloomStrength, bloomRadius, bloomThreshold, radiusScale, lightAzDeg, lightElDeg, lightIntensity, ambientIntensity, dimFactor, fit, camDistanceFactor]);
+    edgeWidthScale, edgeOpacityScale,
+  }), [bloomStrength, bloomRadius, bloomThreshold, radiusScale, lightAzDeg, lightElDeg, lightIntensity, ambientIntensity, dimFactor, fit, camDistanceFactor, edgeWidthScale, edgeOpacityScale]);
 
   const onNavigate = useCallback((id: string) => { console.log('navigate', id); }, []);
 
-  const readout = JSON.stringify({ ...look, sizeSpread, glow }, null, 2);
+  const readout = JSON.stringify({ ...look, sizeSpread, edgesHidden, edgeRevealDepth: revealDepth, glow }, null, 2);
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#0b0d10', color: '#e8eef5', fontFamily: 'system-ui, sans-serif' }}>
@@ -112,6 +117,8 @@ export function GraphLookTuner(): React.ReactElement {
           edgeStyle={edgeStyle}
           look={look}
           glowEnabled={glow}
+          edgesHidden={edgesHidden}
+          edgeRevealDepth={revealDepth}
           layout={{ mode: 'galaxy' }}
           onNavigate={onNavigate}
         />}
@@ -160,6 +167,17 @@ export function GraphLookTuner(): React.ReactElement {
           <Slider label="Kugel-Groesse (radiusScale)" value={radiusScale} min={0.1} max={2.5} step={0.05} onChange={setRadiusScale} />
           <Slider label="Groessen-Unterschied (spread)" value={sizeSpread} min={0} max={30} step={0.5} onChange={setSizeSpread} />
           <Slider label="Hover-Dim" value={dimFactor} min={0} max={1} step={0.02} onChange={setDimFactor} />
+        </fieldset>
+
+        <fieldset style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <legend style={{ fontSize: 11, opacity: 0.7 }}>Kanten</legend>
+          <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12 }}>
+            <input type="checkbox" checked={edgesHidden} onChange={(e) => setEdgesHidden(e.target.checked)} />
+            Kanten ausblenden (nur n-Nachbarschaft bei Hover/Klick)
+          </label>
+          <Slider label="Reveal-Tiefe n (Hops)" value={revealDepth} min={1} max={4} step={1} onChange={(v) => setRevealDepth(Math.round(v))} />
+          <Slider label="Kanten-Breite" value={edgeWidthScale} min={0.1} max={5} step={0.1} onChange={setEdgeWidthScale} />
+          <Slider label="Kanten-Opacity" value={edgeOpacityScale} min={0} max={3} step={0.05} onChange={setEdgeOpacityScale} />
         </fieldset>
 
         <fieldset style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
