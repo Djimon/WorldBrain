@@ -60,10 +60,26 @@ function hexToNum(hex: string): number {
   return parseInt(hex.replace('#', ''), 16) || 0;
 }
 
+// Persist graph settings across sessions (localStorage — same convention as
+// theme/lang). Global, not per-project. Merge over defaults so newly added
+// keys still resolve for older stored blobs.
+const SETTINGS_KEY = 'graph-settings';
+function loadSettings(): GraphSettings {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(SETTINGS_KEY) : null;
+    if (raw) return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<GraphSettings>) };
+  } catch { /* storage unavailable / bad json — fall back to defaults */ }
+  return DEFAULT_SETTINGS;
+}
+
 export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps): React.ReactElement {
   const [model, setModel] = useState<GraphModel | null>(null);
-  const [settings, setSettings] = useState<GraphSettings>(DEFAULT_SETTINGS);
-  const patch = useCallback((p: Partial<GraphSettings>) => setSettings((s) => ({ ...s, ...p })), []);
+  const [settings, setSettings] = useState<GraphSettings>(loadSettings);
+  const patch = useCallback((p: Partial<GraphSettings>) => setSettings((s) => {
+    const next = { ...s, ...p };
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+    return next;
+  }), []);
 
   useEffect(() => {
     let cancelled = false;
