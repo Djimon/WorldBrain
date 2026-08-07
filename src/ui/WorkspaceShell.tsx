@@ -91,7 +91,7 @@ const AREAS: { id: Area; icon: string }[] = [
   { id: 'rules',    icon: '📖' },
   { id: 'session',  icon: '🎲' },
   { id: 'audio',    icon: '🎧' },
-  { id: 'graph',    icon: '🕸' },
+  { id: 'graph',    icon: '🌌' },
   { id: 'project',  icon: '⚙' },
 ];
 
