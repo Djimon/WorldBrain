@@ -96,7 +96,23 @@ Status Bau: TypeScript sauber, alle Module in Vite-WebView2 auflösbar (headless
 
 **WebGL-Fail-Verhalten** (Ziel ohne GPU-Beschleunigung, falls testbar): Kontext ok? Software-Fallback? fps-Einbruch je Engine: `__________`
 
-## Entscheidung
+## Entscheidung (2026-08-07)
 
-**Offen bis Messwerte vorliegen.** Erst diese Tabellen fixieren D1/D2 im Epic. Bis dahin bleibt die
-Pixi-2D-Festlegung (Teil 1 / Epic D1) **provisorisch**.
+**Renderer: three.js (raw) — mit Abstand am besten.** Im direkten Bench (gleicher Graph, gleiches
+d3-force-3d-Layout, rotierbare 3D-Galaxy in allen drei) gewinnt three.js **deutlich**:
+
+- **Echtes GPU-3D** statt CPU-Reprojektion pro Frame. Pixi und Sigma müssen die 3D→2D-Projektion bei
+  jedem Frame auf der CPU rechnen (Pixi: Sprites + Kanten-Graphics neu; Sigma: 10k x/y-Rewrites + refresh)
+  — der Flaschenhals, den three.js gar nicht hat (Instancing, GPU-Transform).
+- **Look**: nativer Bloom + Tiefe/Parallax kommen bei three.js umsonst; bei den 2D-Engines sind sie
+  Handarbeit und teurer.
+- three.js war die klar flüssigste, sauberste 3D-Galaxy — Qualitätsabstand so groß, dass die exakten
+  10k-fps-Zahlen die Wahl nicht mehr kippen (Tabellen oben bleiben optional zum Nachtragen).
+
+**Wichtige Bau-Vorgabe: raw three.js (InstancedMesh + eigene Passes), NICHT `react-force-graph-3d`.**
+Der #320-Spike zeigte, dass die Kapsule-Lib (verzögerter Prop-Digest, re-parentet Lichter, baut Nodes neu)
+Dauer-Workarounds erzwingt. Der Bench-Adapter (`adapters/threeAdapter.ts`) belegt: roh + d3-force-3d im
+Worker ist sauber und schnell — das ist das Referenz-Rezept für M16.
+
+→ Fixiert **D1/D2** im Epic (three.js statt Pixi-2D). Die renderer-abhängigen Decisions (D6/D7/D10/D11/D12,
+GraphCanvas-Kontrakt, Cytoscape-Ausbau) müssen auf three.js umgeschrieben werden.
