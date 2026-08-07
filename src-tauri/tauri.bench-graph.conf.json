@@ -1,0 +1,15 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "graph-bench",
+        "title": "M16 Renderer-Bench (PoC) — #326",
+        "url": "bench-graph.html",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ]
+  }
+}

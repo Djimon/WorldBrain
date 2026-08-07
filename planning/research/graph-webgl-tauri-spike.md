@@ -31,3 +31,66 @@ Kein 3D-Freiflug, keine Kamera-Orbit gewünscht → der ganze 3D-Stack ist unnö
 **Renderer: PixiJS (2D WebGL) + d3-force.** Beide MIT/ISC (frei kommerziell). 3D-Effekt = Sprite-Kugel; Glow = Per-Node-Halo; Ego+Suche = Sichtbarkeits-Toggle; Kanten dick/dünn+transparent (nicht gestrichelt). Referenz-Rezept: Obsidian (Pixi+d3-force) und Graphifys D3-`graph.html`. **react-force-graph-3d / three.js entfallen.**
 
 Übernommen ins Epic: `planning/epics/M16-knowledge-graph-visualization.md` (D1/D2/D8/D10/D11). Spike-Code `src/spikes/` ist wegwerfbar; die Learnings leben hier.
+
+---
+
+# Verdict-Teil 2 — OFFENER Renderer-Bench (M16-S00b, #326)
+
+**Stand:** 2026-08-07 · **Ergebnis:** offen (Messung läuft) · ersetzt die Prämisse von Teil 1.
+
+## Warum neu
+
+Teil 1 war auf **eine vorgewählte Lösung** verengt (`react-force-graph-3d`) und lief auf **GPU-loser VM**
+(Software-WebGL) → sein „2D statt 3D / max. 1000 Nodes"-Fazit ist **schwache Evidenz, kein Fakt**. Dieser
+Bench öffnet den Optionsraum und misst **drei frei-kommerzielle (MIT/ISC) Engines gegeneinander** unter
+fairen Bedingungen. Vollständige Landschaft: [`graph-view-landscape-2026-08.md`](graph-view-landscape-2026-08.md).
+
+## Was gemessen wird — fair, gleiche Bedingungen
+
+Alle drei rendern **denselben synthetischen Graphen** (`generateBenchGraph`, deterministisch) mit **derselben
+Layout-Berechnung** (`d3-force`/`d3-force-3d` **im Web Worker**, blockiert das UI nicht). Isoliert damit
+**Render-Leistung** von **Layout-Leistung**. Jede Engine 10k-fair gebaut (kein künstliches Handicap):
+
+| Engine | Nodes | Kanten | 3D | Glow | Nav |
+|---|---|---|---|---|---|
+| **three.js** (raw) | 1 InstancedMesh (per-instance Farbe+Scale) | 2 LineSegments (relation/mention) | echt (OrbitControls) | UnrealBloomPass nativ (+ sRGB-Decode-Fix) | Rotate/Pan/Zoom |
+| **Pixi v8** | 1 Sprite-Batch (geteilte Kugel-Textur, Tint) | **1 Graphics, 2 Stroke-Batches** | Fake (2D + Kugel-Sprite) | additiver Halo-Sprite pro Node | Pan/Zoom (Stage-Transform) |
+| **Sigma v3** | graphology, size=degree | eingebaut, size/color | 2D | **nicht nativ** (bräuchte eigenes WebGL-Node-Program) | eingebaut |
+
+Metriken im Overlay: **fps** (rolling avg), **Layout-ms** (Worker), Node/Kanten-Count, **GPU-Info**
+(`WEBGL_debug_renderer_info` → echte GPU / Software-WebGL / Kontext-Fail = die Pflicht-Metrik aus Teil 1).
+
+## So läuft der Bench
+
+`start-graph-bench.bat` (oder `npm run desktop:bench-graph`) → eigenes **Tauri-WebView2**-Fenster
+(die echte Deployment-Oberfläche, wo der WebGL-Fail zählt). Im Overlay: Engine wählen, Node-Count
+1k/3k/10k, Kanten-Multiplier 2-6x, Glow an/aus. Code: `src/spikes/graph-bench/` (Wegwerf-PoC).
+
+Status Bau: TypeScript sauber, alle Module in Vite-WebView2 auflösbar (headless verifiziert).
+**Live-fps-Messung steht aus** — auf dieser Maschine laufen 3k entspannt, 10k **nicht simulierbar**
+→ 10k-Zeile auf echter/starker GPU messen.
+
+## Messwerte (auszufüllen)
+
+**Diese Maschine** (GPU-Info aus Overlay: `__________`):
+
+| Engine | 1k fps | 3k fps | 10k fps | Layout-ms (10k) | Glow-Kosten | Notiz |
+|---|---|---|---|---|---|---|
+| three.js | | | (n/a hier) | | | |
+| Pixi v8 | | | (n/a hier) | | | |
+| Sigma v3 | | | (n/a hier) | | | |
+
+**Starke Maschine / echte GPU** (GPU-Info: `__________`):
+
+| Engine | 3k fps | 10k fps | Layout-ms (10k) | 10k mit Glow | Notiz |
+|---|---|---|---|---|---|
+| three.js | | | | | |
+| Pixi v8 | | | | | |
+| Sigma v3 | | | | | |
+
+**WebGL-Fail-Verhalten** (Ziel ohne GPU-Beschleunigung, falls testbar): Kontext ok? Software-Fallback? fps-Einbruch je Engine: `__________`
+
+## Entscheidung
+
+**Offen bis Messwerte vorliegen.** Erst diese Tabellen fixieren D1/D2 im Epic. Bis dahin bleibt die
+Pixi-2D-Festlegung (Teil 1 / Epic D1) **provisorisch**.
