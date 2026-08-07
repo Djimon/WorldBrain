@@ -24,6 +24,8 @@
   "graphFormSolid": "durchgezogen",
   "graphFormDashed": "gestrichelt",
   "graphFormAnimated": "animiert",
+  "graphOpenEntity": "Öffnen",
+  "graphCloseDetail": "Schließen",
   "project": "Projekt",
   "recentlyOpened": "Zuletzt geöffnet",
   "newProject": "Neues Projekt",

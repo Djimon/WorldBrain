@@ -94,7 +94,7 @@ const EDGE_MIN_PX = 1.5;   // floor so edges never render sub-pixel (invisible)
 const DASH_SIZE = 10;   // 'dashed': long dashes
 const GAP_SIZE = 8;
 const DOT_SIZE = 1.5;   // 'animated': tiny dashes -> dotted, then flowed
-const DOT_GAP = 7;
+const DOT_GAP = 4;
 const ANIM_SPEED = 0.6;
 
 const MIX_SHADER = {
@@ -123,6 +123,9 @@ interface GraphState {
   rebuildEdges: () => void;
   rebuildReveal: (focusId: string | null) => void;
   applyColorsAndSizes: () => void;
+  chipLayer: HTMLDivElement;
+  chips: { el: HTMLDivElement; a: THREE.Vector3; b: THREE.Vector3 }[];
+  updateChips: (focusId: string | null) => void;
   L: GraphLookConfig;
   width: number;
   height: number;
@@ -165,6 +168,11 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(width, height);
     mountEl.appendChild(renderer.domElement);
+
+    // DOM overlay for edge-type chips (projected each frame; pointer-through).
+    const chipLayer = document.createElement('div');
+    chipLayer.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;';
+    mountEl.appendChild(chipLayer);
 
     scene.add(new THREE.AmbientLight(0xffffff, L.ambientIntensity));
     const headlight = new THREE.DirectionalLight(0xffffff, L.lightIntensity);
@@ -212,6 +220,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       baseColors: [], neighbors: new Map(), revealGroup, revealKids: [], fullLines: [],
       lineMaterials: new Set(), composers: null,
       buildFatLines: () => null, rebuildEdges: () => {}, rebuildReveal: () => {}, applyColorsAndSizes: () => {},
+      chipLayer, chips: [], updateChips: () => {},
       L, width, height, hoveredId: null, pinnedId: null, disposed: false,
     };
     gRef.current = state;
@@ -318,6 +327,26 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       state.rebuildReveal(state.pinnedId ?? state.hoveredId);
     };
 
+    // edge-type chips on the focus node's incident (visible) edges.
+    state.updateChips = (focusId) => {
+      for (const ch of state.chips) ch.el.remove();
+      state.chips = [];
+      if (!focusId) return;
+      for (const l of p.current.links) {
+        if (l.source !== focusId && l.target !== focusId) continue;
+        const a = worldById.get(l.source), b = worldById.get(l.target);
+        if (!a || !b) continue;
+        const text = l.kind === 'relation' ? (l.relation_type ?? 'Relation') : 'Mention';
+        const el = document.createElement('div');
+        el.textContent = text;
+        el.style.cssText = 'position:absolute;transform:translate(-50%,-50%);padding:1px 6px;border-radius:8px;'
+          + 'font:11px system-ui,sans-serif;white-space:nowrap;color:#e8eef5;background:rgba(20,24,30,0.85);'
+          + 'border:1px solid rgba(255,255,255,0.18);pointer-events:none;';
+        chipLayer.appendChild(el);
+        state.chips.push({ el, a, b });
+      }
+    };
+
     // ── interaction ──
     const raycaster = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
@@ -346,6 +375,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       state.hoveredId = id;
       applyHoverDim(id ?? state.pinnedId);
       state.rebuildReveal(id ?? state.pinnedId);
+      state.updateChips(id ?? state.pinnedId);
       p.current.onHoverNode?.(id);
     }
     let downX = 0, downY = 0;
@@ -356,6 +386,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       state.pinnedId = id;
       applyHoverDim(id);
       state.rebuildReveal(id);
+      state.updateChips(id);
       if (id) p.current.onNavigate(id);
     }
     renderer.domElement.addEventListener('pointermove', onMove);
@@ -378,6 +409,18 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
         state.composers.final.render();
       } else {
         renderer.render(scene, camera);
+      }
+      if (state.chips.length) {
+        const mid = new THREE.Vector3();
+        for (const ch of state.chips) {
+          mid.copy(ch.a).lerp(ch.b, 0.5).project(camera);
+          const vis = mid.z < 1;
+          ch.el.style.display = vis ? 'block' : 'none';
+          if (vis) {
+            ch.el.style.left = `${(mid.x * 0.5 + 0.5) * width}px`;
+            ch.el.style.top = `${(-mid.y * 0.5 + 0.5) * height}px`;
+          }
+        }
       }
       raf = requestAnimationFrame(frame);
     }
@@ -404,6 +447,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       mat.dispose();
       renderer.dispose();
       renderer.domElement.remove();
+      chipLayer.remove();
       gRef.current = null;
     };
   }, [nodes, posKey, layoutKey, lookKey]);

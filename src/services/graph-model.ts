@@ -11,6 +11,7 @@ export interface GraphEntityInput {
 export interface GraphLinkInput {
   source: string;
   target: string;
+  relation_type?: string;
 }
 
 export interface GraphNode {
@@ -24,6 +25,8 @@ export interface GraphLink {
   source: string;
   target: string;
   kind: 'relation' | 'mention';
+  // present for kind:'relation' (from getAllRelations) -> edge-type chips.
+  relation_type?: string;
 }
 
 export interface GraphModel {
@@ -51,7 +54,9 @@ export function buildGraphModel(
   function toValidLinks(raw: GraphLinkInput[], kind: GraphLink['kind']): GraphLink[] {
     return raw
       .filter((l) => l.source !== l.target && idSet.has(l.source) && idSet.has(l.target))
-      .map((l) => ({ source: l.source, target: l.target, kind }));
+      .map((l) => (kind === 'relation' && l.relation_type != null
+        ? { source: l.source, target: l.target, kind, relation_type: l.relation_type }
+        : { source: l.source, target: l.target, kind }));
   }
 
   // Dedup at most one link per (unordered pair, kind) — independent of the

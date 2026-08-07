@@ -9,6 +9,7 @@
 // here and passed to GraphCanvas (also feeds the spatial "cluster" coloring),
 // so toggling settings never recomputes the force sim.
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { getAllRelations } from '../services/relation-service';
 import { buildMentionEdges } from '../services/mention-graph';
@@ -20,6 +21,7 @@ import { GraphCanvas } from './GraphCanvas';
 import type { GraphPosition } from './GraphCanvas';
 import { GraphSettingsPanel } from './GraphSettingsPanel';
 import type { GraphSettings } from './GraphSettingsPanel';
+import { EntityDetailView } from './EntityDetailView';
 
 export interface GlobalGraphViewProps {
   database: DatabaseLike;
@@ -73,7 +75,11 @@ function loadSettings(): GraphSettings {
 }
 
 export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps): React.ReactElement {
+  const { t } = useTranslation('nav');
   const [model, setModel] = useState<GraphModel | null>(null);
+  // Click a node -> preview in a side panel (stay in the graph), NOT a full
+  // area switch. The panel offers an explicit "open" to navigate for real.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [settings, setSettings] = useState<GraphSettings>(loadSettings);
   const patch = useCallback((p: Partial<GraphSettings>) => setSettings((s) => {
     const next = { ...s, ...p };
@@ -89,7 +95,7 @@ export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps):
     ]).then(([entities, relations]) => {
       if (cancelled) return;
       const mentionLinks = buildMentionEdges(entities);
-      const relationLinks = relations.map((r) => ({ source: r.source_id, target: r.target_id }));
+      const relationLinks = relations.map((r) => ({ source: r.source_id, target: r.target_id, relation_type: r.relation_type }));
       setModel(buildGraphModel(entities, relationLinks, mentionLinks));
     }).catch(console.error);
     return () => { cancelled = true; };
@@ -165,8 +171,32 @@ export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps):
         edgeRevealDepth={1}
         relationForm={settings.relationForm}
         mentionForm={settings.mentionForm}
-        onNavigate={onNavigate}
+        onNavigate={setSelectedId}
       />
+
+      {selectedId && (
+        <div style={{
+          position: 'absolute', top: 12, right: 12, width: 360, maxHeight: 'calc(100% - 24px)',
+          overflow: 'auto', zIndex: 6, background: 'rgba(18,22,28,0.96)', color: '#e8eef5',
+          borderRadius: 10, border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 8px 30px rgba(0,0,0,0.45)',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, padding: 8, position: 'sticky', top: 0, background: 'inherit' }}>
+            <button
+              onClick={() => onNavigate(selectedId)}
+              style={{ padding: '4px 10px', borderRadius: 6, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.2)', background: '#3a6ea5', color: '#fff' }}
+            >{t('graphOpenEntity', 'Öffnen')}</button>
+            <button
+              onClick={() => setSelectedId(null)}
+              aria-label={t('graphCloseDetail', 'Schließen')}
+              style={{ padding: '4px 10px', borderRadius: 6, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#e8eef5' }}
+            >×</button>
+          </div>
+          <div style={{ padding: '0 10px 12px' }}>
+            <EntityDetailView entityId={selectedId} database={database} onNavigateToEntity={setSelectedId} />
+          </div>
+        </div>
+      )}
+
       <GraphSettingsPanel value={settings} onChange={patch} />
     </div>
   );
