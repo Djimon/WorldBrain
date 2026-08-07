@@ -3869,7 +3869,9 @@ input {
   color: #fff;
 }
 
-.scene-switcher__item button:not(.scene-switcher__select) {
+/* icon buttons only — exclude text .btn (Speichern/Abbrechen in rename mode),
+   which must keep their natural width so the label fits. */
+.scene-switcher__item button:not(.scene-switcher__select):not(.btn) {
   width: 26px;
   height: 26px;
   display: flex;
@@ -3884,13 +3886,13 @@ input {
   transition: background 0.1s, border-color 0.1s, color 0.1s;
 }
 
-.scene-switcher__item button:not(.scene-switcher__select):hover:not(:disabled) {
+.scene-switcher__item button:not(.scene-switcher__select):not(.btn):hover:not(:disabled) {
   background: var(--color-surface-hover);
   border-color: var(--color-border);
   color: var(--color-text);
 }
 
-.scene-switcher__item button:not(.scene-switcher__select):disabled {
+.scene-switcher__item button:not(.scene-switcher__select):not(.btn):disabled {
   opacity: 0.3;
   cursor: default;
 }
