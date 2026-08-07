@@ -96,6 +96,10 @@ const GAP_SIZE = 8;
 const DOT_SIZE = 1.5;   // 'animated': tiny dashes -> dotted, then flowed
 const DOT_GAP = 4;
 const ANIM_SPEED = 0.6;
+// Without bloom the scene looks flat/grey -> brighter lights when glow is off.
+const NOBLOOM_LIGHT = 3;
+const NOBLOOM_AMBIENT = 1.75;
+const ZOOM_STEPS = 24;   // click-to-zoom tween length in frames
 
 const MIX_SHADER = {
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
@@ -126,6 +130,9 @@ interface GraphState {
   chipLayer: HTMLDivElement;
   chips: { el: HTMLDivElement; a: THREE.Vector3; b: THREE.Vector3 }[];
   updateChips: (focusId: string | null) => void;
+  ambient: THREE.AmbientLight;
+  headlight: THREE.DirectionalLight;
+  tween: { camFrom: THREE.Vector3; camTo: THREE.Vector3; tgtFrom: THREE.Vector3; tgtTo: THREE.Vector3; step: number } | null;
   L: GraphLookConfig;
   width: number;
   height: number;
@@ -174,7 +181,8 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     chipLayer.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;';
     mountEl.appendChild(chipLayer);
 
-    scene.add(new THREE.AmbientLight(0xffffff, L.ambientIntensity));
+    const ambient = new THREE.AmbientLight(0xffffff, L.ambientIntensity);
+    scene.add(ambient);
     const headlight = new THREE.DirectionalLight(0xffffff, L.lightIntensity);
     headlight.position.set(
       Math.sin(L.lightAzimuth) * Math.cos(L.lightElevation),
@@ -221,6 +229,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       lineMaterials: new Set(), composers: null,
       buildFatLines: () => null, rebuildEdges: () => {}, rebuildReveal: () => {}, applyColorsAndSizes: () => {},
       chipLayer, chips: [], updateChips: () => {},
+      ambient, headlight, tween: null,
       L, width, height, hoveredId: null, pinnedId: null, disposed: false,
     };
     gRef.current = state;
@@ -270,7 +279,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
         dashSize: form === 'animated' ? DOT_SIZE : DASH_SIZE,
         gapSize: form === 'animated' ? DOT_GAP : GAP_SIZE,
       });
-      m.resolution.set(width, height);
+      m.resolution.set(state.width, state.height);
       m.userData = { animated: form === 'animated' };
       const seg = new LineSegments2(g, m);
       if (dashed) seg.computeLineDistances();
@@ -334,9 +343,10 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       if (!focusId) return;
       for (const l of p.current.links) {
         if (l.source !== focusId && l.target !== focusId) continue;
+        if (l.kind !== 'relation') continue; // mentions already visually distinct -> no chip
         const a = worldById.get(l.source), b = worldById.get(l.target);
         if (!a || !b) continue;
-        const text = l.kind === 'relation' ? (l.relation_type ?? 'Relation') : 'Mention';
+        const text = l.relation_type ?? 'Relation';
         const el = document.createElement('div');
         el.textContent = text;
         el.style.cssText = 'position:absolute;transform:translate(-50%,-50%);padding:1px 6px;border-radius:8px;'
@@ -387,7 +397,22 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       applyHoverDim(id);
       state.rebuildReveal(id);
       state.updateChips(id);
-      if (id) p.current.onNavigate(id);
+      if (id) {
+        const pos = worldById.get(id);
+        if (pos) {
+          const dist = camera.position.distanceTo(pos);
+          const newDist = Math.max(L.fit * 0.15, dist * 0.55); // zoom in a bit
+          const dir = camera.position.clone().sub(controls.target).normalize();
+          state.tween = {
+            camFrom: camera.position.clone(),
+            camTo: pos.clone().add(dir.multiplyScalar(newDist)),
+            tgtFrom: controls.target.clone(),
+            tgtTo: pos.clone(),
+            step: 0,
+          };
+        }
+        p.current.onNavigate(id);
+      }
     }
     renderer.domElement.addEventListener('pointermove', onMove);
     renderer.domElement.addEventListener('pointerdown', onDown);
@@ -396,6 +421,15 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     let raf = 0;
     function frame() {
       if (state.disposed) return;
+      if (state.tween) {
+        const tw = state.tween;
+        tw.step += 1;
+        const r = Math.min(1, tw.step / ZOOM_STEPS);
+        const e = r * r * (3 - 2 * r); // smoothstep
+        camera.position.lerpVectors(tw.camFrom, tw.camTo, e);
+        controls.target.lerpVectors(tw.tgtFrom, tw.tgtTo, e);
+        if (r >= 1) state.tween = null;
+      }
       controls.update();
       for (const m of state.lineMaterials) if (m.userData?.animated) m.dashOffset -= ANIM_SPEED;
       if (state.composers) {
@@ -417,13 +451,26 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
           const vis = mid.z < 1;
           ch.el.style.display = vis ? 'block' : 'none';
           if (vis) {
-            ch.el.style.left = `${(mid.x * 0.5 + 0.5) * width}px`;
-            ch.el.style.top = `${(-mid.y * 0.5 + 0.5) * height}px`;
+            ch.el.style.left = `${(mid.x * 0.5 + 0.5) * state.width}px`;
+            ch.el.style.top = `${(-mid.y * 0.5 + 0.5) * state.height}px`;
           }
         }
       }
       raf = requestAnimationFrame(frame);
     }
+
+    // grow with the container (ResizeObserver absent in jsdom -> guard)
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {
+      const w = mountEl.clientWidth, h = mountEl.clientHeight;
+      if (!w || !h || (w === state.width && h === state.height)) return;
+      state.width = w; state.height = h;
+      renderer.setSize(w, h);
+      camera.aspect = w / h; camera.updateProjectionMatrix();
+      state.composers?.bloom.setSize(w, h);
+      state.composers?.final.setSize(w, h);
+      for (const m of state.lineMaterials) m.resolution.set(w, h);
+    }) : null;
+    ro?.observe(mountEl);
 
     // initial fill
     state.applyColorsAndSizes();
@@ -433,6 +480,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     return () => {
       state.disposed = true;
       cancelAnimationFrame(raf);
+      ro?.disconnect();
       renderer.domElement.removeEventListener('pointermove', onMove);
       renderer.domElement.removeEventListener('pointerdown', onDown);
       renderer.domElement.removeEventListener('pointerup', onUp);
@@ -466,6 +514,9 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
   useEffect(() => {
     const g = gRef.current;
     if (!g) return;
+    // brighter lights when bloom is off (otherwise the scene reads flat/grey).
+    g.ambient.intensity = glowEnabled ? g.L.ambientIntensity : NOBLOOM_AMBIENT;
+    g.headlight.intensity = glowEnabled ? g.L.lightIntensity : NOBLOOM_LIGHT;
     g.composers?.bloom.dispose();
     g.composers?.final.dispose();
     g.composers = null;
