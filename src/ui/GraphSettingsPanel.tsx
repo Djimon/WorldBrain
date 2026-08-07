@@ -21,9 +21,6 @@ export interface GraphSettings {
   // relation_type values whose edges are hidden (filter pane). Persisted;
   // stays hidden even when showAllEdges is on.
   hiddenRelationTypes: string[];
-  // Ring/Disc only: node distribution inside each wedge + disc spacing knob.
-  ringFill: 'organic' | 'ordered';
-  ringSpacing: number; // multiplier on the auto disc size (bigger = more room)
 }
 
 export interface GraphSettingsPanelProps {
@@ -95,31 +92,6 @@ export function GraphSettingsPanel({ value, onChange }: GraphSettingsPanelProps)
               {forms.map((f) => <option key={f} value={f}>{formLabel(f)}</option>)}
             </select>
           </label>
-
-          {value.layoutMode === 'ring' && (
-            <>
-              <div className="gv-field">
-                <span className="gv-field__label">{t('graphRingFill', 'Disc: Verteilung')}</span>
-                <div className="gv-segbar">
-                  {(['organic', 'ordered'] as const).map((m) => (
-                    <button
-                      key={m}
-                      className="gv-segbar__btn"
-                      onClick={() => onChange({ ringFill: m })}
-                      aria-pressed={value.ringFill === m}
-                    >{m === 'organic' ? t('graphRingFillOrganic', 'organisch') : t('graphRingFillOrdered', 'geordnet')}</button>
-                  ))}
-                </div>
-              </div>
-              <label className="gv-field">
-                <span className="gv-field__label">{t('graphRingSpacing', 'Disc: Abstand')} ({value.ringSpacing.toFixed(1)}x)</span>
-                <input
-                  type="range" min={0.5} max={3} step={0.1} value={value.ringSpacing}
-                  onChange={(e) => onChange({ ringSpacing: Number(e.target.value) })}
-                />
-              </label>
-            </>
-          )}
         </div>
       )}
 

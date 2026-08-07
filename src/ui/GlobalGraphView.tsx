@@ -65,9 +65,11 @@ const DEFAULT_SETTINGS: GraphSettings = {
   mentionForm: 'solid',
   relationForm: 'solid',
   hiddenRelationTypes: [],
-  ringFill: 'ordered',
-  ringSpacing: 0.5,
 };
+
+// Disc auto-size base (no user knob): disc grows ~sqrt(N) * this, plus extra
+// room when one Area dominates. Grows past the viewport -> zoom/pan.
+const RING_SPACING_BASE = 0.5;
 
 function hexToNum(hex: string): number {
   return parseInt(hex.replace('#', ''), 16) || 0;
@@ -145,9 +147,9 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
   );
   const ringPositions = useMemo<GraphPosition[]>(() => {
     if (layoutMode !== 'ring') return [];
-    const m = computeRingLayout(base.nodes, base.links, { fill: settings.ringFill });
+    const m = computeRingLayout(base.nodes, base.links);
     return base.nodes.map((n) => { const p = m.get(n.id); return { id: n.id, x: p?.x ?? 0, y: p?.y ?? 0, z: 0 }; });
-  }, [layoutMode, base, settings.ringFill]);
+  }, [layoutMode, base]);
   const positions = layoutMode === 'ring' ? ringPositions : galaxyPositions;
 
   // Disc size grows so node spacing stays usable: ~sqrt(N) keeps density
@@ -160,10 +162,10 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
     for (const nd of base.nodes) counts.set(nd.type, (counts.get(nd.type) ?? 0) + 1);
     let maxFrac = 0;
     for (const c of counts.values()) maxFrac = Math.max(maxFrac, c / n);
-    let s = settings.ringSpacing * Math.sqrt(n / 200);
+    let s = RING_SPACING_BASE * Math.sqrt(n / 200);
     if (maxFrac > 0.5) s *= maxFrac / 0.5;
     return Math.max(0.3, s);
-  }, [layoutMode, base.nodes, settings.ringSpacing]);
+  }, [layoutMode, base.nodes]);
   const posById = useMemo(() => new Map(positions.map((p) => [p.id, p])), [positions]);
 
   // all relation_type values present (dynamic) -> filter pane checkboxes.
@@ -255,7 +257,6 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
           chargeStrength: GALAXY_CHARGE_STRENGTH,
           linkDistance: GALAXY_LINK_DISTANCE,
           spreadScale: layoutMode === 'ring' ? ringSpread : undefined,
-          fill: layoutMode === 'ring' ? settings.ringFill : undefined,
         }}
         glowEnabled={egoFocusId ? true : settings.glow}
         edgesHidden={egoFocusId ? false : !settings.showAllEdges}

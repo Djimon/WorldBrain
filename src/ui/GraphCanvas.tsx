@@ -32,9 +32,6 @@ export interface GraphLayoutConfig {
   chargeStrength?: number;
   linkDistance?: number;
   spreadScale?: number;
-  // ring fill variant — not used by the renderer, but part of the rebuild key
-  // so switching it re-reads the (already recomputed) positions.
-  fill?: 'organic' | 'ordered';
 }
 
 export interface GraphLookConfig {
@@ -171,7 +168,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
 
   const lookKey = JSON.stringify(look ?? {});
   const posKey = positions ? `p${positions.length}` : 'auto';
-  const layoutKey = `${layout?.mode}|${layout?.clusterStrength}|${layout?.chargeStrength}|${layout?.linkDistance}|${layout?.spreadScale}|${layout?.fill}`;
+  const layoutKey = `${layout?.mode}|${layout?.clusterStrength}|${layout?.chargeStrength}|${layout?.linkDistance}|${layout?.spreadScale}`;
 
   // ── build once (rebuild only on data/layout/look) ─────────────────────────
   useEffect(() => {

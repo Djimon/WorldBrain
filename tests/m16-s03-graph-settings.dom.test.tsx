@@ -18,8 +18,6 @@ const BASE: GraphSettings = {
   mentionForm: 'solid',
   relationForm: 'solid',
   hiddenRelationTypes: [],
-  ringFill: 'organic',
-  ringSpacing: 1,
 };
 
 describe('#324: graph settings gear panel', () => {

@@ -19,11 +19,17 @@ Scheibe strukturiert lesbar wird.
    Kanten zwischen zwei Typen). Seriation ordnet die Keile so, dass stark
    verbundene Typen benachbart liegen. Greedy Nearest-Neighbour ab einem
    deterministischen Start (höchste Gesamt-Berührung, Tie-break Typ-Name).
-4. **Innerhalb eines Keils: force-basierte Sub-Gruppierung.** Deterministische
-   2D-Force (seeded, feste Ticks, `.stop()`) mit Repulsion + Anziehung entlang
-   der **intra-typ** Kanten -> verbundene Knoten klumpen sinnvoll. Nach jedem
-   Tick harte Projektion in [Sektor-Winkel] × [rInner, rOuter] (harte Keile,
-   gefüllte Scheibe, maximierte Abstände).
+4. **Innerhalb eines Keils: geordnetes Parlaments-Sitzraster.** Konzentrische
+   Reihen, Sitze je Reihe proportional zur Bogenlänge (gleichmäßige Dichte,
+   gefüllte Scheibe). Eine deterministische 2D-Force (seeded, feste Ticks,
+   `.stop()`, intra-typ Kanten) liefert nur die **Sitz-Reihenfolge** -> verbundene
+   Knoten landen in zusammenhängenden Sitzblöcken. Winkel-Gap zwischen Keilen als
+   Sperrzone.
+
+   Update 2026-08: Die früher optionale "organische" Blob-Variante ist entfernt.
+   Trennung ist jetzt: **3D/Galaxy = organisch**, **2D/Disc = immer geordnet**.
+   Keine Disc-Settings im Menü; Disc-Größe wächst automatisch (~sqrt(N), plus
+   Extra-Raum wenn eine Area >180° würde).
 5. **Kein Radius-Signal.** Radius ist emergent, **nicht** nach `degree` (kein
    fixer "vernetzteste innen"-Kern). Grund: Stabilität + der Kern war nur Deko
    im Referenzbild.

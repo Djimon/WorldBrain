@@ -31,11 +31,6 @@ export interface RingLayoutOptions {
   innerRatio?: number;  // rInner = innerRatio * R (empty core)
   chargeStrength?: number;
   linkDistance?: number;
-  // 'organic' = force blob mapped into the wedge (irregular/natural).
-  // 'ordered' = parliament-style seat lattice (concentric rows, evenly spaced
-  // along each arc); the force result only provides the seating ORDER, so
-  // connected nodes still land in contiguous seat blocks.
-  fill?: 'organic' | 'ordered';
 }
 
 const DEFAULT_SEED = 1;
@@ -177,7 +172,6 @@ export function computeRingLayout(
     innerRatio = DEFAULT_INNER_RATIO,
     chargeStrength = DEFAULT_CHARGE_STRENGTH,
     linkDistance = DEFAULT_LINK_DISTANCE,
-    fill = 'organic',
   } = options;
 
   const out = new Map<string, { x: number; y: number }>();
@@ -218,52 +212,31 @@ export function computeRingLayout(
       .stop()
       .tick(ticks);
 
-    // Bounding box -> normalized [0,1]^2 -> fill the wedge: one axis spreads
-    // across the angular width, the other across an area-uniform radius band
-    // (r = sqrt(rInner^2 + v*(R^2-rInner^2)), so points spread evenly by AREA
-    // rather than bunching near the inner edge). Neighbour structure from the
-    // blob is preserved.
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const b of blob) {
-      if (b.x < minX) minX = b.x; if (b.x > maxX) maxX = b.x;
-      if (b.y < minY) minY = b.y; if (b.y > maxY) maxY = b.y;
-    }
-    const exX = maxX - minX, exY = maxY - minY;
     // empty guard band between areas so neighbouring wedges don't touch/merge.
     const gap = Math.min(GAP_ANGLE, width * GAP_MAX_RATIO);
     const a0 = sec.startAngle + gap;
     const aw = Math.max(0, (sec.endAngle - gap) - a0);
 
-    if (fill === 'ordered') {
-      // Parliament seat lattice: concentric rows, seats per row proportional to
-      // arc length -> uniform density. The blob only orders the nodes (sort by
-      // x, tie by id) so connected clusters stay contiguous in the seating.
-      const order = blob.slice().sort((p, q) => (p.x !== q.x ? p.x - q.x : (p.id < q.id ? -1 : 1)));
-      const nT = order.length;
-      const areaPerNode = (0.5 * aw * band) / nT;         // annular-sector area / n
-      const cell = Math.sqrt(Math.max(1e-6, areaPerNode));
-      const rows = Math.max(1, Math.round((radius - rInner) / cell));
-      const dr = (radius - rInner) / rows;
-      const rowR: number[] = [];
-      const weights: number[] = [];
-      for (let i = 0; i < rows; i++) { const ri = rInner + (i + 0.5) * dr; rowR.push(ri); weights.push(ri * aw); }
-      const seats = apportion(weights, nT);
-      let t = 0;
-      for (let i = 0; i < rows; i++) {
-        const si = seats[i];
-        for (let j = 0; j < si; j++) {
-          const angle = si === 1 ? a0 + aw / 2 : a0 + ((j + 0.5) / si) * aw;
-          const r = rowR[i];
-          out.set(order[t++].id, { x: Math.cos(angle) * r, y: Math.sin(angle) * r });
-        }
-      }
-    } else {
-      for (const b of blob) {
-        const u = exX > 1e-9 ? (b.x - minX) / exX : 0.5;
-        const v = exY > 1e-9 ? (b.y - minY) / exY : 0.5;
-        const angle = a0 + u * aw;
-        const r = Math.sqrt(rInner2 + v * band);
-        out.set(b.id, { x: Math.cos(angle) * r, y: Math.sin(angle) * r });
+    // Parliament seat lattice: concentric rows, seats per row proportional to
+    // arc length -> uniform density. The blob only orders the nodes (sort by
+    // x, tie by id) so connected clusters stay contiguous in the seating.
+    const order = blob.slice().sort((p, q) => (p.x !== q.x ? p.x - q.x : (p.id < q.id ? -1 : 1)));
+    const nT = order.length;
+    const areaPerNode = (0.5 * aw * band) / nT;         // annular-sector area / n
+    const cell = Math.sqrt(Math.max(1e-6, areaPerNode));
+    const rows = Math.max(1, Math.round((radius - rInner) / cell));
+    const dr = (radius - rInner) / rows;
+    const rowR: number[] = [];
+    const weights: number[] = [];
+    for (let i = 0; i < rows; i++) { const ri = rInner + (i + 0.5) * dr; rowR.push(ri); weights.push(ri * aw); }
+    const seats = apportion(weights, nT);
+    let t = 0;
+    for (let i = 0; i < rows; i++) {
+      const si = seats[i];
+      for (let j = 0; j < si; j++) {
+        const angle = si === 1 ? a0 + aw / 2 : a0 + ((j + 0.5) / si) * aw;
+        const r = rowR[i];
+        out.set(order[t++].id, { x: Math.cos(angle) * r, y: Math.sin(angle) * r });
       }
     }
   }

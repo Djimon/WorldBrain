@@ -112,7 +112,7 @@ describe('#290: fixed, bounded positions (no live sim drift)', () => {
     const nodes = [...nodesOfType('A', 30), ...nodesOfType('B', 30)];
     const sectors = computeRingSectors(nodes, []);
     const byType = new Map(sectors.map((s) => [s.type, s]));
-    const pos = computeRingLayout(nodes, [], { fill: 'ordered', radius: 500, innerRatio: 0.15 });
+    const pos = computeRingLayout(nodes, [], { radius: 500, innerRatio: 0.15 });
     // several distinct radii = several rows (not one blob)
     const radii = new Set([...pos.values()].map((p) => Math.round(Math.hypot(p.x, p.y))));
     expect(radii.size).toBeGreaterThanOrEqual(3);
