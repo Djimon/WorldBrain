@@ -589,7 +589,9 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     }
   }, [glowEnabled, lookKey]);
 
-  return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />;
+  // position:relative so the chip/label overlays (position:absolute; inset:0)
+  // anchor to THIS box, not some ancestor -> otherwise labels get displaced.
+  return <div ref={mountRef} style={{ width: '100%', height: '100%', position: 'relative' }} />;
 }
 
 export default GraphCanvas;

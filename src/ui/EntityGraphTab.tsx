@@ -27,9 +27,13 @@ interface EntityRow {
   body_json: string | null;
 }
 
-const SIZE_SPREAD = 6;
+// match the global graph look (GlobalGraphView)
+const SIZE_SPREAD = 30;
 const SIZE_MID = 12;
 const SIZE_MIN = 11;
+const GALAXY_CLUSTER_STRENGTH = 0.3;
+const GALAXY_CHARGE_STRENGTH = -200;
+const GALAXY_LINK_DISTANCE = 80;
 
 export function EntityGraphTab({ entityId, database, onNavigate }: EntityGraphTabProps): React.ReactElement {
   const [model, setModel] = useState<GraphModel | null>(null);
@@ -114,14 +118,20 @@ export function EntityGraphTab({ entityId, database, onNavigate }: EntityGraphTa
         ))}
         <span style={{ opacity: 0.6, marginLeft: 8 }}>{sub.nodes.length} Knoten</span>
       </div>
-      <div style={{ flex: 1, minHeight: 0, borderRadius: 8, overflow: 'hidden', background: '#37265a' }}>
+      <div style={{ flex: 1, minHeight: 0, borderRadius: 8, overflow: 'hidden', background: '#0b0d10' }}>
         <GraphCanvas
           nodes={sub.nodes}
           links={sub.links}
           positions={positions}
           nodeStyle={nodeStyle}
           edgeStyle={edgeStyle}
-          layout={{ mode: 'galaxy' }}
+          layout={{
+            mode: 'galaxy',
+            clusterStrength: GALAXY_CLUSTER_STRENGTH,
+            chargeStrength: GALAXY_CHARGE_STRENGTH,
+            linkDistance: GALAXY_LINK_DISTANCE,
+          }}
+          glowEnabled
           edgesHidden={false}
           onNavigate={handleNav}
         />
