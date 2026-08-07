@@ -130,6 +130,9 @@ interface GraphState {
   chipLayer: HTMLDivElement;
   chips: { el: HTMLDivElement; a: THREE.Vector3; b: THREE.Vector3 }[];
   updateChips: (focusId: string | null) => void;
+  labelLayer: HTMLDivElement;
+  labels: { el: HTMLDivElement; pos: THREE.Vector3 }[];
+  updateLabels: () => void;
   ambient: THREE.AmbientLight;
   headlight: THREE.DirectionalLight;
   tween: { camFrom: THREE.Vector3; camTo: THREE.Vector3; tgtFrom: THREE.Vector3; tgtTo: THREE.Vector3; step: number } | null;
@@ -180,6 +183,10 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     const chipLayer = document.createElement('div');
     chipLayer.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;';
     mountEl.appendChild(chipLayer);
+    const labelLayer = document.createElement('div');
+    labelLayer.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;';
+    mountEl.appendChild(labelLayer);
+    const labelById = new Map(nodes.map((n) => [n.id, n.label]));
 
     const ambient = new THREE.AmbientLight(0xffffff, L.ambientIntensity);
     scene.add(ambient);
@@ -229,6 +236,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       lineMaterials: new Set(), composers: null,
       buildFatLines: () => null, rebuildEdges: () => {}, rebuildReveal: () => {}, applyColorsAndSizes: () => {},
       chipLayer, chips: [], updateChips: () => {},
+      labelLayer, labels: [], updateLabels: () => {},
       ambient, headlight, tween: null,
       L, width, height, hoveredId: null, pinnedId: null, disposed: false,
     };
@@ -357,6 +365,29 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       }
     };
 
+    // node-name labels: hover -> hovered node; select (pinned) -> node + all
+    // connected nodes.
+    state.updateLabels = () => {
+      for (const lb of state.labels) lb.el.remove();
+      state.labels = [];
+      let ids: string[] = [];
+      if (state.pinnedId) {
+        ids = [state.pinnedId, ...(state.neighbors.get(state.pinnedId) ?? [])];
+      } else if (state.hoveredId) {
+        ids = [state.hoveredId];
+      }
+      for (const id of ids) {
+        const pos = worldById.get(id);
+        if (!pos) continue;
+        const el = document.createElement('div');
+        el.textContent = labelById.get(id) ?? id;
+        el.style.cssText = 'position:absolute;transform:translate(-50%,-140%);white-space:nowrap;'
+          + 'font:12px system-ui,sans-serif;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.9);pointer-events:none;';
+        labelLayer.appendChild(el);
+        state.labels.push({ el, pos });
+      }
+    };
+
     // ── interaction ──
     const raycaster = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
@@ -386,6 +417,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       applyHoverDim(id ?? state.pinnedId);
       state.rebuildReveal(id ?? state.pinnedId);
       state.updateChips(id ?? state.pinnedId);
+      state.updateLabels();
       p.current.onHoverNode?.(id);
     }
     let downX = 0, downY = 0;
@@ -397,6 +429,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       applyHoverDim(id);
       state.rebuildReveal(id);
       state.updateChips(id);
+      state.updateLabels();
       if (id) {
         const pos = worldById.get(id);
         if (pos) {
@@ -456,6 +489,18 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
           }
         }
       }
+      if (state.labels.length) {
+        const v = new THREE.Vector3();
+        for (const lb of state.labels) {
+          v.copy(lb.pos).project(camera);
+          const vis = v.z < 1;
+          lb.el.style.display = vis ? 'block' : 'none';
+          if (vis) {
+            lb.el.style.left = `${(v.x * 0.5 + 0.5) * state.width}px`;
+            lb.el.style.top = `${(-v.y * 0.5 + 0.5) * state.height}px`;
+          }
+        }
+      }
       raf = requestAnimationFrame(frame);
     }
 
@@ -496,6 +541,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       renderer.dispose();
       renderer.domElement.remove();
       chipLayer.remove();
+      labelLayer.remove();
       gRef.current = null;
     };
   }, [nodes, posKey, layoutKey, lookKey]);
