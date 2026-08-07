@@ -87,6 +87,8 @@ export interface GraphCanvasProps {
   // show relation-type chips on ALL relation edges permanently (ego mode),
   // instead of only the selected node's incident edges.
   alwaysShowChips?: boolean;
+  // show every node's name permanently (ego mode), not just on hover/select.
+  alwaysShowLabels?: boolean;
   onNavigate: (id: string) => void;
   onHoverNode?: (id: string | null) => void;
 }
@@ -376,6 +378,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       for (const lb of state.labels) lb.el.remove();
       state.labels = [];
       const set = new Set<string>();
+      if (p.current.alwaysShowLabels) for (const n of nodes) set.add(n.id); // ego: all names
       if (state.pinnedId) {
         set.add(state.pinnedId);
         for (const nb of state.neighbors.get(state.pinnedId) ?? []) set.add(nb);
@@ -525,6 +528,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     // initial fill
     state.applyColorsAndSizes();
     state.rebuildEdges();
+    state.updateLabels(); // permanent labels (ego) appear without interaction
     raf = requestAnimationFrame(frame);
 
     return () => {
