@@ -18,6 +18,7 @@
   "graphShowAllEdges": "Show all edges",
   "graphShowMentions": "Show mentions",
   "graphMentionColor": "Mention color",
+  "graphRelationColor": "Relation color",
   "graphMentionForm": "Mention form",
   "graphRelationForm": "Relation form",
   "graphFormSolid": "solid",

@@ -18,6 +18,7 @@
   "graphShowAllEdges": "Alle Kanten zeigen",
   "graphShowMentions": "Mentions zeigen",
   "graphMentionColor": "Mention-Farbe",
+  "graphRelationColor": "Relation-Farbe",
   "graphMentionForm": "Mention-Form",
   "graphRelationForm": "Relation-Form",
   "graphFormSolid": "durchgezogen",

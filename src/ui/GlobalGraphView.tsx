@@ -51,6 +51,7 @@ const DEFAULT_SETTINGS: GraphSettings = {
   showAllEdges: false,
   showMentions: true,
   mentionColor: '#ff3b30',
+  relationColor: '#d0d0d0',
   mentionForm: 'solid',
   relationForm: 'solid',
 };
@@ -99,11 +100,12 @@ export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps):
   );
 
   const mentionColorNum = hexToNum(settings.mentionColor);
+  const relationColorNum = hexToNum(settings.relationColor);
   const styledEdge = useCallback(
     (l: GraphLink) => (l.kind === 'mention'
       ? { ...edgeStyle(l), color: mentionColorNum }
-      : edgeStyle(l)),
-    [mentionColorNum],
+      : { ...edgeStyle(l), color: relationColorNum }),
+    [mentionColorNum, relationColorNum],
   );
 
   const links = useMemo<GraphLink[]>(

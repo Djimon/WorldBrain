@@ -13,6 +13,7 @@ const BASE: GraphSettings = {
   showAllEdges: false,
   showMentions: true,
   mentionColor: '#ff3b30',
+  relationColor: '#d0d0d0',
   mentionForm: 'solid',
   relationForm: 'solid',
 };

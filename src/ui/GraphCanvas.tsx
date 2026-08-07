@@ -90,7 +90,7 @@ export interface GraphCanvasProps {
 
 const FALLBACK_W = 800;
 const FALLBACK_H = 600;
-const EDGE_MIN_PX = 1;   // floor so edges never render sub-pixel (invisible)
+const EDGE_MIN_PX = 1.5;   // floor so edges never render sub-pixel (invisible)
 const DASH_SIZE = 10;
 const GAP_SIZE = 8;
 const ANIM_SPEED = 0.6;

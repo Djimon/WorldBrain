@@ -12,6 +12,7 @@ export interface GraphSettings {
   showAllEdges: boolean;
   showMentions: boolean;
   mentionColor: string;   // hex, e.g. "#ff3b30"
+  relationColor: string;  // hex
   mentionForm: EdgeForm;
   relationForm: EdgeForm;
 }
@@ -77,6 +78,10 @@ export function GraphSettingsPanel({ value, onChange }: GraphSettingsPanelProps)
           <label style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
             {t('graphMentionColor', 'Mention-Farbe')}
             <input type="color" value={value.mentionColor} onChange={(e) => onChange({ mentionColor: e.target.value })} />
+          </label>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+            {t('graphRelationColor', 'Relation-Farbe')}
+            <input type="color" value={value.relationColor} onChange={(e) => onChange({ relationColor: e.target.value })} />
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
