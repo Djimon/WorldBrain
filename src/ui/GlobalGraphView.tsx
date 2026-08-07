@@ -24,6 +24,7 @@ import { GraphSettingsPanel } from './GraphSettingsPanel';
 import type { GraphSettings } from './GraphSettingsPanel';
 import { GraphFilterPanel } from './GraphFilterPanel';
 import { EntityDetailView } from './EntityDetailView';
+import './graph.css';
 
 export interface GlobalGraphViewProps {
   database: DatabaseLike;
@@ -238,10 +239,10 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
   }, [settings.hiddenRelationTypes, patch]);
   const setHiddenAll = useCallback((hidden: string[]) => patch({ hiddenRelationTypes: hidden }), [patch]);
 
-  if (!model) return <div className="graph-view graph-view--loading" style={{ width: '100%', height: '100%' }} />;
+  if (!model) return <div className="graph-view graph-view--loading" />;
 
   return (
-    <div className="graph-view" style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div className="graph-view">
       <GraphCanvas
         nodes={base.nodes}
         links={links}
@@ -268,32 +269,21 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
       />
 
       {!egoFocusId && (
-        <div style={{ position: 'absolute', top: 12, left: 12, width: 260, zIndex: 6 }}>
+        <div className="gv-search">
           <input
+            className="gv-search__input"
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('graphSearchPlaceholder', 'Suchen…')}
             aria-label={t('graphSearch', 'Suche')}
-            style={{
-              width: '100%', boxSizing: 'border-box', padding: '6px 10px', borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(20,24,30,0.9)', color: '#e8eef5',
-            }}
           />
           {suggestions.length > 0 && (
-            <div style={{
-              marginTop: 4, background: 'rgba(20,24,30,0.96)', borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden',
-            }}>
+            <div className="gv-suggest">
               {suggestions.map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() => selectNode(n.id)}
-                  style={{
-                    display: 'block', width: '100%', textAlign: 'left', padding: '6px 10px', cursor: 'pointer',
-                    border: 'none', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'transparent', color: '#e8eef5', fontSize: 13,
-                  }}
-                >{n.label} <span style={{ opacity: 0.5, fontSize: 11 }}>· {n.type}</span></button>
+                <button key={n.id} className="gv-suggest__item" onClick={() => selectNode(n.id)}>
+                  {n.label} <span className="gv-suggest__type">· {n.type}</span>
+                </button>
               ))}
             </div>
           )}
@@ -310,43 +300,27 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
       )}
 
       {!egoFocusId && (
-        <div role="group" aria-label={t('graphLayout', 'Layout')} style={{
-          position: 'absolute', top: 12, right: 12, zIndex: 7, display: 'flex', gap: 4,
-          padding: 3, borderRadius: 8, background: 'rgba(20,24,30,0.9)', border: '1px solid rgba(255,255,255,0.15)',
-        }}>
+        <div className="gv-layout-toggle" role="group" aria-label={t('graphLayout', 'Layout')}>
           {(['galaxy', 'ring'] as const).map((m) => (
             <button
               key={m}
+              className="gv-layout-toggle__btn"
               onClick={() => patch({ layoutMode: m })}
               aria-pressed={layoutMode === m}
-              style={{
-                padding: '5px 12px', borderRadius: 6, cursor: 'pointer', color: '#e8eef5', fontSize: 13,
-                border: 'none',
-                background: layoutMode === m ? '#3a6ea5' : 'transparent',
-              }}
             >{m === 'galaxy' ? t('graphLayoutGalaxy', 'Galaxy') : t('graphLayoutDisc', 'Disc')}</button>
           ))}
         </div>
       )}
 
       {selectedId && (
-        <div style={{
-          position: 'absolute', top: 56, right: 12, width: 360, maxHeight: 'calc(100% - 68px)',
-          overflow: 'auto', zIndex: 6, background: 'rgba(18,22,28,0.96)', color: '#e8eef5',
-          borderRadius: 10, border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 8px 30px rgba(0,0,0,0.45)',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, padding: 8, position: 'sticky', top: 0, background: 'inherit' }}>
-            <button
-              onClick={() => onNavigate(selectedId)}
-              style={{ padding: '4px 10px', borderRadius: 6, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.2)', background: '#3a6ea5', color: '#fff' }}
-            >{t('graphOpenEntity', 'Öffnen')}</button>
-            <button
-              onClick={() => setSelectedId(null)}
-              aria-label={t('graphCloseDetail', 'Schließen')}
-              style={{ padding: '4px 10px', borderRadius: 6, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#e8eef5' }}
-            >×</button>
+        <div className="gv-detail">
+          <div className="gv-detail__bar">
+            <button className="gv-btn gv-btn--primary" onClick={() => onNavigate(selectedId)}>
+              {t('graphOpenEntity', 'Öffnen')}
+            </button>
+            <button className="gv-btn" onClick={() => setSelectedId(null)} aria-label={t('graphCloseDetail', 'Schließen')}>×</button>
           </div>
-          <div style={{ padding: '0 10px 12px' }}>
+          <div className="gv-detail__body">
             <EntityDetailView entityId={selectedId} database={database} onNavigateToEntity={setSelectedId} />
           </div>
         </div>
