@@ -228,16 +228,25 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       worldById.set(q.id, new THREE.Vector3((q.x - cx) * norm, (q.y - cy) * norm, (q.z - cz) * norm));
     }
 
+    // Everything renderable lives in ONE content group. In ring mode a drag
+    // spins this group around the view axis (z) — the disc turns; the camera
+    // stays top-down. Galaxy leaves it at identity (the camera orbits instead),
+    // so the group transform is a no-op there.
+    const contentGroup = new THREE.Group();
+    scene.add(contentGroup);
+
     const geo = new THREE.SphereGeometry(1, 16, 12);
     const mat = new THREE.MeshLambertMaterial();
     const mesh = new THREE.InstancedMesh(geo, mat, nodes.length);
-    scene.add(mesh);
+    contentGroup.add(mesh);
 
     const revealGroup = new THREE.Group();
-    scene.add(revealGroup);
+    contentGroup.add(revealGroup);
 
+    const isRing = p.current.layout?.mode === 'ring';
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
+    controls.enableRotate = !isRing; // flat disc: no tilt, spin via drag instead
 
     const state: GraphState = {
       scene, camera, renderer, controls, mesh, worldById,
@@ -333,7 +342,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
 
     state.rebuildEdges = () => {
       for (const s of state.fullLines) {
-        scene.remove(s);
+        contentGroup.remove(s);
         s.geometry.dispose();
         state.lineMaterials.delete(s.material as LineMaterial);
         (s.material as THREE.Material).dispose();
@@ -348,7 +357,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       const hide = !!cur.edgesHidden;
       for (const kind of ['relation', 'mention'] as const) {
         const seg = state.buildFatLines(cur.links, kind);
-        if (seg) { seg.visible = !hide; scene.add(seg); state.fullLines.push(seg); }
+        if (seg) { seg.visible = !hide; contentGroup.add(seg); state.fullLines.push(seg); }
       }
       state.rebuildReveal(state.pinnedId ?? state.hoveredId);
       if (p.current.alwaysShowChips) state.updateChips(null); // permanent chips (ego)
@@ -403,6 +412,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     // ── interaction ──
     const raycaster = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
+    let rolling = false, lastRollX = 0; // ring drag-to-spin state
     function pickId(ev: PointerEvent): string | null {
       const rect = renderer.domElement.getBoundingClientRect();
       ndc.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
@@ -423,6 +433,10 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
     function onMove(ev: PointerEvent) {
+      if (rolling && p.current.layout?.mode === 'ring') {
+        contentGroup.rotation.z += (ev.clientX - lastRollX) * 0.005;
+        lastRollX = ev.clientX;
+      }
       const id = pickId(ev);
       if (id === state.hoveredId) return;
       state.hoveredId = id;
@@ -440,8 +454,9 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       state.updateChips(id);
       state.updateLabels();
       if (!id) return;
-      const pos = worldById.get(id);
-      if (pos) {
+      const local = worldById.get(id);
+      if (local) {
+        const pos = local.clone().applyMatrix4(contentGroup.matrixWorld);
         const dist = camera.position.distanceTo(pos);
         const newDist = Math.max(L.fit * 0.15, dist * 0.55); // zoom in a bit
         const dir = camera.position.clone().sub(controls.target).normalize();
@@ -457,8 +472,12 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     }
     state.focusNode = focusNode;
     let downX = 0, downY = 0;
-    function onDown(ev: PointerEvent) { downX = ev.clientX; downY = ev.clientY; }
+    function onDown(ev: PointerEvent) {
+      downX = ev.clientX; downY = ev.clientY;
+      if (p.current.layout?.mode === 'ring') { rolling = true; lastRollX = ev.clientX; }
+    }
     function onUp(ev: PointerEvent) {
+      rolling = false;
       if (Math.hypot(ev.clientX - downX, ev.clientY - downY) > 4) return;
       focusNode(pickId(ev));
     }
@@ -494,8 +513,9 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       }
       if (state.chips.length) {
         const mid = new THREE.Vector3();
+        const mw = contentGroup.matrixWorld;
         for (const ch of state.chips) {
-          mid.copy(ch.a).lerp(ch.b, 0.5).project(camera);
+          mid.copy(ch.a).lerp(ch.b, 0.5).applyMatrix4(mw).project(camera);
           const vis = mid.z < 1;
           ch.el.style.display = vis ? 'block' : 'none';
           if (vis) {
@@ -506,8 +526,9 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       }
       if (state.labels.length) {
         const v = new THREE.Vector3();
+        const mw = contentGroup.matrixWorld;
         for (const lb of state.labels) {
-          v.copy(lb.pos).project(camera);
+          v.copy(lb.pos).applyMatrix4(mw).project(camera);
           const vis = v.z < 1;
           lb.el.style.display = vis ? 'block' : 'none';
           if (vis) {

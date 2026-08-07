@@ -17,6 +17,7 @@ import { buildGraphModel } from '../services/graph-model';
 import type { GraphLink, GraphModel, GraphNode } from '../services/graph-model';
 import { edgeStyle, positionColor, typeColor } from '../services/graph-style';
 import { computeGalaxyLayout3D } from '../services/galaxy-layout';
+import { computeRingLayout } from '../services/ring-layout';
 import { GraphCanvas } from './GraphCanvas';
 import type { GraphPosition } from './GraphCanvas';
 import { GraphSettingsPanel } from './GraphSettingsPanel';
@@ -53,6 +54,7 @@ const SIZE_MID = 12;
 const SIZE_MIN = 11;
 
 const DEFAULT_SETTINGS: GraphSettings = {
+  layoutMode: 'galaxy',
   colorMode: 'entity',
   glow: false,
   showAllEdges: false,
@@ -127,11 +129,23 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
     };
   }, [model, egoFocusId]);
 
-  // 3D layout computed ONCE per (sub)model (also feeds cluster coloring).
-  const positions = useMemo<GraphPosition[]>(
+  // Ego always uses Galaxy (a ring of one Area is pointless). Otherwise follow
+  // the persisted layout toggle.
+  const layoutMode = egoFocusId ? 'galaxy' : settings.layoutMode;
+
+  // Both layouts computed ONCE per (sub)model. Ring is flat (z=0), fixed
+  // positions (S05 #290); Galaxy is the 3D force layout (S04). The active set
+  // also feeds the spatial "cluster" coloring.
+  const galaxyPositions = useMemo<GraphPosition[]>(
     () => computeGalaxyLayout3D(base.nodes, base.links).map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z })),
     [base],
   );
+  const ringPositions = useMemo<GraphPosition[]>(() => {
+    if (layoutMode !== 'ring') return [];
+    const m = computeRingLayout(base.nodes, base.links);
+    return base.nodes.map((n) => { const p = m.get(n.id); return { id: n.id, x: p?.x ?? 0, y: p?.y ?? 0, z: 0 }; });
+  }, [layoutMode, base]);
+  const positions = layoutMode === 'ring' ? ringPositions : galaxyPositions;
   const posById = useMemo(() => new Map(positions.map((p) => [p.id, p])), [positions]);
 
   // all relation_type values present (dynamic) -> filter pane checkboxes.
@@ -218,7 +232,7 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
         nodeStyle={nodeStyle}
         edgeStyle={styledEdge}
         layout={{
-          mode: 'galaxy',
+          mode: layoutMode,
           clusterStrength: GALAXY_CLUSTER_STRENGTH,
           chargeStrength: GALAXY_CHARGE_STRENGTH,
           linkDistance: GALAXY_LINK_DISTANCE,
@@ -276,9 +290,29 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
         />
       )}
 
+      {!egoFocusId && (
+        <div role="group" aria-label={t('graphLayout', 'Layout')} style={{
+          position: 'absolute', top: 12, right: 12, zIndex: 7, display: 'flex', gap: 4,
+          padding: 3, borderRadius: 8, background: 'rgba(20,24,30,0.9)', border: '1px solid rgba(255,255,255,0.15)',
+        }}>
+          {(['galaxy', 'ring'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => patch({ layoutMode: m })}
+              aria-pressed={layoutMode === m}
+              style={{
+                padding: '5px 12px', borderRadius: 6, cursor: 'pointer', color: '#e8eef5', fontSize: 13,
+                border: '1px solid rgba(255,255,255,0.12)',
+                background: layoutMode === m ? '#3a6ea5' : 'transparent',
+              }}
+            >{m === 'galaxy' ? t('graphLayoutGalaxy', 'Galaxy') : t('graphLayoutDisc', 'Disc')}</button>
+          ))}
+        </div>
+      )}
+
       {selectedId && (
         <div style={{
-          position: 'absolute', top: 12, right: 12, width: 360, maxHeight: 'calc(100% - 24px)',
+          position: 'absolute', top: 56, right: 12, width: 360, maxHeight: 'calc(100% - 68px)',
           overflow: 'auto', zIndex: 6, background: 'rgba(18,22,28,0.96)', color: '#e8eef5',
           borderRadius: 10, border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 8px 30px rgba(0,0,0,0.45)',
         }}>

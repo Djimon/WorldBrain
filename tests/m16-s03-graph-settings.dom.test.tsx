@@ -8,6 +8,7 @@ import { GraphSettingsPanel } from '../src/ui/GraphSettingsPanel';
 import type { GraphSettings } from '../src/ui/GraphSettingsPanel';
 
 const BASE: GraphSettings = {
+  layoutMode: 'galaxy',
   colorMode: 'entity',
   glow: false,
   showAllEdges: false,

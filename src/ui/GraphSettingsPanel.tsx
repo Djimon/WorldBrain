@@ -7,6 +7,9 @@ import { useTranslation } from 'react-i18next';
 import type { EdgeForm } from './GraphCanvas';
 
 export interface GraphSettings {
+  // galaxy = 3D force layout (default); ring = flat 2D disc (S05 #290). The
+  // toggle lives top-right in GlobalGraphView, not in this gear panel.
+  layoutMode: 'galaxy' | 'ring';
   colorMode: 'entity' | 'cluster';
   glow: boolean;
   showAllEdges: boolean;
