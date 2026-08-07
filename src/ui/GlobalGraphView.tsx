@@ -101,18 +101,38 @@ export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps):
     return computeGalaxyLayout3D(model.nodes, model.links).map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z }));
   }, [model]);
   const posById = useMemo(() => new Map(positions.map((p) => [p.id, p])), [positions]);
-  const maxDeg = useMemo(() => (model ? Math.max(1, ...model.nodes.map((n) => n.degree)) : 1), [model]);
+
+  // Degree from the VISIBLE links (mentions on -> counted, off -> relations
+  // only), so toggling "Mentions zeigen" rescales the spheres live.
+  const links = useMemo<GraphLink[]>(
+    () => (model ? (settings.showMentions ? model.links : model.links.filter((l) => l.kind !== 'mention')) : []),
+    [model, settings.showMentions],
+  );
+  const degreeByVisible = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of links) {
+      m.set(l.source, (m.get(l.source) ?? 0) + 1);
+      m.set(l.target, (m.get(l.target) ?? 0) + 1);
+    }
+    return m;
+  }, [links]);
+  const maxDeg = useMemo(() => {
+    let mx = 1;
+    for (const v of degreeByVisible.values()) if (v > mx) mx = v;
+    return mx;
+  }, [degreeByVisible]);
 
   const nodeStyle = useCallback(
     (n: GraphNode) => {
-      const radius = Math.max(SIZE_MIN, SIZE_MID * Math.pow(1 + SIZE_SPREAD, Math.sqrt(n.degree / maxDeg) - 0.5));
+      const deg = degreeByVisible.get(n.id) ?? 0;
+      const radius = Math.max(SIZE_MIN, SIZE_MID * Math.pow(1 + SIZE_SPREAD, Math.sqrt(deg / maxDeg) - 0.5));
       if (settings.colorMode === 'cluster') {
         const p = posById.get(n.id);
         return { color: p ? positionColor(p.x, p.y, p.z) : typeColor(n.type), radius };
       }
       return { color: typeColor(n.type), radius };
     },
-    [settings.colorMode, posById, maxDeg],
+    [settings.colorMode, posById, degreeByVisible, maxDeg],
   );
 
   const mentionColorNum = hexToNum(settings.mentionColor);
@@ -122,11 +142,6 @@ export function GlobalGraphView({ database, onNavigate }: GlobalGraphViewProps):
       ? { ...edgeStyle(l), color: mentionColorNum }
       : { ...edgeStyle(l), color: relationColorNum }),
     [mentionColorNum, relationColorNum],
-  );
-
-  const links = useMemo<GraphLink[]>(
-    () => (model ? (settings.showMentions ? model.links : model.links.filter((l) => l.kind !== 'mention')) : []),
-    [model, settings.showMentions],
   );
 
   if (!model) return <div className="graph-view graph-view--loading" style={{ width: '100%', height: '100%' }} />;
