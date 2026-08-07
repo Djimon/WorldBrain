@@ -17,7 +17,7 @@ import { buildGraphModel } from '../services/graph-model';
 import type { GraphLink, GraphModel, GraphNode } from '../services/graph-model';
 import { edgeStyle, positionColor, typeColor } from '../services/graph-style';
 import { computeGalaxyLayout3D } from '../services/galaxy-layout';
-import { computeRingLayout } from '../services/ring-layout';
+import { computeRingLayout, computeRingSectors, RING_RADIUS } from '../services/ring-layout';
 import { GraphCanvas } from './GraphCanvas';
 import type { GraphPosition } from './GraphCanvas';
 import { GraphSettingsPanel } from './GraphSettingsPanel';
@@ -184,6 +184,16 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
   }, [layoutMode, base.nodes]);
   const posById = useMemo(() => new Map(positions.map((p) => [p.id, p])), [positions]);
 
+  // Ring only: one label per Area at the disc edge, in the entity type color.
+  const areaLabels = useMemo(() => {
+    if (layoutMode !== 'ring') return [];
+    const R = RING_RADIUS * 1.06; // just outside the outermost seat ring
+    return computeRingSectors(base.nodes, base.links).map((s) => {
+      const mid = (s.startAngle + s.endAngle) / 2;
+      return { text: s.type, x: Math.cos(mid) * R, y: Math.sin(mid) * R, z: 0, color: typeColor(s.type) };
+    });
+  }, [layoutMode, base]);
+
   // all relation_type values present (dynamic) -> filter pane checkboxes.
   const relationTypes = useMemo(() => {
     const s = new Set<string>();
@@ -282,6 +292,7 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
         relationForm={settings.relationForm}
         mentionForm={settings.mentionForm}
         lightTheme={!isDark}
+        areaLabels={areaLabels}
         focusRequest={focusReq}
         onNavigate={setSelectedId}
       />

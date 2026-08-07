@@ -92,6 +92,9 @@ export interface GraphCanvasProps {
   // page theme is light (canvas bg light) -> thicker edges + fade-to-white on
   // hover/select dim, instead of the dark-mode fade-to-black.
   lightTheme?: boolean;
+  // persistent labels at the disc edge (ring mode): one per Area, entity-colored.
+  // Coords are in the same (pre-normalize) space as `positions`.
+  areaLabels?: { text: string; x: number; y: number; z: number; color: number }[];
   // programmatic focus (search select): focuses + zooms the node like a click.
   // nonce must change to re-trigger the same id.
   focusRequest?: { id: string; nonce: number };
@@ -147,6 +150,8 @@ interface GraphState {
   labelLayer: HTMLDivElement;
   labels: { el: HTMLDivElement; pos: THREE.Vector3 }[];
   updateLabels: () => void;
+  areaLabelLayer: HTMLDivElement;
+  areaLabels: { el: HTMLDivElement; pos: THREE.Vector3 }[];
   ambient: THREE.AmbientLight;
   headlight: THREE.DirectionalLight;
   tween: { camFrom: THREE.Vector3; camTo: THREE.Vector3; tgtFrom: THREE.Vector3; tgtTo: THREE.Vector3; step: number } | null;
@@ -201,6 +206,9 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     const labelLayer = document.createElement('div');
     labelLayer.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;';
     mountEl.appendChild(labelLayer);
+    const areaLabelLayer = document.createElement('div');
+    areaLabelLayer.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;';
+    mountEl.appendChild(areaLabelLayer);
     const labelById = new Map(nodes.map((n) => [n.id, n.label]));
 
     const ambient = new THREE.AmbientLight(0xffffff, L.ambientIntensity);
@@ -234,6 +242,18 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       worldById.set(q.id, new THREE.Vector3((q.x - cx) * norm, (q.y - cy) * norm, (q.z - cz) * norm));
     }
 
+    // persistent Area labels at the disc edge (ring mode): entity-colored,
+    // transformed into the SAME normalized space as the nodes.
+    const areaLabelData: { el: HTMLDivElement; pos: THREE.Vector3 }[] = [];
+    for (const a of p.current.areaLabels ?? []) {
+      const el = document.createElement('div');
+      el.textContent = a.text;
+      el.className = 'gv-area-label';
+      el.style.color = `#${a.color.toString(16).padStart(6, '0')}`;
+      areaLabelLayer.appendChild(el);
+      areaLabelData.push({ el, pos: new THREE.Vector3((a.x - cx) * norm, (a.y - cy) * norm, (a.z - cz) * norm) });
+    }
+
     // Everything renderable lives in ONE content group. In ring mode a drag
     // spins this group around the view axis (z) — the disc turns; the camera
     // stays top-down. Galaxy leaves it at identity (the camera orbits instead),
@@ -261,6 +281,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       buildFatLines: () => null, rebuildEdges: () => {}, rebuildReveal: () => {}, applyColorsAndSizes: () => {}, applyHoverDim: () => {},
       chipLayer, chips: [], updateChips: () => {},
       labelLayer, labels: [], updateLabels: () => {},
+      areaLabelLayer, areaLabels: areaLabelData,
       ambient, headlight, tween: null, focusNode: () => {},
       L, width, height, hoveredId: null, pinnedId: null, disposed: false,
     };
@@ -563,6 +584,19 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
           }
         }
       }
+      if (state.areaLabels.length) {
+        const v = new THREE.Vector3();
+        const mw = contentGroup.matrixWorld;
+        for (const al of state.areaLabels) {
+          v.copy(al.pos).applyMatrix4(mw).project(camera);
+          const vis = v.z < 1;
+          al.el.style.display = vis ? 'block' : 'none';
+          if (vis) {
+            al.el.style.left = `${(v.x * 0.5 + 0.5) * state.width}px`;
+            al.el.style.top = `${(-v.y * 0.5 + 0.5) * state.height}px`;
+          }
+        }
+      }
       raf = requestAnimationFrame(frame);
     }
 
@@ -605,6 +639,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       renderer.domElement.remove();
       chipLayer.remove();
       labelLayer.remove();
+      areaLabelLayer.remove();
       gRef.current = null;
     };
   }, [nodes, posKey, layoutKey, lookKey]);

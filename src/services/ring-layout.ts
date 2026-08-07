@@ -33,9 +33,13 @@ export interface RingLayoutOptions {
   linkDistance?: number;
 }
 
+// Outer disc radius in layout units. Exported so callers (area labels) can
+// place things at the disc edge in the same space the positions use.
+export const RING_RADIUS = 500;
+
 const DEFAULT_SEED = 1;
 const DEFAULT_TICKS = 300;
-const DEFAULT_RADIUS = 500;
+const DEFAULT_RADIUS = RING_RADIUS;
 const DEFAULT_INNER_RATIO = 0.15;
 const DEFAULT_CHARGE_STRENGTH = -120;
 const DEFAULT_LINK_DISTANCE = 30;

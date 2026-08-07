@@ -125,3 +125,10 @@
   position: absolute; transform: translate(-50%, -140%); white-space: nowrap; pointer-events: none;
   font: 12px system-ui, sans-serif; color: var(--gv-text); text-shadow: 0 1px 3px var(--color-background);
 }
+/* persistent Area labels at the disc edge (ring). Color set inline (entity
+   color); halo keeps them legible on any background. */
+.gv-area-label {
+  position: absolute; transform: translate(-50%, -50%); white-space: nowrap; pointer-events: none;
+  font: 600 12px system-ui, sans-serif; letter-spacing: 0.02em;
+  text-shadow: 0 0 3px var(--color-background), 0 0 3px var(--color-background);
+}
