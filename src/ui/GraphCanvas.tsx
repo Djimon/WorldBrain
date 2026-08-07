@@ -416,7 +416,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       state.hoveredId = id;
       applyHoverDim(id ?? state.pinnedId);
       state.rebuildReveal(id ?? state.pinnedId);
-      state.updateChips(id ?? state.pinnedId);
+      state.updateChips(state.pinnedId); // chips only on select, not hover
       state.updateLabels();
       p.current.onHoverNode?.(id);
     }
