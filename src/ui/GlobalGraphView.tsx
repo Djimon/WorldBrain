@@ -64,6 +64,8 @@ const DEFAULT_SETTINGS: GraphSettings = {
   mentionForm: 'solid',
   relationForm: 'solid',
   hiddenRelationTypes: [],
+  ringFill: 'organic',
+  ringSpacing: 1,
 };
 
 function hexToNum(hex: string): number {
@@ -142,10 +144,25 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
   );
   const ringPositions = useMemo<GraphPosition[]>(() => {
     if (layoutMode !== 'ring') return [];
-    const m = computeRingLayout(base.nodes, base.links);
+    const m = computeRingLayout(base.nodes, base.links, { fill: settings.ringFill });
     return base.nodes.map((n) => { const p = m.get(n.id); return { id: n.id, x: p?.x ?? 0, y: p?.y ?? 0, z: 0 }; });
-  }, [layoutMode, base]);
+  }, [layoutMode, base, settings.ringFill]);
   const positions = layoutMode === 'ring' ? ringPositions : galaxyPositions;
+
+  // Disc size grows so node spacing stays usable: ~sqrt(N) keeps density
+  // constant, times the user's spacing knob, times extra room when one Area
+  // dominates (>50% -> would exceed 180deg). Grows past the viewport -> zoom/pan.
+  const ringSpread = useMemo(() => {
+    if (layoutMode !== 'ring') return 1;
+    const n = base.nodes.length || 1;
+    const counts = new Map<string, number>();
+    for (const nd of base.nodes) counts.set(nd.type, (counts.get(nd.type) ?? 0) + 1);
+    let maxFrac = 0;
+    for (const c of counts.values()) maxFrac = Math.max(maxFrac, c / n);
+    let s = settings.ringSpacing * Math.sqrt(n / 200);
+    if (maxFrac > 0.5) s *= maxFrac / 0.5;
+    return Math.max(0.3, s);
+  }, [layoutMode, base.nodes, settings.ringSpacing]);
   const posById = useMemo(() => new Map(positions.map((p) => [p.id, p])), [positions]);
 
   // all relation_type values present (dynamic) -> filter pane checkboxes.
@@ -236,6 +253,7 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
           clusterStrength: GALAXY_CLUSTER_STRENGTH,
           chargeStrength: GALAXY_CHARGE_STRENGTH,
           linkDistance: GALAXY_LINK_DISTANCE,
+          spreadScale: layoutMode === 'ring' ? ringSpread : undefined,
         }}
         glowEnabled={egoFocusId ? true : settings.glow}
         edgesHidden={egoFocusId ? false : !settings.showAllEdges}

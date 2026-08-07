@@ -108,6 +108,27 @@ describe('#290: fixed, bounded positions (no live sim drift)', () => {
     expect(Math.min(...radii)).toBeLessThan(0.4 * R);    // ...and the inner band, not a thin ring
   });
 
+  it('ordered fill lays nodes on concentric rows inside the sector', () => {
+    const nodes = [...nodesOfType('A', 30), ...nodesOfType('B', 30)];
+    const sectors = computeRingSectors(nodes, []);
+    const byType = new Map(sectors.map((s) => [s.type, s]));
+    const pos = computeRingLayout(nodes, [], { fill: 'ordered', radius: 500, innerRatio: 0.15 });
+    // several distinct radii = several rows (not one blob)
+    const radii = new Set([...pos.values()].map((p) => Math.round(Math.hypot(p.x, p.y))));
+    expect(radii.size).toBeGreaterThanOrEqual(3);
+    // still inside the type wedge
+    for (const n of nodes) {
+      const p = pos.get(n.id)!;
+      const sec = byType.get(n.type)!;
+      let a = Math.atan2(p.y, p.x);
+      const mid = (sec.startAngle + sec.endAngle) / 2;
+      while (a < mid - Math.PI) a += TWO_PI;
+      while (a > mid + Math.PI) a -= TWO_PI;
+      expect(a).toBeGreaterThanOrEqual(sec.startAngle - 1e-6);
+      expect(a).toBeLessThanOrEqual(sec.endAngle + 1e-6);
+    }
+  });
+
   it('a single type fills the whole circle (one sector, 2π wide)', () => {
     const nodes = nodesOfType('A', 5);
     const sectors = computeRingSectors(nodes, []);

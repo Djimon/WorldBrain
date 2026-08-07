@@ -21,6 +21,9 @@ export interface GraphSettings {
   // relation_type values whose edges are hidden (filter pane). Persisted;
   // stays hidden even when showAllEdges is on.
   hiddenRelationTypes: string[];
+  // Ring/Disc only: node distribution inside each wedge + disc spacing knob.
+  ringFill: 'organic' | 'ordered';
+  ringSpacing: number; // multiplier on the auto disc size (bigger = more room)
 }
 
 export interface GraphSettingsPanelProps {
@@ -102,6 +105,35 @@ export function GraphSettingsPanel({ value, onChange }: GraphSettingsPanelProps)
               {forms.map((f) => <option key={f} value={f}>{formLabel(f)}</option>)}
             </select>
           </label>
+
+          {value.layoutMode === 'ring' && (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ opacity: 0.75, fontSize: 11 }}>{t('graphRingFill', 'Disc: Verteilung')}</span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['organic', 'ordered'] as const).map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => onChange({ ringFill: m })}
+                      aria-pressed={value.ringFill === m}
+                      style={{
+                        flex: 1, padding: '5px 6px', borderRadius: 6, cursor: 'pointer', color: '#e8eef5',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        background: value.ringFill === m ? '#3a6ea5' : 'transparent',
+                      }}
+                    >{m === 'organic' ? t('graphRingFillOrganic', 'organisch') : t('graphRingFillOrdered', 'geordnet')}</button>
+                  ))}
+                </div>
+              </div>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <span style={{ opacity: 0.75, fontSize: 11 }}>{t('graphRingSpacing', 'Disc: Abstand')} ({value.ringSpacing.toFixed(1)}x)</span>
+                <input
+                  type="range" min={0.5} max={3} step={0.1} value={value.ringSpacing}
+                  onChange={(e) => onChange({ ringSpacing: Number(e.target.value) })}
+                />
+              </label>
+            </>
+          )}
         </div>
       )}
 
