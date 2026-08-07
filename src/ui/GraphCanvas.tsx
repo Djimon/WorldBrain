@@ -370,13 +370,13 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     state.updateLabels = () => {
       for (const lb of state.labels) lb.el.remove();
       state.labels = [];
-      let ids: string[] = [];
+      const set = new Set<string>();
       if (state.pinnedId) {
-        ids = [state.pinnedId, ...(state.neighbors.get(state.pinnedId) ?? [])];
-      } else if (state.hoveredId) {
-        ids = [state.hoveredId];
+        set.add(state.pinnedId);
+        for (const nb of state.neighbors.get(state.pinnedId) ?? []) set.add(nb);
       }
-      for (const id of ids) {
+      if (state.hoveredId) set.add(state.hoveredId); // hovered name shows even while pinned
+      for (const id of set) {
         const pos = worldById.get(id);
         if (!pos) continue;
         const el = document.createElement('div');
