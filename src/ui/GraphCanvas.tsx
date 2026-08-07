@@ -306,15 +306,13 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       const m = new LineMaterial({
         color: style.color,
         linewidth: Math.max(EDGE_MIN_PX, style.width * L.edgeWidthScale) + (light ? EDGE_LIGHT_BOOST : 0),
-        // light theme: fully opaque edges (crisp on white). dark theme: keep the
-        // subtle translucency.
-        transparent: !light,
-        opacity: light ? 1 : Math.min(1, style.alpha * L.edgeOpacityScale),
+        // fully opaque in both themes (uniform look, no blending/sort/wash).
+        transparent: false,
+        opacity: 1,
         dashed,
         dashSize: form === 'animated' ? DOT_SIZE : DASH_SIZE,
         gapSize: form === 'animated' ? DOT_GAP : GAP_SIZE,
       });
-      m.depthWrite = light; // opaque(light): write depth; transparent(dark): no self-occlusion flicker
       m.resolution.set(state.width, state.height);
       m.userData = { animated: form === 'animated' };
       const seg = new LineSegments2(g, m);
