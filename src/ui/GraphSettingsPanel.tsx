@@ -14,8 +14,12 @@ export interface GraphSettings {
   glow: boolean;
   showAllEdges: boolean;
   showMentions: boolean;
-  mentionColor: string;   // hex, e.g. "#ff3b30"
-  relationColor: string;  // hex
+  // edge colors per theme (canvas follows the page bg -> defaults must invert
+  // between light/dark). Only the active theme's pickers are shown.
+  mentionColorLight: string;
+  mentionColorDark: string;
+  relationColorLight: string;
+  relationColorDark: string;
   mentionForm: EdgeForm;
   relationForm: EdgeForm;
   // relation_type values whose edges are hidden (filter pane). Persisted;
@@ -26,11 +30,14 @@ export interface GraphSettings {
 export interface GraphSettingsPanelProps {
   value: GraphSettings;
   onChange: (patch: Partial<GraphSettings>) => void;
+  theme: 'light' | 'dark'; // which theme's edge-color pickers to show
 }
 
-export function GraphSettingsPanel({ value, onChange }: GraphSettingsPanelProps): React.ReactElement {
+export function GraphSettingsPanel({ value, onChange, theme }: GraphSettingsPanelProps): React.ReactElement {
   const { t } = useTranslation('nav');
   const [open, setOpen] = useState(false);
+  const mentionKey = theme === 'dark' ? 'mentionColorDark' : 'mentionColorLight';
+  const relationKey = theme === 'dark' ? 'relationColorDark' : 'relationColorLight';
 
   const forms: EdgeForm[] = ['solid', 'dashed', 'animated'];
   const formLabel = (f: EdgeForm) =>
@@ -73,11 +80,11 @@ export function GraphSettingsPanel({ value, onChange }: GraphSettingsPanelProps)
 
           <label className="gv-row">
             {t('graphMentionColor', 'Mention-Farbe')}
-            <input type="color" value={value.mentionColor} onChange={(e) => onChange({ mentionColor: e.target.value })} />
+            <input type="color" value={value[mentionKey]} onChange={(e) => onChange({ [mentionKey]: e.target.value } as Partial<GraphSettings>)} />
           </label>
           <label className="gv-row">
             {t('graphRelationColor', 'Relation-Farbe')}
-            <input type="color" value={value.relationColor} onChange={(e) => onChange({ relationColor: e.target.value })} />
+            <input type="color" value={value[relationKey]} onChange={(e) => onChange({ [relationKey]: e.target.value } as Partial<GraphSettings>)} />
           </label>
 
           <label className="gv-field">

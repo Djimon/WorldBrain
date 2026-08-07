@@ -60,8 +60,10 @@ const DEFAULT_SETTINGS: GraphSettings = {
   glow: false,
   showAllEdges: false,
   showMentions: true,
-  mentionColor: '#ff3b30',
-  relationColor: '#d0d0d0',
+  mentionColorLight: '#d11a0f',
+  mentionColorDark: '#ff3b30',
+  relationColorLight: '#555555',
+  relationColorDark: '#d0d0d0',
   mentionForm: 'solid',
   relationForm: 'solid',
   hiddenRelationTypes: [],
@@ -97,6 +99,20 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
   const [query, setQuery] = useState('');
   const [focusReq, setFocusReq] = useState<{ id: string; nonce: number } | undefined>(undefined);
   const focusNonce = useRef(0);
+  // canvas is alpha:true -> follows the page theme. Track it so edge colors use
+  // the right per-theme value (light bg needs darker edges than dark bg).
+  const [isDark, setIsDark] = useState<boolean>(
+    () => typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark',
+  );
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const el = document.documentElement;
+    const read = () => setIsDark(el.getAttribute('data-theme') === 'dark');
+    read();
+    const obs = typeof MutationObserver !== 'undefined' ? new MutationObserver(read) : null;
+    obs?.observe(el, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => obs?.disconnect();
+  }, []);
   const patch = useCallback((p: Partial<GraphSettings>) => setSettings((s) => {
     const next = { ...s, ...p };
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
@@ -212,8 +228,8 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
     [settings.colorMode, posById, degreeByVisible, maxDeg],
   );
 
-  const mentionColorNum = hexToNum(settings.mentionColor);
-  const relationColorNum = hexToNum(settings.relationColor);
+  const mentionColorNum = hexToNum(isDark ? settings.mentionColorDark : settings.mentionColorLight);
+  const relationColorNum = hexToNum(isDark ? settings.relationColorDark : settings.relationColorLight);
   const styledEdge = useCallback(
     (l: GraphLink) => (l.kind === 'mention'
       ? { ...edgeStyle(l), color: mentionColorNum }
@@ -327,7 +343,7 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
         </div>
       )}
 
-      <GraphSettingsPanel value={settings} onChange={patch} />
+      <GraphSettingsPanel value={settings} onChange={patch} theme={isDark ? 'dark' : 'light'} />
     </div>
   );
 }

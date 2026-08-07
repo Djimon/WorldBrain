@@ -13,8 +13,10 @@ const BASE: GraphSettings = {
   glow: false,
   showAllEdges: false,
   showMentions: true,
-  mentionColor: '#ff3b30',
-  relationColor: '#d0d0d0',
+  mentionColorLight: '#d11a0f',
+  mentionColorDark: '#ff3b30',
+  relationColorLight: '#555555',
+  relationColorDark: '#d0d0d0',
   mentionForm: 'solid',
   relationForm: 'solid',
   hiddenRelationTypes: [],
@@ -22,7 +24,7 @@ const BASE: GraphSettings = {
 
 describe('#324: graph settings gear panel', () => {
   it('is collapsed until the gear is clicked, then shows the controls', () => {
-    render(<GraphSettingsPanel value={BASE} onChange={vi.fn()} />);
+    render(<GraphSettingsPanel value={BASE} onChange={vi.fn()} theme="dark" />);
     expect(screen.queryByRole('group', { name: 'Graph-Einstellungen' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Graph-Einstellungen' }));
     expect(screen.getByRole('group', { name: 'Graph-Einstellungen' })).toBeInTheDocument();
@@ -30,7 +32,7 @@ describe('#324: graph settings gear panel', () => {
 
   it('toggling Glow reports onChange({ glow: true })', () => {
     const onChange = vi.fn();
-    render(<GraphSettingsPanel value={BASE} onChange={onChange} />);
+    render(<GraphSettingsPanel value={BASE} onChange={onChange} theme="dark" />);
     fireEvent.click(screen.getByRole('button', { name: 'Graph-Einstellungen' }));
     fireEvent.click(screen.getByLabelText('Glow'));
     expect(onChange).toHaveBeenCalledWith({ glow: true });
@@ -38,7 +40,7 @@ describe('#324: graph settings gear panel', () => {
 
   it('choosing color mode "nach Cluster" reports onChange({ colorMode: "cluster" })', () => {
     const onChange = vi.fn();
-    render(<GraphSettingsPanel value={BASE} onChange={onChange} />);
+    render(<GraphSettingsPanel value={BASE} onChange={onChange} theme="dark" />);
     fireEvent.click(screen.getByRole('button', { name: 'Graph-Einstellungen' }));
     fireEvent.click(screen.getByRole('button', { name: 'nach Cluster' }));
     expect(onChange).toHaveBeenCalledWith({ colorMode: 'cluster' });
@@ -46,7 +48,7 @@ describe('#324: graph settings gear panel', () => {
 
   it('changing mention form reports onChange({ mentionForm })', () => {
     const onChange = vi.fn();
-    render(<GraphSettingsPanel value={BASE} onChange={onChange} />);
+    render(<GraphSettingsPanel value={BASE} onChange={onChange} theme="dark" />);
     fireEvent.click(screen.getByRole('button', { name: 'Graph-Einstellungen' }));
     fireEvent.change(screen.getByLabelText('Mention-Form'), { target: { value: 'animated' } });
     expect(onChange).toHaveBeenCalledWith({ mentionForm: 'animated' });
