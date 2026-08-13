@@ -1,16 +1,4 @@
-// M10-S08 (#202): Spieler-Charaktererstellung im Join-Flow (D10/D13/D14).
-// Ein Charakter pro Spieler pro Session (D10). Charakter = Entity mit
-// is_player_character:true + player_id. Aktionsquelle für Würfe/Kampflog.
-// Fremd-Bögen nicht sichtbar (D20 — Enforcement im Content-Filter-Service).
 import type { DatabaseLike } from './entity-service';
-
-export interface PlayerCharacterParams {
-  sessionId: string;
-  playerId: string;
-  name: string;
-  note?: string;
-  systemPluginId?: string | null;
-}
 
 export interface PlayerCharacter {
   entityId: string;
@@ -19,28 +7,53 @@ export interface PlayerCharacter {
   name: string;
 }
 
-// Creates the player character entity. Throws if the player already has a
-// character in this session (D10: exactly 1 per player per session).
 export async function createPlayerCharacter(
-  _db: DatabaseLike,
-  _params: PlayerCharacterParams,
+  db: DatabaseLike,
+  params: { sessionId: string; playerId: string; name: string; systemPluginId?: string | null },
 ): Promise<PlayerCharacter> {
-  throw new Error('not implemented');
+  const existing = await db.select<{ id: string }>(
+    `SELECT id FROM base_entities WHERE player_id = ? AND session_id = ? AND is_player_character = 1`,
+    [params.playerId, params.sessionId],
+  );
+  if (existing.length > 0) throw new Error('Player already has a character in this session (D10)');
+
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await db.execute(
+    `INSERT INTO base_entities
+      (id, type, title, summary, aliases_json, properties_json, body_json, visibility,
+       created_at, updated_at, is_player_character, player_id, session_id)
+     VALUES (?, 'Character', ?, '', '[]', '{}', '{}', 'private', ?, ?, 1, ?, ?)`,
+    [id, params.name, now, now, params.playerId, params.sessionId],
+  );
+  return { entityId: id, playerId: params.playerId, sessionId: params.sessionId, name: params.name };
 }
 
-// Returns the player's character for the given session, or null if none.
 export async function getPlayerCharacter(
-  _db: DatabaseLike,
-  _params: { sessionId: string; playerId: string },
+  db: DatabaseLike,
+  params: { sessionId: string; playerId: string },
 ): Promise<PlayerCharacter | null> {
-  throw new Error('not implemented');
+  const rows = await db.select<{ id: string; title: string }>(
+    `SELECT id, title FROM base_entities WHERE player_id = ? AND session_id = ? AND is_player_character = 1`,
+    [params.playerId, params.sessionId],
+  );
+  if (!rows[0]) return null;
+  return { entityId: rows[0].id, playerId: params.playerId, sessionId: params.sessionId, name: rows[0].title };
 }
 
-// Updates the player's own character (name / properties). Throws if the
-// requesting player is not the owner (D20: only own char editable).
 export async function updatePlayerCharacter(
-  _db: DatabaseLike,
-  _params: { entityId: string; requestingPlayerId: string; name?: string; note?: string },
+  db: DatabaseLike,
+  params: { entityId: string; requestingPlayerId: string; name: string },
 ): Promise<void> {
-  throw new Error('not implemented');
+  const rows = await db.select<{ player_id: string }>(
+    `SELECT player_id FROM base_entities WHERE id = ? AND is_player_character = 1`,
+    [params.entityId],
+  );
+  if (!rows[0] || rows[0].player_id !== params.requestingPlayerId) {
+    throw new Error('Not authorized to edit this character (D20)');
+  }
+  await db.execute(
+    `UPDATE base_entities SET title = ?, updated_at = ? WHERE id = ?`,
+    [params.name, new Date().toISOString(), params.entityId],
+  );
 }

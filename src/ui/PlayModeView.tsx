@@ -1,19 +1,61 @@
-// M10-S14 (#332): Play-Mode-Hauptfeld — Reiter Map / Kampflog / Spotlight +
-// Free-Browse. DM + Spieler sehen beide den Kampflog. DM-only-Bereiche
-// (Authoring, Graph, Soundboard) nicht sichtbar für Spieler (D15). AP-003.
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 
-export type PlayModeRole = 'dm' | 'player';
+type Tab = 'map' | 'kampflog' | 'spotlight';
 
-export interface PlayModeViewProps {
+interface Props {
   database: DatabaseLike;
   sessionId: string;
-  role: PlayModeRole;
+  role: 'dm' | 'player';
   playerId?: string;
 }
 
-export function PlayModeView(_props: PlayModeViewProps): React.ReactElement {
-  throw new Error('not implemented');
-}
+export function PlayModeView({ role }: Props) {
+  const { t } = useTranslation('nav');
+  const [activeTab, setActiveTab] = useState<Tab>('map');
 
-export default PlayModeView;
+  return (
+    <div>
+      <div role="tablist">
+        <button
+          role="tab"
+          aria-selected={activeTab === 'map'}
+          onClick={() => setActiveTab('map')}
+        >
+          {t('playTabMap', 'Karte')}
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === 'kampflog'}
+          onClick={() => setActiveTab('kampflog')}
+        >
+          {t('playTabLog', 'Kampflog')}
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === 'spotlight'}
+          onClick={() => setActiveTab('spotlight')}
+        >
+          {t('playTabSpotlight', 'Spotlight')}
+        </button>
+      </div>
+
+      <div role="tabpanel">
+        {activeTab === 'map' && <div>{t('playMapPlaceholder', 'Karte wird geladen…')}</div>}
+        {activeTab === 'kampflog' && <div>{t('playLogPlaceholder', 'Kampflog…')}</div>}
+        {activeTab === 'spotlight' && <div>{t('playSpotlightPlaceholder', 'Spotlight…')}</div>}
+      </div>
+
+      <aside data-testid="free-browse">
+        {t('playFreeBrowse', 'Freies Blättern')}
+      </aside>
+
+      {role === 'dm' && (
+        <div data-testid="dm-authoring">
+          {t('playDmAuthoring', 'Welt bearbeiten')}
+        </div>
+      )}
+    </div>
+  );
+}

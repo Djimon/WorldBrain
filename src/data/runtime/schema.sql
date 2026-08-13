@@ -18,7 +18,10 @@ CREATE TABLE IF NOT EXISTS base_entities (
   body_json TEXT NOT NULL,
   visibility TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  is_player_character INTEGER NOT NULL DEFAULT 0,
+  player_id TEXT,
+  session_id TEXT
 );
 
 -- M10-S20 D23: Campaign = Klammer pro Gruppe, über mehrere Sessions/Termine
