@@ -49,6 +49,15 @@ Vollständige Durchspecc-Session (grill-me). Diese Decisions verfeinern/ergänze
 - **D21 — Split-View (allgemeine App-Fähigkeit).** In-App **2-Pane-Split-View** (beliebige 2 Ansichten nebeneinander, verschiebbare Grenze) — v.a. für den DM (Map ‖ Kampflog). Cross-Cutting, eigene kleine Story. OS-Pop-out = später.
 - **D22 — Kampf-Engine = eigenes Sub-Epic.** Runden/Initiative/Aktions-Auflösung/HP-Status sind ein eigenständiges Subsystem → **`planning/epics/M10b-combat-engine.md`** (Ausgangspunkt: Grill-Q20–Q25). M10 (Multiplayer) referenziert es; der Kampflog-Reiter (D13) ist die Multiplayer-Sicht darauf. Baseline plugin-frei (HP/Schaden/Heilen/Würfe/Initiative/Runden), Plugin reichert an.
 
+- **D23 — 3-Schichten-Modell: Welt → Campaign → Session (Terminologie geklärt).** „Session" wurde im Gespräch deutsch = die ganze Kampagne gemeint; im Code/DB heißt **Session = ein Termin**. Aufgelöst:
+  - **Welt (Basis):** kanonische Entities/Events/Kalender, geteilt.
+  - **Campaign (die Klammer, pro Gruppe):** hier leben **Entity-Overrides + Events + Roster + Visibility + Weltzeit-Stand**. Eine Welt trägt **mehrere Campaigns** (z.B. 4 Gruppen). Persistiert über alle Termine.
+  - **Session (ein Termin):** **nur Notiz-/Log-Layer** (`sessions`, `capture_notes`, `session_log`), locker nummeriert, referenziert die Campaign.
+  - **Default:** Entity-/Event-Edits in der Runde landen als **Campaign-Override** (`campaign_entity_overrides.patch_json`) — die **Basis-Welt bleibt unberührt**. **Optionaler Promote-Schalter** hebt einen Override in die Basis-Welt (für „geiler Plot für alle Gruppen").
+  - **Campaign-weites Log = UI-Aggregation**, KEIN extra Log: alle `session_log`-Einträge der Campaign-Sessions chronologisch, Trennstrich bei jedem Session-Wechsel. `session_log` bleibt unverändert (hat `session_id` + `created_at`).
+  - **⚠️ Reconciliation:** Wo D9–D22 „Session" als *persistente Klammer* sagen (Roster/Gruppen/Visibility/Overrides/Weltzeit „überleben zwischen Spielabenden", D11), ist **Campaign** gemeint. Die M10-Tabellen (`session_players`, `player_groups.session_id`, `session_visibility_overrides.session_id`) hängen aktuell an `session_id` → gehören konzeptuell an die **Campaign**.
+  - **Schema-Konsequenz (`needs-design`, nicht sofort bauen):** neue **`campaigns`**-Tabelle als Klammer + `campaign_id` auf Override-/Event-/Roster-/Visibility-Tabellen; `campaign_entity_overrides` bekommt `campaign_id` (heute un-gekeyt → nur 1 Campaign/Welt möglich); `sessions` bekommt `campaign_id`. **Kein** neues Log-/Notiz-Objekt nötig.
+
 ### Offene Detailfragen (als `needs-decision` in den jeweiligen Stories)
 - Session-Jetzt **absolut setzbar** (nicht nur vorstellen)? → S17.
 - Optionaler **Token-Lock** (per-Token/global) — Rechte-Modell? → S18/#299.
@@ -235,9 +244,30 @@ Vollständige Durchspecc-Session (grill-me). Diese Decisions verfeinern/ergänze
 | M10-S11 | #322 | p2 | #195 | **Stufe 3:** Internet-Transport via WebRTC-DataChannel + STUN (ohne TURN) |
 | M10-S12 | #323 | p2 | #195 | **Stufe 3:** Serverloses Signaling — Connection-Code-Austausch (kein Hosted-Server) |
 | #299 | #299 | p1 | S01 | Token-Bewegung: **Default offen (D18)**, optionaler Lock später · `needs-decision` |
+| M10-S20 | #337 | p0 | — | **Campaign-Klammer + `campaign_id`-Keying** (Foundation, D23) |
+| M10-S21 | #338 | p1 | S20 | **Campaign-Override-Default + Promote-Schalter** (D23) · `needs-decision` |
 | Sub-Epic | — | — | M9+M10 | **Kampf-Engine** → `planning/epics/M10b-combat-engine.md` · `needs-design` (eigene Grill-Runde offen) |
 
-**Bau-Reihenfolge des Kern-Blocks:** `S01 (#195) → S02 (#196) → (S05 #199 + S06 #200) → S08 #202`; parallel/danach die Play-Features S14–S17 + S19. Stufe 3 (S11/S12) + Kampf-Sub-Epic später.
+## Implementierungs-Reihenfolge (verbindlich, rekursiv aufgelöst)
+
+**Phase 0 — Foundation (parallel baubar):**
+- **S20 #337** Campaign-Klammer + `campaign_id`-Keying (Datenmodell-Basis für Roster/Overrides/Visibility, D23) · p0
+- **S01 #195** lokaler Server + Transport (HTTP serviert Player-UI + WS-Live) · p0 — *unabhängig von S20, parallel*
+- **S02 #196** Session-Identität, Codes, Token-Auth · p0
+
+**Phase 1 — Multiplayer-Kern (braucht S20 + S01 + S02):**
+- **S05 #199** Player-Client (Hybrid) + gespeichertes Player-Projekt
+- **S06 #200** GM-Lobby & Approve (Roster/Gruppen campaign-scoped aus S20)
+
+**Phase 2 — Play:**
+- **S08 #202** Charaktererstellung (braucht S05)
+- **S14 #332** Play-Hauptfeld (Reiter Map/Kampflog/Spotlight, braucht S05/S06)
+- **S15 #333** Whiteboard · **S16 #334** Würfel · **S17 #335** Session-Zeit/Kalender-Gate · **#299** Token-Bewegung · **S19 #336** Split-View
+- **S21 #338** Campaign-Override-Default + Promote (braucht S20) — Authoring-seitig, parallel
+
+**Phase 3 — Später:** Stufe 3 (S11 #322 / S12 #323, braucht S01), **Kampf-Sub-Epic** (`M10b`, braucht M9-Substrat), Campaign-Log-UI (Aggregation, kein eigenes Objekt).
+
+**Achse (kritischer Pfad):** `(S20 ∥ S01→S02) → (S05 + S06) → S08 → Play-Features`.
 
 ## Abhängigkeiten
 
