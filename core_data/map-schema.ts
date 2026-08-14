@@ -59,6 +59,8 @@ export function applyMapSchema(db: MapDb): void {
       counter_value REAL,
       status_chips_json TEXT NOT NULL DEFAULT '[]',
       session_id TEXT,
+      controller TEXT NOT NULL DEFAULT 'players',
+      owner_player_id TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);

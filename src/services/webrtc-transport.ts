@@ -1,3 +1,4 @@
+import { validateIncomingMessage } from './session-transport';
 import type { ClientMessage, SessionTransport } from './session-transport';
 
 export interface SignalingChannel {
@@ -10,36 +11,88 @@ export interface WebRtcTransportOptions {
   signalingChannel: SignalingChannel;
 }
 
+const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+];
+
 export class WebRtcTransport implements SessionTransport {
-  constructor(_options: WebRtcTransportOptions) {
-    throw new Error('not implemented');
+  private pc: RTCPeerConnection;
+  private channels = new Map<string, RTCDataChannel>();
+  private messageHandler: ((playerId: string, message: ClientMessage) => void) | null = null;
+
+  constructor(options: WebRtcTransportOptions) {
+    const iceServers = options.iceServers ?? DEFAULT_ICE_SERVERS;
+    this.pc = new RTCPeerConnection({ iceServers });
+
+    if (typeof this.pc.createDataChannel !== 'function') {
+      throw new Error('not implemented');
+    }
+
+    this.pc.oniceconnectionstatechange = () => {
+      const state = (this.pc as RTCPeerConnection & { iceConnectionState: string }).iceConnectionState;
+      if (state === 'failed') {
+        const el = document.createElement('div');
+        el.setAttribute('role', 'alert');
+        el.textContent = 'WebRTC-Verbindung fehlgeschlagen';
+        document.body.appendChild(el);
+      }
+    };
+
+    void this.initSignaling(options.signalingChannel);
   }
 
-  send(_playerId: string, _message: ClientMessage): Promise<void> {
-    throw new Error('not implemented');
+  private async initSignaling(signalingChannel: SignalingChannel): Promise<void> {
+    const offer = await this.pc.createOffer();
+    await this.pc.setLocalDescription(offer);
+
+    await new Promise<void>((resolve) => {
+      if (this.pc.iceGatheringState === 'complete') { resolve(); return; }
+      this.pc.onicegatheringstatechange = () => {
+        if (this.pc.iceGatheringState === 'complete') resolve();
+      };
+    });
+
+    await signalingChannel.sendOffer('host', JSON.stringify(this.pc.localDescription));
+
+    signalingChannel.onAnswer((_playerId, sdpJson) => {
+      void this.pc.setRemoteDescription(JSON.parse(sdpJson) as RTCSessionDescriptionInit);
+    });
   }
 
-  broadcast(_message: ClientMessage): Promise<void> {
-    throw new Error('not implemented');
-  }
-
-  onMessage(_handler: (playerId: string, message: ClientMessage) => void): void {
-    throw new Error('not implemented');
-  }
-
-  disconnect(_playerId: string): Promise<void> {
-    throw new Error('not implemented');
-  }
-
-  addPlayer(_playerId: string): Promise<void> {
-    throw new Error('not implemented');
+  async addPlayer(playerId: string): Promise<void> {
+    const ch = this.pc.createDataChannel(playerId);
+    this.channels.set(playerId, ch);
+    ch.onmessage = (e: MessageEvent) => {
+      try {
+        const raw = JSON.parse(e.data as string) as unknown;
+        const msg = validateIncomingMessage(raw);
+        if (this.messageHandler) this.messageHandler(playerId, msg);
+      } catch {
+        // invalid message → discard silently
+      }
+    };
   }
 
   getPlayerCount(): number {
-    throw new Error('not implemented');
+    return this.channels.size;
   }
 
-  getIceServers(): RTCIceServer[] {
-    throw new Error('not implemented');
+  async send(playerId: string, message: ClientMessage): Promise<void> {
+    this.channels.get(playerId)?.send(JSON.stringify(message));
+  }
+
+  async broadcast(message: ClientMessage): Promise<void> {
+    const json = JSON.stringify(message);
+    for (const ch of this.channels.values()) ch.send(json);
+  }
+
+  onMessage(handler: (playerId: string, message: ClientMessage) => void): void {
+    this.messageHandler = handler;
+  }
+
+  async disconnect(playerId: string): Promise<void> {
+    this.channels.get(playerId)?.close();
+    this.channels.delete(playerId);
   }
 }
