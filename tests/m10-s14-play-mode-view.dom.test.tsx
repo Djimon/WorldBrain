@@ -142,3 +142,87 @@ describe('#332 PlayModeView — AP-003', () => {
     expect(src).not.toMatch(/\b(alert|confirm|prompt)\s*\(/);
   });
 });
+
+// ── Mount-Guard: WorkspaceShell case 'session' verdrahtet PlayModeView ────────
+// NACHSCHÄRFUNG: Play-Feld ersetzt den alten Widget-Stapel; PlayModeScreen raus.
+
+describe('#332 NACHSCHÄRFUNG — Mount-Guard (WorkspaceShell)', () => {
+  it('WorkspaceShell.tsx does NOT import PlayModeScreen (dead file removed)', () => {
+    const src = readFileSync('src/ui/WorkspaceShell.tsx', 'utf-8');
+    expect(src).not.toMatch(/PlayModeScreen/);
+  });
+
+  it('WorkspaceShell case "session" source mounts PlayModeView (not the old widget stack)', () => {
+    const src = readFileSync('src/ui/WorkspaceShell.tsx', 'utf-8');
+    // After NACHSCHÄRFUNG: case 'session' must reference PlayModeView, not CaptureInbox
+    expect(src).toMatch(/case\s*['"]session['"]/);
+    // The PlayModeView must be rendered in the session case
+    expect(src).toMatch(/PlayModeView/);
+    // The old dead widget-stack must be gone from the session branch
+    // (CaptureInbox may exist elsewhere but must not be in case 'session')
+    const sessionCaseMatch = src.match(/case\s*['"]session['"]\s*:[\s\S]*?(?=case\s*['"]|default\s*:|$)/);
+    if (sessionCaseMatch) {
+      expect(sessionCaseMatch[0]).not.toMatch(/CaptureInbox|EncounterCounters/);
+    }
+  });
+});
+
+// ── Modus-Wechsel: Create ↔ Play Toggle sichtbar ────────────────────────────
+// NACHSCHÄRFUNG: Es muss einen klaren Einstiegspunkt in den Play-Mode geben.
+
+describe('#332 NACHSCHÄRFUNG — Modus-Toggle', () => {
+  it('WorkspaceShell defines a session nav entry with 🎲 icon (source guard)', () => {
+    const src = readFileSync('src/ui/WorkspaceShell.tsx', 'utf-8');
+    // The nav config must have an entry with id='session' and icon '🎲'
+    expect(src).toMatch(/id\s*:\s*['"]session['"]/);
+    expect(src).toMatch(/icon\s*:\s*['"]🎲['"]/);
+  });
+
+  it('WorkspaceShell session nav entry is labeled so the Play-Mode is reachable via click', () => {
+    // Guard: the nav button for 'session' exists in the sidebar config
+    const src = readFileSync('src/ui/WorkspaceShell.tsx', 'utf-8');
+    // The panel id and icon are declared together → panel is nav-accessible
+    const hasSessionEntry = /\{[^}]*id\s*:\s*['"]session['"][^}]*icon\s*:\s*['"]🎲['"]\s*\}/.test(src)
+      || /\{[^}]*icon\s*:\s*['"]🎲['"][^}]*id\s*:\s*['"]session['"]\s*\}/.test(src);
+    expect(hasSessionEntry).toBe(true);
+  });
+});
+
+// ── DM-Cockpit: Campaign/Session-Kontext im Kopf (D23) ───────────────────────
+// NACHSCHÄRFUNG: DM sieht Campaign-Name + Session-Titel im Header des Play-Felds.
+
+describe('#332 NACHSCHÄRFUNG — DM-Cockpit', () => {
+  it('DM view shows campaign/session context in the header area', async () => {
+    const raw = new DatabaseSync(':memory:');
+    raw.exec(runtimeSchemaSql);
+    raw.prepare(`INSERT INTO sessions (id,title,created_at) VALUES ('s1','Drachennacht',datetime('now'))`).run();
+    const db = makeAsyncDb(raw);
+
+    render(<PlayModeView database={db} sessionId="s1" role="dm" />);
+    await waitFor(() => screen.getByRole('tab', { name: /map|karte/i }));
+
+    // Session title or context visible somewhere in the DM view
+    expect(document.body.textContent).toMatch(/Drachennacht|s1/i);
+  });
+
+  it('DM view exposes a way to reach Lobby (DM-Cockpit orchestration)', async () => {
+    const db = createDb();
+    render(<PlayModeView database={db} sessionId="s1" role="dm" />);
+    await waitFor(() => screen.getByRole('tab', { name: /map|karte/i }));
+
+    // Lobby-link/button must be reachable from DM play view
+    const lobbyEl = screen.queryByRole('button', { name: /lobby/i })
+      ?? screen.queryByRole('link', { name: /lobby/i })
+      ?? screen.queryByTestId('dm-lobby');
+    expect(lobbyEl).not.toBeNull();
+  });
+
+  it('player view does NOT show DM cockpit controls (D15)', async () => {
+    const db = createDb();
+    render(<PlayModeView database={db} sessionId="s1" role="player" playerId="p1" />);
+    await waitFor(() => screen.getByRole('tab', { name: /map|karte/i }));
+
+    expect(screen.queryByTestId('dm-cockpit')).toBeNull();
+    expect(screen.queryByRole('button', { name: /lobby/i })).toBeNull();
+  });
+});
