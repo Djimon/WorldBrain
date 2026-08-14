@@ -76,7 +76,7 @@ Mandatory before AC:
 - Read `ANTI_PATTERNS.md` — copy relevant constraints verbatim into AC
 - Propagate Epic Decisions into every affected Story AC verbatim (not "see Decisions")
 - Output-producing Stories: add AC "All user-supplied strings HTML-escaped; no raw template injection"
-- UI-component Stories: name the container/mount point in the AC — a component nobody mounts is a dead deliverable
+- UI-component Stories: name the container/mount point in the AC **and** require an integration test that reaches the component through that real mount / user path — not only an isolated `render(<Component/>)`. A component nobody mounts is a dead deliverable. Recurring failure — do not skip: #262, #274, #294, #339.
 
 Output: Epic summary · Story list · AC per Story · Open decisions · Blockers. No implementation.
 
@@ -109,6 +109,8 @@ Read order — mandatory, in sequence:
 4. `ANTI_PATTERNS.md` (any listed pattern is a blocker)
 
 AC in the Issue overrides test assumptions when they conflict — tests describe behavior, the Issue describes intent. Do not edit tests. Tests wrong → stop and report.
+
+**A UI component isn't done until it's mounted and reachable.** A passing isolated test (`render(<X/>)`) is NOT "done" — it proves the component works in a vacuum, not that any user can reach it. Before marking a UI story done, verify a real path renders it: grep that `<Component` appears outside its own file and tests, and that a route/menu/parent actually reaches it in the running app. If the AC names no mount point, that is a requirement gap — report it (`NEEDS_DECISION`); never close a component nothing renders. This is the single most recurring defect here (#262, #274, #294, #339) — assume it will happen and check every time.
 
 **Diagnose from structure, not speculation:** Lifecycle/event/render problems → read the actual component hierarchy first. No diagnosis before the relevant file is open.
 
