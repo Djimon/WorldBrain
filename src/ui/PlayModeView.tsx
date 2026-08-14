@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
+import { LobbyPanel } from './LobbyPanel';
+import { SignalingPanel } from './SignalingPanel';
 
 type Tab = 'map' | 'kampflog' | 'spotlight';
 
@@ -15,6 +17,8 @@ export function PlayModeView({ database, sessionId, role }: Props) {
   const { t } = useTranslation('nav');
   const [activeTab, setActiveTab] = useState<Tab>('map');
   const [sessionTitle, setSessionTitle] = useState<string>(sessionId);
+  const [lobbyOpen, setLobbyOpen] = useState(false);
+  const [signalingOpen, setSignalingOpen] = useState(false);
 
   useEffect(() => {
     database
@@ -28,7 +32,22 @@ export function PlayModeView({ database, sessionId, role }: Props) {
       {role === 'dm' && (
         <div data-testid="dm-cockpit">
           <span>{sessionTitle}</span>
-          <button data-testid="dm-lobby">{t('playLobby', 'Lobby')}</button>
+          <button data-testid="dm-lobby" onClick={() => setLobbyOpen((v) => !v)}>
+            {t('playLobby', 'Lobby')}
+          </button>
+          {lobbyOpen && (
+            <>
+              <LobbyPanel
+                database={database}
+                sessionId={sessionId}
+                onStopHosting={() => setLobbyOpen(false)}
+              />
+              <button onClick={() => setSignalingOpen((v) => !v)}>
+                {t('playSignalingToggle', 'Internet-Verbindung (Stufe 3)')}
+              </button>
+              {signalingOpen && <SignalingPanel role="host" />}
+            </>
+          )}
         </div>
       )}
 
