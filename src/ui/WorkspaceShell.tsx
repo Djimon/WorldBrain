@@ -8,8 +8,6 @@ import { listViews } from '../services/saved-views-service';
 import type { SavedViewRow } from '../services/saved-views-service';
 import { importRules } from '../services/rule-import-service';
 import { detectMysteryBreakers, analyzeRoleCoverage, detectQuestBlockers } from '../services/rule-evaluations';
-import { listVars } from '../services/session-variable-service';
-import type { VarRow } from '../services/session-variable-service';
 import { EntityMasterDetail } from './EntityMasterDetail';
 import { EntityDetailView } from './EntityDetailView';
 import { GlobalSearch } from './GlobalSearch';
@@ -25,12 +23,6 @@ import { CardCreationFlow } from './CardCreationFlow';
 import { PrintSheetComposer } from './PrintSheetComposer';
 import { PluginManager } from './PluginManager';
 import { DmScreen, DmScreenSelector } from './DmScreen';
-import { CaptureInbox } from './CaptureInbox';
-import { EncounterCounters } from './EncounterCounters';
-import { ConditionBuilder } from './ConditionBuilder';
-import type { VarDef } from './ConditionBuilder';
-import { PlayerScreen } from './PlayerScreen';
-import { SessionClock } from './SessionClock';
 import { SnapshotManager } from './SnapshotManager';
 import { UpdateNotification } from './UpdateNotification';
 import { MapViewer } from './MapViewer';
@@ -40,6 +32,7 @@ import { MapsSidebarTabs } from './MapsSidebarTabs';
 import { MapFolderTree } from './MapFolderTree';
 import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { PlayModeView } from './PlayModeView';
 import { ThemeToggle } from './ThemeToggle';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
@@ -75,9 +68,10 @@ interface CalendarRow {
 interface Props {
   projectId: string;
   projectTitle?: string;
-  projectDir: string;
-  snapshotsDir: string;
-  onProjectClose: () => void;
+  projectDir?: string;
+  snapshotsDir?: string;
+  onProjectClose?: () => void;
+  activePanel?: Area;
 }
 
 const AREAS: { id: Area; icon: string }[] = [
@@ -100,10 +94,10 @@ const CORE_ENTITY_TYPES = [
   'Quest', 'Event', 'Scene', 'Rule', 'Resource', 'Culture', 'Lore',
 ];
 
-export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsDir, onProjectClose }: Props) {
+export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsDir, onProjectClose, activePanel }: Props) {
   const { t } = useTranslation('nav');
   const database = useDatabase();
-  const [activeArea, setActiveArea] = useState<Area>('entities');
+  const [activeArea, setActiveArea] = useState<Area>(activePanel ?? 'entities');
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | null>('Character');
   const [selectedScreenId, setSelectedScreenId] = useState<string | null>(null);
@@ -141,7 +135,6 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   // Image layer currently in move mode (shared: LayerPanel selects, MapViewer drags).
   const [movingLayerId, setMovingLayerId] = useState<string | null>(null);
   const [savedViews, setSavedViews] = useState<SavedViewRow[]>([]);
-  const [sessionVarsRaw, setSessionVarsRaw] = useState<VarRow[]>([]);
   // Detached audio-soundboard window (EPIC-024/D1) — one instance at a time;
   // the launcher button is disabled while it's open, re-enabled once closed.
   const [soundboardOpen, setSoundboardOpen] = useState(false);
@@ -164,9 +157,6 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     listViews(database).then(setSavedViews).catch(console.error);
   }, [database]);
 
-  useEffect(() => {
-    listVars(database, projectId).then(setSessionVarsRaw).catch(console.error);
-  }, [database, projectId]);
 
   // The OS window can outlive a WorkspaceShell remount (e.g. project switch) —
   // check for it on mount so the launcher button reflects reality.
@@ -201,9 +191,10 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     // The soundboard is a separate window/JS context with no state shared
     // with this React tree — the db path travels as a query param so it can
     // open its own connection to the SAME SQLite DB (EPIC-024/D1).
-    const dbPath = await join(projectDir, 'world.db');
+    const dir = projectDir ?? '';
+    const dbPath = await join(dir, 'world.db');
     const win = new WebviewWindow(SOUNDBOARD_WINDOW_LABEL, {
-      url: `index.html?db=${encodeURIComponent(dbPath)}&projectDir=${encodeURIComponent(projectDir)}#/audio-soundboard`,
+      url: `index.html?db=${encodeURIComponent(dbPath)}&projectDir=${encodeURIComponent(dir)}#/audio-soundboard`,
       title: t('audioSoundboardWindowTitle', 'Audio-Soundboard'),
       backgroundColor: isDark ? '#15181b' : '#f2f3f5',
       // Board rows (8 clip buttons + mixer cluster) need more room than
@@ -311,7 +302,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     setMapImporting(true);
     try {
       const title = selected.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? 'Karte';
-      const result = await importMapImage(database, { srcPath: selected, title, projectDir });
+      const result = await importMapImage(database, { srcPath: selected, title, projectDir: projectDir ?? '' });
       const updatedMaps = await listMaps(database);
       setMaps(updatedMaps);
       setSelectedMapId(result.id);
@@ -326,7 +317,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     const selected = await open({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
     if (typeof selected !== 'string') return;
     const name = selected.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? 'Bild-Layer';
-    await importImageLayer(database, { map_id: selectedMapId, srcPath: selected, projectDir, name });
+    await importImageLayer(database, { map_id: selectedMapId, srcPath: selected, projectDir: projectDir ?? '', name });
     setLayerReloadKey((n) => n + 1);
   }
 
@@ -351,7 +342,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     const selected = await open({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
     if (typeof selected !== 'string') return null;
     const { copyMapAsset } = await import('../services/map-asset');
-    return copyMapAsset(selected, projectDir, `token-${crypto.randomUUID()}`);
+    return copyMapAsset(selected, projectDir ?? '', `token-${crypto.randomUUID()}`);
   }
 
   async function handleAddFogLayer() {
@@ -391,14 +382,6 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     reader.readAsText(file);
   }
 
-  const VALID_TYPES = new Set(['boolean', 'number', 'string', 'enum']);
-  const sessionVars: VarDef[] = sessionVarsRaw
-    .filter((v) => VALID_TYPES.has(v.type))
-    .map((v) => ({
-      id: v.id,
-      label: v.label,
-      type: v.type as VarDef['type'],
-    }));
 
   function renderArea() {
     switch (activeArea) {
@@ -785,23 +768,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
       case 'session':
         return (
           <div className="workspace-area">
-            <CaptureInbox sessionId={projectId} database={database} />
-            <EncounterCounters sessionId={projectId} database={database} />
-            {/* #185: ConditionBuilder with session variables from DB */}
-            <ConditionBuilder variables={sessionVars} onChange={() => {}} />
-            {/* #185: PlayerScreen in GM mode */}
-            <PlayerScreen context={{ audience: 'gm' }} database={database} />
-            {/* #185: SessionClock — only rendered once a calendar is configured */}
-            {activeCalendar ? (
-              <SessionClock
-                sessionId={projectId}
-                calendar={activeCalendar}
-                worldTimeStart={0}
-                database={database}
-              />
-            ) : (
-              <p>{t('noCalendar')}</p>
-            )}
+            <PlayModeView database={database} sessionId={projectId} role="dm" />
           </div>
         );
 
@@ -835,14 +802,14 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
             {/* #183: no window.location.reload() — close project and reopen via welcome screen */}
             <SnapshotManager
               projectId={projectId}
-              projectDir={projectDir}
-              snapshotsDir={snapshotsDir}
-              onRestored={onProjectClose}
+              projectDir={projectDir ?? ''}
+              snapshotsDir={snapshotsDir ?? ''}
+              onRestored={onProjectClose ?? (() => {})}
             />
             <hr />
             <UpdateNotification />
             <hr />
-            <button onClick={onProjectClose}>Projekt schließen</button>
+            <button onClick={() => onProjectClose?.()}>Projekt schließen</button>
           </div>
         );
     }

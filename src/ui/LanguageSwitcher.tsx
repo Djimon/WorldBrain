@@ -9,14 +9,14 @@ export function LanguageSwitcher() {
   const { i18n } = useTranslation();
 
   function handleChange(lang: string) {
-    void i18n.changeLanguage(lang);
+    void i18n?.changeLanguage(lang);
     localStorage.setItem('lang', lang);
   }
 
   return (
     <select
       className="language-switcher"
-      value={i18n.language}
+      value={i18n?.language ?? 'de'}
       onChange={(e) => handleChange(e.target.value)}
       aria-label="Sprache / Language"
     >

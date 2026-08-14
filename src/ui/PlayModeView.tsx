@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 
@@ -11,12 +11,27 @@ interface Props {
   playerId?: string;
 }
 
-export function PlayModeView({ role }: Props) {
+export function PlayModeView({ database, sessionId, role }: Props) {
   const { t } = useTranslation('nav');
   const [activeTab, setActiveTab] = useState<Tab>('map');
+  const [sessionTitle, setSessionTitle] = useState<string>(sessionId);
+
+  useEffect(() => {
+    database
+      .select<{ title: string }>('SELECT title FROM sessions WHERE id = ?', [sessionId])
+      .then((rows) => { if (rows[0]) setSessionTitle(rows[0].title); })
+      .catch(() => {});
+  }, [database, sessionId]);
 
   return (
     <div>
+      {role === 'dm' && (
+        <div data-testid="dm-cockpit">
+          <span>{sessionTitle}</span>
+          <button data-testid="dm-lobby">{t('playLobby', 'Lobby')}</button>
+        </div>
+      )}
+
       <div role="tablist">
         <button
           role="tab"
