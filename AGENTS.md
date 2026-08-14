@@ -32,6 +32,7 @@ Within `status: ready` issues, implement in this order:
 - **P0** — Security (XSS, injection) or architecture violation or dead handler never wired → first, no exceptions
 - **P1** — Broken feature, recurring anti-pattern → after all P0s clear
 - **P2** — Performance, missing convenience → last
+- **p3** - Nice-to-have
 
 After bugs: proceed to new Stories in milestone order.
 
@@ -79,6 +80,8 @@ Mandatory before AC:
 - UI-component Stories: name the container/mount point in the AC **and** require an integration test that reaches the component through that real mount / user path — not only an isolated `render(<Component/>)`. A component nobody mounts is a dead deliverable. Recurring failure — do not skip: #262, #274, #294, #339.
 
 Output: Epic summary · Story list · AC per Story · Open decisions · Blockers. No implementation.
+
+Mindset: The TDD agent and implementer are pure executors: strong at coding, weak at thinking ahead. Write every issue to be foolproof — spell out all Dos and Don'ts, and hard-wire any cross-issue dependencies. Each agent only ever sees its single issue in isolation, so it's on you to keep the whole project coherent through clearly written issues and explicit connection points.
 
 ### 2. TDD Agent
 
