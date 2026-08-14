@@ -1,4 +1,4 @@
-"""Test-Daten-Generator fuer WorldBuilderX (Projekt Test-123).
+"""Test-Daten-Generator fuer WorldBuilderX.
 
 EIN Durchlauf legt IMMER alle vier Gruppen an (keine Optionen):
 - A: nur echte Relations (relations-Tabelle), keine @mentions
@@ -11,15 +11,29 @@ Alle IDs 'gen-XXXX', alle Titel 'GEN …' -> leicht auffindbar/loeschbar.
 
 WICHTIG: App vorher schliessen (sonst WAL-Lock / stale Ansicht).
 
-Aufruf:
-    python gen_test_entities.py            # 400 Nodes einfuegen
-    python gen_test_entities.py 250        # eigene Anzahl
-    python gen_test_entities.py --wipe     # alle gen-* wieder loeschen
+Aufruf (--project ist PFLICHT):
+    python gen_test_entities.py --project demo             # 400 Nodes in Projekt "demo"
+    python gen_test_entities.py --project demo 2500        # eigene Anzahl
+    python gen_test_entities.py --project demo --wipe      # alle gen-* wieder loeschen
+    python gen_test_entities.py --project demo --db PFAD   # DB-Pfad manuell ueberschreiben
 """
+import os
 import sqlite3
 import sys
 
-DB = r"C:\Users\Administrator\AppData\Roaming\com.worldbuilderx.desktop\projects\test-123\world.db"
+# DB-Pfad wird aus Projektnamen + AppData des aktuellen Users abgeleitet.
+DB_ROOT = os.path.join(
+    os.environ.get("APPDATA", ""),
+    "com.worldbuilderx.desktop", "projects",
+)
+
+
+def resolve_db(project: str, override: str | None) -> str:
+    if override:
+        return override
+    return os.path.join(DB_ROOT, project, "world.db")
+
+
 TYPES = ["Character", "Location", "Faction", "Item", "Event", "Lore"]
 CLUSTER = 12  # Gruppe-A Cluster-Groesse (Mitglieder je Hub)
 # Vielfalt an relation_type (mit Inverse) -> Relations werden reihum belegt,
@@ -112,13 +126,37 @@ def wipe(cur):
     cur.execute("DELETE FROM base_entities WHERE id LIKE 'gen-%'")
 
 
+def take_flag_value(args: list[str], flag: str) -> str | None:
+    if flag in args:
+        i = args.index(flag)
+        if i + 1 < len(args):
+            val = args[i + 1]
+            del args[i:i + 2]
+            return val
+        del args[i]
+    return None
+
+
 def main():
     args = [a for a in sys.argv[1:]]
-    con = sqlite3.connect(DB, timeout=3)
+
+    project = take_flag_value(args, "--project")
+    db_override = take_flag_value(args, "--db")
+    if not project and not db_override:
+        print("FEHLER: --project <name> ist Pflicht (oder --db <pfad>).")
+        print('Beispiel: python gen_test_entities.py --project demo 2500')
+        sys.exit(1)
+
+    db = resolve_db(project, db_override)
+    if not os.path.exists(db):
+        print(f"FEHLER: Datenbank nicht gefunden: {db}")
+        sys.exit(1)
+
+    con = sqlite3.connect(db, timeout=3)
     cur = con.cursor()
     if "--wipe" in args:
         wipe(cur); con.commit()
-        print("gen-* Test-Daten geloescht.")
+        print(f"gen-* Test-Daten aus Projekt '{project or db}' geloescht.")
         con.close(); return
 
     target = next((int(a) for a in args if a.isdigit()), 400)

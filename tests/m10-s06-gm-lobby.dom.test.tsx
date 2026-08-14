@@ -1,0 +1,232 @@
+// M10-S06: GM-Lobby & Approve-Management
+// See: https://github.com/Djimon/WorldBrain/issues/200
+//
+// RED: LobbyPanel stub throws. Tests fail until implementer builds the lobby.
+
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+
+vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (k: string, d: string) => d ?? k }),
+  Trans: ({ children }: { children: React.ReactNode }) => children,
+  initReactI18next: { type: '3rdParty', init: () => {} },
+}));
+
+import { readFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseLike } from '../src/services/entity-service';
+import { LobbyPanel } from '../src/ui/LobbyPanel';
+
+const runtimeSchemaSql = readFileSync('src/data/runtime/schema.sql', 'utf-8');
+
+function makeAsyncDb(db: DatabaseSync): DatabaseLike {
+  return {
+    execute: (sql: string, args: unknown[] = []) => {
+      db.prepare(sql).run(...args);
+      return Promise.resolve();
+    },
+    select: <T,>(sql: string, args: unknown[] = []): Promise<T[]> =>
+      Promise.resolve(db.prepare(sql).all(...args) as T[]),
+  };
+}
+
+function createDb() {
+  const db = new DatabaseSync(':memory:');
+  db.exec(runtimeSchemaSql);
+  // seed a session
+  db.prepare(
+    `INSERT INTO sessions (id, title, created_at) VALUES ('s1', 'Test-Runde', datetime('now'))`,
+  ).run();
+  // seed pending players
+  db.prepare(
+    `INSERT INTO players (id, display_name, created_at) VALUES ('p1', 'Aragorn', datetime('now')), ('p2', 'Legolas', datetime('now'))`,
+  ).run();
+  db.prepare(
+    `INSERT INTO session_players (session_id, player_id, token_hash, invite_status, joined_at)
+     VALUES ('s1','p1','hash1','pending',NULL), ('s1','p2','hash2','approved',datetime('now'))`,
+  ).run();
+  return { db, asyncDb: makeAsyncDb(db) };
+}
+
+beforeEach(() => vi.clearAllMocks());
+
+// ── Lobby renders ─────────────────────────────────────────────────────────────
+
+describe('#200 LobbyPanel — renders', () => {
+  it('renders a pending-requests section', async () => {
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() =>
+      expect(screen.getByText(/ausstehend|pending|anfragen/i)).toBeInTheDocument(),
+    );
+  });
+
+  it('renders a connected-players section', async () => {
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() =>
+      expect(screen.getByText(/verbunden|approved|spieler/i)).toBeInTheDocument(),
+    );
+  });
+
+  it('shows the pending player by display name', async () => {
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() =>
+      expect(screen.getByText('Aragorn')).toBeInTheDocument(),
+    );
+  });
+
+  it('shows the approved player in the connected list', async () => {
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() =>
+      expect(screen.getByText('Legolas')).toBeInTheDocument(),
+    );
+  });
+});
+
+// ── Approve / Reject / Kick ───────────────────────────────────────────────────
+
+describe('#200 LobbyPanel — Approve / Reject / Kick', () => {
+  it('each pending player has an Approve button', async () => {
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() => screen.getByText('Aragorn'));
+    const pendingRow = screen.getByText('Aragorn').closest('[data-player-id="p1"]')
+      ?? screen.getByText('Aragorn').closest('li, tr, [role="listitem"]');
+    expect(pendingRow).toBeTruthy();
+    expect(within(pendingRow as HTMLElement).getByRole('button', { name: /approve|bestätigen/i })).toBeInTheDocument();
+  });
+
+  it('each pending player has a Reject button', async () => {
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() => screen.getByText('Aragorn'));
+    const pendingRow = screen.getByText('Aragorn').closest('[data-player-id="p1"]')
+      ?? screen.getByText('Aragorn').closest('li, tr, [role="listitem"]');
+    expect(within(pendingRow as HTMLElement).getByRole('button', { name: /reject|ablehnen/i })).toBeInTheDocument();
+  });
+
+  it('clicking Approve calls approve service and moves player to approved list', async () => {
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() => screen.getByText('Aragorn'));
+
+    const pendingRow = screen.getByText('Aragorn').closest('[data-player-id="p1"]')
+      ?? screen.getByText('Aragorn').closest('li, tr, [role="listitem"]');
+    fireEvent.click(within(pendingRow as HTMLElement).getByRole('button', { name: /approve|bestätigen/i }));
+
+    await waitFor(() => {
+      // Aragorn should no longer appear in pending
+      const pending = screen.queryAllByText(/ausstehend|pending/i);
+      // or: player row is gone from pending section
+      expect(screen.queryByText('Aragorn')).toBeNull();
+    });
+  });
+
+  it('clicking Reject removes the player from the list', async () => {
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() => screen.getByText('Aragorn'));
+    const pendingRow = screen.getByText('Aragorn').closest('[data-player-id="p1"]')
+      ?? screen.getByText('Aragorn').closest('li, tr, [role="listitem"]');
+    fireEvent.click(within(pendingRow as HTMLElement).getByRole('button', { name: /reject|ablehnen/i }));
+    await waitFor(() => expect(screen.queryByText('Aragorn')).toBeNull());
+  });
+
+  it('approved players have a Kick button', async () => {
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() => screen.getByText('Legolas'));
+    const approvedRow = screen.getByText('Legolas').closest('[data-player-id="p2"]')
+      ?? screen.getByText('Legolas').closest('li, tr, [role="listitem"]');
+    expect(within(approvedRow as HTMLElement).getByRole('button', { name: /kick|entfernen/i })).toBeInTheDocument();
+  });
+
+  it('clicking Kick removes the player from the approved list', async () => {
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() => screen.getByText('Legolas'));
+    const approvedRow = screen.getByText('Legolas').closest('[data-player-id="p2"]')
+      ?? screen.getByText('Legolas').closest('li, tr, [role="listitem"]');
+    fireEvent.click(within(approvedRow as HTMLElement).getByRole('button', { name: /kick|entfernen/i }));
+    await waitFor(() => expect(screen.queryByText('Legolas')).toBeNull());
+  });
+});
+
+// ── Invite code display + regenerate ─────────────────────────────────────────
+
+describe('#200 LobbyPanel — Einladungscode', () => {
+  it('renders the current invite code', async () => {
+    const { db, asyncDb } = createDb();
+    // seed an invite code
+    db.prepare(
+      `INSERT INTO invite_codes (code, session_id, created_at, is_active) VALUES ('ABCD1234','s1',datetime('now'),1)`,
+    ).run();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() =>
+      expect(screen.getByText('ABCD1234')).toBeInTheDocument(),
+    );
+  });
+
+  it('renders a "regenerate code" button', async () => {
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /neu.*code|code.*neu|regenerier/i })).toBeInTheDocument(),
+    );
+  });
+
+  it('clicking regenerate shows a new code (different from old)', async () => {
+    const { db, asyncDb } = createDb();
+    db.prepare(
+      `INSERT INTO invite_codes (code, session_id, created_at, is_active) VALUES ('OLDCODE1','s1',datetime('now'),1)`,
+    ).run();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() => screen.getByText('OLDCODE1'));
+    fireEvent.click(screen.getByRole('button', { name: /neu.*code|code.*neu|regenerier/i }));
+    await waitFor(() =>
+      expect(screen.queryByText('OLDCODE1')).toBeNull(),
+    );
+  });
+});
+
+// ── Start/Stop hosting ────────────────────────────────────────────────────────
+
+describe('#200 LobbyPanel — Hosting-Schalter', () => {
+  it('renders a "Hosting starten" button when not hosting', async () => {
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" onStartHosting={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /hosting.*start|server.*start|live schalten/i })).toBeInTheDocument(),
+    );
+  });
+
+  it('clicking "Hosting starten" calls onStartHosting', async () => {
+    const onStartHosting = vi.fn();
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" onStartHosting={onStartHosting} />);
+    await waitFor(() => screen.getByRole('button', { name: /hosting.*start|server.*start|live schalten/i }));
+    fireEvent.click(screen.getByRole('button', { name: /hosting.*start|server.*start|live schalten/i }));
+    expect(onStartHosting).toHaveBeenCalled();
+  });
+
+  it('renders a "Hosting stoppen" button when hosting', async () => {
+    const { asyncDb } = createDb();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" onStopHosting={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /hosting.*stop|server.*stop|offline/i })).toBeInTheDocument(),
+    );
+  });
+});
+
+// ── AP-003 ────────────────────────────────────────────────────────────────────
+
+describe('#200 LobbyPanel — AP-003', () => {
+  it('source has no window.alert / confirm / prompt calls', () => {
+    const src = readFileSync('src/ui/LobbyPanel.tsx', 'utf-8');
+    expect(src).not.toMatch(/\b(alert|confirm|prompt)\s*\(/);
+  });
+});

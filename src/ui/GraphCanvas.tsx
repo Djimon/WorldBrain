@@ -110,12 +110,12 @@ const DASH_SIZE = 10;   // 'dashed': long dashes
 const GAP_SIZE = 8;
 const DOT_SIZE = 1.5;   // 'animated': tiny dashes -> dotted, then flowed
 const DOT_GAP = 4;
-const ANIM_SPEED = 0.6;
+const ANIM_SPEED_PER_SEC = 36;  // dashOffset units/sec (≡ 0.6/frame @ 60 fps)
 // Without bloom the scene looks flat/grey -> brighter lights when glow is off.
 const NOBLOOM_LIGHT = 3;
 const NOBLOOM_AMBIENT = 1.75;
 const LIGHT_DIM_MIX = 0.55; // light theme dim: how far dimmed nodes fade toward white
-const ZOOM_STEPS = 24;   // click-to-zoom tween length in frames
+const ZOOM_DURATION_MS = 400; // click-to-zoom duration in ms (≡ 24 frames @ 60 fps)
 
 const MIX_SHADER = {
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
@@ -154,7 +154,7 @@ interface GraphState {
   areaLabels: { el: HTMLDivElement; pos: THREE.Vector3 }[];
   ambient: THREE.AmbientLight;
   headlight: THREE.DirectionalLight;
-  tween: { camFrom: THREE.Vector3; camTo: THREE.Vector3; tgtFrom: THREE.Vector3; tgtTo: THREE.Vector3; step: number } | null;
+  tween: { camFrom: THREE.Vector3; camTo: THREE.Vector3; tgtFrom: THREE.Vector3; tgtTo: THREE.Vector3; startTime: number } | null;
   focusNode: (id: string | null) => void;
   L: GraphLookConfig;
   width: number;
@@ -501,7 +501,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
           camTo: pos.clone().add(dir.multiplyScalar(newDist)),
           tgtFrom: controls.target.clone(),
           tgtTo: pos.clone(),
-          step: 0,
+          startTime: performance.now(),
         };
       }
       p.current.onNavigate(id);
@@ -522,19 +522,22 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     renderer.domElement.addEventListener('pointerup', onUp);
 
     let raf = 0;
-    function frame() {
+    let lastFrameTime = 0;
+    function frame(now: DOMHighResTimeStamp) {
       if (state.disposed) return;
+      // dt in seconds, clamped to avoid huge jumps after tab-switch/standby.
+      const dt = Math.min((now - lastFrameTime) / 1000, 0.05);
+      lastFrameTime = now;
       if (state.tween) {
         const tw = state.tween;
-        tw.step += 1;
-        const r = Math.min(1, tw.step / ZOOM_STEPS);
+        const r = Math.min(1, (now - tw.startTime) / ZOOM_DURATION_MS);
         const e = r * r * (3 - 2 * r); // smoothstep
         camera.position.lerpVectors(tw.camFrom, tw.camTo, e);
         controls.target.lerpVectors(tw.tgtFrom, tw.tgtTo, e);
         if (r >= 1) state.tween = null;
       }
       controls.update();
-      for (const m of state.lineMaterials) if (m.userData?.animated) m.dashOffset -= ANIM_SPEED;
+      for (const m of state.lineMaterials) if (m.userData?.animated) m.dashOffset -= ANIM_SPEED_PER_SEC * dt;
       if (state.composers) {
         // Edges are EXCLUDED from the whole bloom pipeline: the additive MixPass
         // would otherwise wash thin/transparent edges (esp. red mentions on a

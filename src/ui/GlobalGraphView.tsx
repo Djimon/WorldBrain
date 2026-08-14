@@ -162,10 +162,9 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
     [base],
   );
   const ringPositions = useMemo<GraphPosition[]>(() => {
-    if (layoutMode !== 'ring') return [];
     const m = computeRingLayout(base.nodes, base.links);
     return base.nodes.map((n) => { const p = m.get(n.id); return { id: n.id, x: p?.x ?? 0, y: p?.y ?? 0, z: 0 }; });
-  }, [layoutMode, base]);
+  }, [base]);
   const positions = layoutMode === 'ring' ? ringPositions : galaxyPositions;
 
   // Disc size grows so node spacing stays usable: ~sqrt(N) keeps density
@@ -334,7 +333,16 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
             <button
               key={m}
               className="gv-layout-toggle__btn"
-              onClick={() => patch({ layoutMode: m })}
+              onClick={() => {
+                patch({ layoutMode: m });
+                // Carry the active selection into the new layout: the scene
+                // rebuilds with new positions, so we fire a fresh focusReq
+                // (incremented nonce) so GraphCanvas zooms there again.
+                if (selectedId) {
+                  focusNonce.current += 1;
+                  setFocusReq({ id: selectedId, nonce: focusNonce.current });
+                }
+              }}
               aria-pressed={layoutMode === m}
             >{m === 'galaxy' ? t('graphLayoutGalaxy', 'Galaxy') : t('graphLayoutDisc', 'Disc')}</button>
           ))}
