@@ -30,8 +30,8 @@ function createDb() {
   db.prepare(`INSERT INTO sessions (id,title,created_at) VALUES ('s1','Runde',datetime('now'))`).run();
   db.prepare(`INSERT INTO players (id,display_name,created_at) VALUES ('p1','Aragorn',datetime('now')),('p2','Legolas',datetime('now'))`).run();
   db.prepare(
-    `INSERT INTO session_players (session_id,player_id,token_hash,invite_status,joined_at)
-     VALUES ('s1','p1','h1','approved',datetime('now')),('s1','p2','h2','approved',datetime('now'))`,
+    `INSERT INTO session_players (session_id,player_id,token_hash,status,joined_at)
+     VALUES ('s1','p1','h1','active',datetime('now')),('s1','p2','h2','active',datetime('now'))`,
   ).run();
   return { db, asyncDb: makeAsyncDb(db) };
 }

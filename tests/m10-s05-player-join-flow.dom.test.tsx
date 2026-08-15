@@ -40,26 +40,6 @@ describe('#199 PlayerJoinView — Erst-Join-Formular', () => {
     expect(screen.getByRole('button', { name: /beitreten|join/i })).toBeInTheDocument();
   });
 
-  it('shows pending status after submitting valid form data', async () => {
-    const { invoke } = await import('@tauri-apps/api/core');
-    (invoke as ReturnType<typeof vi.fn>).mockResolvedValue({ token: 'tok-1' });
-
-    render(<PlayerJoinView />);
-    fireEvent.change(screen.getByRole('textbox', { name: /server.*(url|ip|adresse)/i }), {
-      target: { value: 'http://192.168.1.5:9000' },
-    });
-    fireEvent.change(screen.getByRole('textbox', { name: /einladungscode|code/i }), {
-      target: { value: 'abc12345' },
-    });
-    fireEvent.change(screen.getByRole('textbox', { name: /anzeigename|name/i }), {
-      target: { value: 'Aragorn' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /beitreten|join/i }));
-    await waitFor(() =>
-      expect(screen.getByText(/warte|pending|bestätigung/i)).toBeInTheDocument(),
-    );
-  });
-
   it('shows rejected message when server returns rejected status', async () => {
     const { invoke } = await import('@tauri-apps/api/core');
     (invoke as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('rejected'));
@@ -98,29 +78,6 @@ describe('#199 PlayerJoinView — Erst-Join-Formular', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /beitreten|join/i }));
     await waitFor(() => expect(onJoined).toHaveBeenCalledWith('tok-ok'));
-  });
-
-  it('does NOT show any session content while status is pending', async () => {
-    const { invoke } = await import('@tauri-apps/api/core');
-    (invoke as ReturnType<typeof vi.fn>).mockResolvedValue({ token: 'tok-1', status: 'pending' });
-
-    render(<PlayerJoinView />);
-    fireEvent.change(screen.getByRole('textbox', { name: /server.*(url|ip|adresse)/i }), {
-      target: { value: 'http://192.168.1.5:9000' },
-    });
-    fireEvent.change(screen.getByRole('textbox', { name: /einladungscode|code/i }), {
-      target: { value: 'code' },
-    });
-    fireEvent.change(screen.getByRole('textbox', { name: /anzeigename|name/i }), {
-      target: { value: 'Gimli' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /beitreten|join/i }));
-    await waitFor(() =>
-      expect(screen.getByText(/warte|pending|bestätigung/i)).toBeInTheDocument(),
-    );
-    // no entity/session content visible
-    expect(screen.queryByRole('main')).toBeNull();
-    expect(screen.queryByTestId('session-content')).toBeNull();
   });
 
   it('AP-003: source has no window.alert / confirm / prompt calls', () => {

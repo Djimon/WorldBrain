@@ -24,7 +24,7 @@ async function isApprovedPlayer(
   playerId: string,
 ): Promise<boolean> {
   const rows = await db.select<{ player_id: string }>(
-    `SELECT player_id FROM session_players WHERE session_id = ? AND player_id = ? AND invite_status = 'approved'`,
+    `SELECT player_id FROM session_players WHERE session_id = ? AND player_id = ? AND status = 'active'`,
     [sessionId, playerId],
   );
   return rows.length > 0;

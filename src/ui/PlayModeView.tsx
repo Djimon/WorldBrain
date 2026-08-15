@@ -36,17 +36,11 @@ export function PlayModeView({ database, sessionId, role }: Props) {
             {t('playLobby', 'Lobby')}
           </button>
           {lobbyOpen && (
-            <>
-              <LobbyPanel
-                database={database}
-                sessionId={sessionId}
-                onStopHosting={() => setLobbyOpen(false)}
-              />
-              <button onClick={() => setSignalingOpen((v) => !v)}>
-                {t('playSignalingToggle', 'Internet-Verbindung (Stufe 3)')}
-              </button>
-              {signalingOpen && <SignalingPanel role="host" />}
-            </>
+            <LobbyPanel
+              database={database}
+              sessionId={sessionId}
+              onStopHosting={() => setLobbyOpen(false)}
+            />
           )}
         </div>
       )}
@@ -88,6 +82,10 @@ export function PlayModeView({ database, sessionId, role }: Props) {
       {role === 'dm' && (
         <div data-testid="dm-authoring">
           {t('playDmAuthoring', 'Welt bearbeiten')}
+          <button onClick={() => setSignalingOpen((v) => !v)}>
+            {t('playSignalingToggle', 'Internet-Verbindung (Stufe 3)')}
+          </button>
+          {signalingOpen && <SignalingPanel role="host" />}
         </div>
       )}
     </div>

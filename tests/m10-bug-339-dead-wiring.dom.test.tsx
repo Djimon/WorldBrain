@@ -64,7 +64,7 @@ const mockDb = {
 };
 
 describe('#339 DM Integration — LobbyPanel via PlayModeView', () => {
-  it('clicking dm-lobby renders real LobbyPanel content (Ausstehende Anfragen)', async () => {
+  it('clicking dm-lobby renders real LobbyPanel content (Verbundene Spieler)', async () => {
     const { PlayModeView } = await import('../src/ui/PlayModeView');
     render(<PlayModeView database={mockDb} sessionId="s1" role="dm" />);
 
@@ -72,7 +72,7 @@ describe('#339 DM Integration — LobbyPanel via PlayModeView', () => {
     fireEvent.click(screen.getByTestId('dm-lobby'));
 
     await waitFor(() => {
-      expect(screen.getByText('Ausstehende Anfragen')).toBeInTheDocument();
+      expect(screen.getByText('Verbundene Spieler')).toBeInTheDocument();
     });
   });
 

@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS session_players (
   player_id TEXT NOT NULL,
   campaign_id TEXT,
   token_hash TEXT NOT NULL,
-  invite_status TEXT NOT NULL DEFAULT 'pending',
+  status TEXT NOT NULL DEFAULT 'active',
   joined_at TEXT,
   PRIMARY KEY (session_id, player_id)
 );

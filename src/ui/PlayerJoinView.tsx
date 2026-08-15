@@ -6,7 +6,7 @@ interface Props {
   onJoined?: (token: string) => void;
 }
 
-type Status = 'idle' | 'pending' | 'rejected';
+type Status = 'idle' | 'error';
 
 export function PlayerJoinView({ onJoined }: Props) {
   const { t } = useTranslation('nav');
@@ -17,21 +17,18 @@ export function PlayerJoinView({ onJoined }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setStatus('pending');
-    try {
-      const result = await invoke<{ token: string; status?: string }>('player_join_session', {
-        serverUrl, code, displayName,
-      });
-      if (result.status === 'approved') {
-        onJoined?.(result.token);
-      }
-    } catch {
-      setStatus('rejected');
+    const result = await invoke<{ token: string }>('player_join_session', {
+      serverUrl, code, displayName,
+    }).catch(() => null);
+    if (!result) {
+      setStatus('error');
+      return;
     }
+    onJoined?.(result.token);
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={(e) => void handleSubmit(e)}>
       <label>
         {t('playerServerUrl', 'Server-URL/IP-Adresse')}
         <input
@@ -60,11 +57,10 @@ export function PlayerJoinView({ onJoined }: Props) {
         />
       </label>
       <button type="submit">{t('playerJoin', 'Beitreten')}</button>
-      {status === 'pending' && (
-        <p>{t('playerPending', 'Warte auf Bestätigung…')}</p>
-      )}
-      {status === 'rejected' && (
-        <p role="alert">{t('playerRejected', 'Verbindung abgelehnt.')}</p>
+      {status === 'error' && (
+        <p role="alert">
+          {t('playerError', 'Ungültiger Code oder Server nicht erreichbar.')}
+        </p>
       )}
     </form>
   );

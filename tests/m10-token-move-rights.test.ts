@@ -29,8 +29,8 @@ function createDb() {
   db.prepare(`INSERT INTO sessions (id,title,created_at) VALUES ('s1','R',datetime('now'))`).run();
   db.prepare(`INSERT INTO players (id,display_name,created_at) VALUES ('p1','Ara',datetime('now'))`).run();
   db.prepare(
-    `INSERT INTO session_players (session_id,player_id,token_hash,invite_status,joined_at)
-     VALUES ('s1','p1','h1','approved',datetime('now'))`,
+    `INSERT INTO session_players (session_id,player_id,token_hash,status,joined_at)
+     VALUES ('s1','p1','h1','active',datetime('now'))`,
   ).run();
   // seed a map + layer + token (controller='players' = V1 default)
   db.prepare(`INSERT INTO maps (id,title,created_at) VALUES ('m1','Test',datetime('now'))`).run();
@@ -138,7 +138,7 @@ describe('#299 canMoveToken — owner_player_id (optional per-player lock)', () 
     const { asyncDb, db } = createDb();
     // seed a second player
     db.prepare(`INSERT INTO players (id,display_name,created_at) VALUES ('p2','Leg',datetime('now'))`).run();
-    db.prepare(`INSERT INTO session_players (session_id,player_id,token_hash,invite_status,joined_at) VALUES ('s1','p2','h2','approved',datetime('now'))`).run();
+    db.prepare(`INSERT INTO session_players (session_id,player_id,token_hash,status,joined_at) VALUES ('s1','p2','h2','active',datetime('now'))`).run();
     db.prepare(`UPDATE map_tokens SET owner_player_id='p1' WHERE id='t1'`).run();
     const svc = await getSvc();
     const result = await svc.canMoveToken(asyncDb, {

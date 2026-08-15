@@ -38,13 +38,13 @@ function createDb() {
   db.prepare(
     `INSERT INTO sessions (id, title, created_at) VALUES ('s1', 'Test-Runde', datetime('now'))`,
   ).run();
-  // seed pending players
   db.prepare(
     `INSERT INTO players (id, display_name, created_at) VALUES ('p1', 'Aragorn', datetime('now')), ('p2', 'Legolas', datetime('now'))`,
   ).run();
+  // D24: status column (not invite_status)
   db.prepare(
-    `INSERT INTO session_players (session_id, player_id, token_hash, invite_status, joined_at)
-     VALUES ('s1','p1','hash1','pending',NULL), ('s1','p2','hash2','approved',datetime('now'))`,
+    `INSERT INTO session_players (session_id, player_id, token_hash, status, joined_at)
+     VALUES ('s1','p1','hash1','active',datetime('now')), ('s1','p2','hash2','active',datetime('now'))`,
   ).run();
   return { db, asyncDb: makeAsyncDb(db) };
 }
@@ -54,104 +54,43 @@ beforeEach(() => vi.clearAllMocks());
 // ── Lobby renders ─────────────────────────────────────────────────────────────
 
 describe('#200 LobbyPanel — renders', () => {
-  it('renders a pending-requests section', async () => {
-    const { asyncDb } = createDb();
-    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
-    await waitFor(() =>
-      expect(screen.getByText(/ausstehend|pending|anfragen/i)).toBeInTheDocument(),
-    );
-  });
-
   it('renders a connected-players section', async () => {
     const { asyncDb } = createDb();
     render(<LobbyPanel database={asyncDb} sessionId="s1" />);
     await waitFor(() =>
-      expect(screen.getByText(/verbunden|approved|spieler/i)).toBeInTheDocument(),
+      expect(screen.getByText(/verbunden|spieler/i)).toBeInTheDocument(),
     );
   });
 
-  it('shows the pending player by display name', async () => {
+  it('shows active players by display name', async () => {
     const { asyncDb } = createDb();
     render(<LobbyPanel database={asyncDb} sessionId="s1" />);
     await waitFor(() =>
       expect(screen.getByText('Aragorn')).toBeInTheDocument(),
     );
-  });
-
-  it('shows the approved player in the connected list', async () => {
-    const { asyncDb } = createDb();
-    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
-    await waitFor(() =>
-      expect(screen.getByText('Legolas')).toBeInTheDocument(),
-    );
+    expect(screen.getByText('Legolas')).toBeInTheDocument();
   });
 });
 
-// ── Approve / Reject / Kick ───────────────────────────────────────────────────
+// ── Kick ─────────────────────────────────────────────────────────────────────
 
-describe('#200 LobbyPanel — Approve / Reject / Kick', () => {
-  it('each pending player has an Approve button', async () => {
-    const { asyncDb } = createDb();
-    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
-    await waitFor(() => screen.getByText('Aragorn'));
-    const pendingRow = screen.getByText('Aragorn').closest('[data-player-id="p1"]')
-      ?? screen.getByText('Aragorn').closest('li, tr, [role="listitem"]');
-    expect(pendingRow).toBeTruthy();
-    expect(within(pendingRow as HTMLElement).getByRole('button', { name: /approve|bestätigen/i })).toBeInTheDocument();
-  });
-
-  it('each pending player has a Reject button', async () => {
-    const { asyncDb } = createDb();
-    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
-    await waitFor(() => screen.getByText('Aragorn'));
-    const pendingRow = screen.getByText('Aragorn').closest('[data-player-id="p1"]')
-      ?? screen.getByText('Aragorn').closest('li, tr, [role="listitem"]');
-    expect(within(pendingRow as HTMLElement).getByRole('button', { name: /reject|ablehnen/i })).toBeInTheDocument();
-  });
-
-  it('clicking Approve calls approve service and moves player to approved list', async () => {
-    const { asyncDb } = createDb();
-    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
-    await waitFor(() => screen.getByText('Aragorn'));
-
-    const pendingRow = screen.getByText('Aragorn').closest('[data-player-id="p1"]')
-      ?? screen.getByText('Aragorn').closest('li, tr, [role="listitem"]');
-    fireEvent.click(within(pendingRow as HTMLElement).getByRole('button', { name: /approve|bestätigen/i }));
-
-    await waitFor(() => {
-      // Aragorn should no longer appear in pending
-      const pending = screen.queryAllByText(/ausstehend|pending/i);
-      // or: player row is gone from pending section
-      expect(screen.queryByText('Aragorn')).toBeNull();
-    });
-  });
-
-  it('clicking Reject removes the player from the list', async () => {
-    const { asyncDb } = createDb();
-    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
-    await waitFor(() => screen.getByText('Aragorn'));
-    const pendingRow = screen.getByText('Aragorn').closest('[data-player-id="p1"]')
-      ?? screen.getByText('Aragorn').closest('li, tr, [role="listitem"]');
-    fireEvent.click(within(pendingRow as HTMLElement).getByRole('button', { name: /reject|ablehnen/i }));
-    await waitFor(() => expect(screen.queryByText('Aragorn')).toBeNull());
-  });
-
-  it('approved players have a Kick button', async () => {
+describe('#200 LobbyPanel — Kick', () => {
+  it('active players have a Kick button', async () => {
     const { asyncDb } = createDb();
     render(<LobbyPanel database={asyncDb} sessionId="s1" />);
     await waitFor(() => screen.getByText('Legolas'));
-    const approvedRow = screen.getByText('Legolas').closest('[data-player-id="p2"]')
+    const row = screen.getByText('Legolas').closest('[data-player-id="p2"]')
       ?? screen.getByText('Legolas').closest('li, tr, [role="listitem"]');
-    expect(within(approvedRow as HTMLElement).getByRole('button', { name: /kick|entfernen/i })).toBeInTheDocument();
+    expect(within(row as HTMLElement).getByRole('button', { name: /kick|entfernen/i })).toBeInTheDocument();
   });
 
-  it('clicking Kick removes the player from the approved list', async () => {
+  it('clicking Kick removes the player from the list', async () => {
     const { asyncDb } = createDb();
     render(<LobbyPanel database={asyncDb} sessionId="s1" />);
     await waitFor(() => screen.getByText('Legolas'));
-    const approvedRow = screen.getByText('Legolas').closest('[data-player-id="p2"]')
+    const row = screen.getByText('Legolas').closest('[data-player-id="p2"]')
       ?? screen.getByText('Legolas').closest('li, tr, [role="listitem"]');
-    fireEvent.click(within(approvedRow as HTMLElement).getByRole('button', { name: /kick|entfernen/i }));
+    fireEvent.click(within(row as HTMLElement).getByRole('button', { name: /kick|entfernen/i }));
     await waitFor(() => expect(screen.queryByText('Legolas')).toBeNull());
   });
 });
@@ -167,7 +106,7 @@ describe('#200 LobbyPanel — Einladungscode', () => {
     ).run();
     render(<LobbyPanel database={asyncDb} sessionId="s1" />);
     await waitFor(() =>
-      expect(screen.getByText('ABCD1234')).toBeInTheDocument(),
+      expect(screen.getByDisplayValue('ABCD1234')).toBeInTheDocument(),
     );
   });
 
@@ -185,10 +124,10 @@ describe('#200 LobbyPanel — Einladungscode', () => {
       `INSERT INTO invite_codes (code, session_id, created_at, is_active) VALUES ('OLDCODE1','s1',datetime('now'),1)`,
     ).run();
     render(<LobbyPanel database={asyncDb} sessionId="s1" />);
-    await waitFor(() => screen.getByText('OLDCODE1'));
+    await waitFor(() => screen.getByDisplayValue('OLDCODE1'));
     fireEvent.click(screen.getByRole('button', { name: /neu.*code|code.*neu|regenerier/i }));
     await waitFor(() =>
-      expect(screen.queryByText('OLDCODE1')).toBeNull(),
+      expect(screen.queryByDisplayValue('OLDCODE1')).toBeNull(),
     );
   });
 });

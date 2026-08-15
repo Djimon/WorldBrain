@@ -66,7 +66,21 @@ export async function joinWithCode(
     `INSERT INTO player_tokens (token, player_id, session_id, created_at) VALUES (?, ?, ?, ?)`,
     [token, playerId, params.sessionId, now],
   );
+  await db.execute(
+    `INSERT INTO session_players (session_id, player_id, token_hash, status, joined_at) VALUES (?, ?, '', 'active', ?)`,
+    [params.sessionId, playerId, now],
+  );
   return { token, playerId, sessionId: params.sessionId, created_at: now };
+}
+
+export async function kick(
+  db: DatabaseLike,
+  params: { playerId: string; sessionId: string },
+): Promise<void> {
+  await db.execute(
+    `UPDATE session_players SET status = 'kicked' WHERE session_id = ? AND player_id = ?`,
+    [params.sessionId, params.playerId],
+  );
 }
 
 export async function validateToken(
@@ -74,7 +88,10 @@ export async function validateToken(
   params: { sessionId: string; token: string },
 ): Promise<PlayerToken> {
   const rows = await db.select<{ token: string; player_id: string; session_id: string; created_at: string }>(
-    `SELECT token, player_id, session_id, created_at FROM player_tokens WHERE token = ? AND session_id = ?`,
+    `SELECT pt.token, pt.player_id, pt.session_id, pt.created_at
+     FROM player_tokens pt
+     LEFT JOIN session_players sp ON sp.player_id = pt.player_id AND sp.session_id = pt.session_id
+     WHERE pt.token = ? AND pt.session_id = ? AND (sp.status IS NULL OR sp.status != 'kicked')`,
     [params.token, params.sessionId],
   );
   if (!rows[0]) throw new Error('Invalid or unauthorized token');

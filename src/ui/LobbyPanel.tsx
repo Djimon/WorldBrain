@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
-import { generateInviteCode } from '../services/session-identity-service';
+import { generateInviteCode, kick } from '../services/session-identity-service';
+import { Button, Field } from './primitives';
 
 interface Player {
   player_id: string;
@@ -17,8 +18,7 @@ interface Props {
 
 export function LobbyPanel({ database, sessionId, onStartHosting, onStopHosting }: Props) {
   const { t } = useTranslation('nav');
-  const [pending, setPending] = useState<Player[]>([]);
-  const [approved, setApproved] = useState<Player[]>([]);
+  const [active, setActive] = useState<Player[]>([]);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,17 +26,11 @@ export function LobbyPanel({ database, sessionId, onStartHosting, onStopHosting 
   }, [sessionId]);
 
   async function load() {
-    const [p, a, codes] = await Promise.all([
+    const [players, codes] = await Promise.all([
       database.select<Player>(
         `SELECT sp.player_id, p.display_name FROM session_players sp
          JOIN players p ON p.id = sp.player_id
-         WHERE sp.session_id = ? AND sp.invite_status = 'pending'`,
-        [sessionId],
-      ),
-      database.select<Player>(
-        `SELECT sp.player_id, p.display_name FROM session_players sp
-         JOIN players p ON p.id = sp.player_id
-         WHERE sp.session_id = ? AND sp.invite_status = 'approved'`,
+         WHERE sp.session_id = ? AND sp.status = 'active'`,
         [sessionId],
       ),
       database.select<{ code: string }>(
@@ -44,33 +38,13 @@ export function LobbyPanel({ database, sessionId, onStartHosting, onStopHosting 
         [sessionId],
       ),
     ]);
-    setPending(p);
-    setApproved(a);
+    setActive(players);
     setInviteCode(codes[0]?.code ?? null);
   }
 
-  async function handleApprove(playerId: string) {
-    await database.execute(
-      `UPDATE session_players SET invite_status = 'approved' WHERE session_id = ? AND player_id = ?`,
-      [sessionId, playerId],
-    );
-    setPending((prev) => prev.filter((x) => x.player_id !== playerId));
-  }
-
-  async function handleReject(playerId: string) {
-    await database.execute(
-      `DELETE FROM session_players WHERE session_id = ? AND player_id = ?`,
-      [sessionId, playerId],
-    );
-    setPending((prev) => prev.filter((x) => x.player_id !== playerId));
-  }
-
   async function handleKick(playerId: string) {
-    await database.execute(
-      `DELETE FROM session_players WHERE session_id = ? AND player_id = ?`,
-      [sessionId, playerId],
-    );
-    setApproved((prev) => prev.filter((x) => x.player_id !== playerId));
+    await kick(database, { playerId, sessionId });
+    setActive((prev) => prev.filter((x) => x.player_id !== playerId));
   }
 
   async function handleRegenerateCode() {
@@ -78,51 +52,69 @@ export function LobbyPanel({ database, sessionId, onStartHosting, onStopHosting 
     setInviteCode(invite.code);
   }
 
+  async function handleCopyCode() {
+    if (!inviteCode) return;
+    await navigator.clipboard.writeText(inviteCode);
+  }
+
+  async function handleCopyLink() {
+    if (!inviteCode) return;
+    await navigator.clipboard.writeText(
+      `worldbuilderx://join?session=${sessionId}&code=${inviteCode}`,
+    );
+  }
+
+  const invitationLink = inviteCode
+    ? `worldbuilderx://join?session=${sessionId}&code=${inviteCode}`
+    : '';
+
   return (
     <div>
       <section>
-        <h2>{t('lobbyPending', 'Ausstehende Anfragen')}</h2>
+        <h2>{t('lobbyActive', 'Verbundene Spieler')}</h2>
         <ul>
-          {pending.map((p) => (
+          {active.map((p) => (
             <li key={p.player_id} data-player-id={p.player_id}>
               {p.display_name}
-              <button onClick={() => handleApprove(p.player_id)}>
-                {t('lobbyApprove', 'Bestätigen')}
-              </button>
-              <button onClick={() => handleReject(p.player_id)}>
-                {t('lobbyReject', 'Ablehnen')}
-              </button>
+              <Button tone="neutral" onClick={() => void handleKick(p.player_id)}>
+                {t('lobbyKick', 'Kick')}
+              </Button>
             </li>
           ))}
         </ul>
       </section>
 
       <section>
-        <h2>{t('lobbyApproved', 'Verbundene Spieler')}</h2>
-        <ul>
-          {approved.map((p) => (
-            <li key={p.player_id} data-player-id={p.player_id}>
-              {p.display_name}
-              <button onClick={() => handleKick(p.player_id)}>
-                {t('lobbyKick', 'Entfernen')}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        {inviteCode && <span>{inviteCode}</span>}
-        <button onClick={handleRegenerateCode}>
+        <Field
+          label={t('lobbyInviteCode', 'Einladungscode')}
+          readOnly
+          value={inviteCode ?? ''}
+        />
+        <Button tone="neutral" onClick={() => void handleCopyCode()}>
+          {t('lobbyCopy', 'Kopieren')}
+        </Button>
+        {inviteCode && (
+          <>
+            <Field
+              label={t('lobbyInviteLink', 'Einladungslink')}
+              readOnly
+              value={invitationLink}
+            />
+            <Button tone="neutral" onClick={() => void handleCopyLink()}>
+              {t('lobbyCopyLink', 'Link teilen')}
+            </Button>
+          </>
+        )}
+        <Button onClick={() => void handleRegenerateCode()}>
           {t('lobbyRegenerateCode', 'Code neu generieren')}
-        </button>
+        </Button>
       </section>
 
       {onStartHosting && (
-        <button onClick={onStartHosting}>{t('lobbyStartHosting', 'Hosting starten')}</button>
+        <Button onClick={onStartHosting}>{t('lobbyStartHosting', 'Hosting starten')}</Button>
       )}
       {onStopHosting && (
-        <button onClick={onStopHosting}>{t('lobbyStopHosting', 'Hosting stoppen')}</button>
+        <Button onClick={onStopHosting}>{t('lobbyStopHosting', 'Hosting stoppen')}</Button>
       )}
     </div>
   );

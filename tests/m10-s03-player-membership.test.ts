@@ -48,15 +48,16 @@ describe('M10-S03 player membership schema & services', () => {
       expect(tables.length).toBe(1);
     });
 
-    it('session_players table has session_id, player_id, token_hash, invite_status, joined_at', () => {
+    it('session_players table has session_id, player_id, token_hash, status, joined_at', () => {
       const { db } = createDb();
       const info = db.prepare(`PRAGMA table_info(session_players)`).all() as { name: string }[];
       const cols = info.map(r => r.name);
       expect(cols).toContain('session_id');
       expect(cols).toContain('player_id');
       expect(cols).toContain('token_hash');
-      expect(cols).toContain('invite_status');
+      expect(cols).toContain('status');
       expect(cols).toContain('joined_at');
+      expect(cols).not.toContain('invite_status');
     });
   });
 
@@ -84,76 +85,50 @@ describe('M10-S03 player membership schema & services', () => {
     });
   });
 
-  describe('requestJoin', () => {
-    it('creates a session_players row with invite_status = pending', async () => {
-      const { db, asyncDb } = createDb();
-      const { createPlayer, requestJoin } = await getService();
-      const player = await createPlayer({ database: asyncDb, displayName: 'Alice' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: player.id, tokenHash: 'hash-abc' });
-      const row = db.prepare(`SELECT invite_status FROM session_players WHERE player_id = ?`).get(player.id) as { invite_status: string } | undefined;
-      expect(row?.invite_status).toBe('pending');
-    });
-  });
+  // D24 (#340): requestJoin/approve/reject removed — Auto-Join via joinWithCode → status='active'
 
-  describe('approve / reject / kick', () => {
-    it('approve sets invite_status to approved', async () => {
+  describe('kick', () => {
+    it('kick sets status to kicked', async () => {
       const { db, asyncDb } = createDb();
-      const { createPlayer, requestJoin, approve } = await getService();
+      const { createPlayer, kick } = await getService();
       const player = await createPlayer({ database: asyncDb, displayName: 'Alice' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: player.id, tokenHash: 'h' });
-      await approve({ database: asyncDb, sessionId: 'sess-1', playerId: player.id });
-      const row = db.prepare(`SELECT invite_status FROM session_players WHERE player_id = ?`).get(player.id) as { invite_status: string };
-      expect(row.invite_status).toBe('approved');
-    });
-
-    it('reject sets invite_status to rejected', async () => {
-      const { db, asyncDb } = createDb();
-      const { createPlayer, requestJoin, reject } = await getService();
-      const player = await createPlayer({ database: asyncDb, displayName: 'Alice' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: player.id, tokenHash: 'h' });
-      await reject({ database: asyncDb, sessionId: 'sess-1', playerId: player.id });
-      const row = db.prepare(`SELECT invite_status FROM session_players WHERE player_id = ?`).get(player.id) as { invite_status: string };
-      expect(row.invite_status).toBe('rejected');
-    });
-
-    it('kick sets invite_status to kicked', async () => {
-      const { db, asyncDb } = createDb();
-      const { createPlayer, requestJoin, approve, kick } = await getService();
-      const player = await createPlayer({ database: asyncDb, displayName: 'Alice' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: player.id, tokenHash: 'h' });
-      await approve({ database: asyncDb, sessionId: 'sess-1', playerId: player.id });
+      db.prepare(
+        `INSERT INTO session_players (session_id, player_id, token_hash, status, joined_at) VALUES ('sess-1', ?, 'h', 'active', datetime('now'))`,
+      ).run(player.id);
       await kick({ database: asyncDb, sessionId: 'sess-1', playerId: player.id });
-      const row = db.prepare(`SELECT invite_status FROM session_players WHERE player_id = ?`).get(player.id) as { invite_status: string };
-      expect(row.invite_status).toBe('kicked');
+      const row = db.prepare(`SELECT status FROM session_players WHERE player_id = ?`).get(player.id) as { status: string };
+      expect(row.status).toBe('kicked');
     });
   });
 
   describe('listSessionPlayers', () => {
-    it('returns only approved players by default', async () => {
-      const { asyncDb } = createDb();
-      const { createPlayer, requestJoin, approve, listSessionPlayers } = await getService();
+    it('returns only active players (not kicked)', async () => {
+      const { db, asyncDb } = createDb();
+      const { createPlayer, listSessionPlayers } = await getService();
       const p1 = await createPlayer({ database: asyncDb, displayName: 'Alice' });
       const p2 = await createPlayer({ database: asyncDb, displayName: 'Bob' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: p1.id, tokenHash: 'h1' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: p2.id, tokenHash: 'h2' });
-      await approve({ database: asyncDb, sessionId: 'sess-1', playerId: p1.id });
+      db.prepare(
+        `INSERT INTO session_players (session_id, player_id, token_hash, status, joined_at) VALUES ('sess-1', ?, 'h1', 'active', datetime('now')), ('sess-1', ?, 'h2', 'kicked', datetime('now'))`,
+      ).run(p1.id, p2.id);
       const list = await listSessionPlayers({ database: asyncDb, sessionId: 'sess-1' });
       expect(list.map(p => p.player_id)).toContain(p1.id);
       expect(list.map(p => p.player_id)).not.toContain(p2.id);
     });
 
-    it('returns empty array when no approved players', async () => {
+    it('returns empty array when no active players', async () => {
       const { asyncDb } = createDb();
       const { listSessionPlayers } = await getService();
       const list = await listSessionPlayers({ database: asyncDb, sessionId: 'sess-empty' });
       expect(list).toEqual([]);
     });
 
-    it('one player token belongs to exactly one session', async () => {
+    it('session_players PRIMARY KEY enforces one row per player per session', async () => {
       const { db, asyncDb } = createDb();
-      const { createPlayer, requestJoin } = await getService();
+      const { createPlayer } = await getService();
       const player = await createPlayer({ database: asyncDb, displayName: 'Alice' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: player.id, tokenHash: 'unique-hash' });
+      db.prepare(
+        `INSERT INTO session_players (session_id, player_id, token_hash, status, joined_at) VALUES ('sess-1', ?, 'h', 'active', datetime('now'))`,
+      ).run(player.id);
       const rows = db.prepare(`SELECT * FROM session_players WHERE player_id = ?`).all(player.id);
       expect(rows.length).toBe(1);
     });

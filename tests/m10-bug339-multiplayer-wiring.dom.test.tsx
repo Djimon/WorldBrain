@@ -88,19 +88,20 @@ describe('#339 Source-Guard: SignalingPanel verdrahtet', () => {
 // Guard C: PlayerJoinView + PlayerProjectDashboard in main.tsx
 
 describe('#339 Source-Guard: Player-Client-Entry in main.tsx', () => {
-  it('main.tsx imports PlayerProjectDashboard', () => {
-    const src = readFileSync('src/main.tsx', 'utf-8');
+  it('PlayerClientApp.tsx imports PlayerProjectDashboard', () => {
+    const src = readFileSync('src/ui/PlayerClientApp.tsx', 'utf-8');
     expect(src).toMatch(/import.*PlayerProjectDashboard.*from/);
   });
 
-  it('main.tsx imports PlayerJoinView', () => {
-    const src = readFileSync('src/main.tsx', 'utf-8');
+  it('PlayerClientApp.tsx imports PlayerJoinView', () => {
+    const src = readFileSync('src/ui/PlayerClientApp.tsx', 'utf-8');
     expect(src).toMatch(/import.*PlayerJoinView.*from/);
   });
 
-  it('main.tsx renders <PlayerProjectDashboard (player entry mounted)', () => {
+  it('main.tsx imports and uses PlayerClientApp (player entry mounted)', () => {
     const src = readFileSync('src/main.tsx', 'utf-8');
-    expect(src).toMatch(/<PlayerProjectDashboard/);
+    expect(src).toMatch(/import.*PlayerClientApp.*from/);
+    expect(src).toMatch(/<PlayerClientApp/);
   });
 });
 
@@ -108,7 +109,7 @@ describe('#339 Source-Guard: Player-Client-Entry in main.tsx', () => {
 // Der Button existiert bereits; dieser Test prüft ob er echten LobbyPanel-Inhalt rendert.
 
 describe('#339 Integration: DM-Lobby öffnet echtes LobbyPanel', () => {
-  it('clicking dm-lobby button renders real LobbyPanel content (pending-Sektion)', async () => {
+  it('clicking dm-lobby button renders real LobbyPanel content (Verbundene Spieler)', async () => {
     const { PlayModeView } = await import('../src/ui/PlayModeView');
     const db = createDb();
     render(<PlayModeView database={db} sessionId="s1" role="dm" />);
@@ -116,11 +117,11 @@ describe('#339 Integration: DM-Lobby öffnet echtes LobbyPanel', () => {
     await waitFor(() => screen.getByTestId('dm-lobby'));
     fireEvent.click(screen.getByTestId('dm-lobby'));
 
-    // LobbyPanel renders a pending section — this is LobbyPanel-owned content
+    // LobbyPanel renders active players section and invite code area
     await waitFor(() => {
-      const pending = screen.queryByText(/ausstehend|pending/i)
-        ?? screen.queryByTestId('lobby-pending-section');
-      expect(pending).not.toBeNull();
+      const content = screen.queryByText(/verbunden|spieler/i)
+        ?? screen.queryByRole('button', { name: /code.*neu|neu.*code|regenerier/i });
+      expect(content).not.toBeNull();
     });
   });
 
