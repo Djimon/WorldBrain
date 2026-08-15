@@ -11,7 +11,17 @@ Grundlage: Handover `docs/handover-player-identity.md` (2026-06-30).
 
 ## Architektur-Stufe
 
-**Stufe 2 — Lokaler LAN-Server.** Die Tauri-App hostet einen kleinen HTTP/WebSocket-Server im
+> ⚠️ **REALITÄT 2026-08 (überschreibt die „Stufe"-Historie unten):** Gebauter Transport = **WebRTC-DataChannel**
+> (`webrtc-transport.ts`, Host-PC = Peer). **Es gibt KEINEN Rust-HTTP/WS-Server** (`src-tauri` hat keine
+> Server-Deps). Ziel (User): **Spieler verbinden sich mit dem Host des DMs, lokal testbar.** WebRTC erfüllt das
+> — lokal via **Loopback/Same-Machine-Peer** (= D26 GM-Self-Join), remote via STUN. Die „Stufe 2 = Rust-LAN-Server"-
+> Formulierung ist damit **überholt**; das Transport-Interface bleibt (Renderer redet gegen Transport, egal welcher).
+> **Konsequenz für S01:** dessen AC „Rust-Server + LAN-bind" ist obsolet — der reale offene Punkt ist „lokal
+> testbarer WebRTC-Host + automatisches Loopback-Signaling" (siehe unten), nicht ein Rust-Server.
+> **Lokales Testen braucht automatisches Signaling** (Same-Machine/Loopback ohne manuelles Copy-Paste) — die
+> manuelle Offer/Answer-UI (SignalingPanel, S12) ist nur für den Internet-Fall, nie lokal.
+
+**Stufe 2 — Lokaler LAN-Server (überholt, siehe Banner).** Die Tauri-App hostet einen kleinen HTTP/WebSocket-Server im
 eigenen Prozess (Rust, eingebettet). Spieler verbinden vom eigenen Handy/Laptop im selben WLAN.
 
 - **Stufe 1** (mehrere Fenster auf der GM-Maschine) ist verworfen — Geheimnis-Leak über geteilten Bildschirm nicht verhinderbar.
@@ -36,14 +46,14 @@ Vollständige Durchspecc-Session (grill-me). Diese Decisions verfeinern/ergänze
 
 - **D9 — Player-Auslieferung = Hybrid, EINE Web-UI-Codebasis.** Die Player-UI ist Web-Tech, ausgeliefert auf zwei Wegen: (a) **vom Host-Server serviert → Browser-Join** (Handy/Laptop im WLAN, kein Install); (b) **eingebettet als „Player-Modus" derselben Tauri-App** (Desktop, mit gespeichertem Dashboard). **Keine separate Player-.exe** (wäre nicht leichtgewichtig — braucht denselben View-Stack). Datenquelle immer = Host-API, nie lokale DB.
 - **D10 — Player-„Projekt" = gespeicherte, wiederöffenbare Host-Referenz.** Persistierter Eintrag: Host-Label · URL/IP · Einladungscode · Token · Anzeigename · Session-Name · zuletzt-online. **Kein autoritatives lokales Weltabbild** — Inhalte werden vom Host gestreamt, online höchstens gecacht, **offline → leerer „Host offline"-Zustand**. **Online-Erkennung = einmaliger Ping beim Öffnen + Retry-Icon (KEIN Heartbeat).** Bei IP-Wechsel: URL editierbar (Code/Token bleiben). **Ein Projekt-Eintritt pro Player-Client** → indirekt genau 1 Charakter pro Spieler.
-- **D11 — Persistente Session am Projekt.** Roster (approved), Gruppen, Einladungscode, Visibility-Overrides, Whiteboards und Session-Zeit **überleben** zwischen Spielabenden; „Hosten" = eingebetteten Server live schalten/stoppen. **Eine aktive Session pro Host** gleichzeitig. Player-Referenz reconnected zur selben Session (S10-Token, kein Neu-Approve).
+- **D11 — Persistente Session am Projekt.** Roster (aktive Mitglieder, `status='active'` — D24), Gruppen, Einladungscode, Visibility-Overrides, Whiteboards und Session-Zeit **überleben** zwischen Spielabenden; „Hosten" = eingebetteten Server live schalten/stoppen. **Eine aktive Session pro Host** gleichzeitig. Player-Referenz reconnected zur selben Session (S10-Token, kein Neu-Join).
 - **D12 — Lokal = Single-Owner + read-only-Welt-Spieler.** Owner-Rechte/Schreib-Delegation an Spieler **erst online (Stufe 3)**. Kein git/merge lokal. Spieler schreiben nie Welt-Inhalte.
 - **D13 — Player-Interaktion = Hybrid.** Ein **Haupt-Interaktionsfeld mit Reitern: Map · Kampflog · Spotlight** (DM platziert dort frei, Whiteboard-Stil). **Zusätzlich frei browsen** durch alles Freigegebene (Entities/Bilder/Handouts/Kalender/eigener Charakter). Der Kampflog ist **auch für Spieler** sichtbar.
 - **D14 — Player-Write-Scope.** Spieler schreibt nur **Eigenes**: eigener **Charakterbogen**, **eigener Token** (Bewegung — siehe D18), **Würfeln** (D17), **private Notizen** (D19-lokal). Nie Welt-Inhalte.
 - **D15 — Inhalts-Umfang teilbar an Spieler.** Teilbar: **Entities** (gefiltert, read-only), **Bilder/Concept-Art/Handouts**, **Maps** (Fog + Tokens), **eigener Charakterbogen**, **Kalender** — aber **zeit-gated** (nur Ereignisse ≤ „Session-Jetzt", Zukunft nie ausgeliefert, D16). **DM-only, nie im Player-View:** Authoring, Knowledge-Graph, Soundboard.
 - **D16 — Session-Zeit & Kalender-Gate.** Projekt hat einen **Startzeitpunkt**; der DM stellt in der Session **Tage/Wochen/Jahre vor** (+ absolut setzbar → `needs-decision`). Kalender-Filter **server-seitig**: nur Ereignisse mit Datum ≤ Session-Jetzt verlassen den Host. Session-Jetzt persistiert.
 - **D17 — Würfel.** Generischer **dNN-Roller** (z.B. `2d6+3`). Pro Wurf wählt Werfer/DM vorab die **Sichtbarkeit: Privat / nur DM / Alle**; Ergebnis postet in den **Kampflog**, **server-seitig** nach Sichtbarkeit geroutet (Client filtert nie). Plugin-Wurf-Shortcuts + verdeckte Würfe = später.
-- **D18 — Token-Bewegung im Multiplayer (löst #299).** **Default: jeder approved Spieler bewegt jeden Token**, Bewegung **live an alle**. Optionaler **DM-Lock** (per-Token/global) = spätere Kür (`needs-decision`). Token-Bewegung ist **rein visuell**, Regel-Einhaltung per Absprache (kein erzwungenes Grid/Reichweite).
+- **D18 — Token-Bewegung im Multiplayer (löst #299).** **Default: jeder aktive Spieler (`status='active'`, D24) bewegt jeden Token**, Bewegung **live an alle**. Optionaler **DM-Lock** (per-Token/global) = spätere Kür (`needs-decision`). Token-Bewegung ist **rein visuell**, Regel-Einhaltung per Absprache (kein erzwungenes Grid/Reichweite).
 - **D19 — Spotlight/Whiteboard + private Notizen.** Whiteboard = **Gemeinsam (global, alle Spieler)** + **pro Spieler ein privates**, das **nur der DM bespielt** (per-Spieler-Geheimnisse; Spieler read-only). Platzierbar: **Entity-Refs + Freitext-Notizen + Bilder**. Whiteboards persistieren mit der Session (host-seitig; per-Spieler-Board geht **nur** an den Zielspieler). **Private Notizen des Spielers** = eigenes Feature, **player-seitig lokal gespeichert** (einzige echte lokale Speicherung, echt privat, geräte-gebunden).
 - **D20 — Transport + Live-Kanäle.** Eingebetteter **HTTP-Server** serviert die Player-Web-UI + Initial-Loads; **WebSocket** für bidirektionalen Live-Push. **Live gepusht:** Freigaben (S09), Token-Bewegungen (D18), Spotlight/Whiteboard (D19), Kampflog-Einträge (D17/Kampf), Session-Zeit/Kalender-Gate (D16). Eigener Charakterbogen lokal live editierbar; fremde Bögen nicht sichtbar. **Server-durchgesetzt:** Visibility (S09), Wurf-Sichtbarkeit (D17), Whiteboard-Privatheit (D19), Fog (nur aufgedeckt), Kalender-Gate (D16). **Kein Rate-Limit in V1** (Spieler read-only, DM kickt jederzeit — nichts Kritisches).
 - **D21 — Split-View (allgemeine App-Fähigkeit).** In-App **2-Pane-Split-View** (beliebige 2 Ansichten nebeneinander, verschiebbare Grenze) — v.a. für den DM (Map ‖ Kampflog). Cross-Cutting, eigene kleine Story. OS-Pop-out = später.
@@ -74,7 +84,7 @@ Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die
 
 ## Out of Scope
 
-- Stufe 3: Internet-Hosting, Relay-Server, NAT-Traversal
+- ~~Stufe 3: Internet-Hosting, Relay-Server, NAT-Traversal~~ **korrigiert 2026-08:** WebRTC-DataChannel + STUN (NAT-Traversal) sind **IN scope und gebaut** (S11/S12). Weiterhin **out of scope:** TURN/coturn-Relay (self-hosted Infra) und ein **gehosteter** Signaling-Server (Signaling bleibt manuell/copy-paste bzw. lokal automatisch).
 - Echtzeit-Kollaboration mehrerer GMs
 - Cloud-Accounts / globale Spieler-Identität über Sessions hinweg
 - Cross-Session World State (eigenes Konzept, #156)
@@ -219,10 +229,10 @@ Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die
 
 ### M10-S08: Spieler-Charaktererstellung im Join-Flow
 
-**Ziel:** Nach Bestätigung erstellt der Spieler einen Charakter auf Basis des Session-Regelwerks.
+**Ziel:** Nach dem Join (sofort aktives Mitglied, D24) erstellt der Spieler einen Charakter auf Basis des Session-Regelwerks.
 
 **AC:**
-- Nach `approved`: Charaktererstellung auf Basis des `system_plugin_id` der Session (→ M9-S03 #166)
+- Nach dem Join (aktives Mitglied, D24 — kein Approve-Schritt): Charaktererstellung auf Basis des `system_plugin_id` der Session (→ M9-S03 #166)
 - Ohne System-Plugin: nur Basisfelder (Name, Freinotiz) — analog M8-S08 #160
 - Erstellter Charakter wird als Entity mit `is_player_character: true` angelegt und dem Spieler (`player_id`) zugeordnet
 - Spieler kann nur seinen eigenen Charakter bearbeiten, nicht fremde
@@ -247,11 +257,11 @@ Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die
 
 ### M10-S10: Reconnect & Token-Persistenz
 
-**Ziel:** Ein bestätigter Spieler kann nach Verbindungsabbruch ohne erneute Bestätigung zurückkehren.
+**Ziel:** Ein aktives Mitglied kann nach Verbindungsabbruch ohne erneuten Join zurückkehren.
 
 **AC:**
 - Spieler-Token wird lokal im Spieler-Client persistiert
-- Reconnect mit gültigem, `approved` Token stellt die Sitzung ohne erneuten DM-Approve wieder her
+- Reconnect mit gültigem, **aktivem** (`status='active'`, D24) Token stellt die Sitzung ohne erneuten Join wieder her
 - DM kann ein Token per Kick invalidieren — danach ist Reconnect nur über neuen Join möglich
 - Abgelaufene/invalidierte Tokens → klare Meldung, Rückkehr zum Join-Screen
 - Token wird nie an andere Clients ausgeliefert, nie geloggt
