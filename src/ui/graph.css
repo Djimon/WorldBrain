@@ -68,7 +68,7 @@
 
 .gv-btn {
   padding: 4px 10px; border-radius: 6px; cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: var(--gv-text);
+  border: 1px solid var(--color-overlay-border); background: transparent; color: var(--gv-text);
 }
 .gv-btn--primary { background: var(--gv-accent); color: var(--gv-on-accent); }
 
@@ -113,7 +113,7 @@
 .gv-filter-pane__list { display: flex; flex-wrap: wrap; gap: 6px 16px; }
 .gv-mini-btn {
   padding: 2px 10px; border-radius: 6px; cursor: pointer; font-size: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: var(--gv-text);
+  border: 1px solid var(--color-overlay-border); background: transparent; color: var(--gv-text);
 }
 .gv-check--inline { display: flex; gap: 6px; align-items: center; font-size: 12px; }
 .gv-muted { opacity: 0.6; font-size: 12px; }

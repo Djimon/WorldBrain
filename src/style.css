@@ -499,8 +499,8 @@ input {
 }
 
 .btn--danger {
-  background: var(--color-status-failure, #c0392b);
-  border-color: var(--color-status-failure, #c0392b);
+  background: var(--color-status-failure);
+  border-color: var(--color-status-failure);
   color: var(--color-on-accent);
 }
 
@@ -699,7 +699,7 @@ input {
   background: var(--color-surface-active);
   color: var(--color-accent);
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .entity-detail__tabs {
@@ -905,7 +905,7 @@ input {
 .gsearch__facet {
   padding: 2px var(--space-2);
   border: 1px solid var(--color-border);
-  border-radius: 100px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
@@ -1244,7 +1244,7 @@ input {
   color: var(--color-on-accent);
   font-size: 0.8rem;
   padding: var(--space-1) var(--space-3);
-  border-radius: 100px;
+  border-radius: var(--radius-pill);
   pointer-events: none;
   z-index: 10;
 }
@@ -1381,7 +1381,7 @@ input {
   gap: 3px;
   padding: 0 4px;
   border-radius: 10px;
-  background: var(--color-accent-strong, #c0392b);
+  background: var(--color-accent-strong);
   color: var(--color-on-accent);
   box-shadow: 0 1px 3px rgba(0,0,0,0.6);
 }
@@ -1652,8 +1652,8 @@ input {
 .token-editor .token-editor__counter-clear {
   align-self: flex-start;
   font-size: 0.72rem;
-  color: var(--color-status-failure, #c0392b);
-  border-color: var(--color-status-failure, #c0392b);
+  color: var(--color-status-failure);
+  border-color: var(--color-status-failure);
 }
 
 .token-editor__actions {
@@ -1662,7 +1662,7 @@ input {
   justify-content: space-between;
 }
 .token-editor__save { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-on-accent); }
-.token-editor__delete { border-color: var(--color-status-failure, #c0392b); color: var(--color-status-failure, #c0392b); }
+.token-editor__delete { border-color: var(--color-status-failure); color: var(--color-status-failure); }
 
 /* ── Right map sidebar: PINS / TOKEN tabs (#302) ──
    Expanded tabs reuse the .maps-sidebar-tabs__* style (same as Karten/Ebenen). */
@@ -1748,7 +1748,7 @@ input {
   cursor: pointer;
   font-size: 0.8rem;
 }
-.map-token-list__del:hover { color: var(--color-status-failure, #c0392b); }
+.map-token-list__del:hover { color: var(--color-status-failure); }
 
 /* ── Pin tree sidebar ── */
 .map-pin-tree {
@@ -1803,7 +1803,7 @@ input {
   background: color-mix(in srgb, var(--color-accent) 18%, transparent);
   color: var(--color-accent);
   border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 0 7px;
   font-size: 0.82em;
   cursor: pointer;
@@ -1853,7 +1853,7 @@ input {
 .tag-field__chip {
   display: flex; align-items: center; gap: 4px;
   background: var(--color-surface-active);
-  border-radius: 999px; padding: 1px 8px;
+  border-radius: var(--radius-pill); padding: 1px 8px;
   font-size: 0.8rem; color: var(--color-text);
 }
 .tag-field__chip button {
@@ -2352,7 +2352,7 @@ input {
 
 .grid-toggle {
   padding: 2px 8px;
-  border-radius: 100px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--color-border);
   background: var(--color-surface-alt);
   color: var(--color-text-muted);
@@ -3216,7 +3216,7 @@ input {
   gap: 4px;
   background: var(--color-surface-active);
   color: var(--color-accent);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 2px 4px 2px 10px;
   font-size: 0.82rem;
 }
@@ -3316,7 +3316,7 @@ input {
 .effect-editor__suggestions button {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 2px 10px;
   font-size: 0.78rem;
   color: var(--color-text-muted);
@@ -3408,7 +3408,7 @@ input {
   background: var(--color-surface-active);
   color: var(--color-accent);
   padding: 1px 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .relations-tab__notes { color: var(--color-text-muted); font-size: 0.8rem; }
@@ -3607,7 +3607,7 @@ input {
   flex: 0 0 auto;
   padding: 1px 7px;
   border: 1px solid currentColor;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 0.6rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -3755,8 +3755,8 @@ input {
   font-size: 0.8rem;
 }
 .map-folder-tree__confirm-yes {
-  background: var(--color-status-failure, #c0392b);
-  border-color: var(--color-status-failure, #c0392b);
+  background: var(--color-status-failure);
+  border-color: var(--color-status-failure);
   color: var(--color-on-accent);
 }
 .map-folder-tree__confirm-no {
@@ -4102,7 +4102,7 @@ input {
   align-items: center;
   gap: 3px;
   padding: 1px 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--color-border);
   background: var(--color-surface-alt);
   color: var(--color-text-muted);
