@@ -67,6 +67,7 @@ Vollständige Durchspecc-Session (grill-me). Diese Decisions verfeinern/ergänze
   - **Campaign-weites Log = UI-Aggregation**, KEIN extra Log: alle `session_log`-Einträge der Campaign-Sessions chronologisch, Trennstrich bei jedem Session-Wechsel. `session_log` bleibt unverändert (hat `session_id` + `created_at`).
   - **⚠️ Reconciliation:** Wo D9–D22 „Session" als *persistente Klammer* sagen (Roster/Gruppen/Visibility/Overrides/Weltzeit „überleben zwischen Spielabenden", D11), ist **Campaign** gemeint. Die M10-Tabellen (`session_players`, `player_groups.session_id`, `session_visibility_overrides.session_id`) hängen aktuell an `session_id` → gehören konzeptuell an die **Campaign**.
   - **Schema-Konsequenz (`needs-design`, nicht sofort bauen):** neue **`campaigns`**-Tabelle als Klammer + `campaign_id` auf Override-/Event-/Roster-/Visibility-Tabellen; `campaign_entity_overrides` bekommt `campaign_id` (heute un-gekeyt → nur 1 Campaign/Welt möglich); `sessions` bekommt `campaign_id`. **Kein** neues Log-/Notiz-Objekt nötig.
+  - **⚠️ Umsetzung = einfaches Re-Keying, KEINE Migration/Compat.** Dev-Modus → **keine Abwärtskompatibilität**: `session_id` in den betroffenen Tabellen/Services direkt durch `campaign_id` **ersetzen**, `schema.sql` ändern, **Dev-DB wegwerfen**. Kein Dual-Key, keine Migrations-/Backfill-Funktion, kein Shim. Der einzige Aufwand ist der Code, der `session_id` hartverdrahtet.
 
 ## Nachschärfung 2026-08-15 (Live-Test-Feedback) — Decisions 24–27
 
