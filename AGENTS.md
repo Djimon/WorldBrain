@@ -78,6 +78,8 @@ Mandatory before AC:
 - Propagate Epic Decisions into every affected Story AC verbatim (not "see Decisions")
 - Output-producing Stories: add AC "All user-supplied strings HTML-escaped; no raw template injection"
 - UI-component Stories: name the container/mount point in the AC **and** require an integration test that reaches the component through that real mount / user path — not only an isolated `render(<Component/>)`. A component nobody mounts is a dead deliverable. Recurring failure — do not skip: #262, #274, #294, #339.
+- UI-component Stories: spec the **UI/UX basics** in the AC — layout/structure, every visual state (active/hover/disabled/feedback), and **build from the design-system primitives in `src/ui/primitives.tsx`** (`Button`, `Panel`, `Field`, `Tabs`, `StatusChip`, `TableSurface`, `ListSurface`). Raw unstyled `<button>`/`<div>`/`<input>`/`<span>` in a delivered UI is a spec failure, not "polish for later". UI/UX sprints are **additive** live-polish on top of a properly-specced UI — they do **not** relieve any Story of a sensible UI spec. Basics belong in the Story; fine-tuning belongs in the sprint.
+- Brand-new UI (no existing screen to adapt): the Requirement Agent is weak at inventing visual layout — **ask the user for a sketch / wireframe / reference template before speccing**, and turn that into the Story's UI spec. Adapting an existing screen: name it and say "1:1 wie X". Never invent a novel layout unasked.
 
 Output: Epic summary · Story list · AC per Story · Open decisions · Blockers. No implementation.
 
@@ -171,6 +173,8 @@ Plugin ids and directory names: `snake_case` with underscores (`dnd5e_srd`), nev
 ## UI/UX Sprint Mode
 
 A separate, lightweight mode for polishing user-feeling — **not** the Epic Workflow.
+
+**Additive, never a substitute.** This mode exists on top of properly-specced UI Stories — it is for live fine-tuning (feel, spacing nuance, micro-interactions), **not** for supplying UI/UX basics a Story should have specified (layout, structure, styled elements from `src/ui/primitives.tsx`, visual states). A Requirement Agent must never defer basic UI specification to "a later UI/UX sprint". Fine-tuning here; basics in the Story.
 
 - One agent is **reviewer and implementer at once**. Tight loops: user tests live, says "X fehlt" / "Icon ändern" → implement immediately, no ceremony.
 - **Scope: UI/UX only.** Never touch the base (services, schema, data model, engines). Only presentation and interaction.

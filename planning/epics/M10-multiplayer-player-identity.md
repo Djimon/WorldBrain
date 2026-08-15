@@ -24,7 +24,7 @@ eigenen Prozess (Rust, eingebettet). Spieler verbinden vom eigenen Handy/Laptop 
 1. **Transport abstrahiert:** Eingebetteter LAN-Server (HTTP/WS) hinter einem Transport-Interface. Server-Lebenszyklus an die aktive Session gekoppelt (Start beim Session-Hosting, Stop beim Schließen). Stufe 3 = austauschbarer Transport, kein Rewrite.
 2. **Session als einziger Multiplayer-Anker:** Das Multi-Player-Konstrukt existiert nur innerhalb einer Session. DM erstellt die Session (→ M8-S01 #152). Session erhält GUID + Hash + generierten Einladungscode.
 3. **Spieler-Identität ist session-scoped, kein globaler Account:** Ein "Player" ist eine Mitgliedschaft (`session_id + player_id + token`). Der globale Spieler-Name bleibt Freitext (#160) — echte Identität entsteht erst beim Session-Join.
-4. **Join-Flow:** DM erstellt Session → Einladungscode → Spieler gibt Code im Spieler-Modus ein → Anfrage landet beim DM als `pending` → DM bestätigt (`approved`) → Spieler erstellt Charakter auf Basis des Session-System-Plugins (→ M9-S03 #166) → Spieler sieht freigegebene Inhalte.
+4. **Join-Flow (⚠️ überschrieben durch D24 — Auto-Join):** ~~DM erstellt Session → Einladungscode → Spieler gibt Code ein → `pending` → DM bestätigt (`approved`) → …~~ **Neu (D24):** DM erstellt Session → **einen** Einladungscode/-Link → Spieler gibt Code ein → **sofort aktives Mitglied** (kein Approve-Gate) → Charaktererstellung (→ M9-S03 #166) → sieht freigegebene Inhalte. Einziger nachträglicher Gate: **DM-Kick**.
 5. **Default-Sichtbarkeit in einer Session: alles `gm_only`.** Der Spieler sieht nach dem Join zunächst nichts außer dem, was der DM explizit freigibt. Freigabe (Lore-Texte, Bilder/Concept-Art) läuft über das bestehende Visibility-System.
 6. **Per-Spieler/Gruppen-Visibility ist additiv, nicht ersetzend:** Die 4 bestehenden Scopes (#53, #81) bleiben. `player_known` wird um eine Targeting-Ebene verfeinert: an welche Spieler / welche Gruppen. Neue Tabelle `session_visibility_overrides`, keine Erweiterung von `campaign_entity_overrides`.
 7. **Abgrenzung zu Cross-Session World State (#156 / M8-S04):** Getrenntes Konzept. Per-Spieler-Visibility = *wer sieht was in einer laufenden Session*. Cross-Session World State = *was wird über Weltzeit in die globale Lore zurückgeschrieben* (DM-gesteuerter Promote-Schritt). Kein gemeinsames Datenmodell, aber kein Widerspruch: Visibility-Overrides sind session-scoped, World-State-Promotes sind global/weltzeit-scoped.
@@ -57,6 +57,15 @@ Vollständige Durchspecc-Session (grill-me). Diese Decisions verfeinern/ergänze
   - **Campaign-weites Log = UI-Aggregation**, KEIN extra Log: alle `session_log`-Einträge der Campaign-Sessions chronologisch, Trennstrich bei jedem Session-Wechsel. `session_log` bleibt unverändert (hat `session_id` + `created_at`).
   - **⚠️ Reconciliation:** Wo D9–D22 „Session" als *persistente Klammer* sagen (Roster/Gruppen/Visibility/Overrides/Weltzeit „überleben zwischen Spielabenden", D11), ist **Campaign** gemeint. Die M10-Tabellen (`session_players`, `player_groups.session_id`, `session_visibility_overrides.session_id`) hängen aktuell an `session_id` → gehören konzeptuell an die **Campaign**.
   - **Schema-Konsequenz (`needs-design`, nicht sofort bauen):** neue **`campaigns`**-Tabelle als Klammer + `campaign_id` auf Override-/Event-/Roster-/Visibility-Tabellen; `campaign_entity_overrides` bekommt `campaign_id` (heute un-gekeyt → nur 1 Campaign/Welt möglich); `sessions` bekommt `campaign_id`. **Kein** neues Log-/Notiz-Objekt nötig.
+
+## Nachschärfung 2026-08-15 (Live-Test-Feedback) — Decisions 24–27
+
+Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die geleakte Stufe-3-Signaling-UI entsprechen **nicht** dem gewünschten Ablauf. Korrektur:
+
+- **D24 — Auto-Join, KEIN Approve-Gate (überschreibt Decision 4).** Der DM erzeugt **einen** Einladungscode/-Link. **Wer den Code benutzt, ist sofort aktives Mitglied** — kein `pending`, kein Bestätigen/Ablehnen durch den DM. Der einzige Gate ist **nachträglich**: der DM kann jederzeit **kicken** (invalidiert dessen Token), und **Code-neu-generieren** invalidiert den alten Code für *neue* Joins (bestehende Spieler behalten ihr Token → Reconnect D11). Konsequenz: `session_players.invite_status` verliert `pending`/`rejected`; ein Join legt direkt einen aktiven Eintrag an. `rejected`/Fehler nur noch bei **ungültigem Code / Server nicht erreichbar**, nicht durch DM-Entscheidung. **Wo D9–D22, S02, S05, S06 „`pending`/`approved`/`approve`" sagen, gilt D24.**
+- **D25 — Ein Programm, zwei Modi + globaler Top-Bar-Toggle.** Dieselbe .exe läuft entweder im **Edit-Mode** (Worldbuilding) oder im **Play-Mode** (Session-Cockpit). Ein **globaler, immer sichtbarer Umschalter in der Top-Bar** („Bearbeiten ⟷ Spielen") flippt den **ganzen Workspace** — kein Seitenleisten-Icon, kein pro-Session-Schalter. Der **Player-Modus ist derselbe Build** (Spieler-Einstieg der Tauri-App), kein zweiter .exe. **Browser-Join (D9-Variante a) wird auf eine spätere Stufe verschoben** — jetzt zuerst nur App-Player-Modus + GM-Self-Join (D26). D9 bleibt als End-Ziel gültig, Reihenfolge: App-Modus zuerst.
+- **D26 — GM-Self-Join.** Ein Anwender, der zugleich DM **und** Spieler ist, muss mit **derselben Host-App** als Spieler beitreten können: die App verbindet gegen den **eigenen laufenden Server (loopback)** und öffnet eine Spieler-Sicht. Ein Gerät = hosten **und** einen eigenen Charakter spielen. Kein zweites Gerät, kein zweiter Build nötig.
+- **D27 — Copy-UX für Einladungscode/-Link (Standard).** Der Code steht in einem **gesperrten (readonly) Input-Feld** mit **Copy-Button** (Klick kopiert in die Zwischenablage, sichtbares Feedback „kopiert") — **nicht** als nacktes Text-Element. Zusätzlich ein teilbarer **Einladungs-Link** (Server-URL + Code kombiniert) mit eigenem Copy-Button. Kein WebRTC-„Antwort-Code"-Rückkanal in Stufe 2 — die manuelle Offer/Answer-Signaling-UI (SignalingPanel, S12) erscheint **ausschließlich** in der Stufe-3-Sicht, **nie** in der LAN-Lobby.
 
 ### Offene Detailfragen (als `needs-decision` in den jeweiligen Stories)
 - Session-Jetzt **absolut setzbar** (nicht nur vorstellen)? → S17.
@@ -96,8 +105,8 @@ Vollständige Durchspecc-Session (grill-me). Diese Decisions verfeinern/ergänze
 **AC:**
 - Session erhält bei Erstellung GUID + Hash; Persistenz im Session-Objekt (→ M8-S01)
 - DM generiert pro Session einen Einladungscode (kurz, am Tisch teilbar) — neu generierbar (invalidiert alten)
-- Spieler-Join mit gültigem Code erzeugt ein Spieler-Token; Token wird server-seitig der Session-Mitgliedschaft zugeordnet
-- Auth-Middleware: jede Server-Anfrage ohne gültiges, `approved` Token wird abgewiesen
+- Spieler-Join mit gültigem Code erzeugt ein Spieler-Token **und macht den Spieler sofort zum aktiven Mitglied** (D24 — kein Approve-Schritt)
+- Auth-Middleware: jede Server-Anfrage ohne gültiges, **aktives (nicht gekicktes)** Token wird abgewiesen — **jede Nachricht** trägt das Token (Server-seitige Durchsetzung, Decision 8; nicht nur beim Handshake)
 - Einladungscode kryptografisch zufällig (`crypto.getRandomValues`/Rust-Äquivalent), nicht erratbar
 - Tokens werden nie geloggt und nie an andere Spieler ausgeliefert
 - Blocked by #152 (Session-Schema & Persistenz)
@@ -110,9 +119,9 @@ Vollständige Durchspecc-Session (grill-me). Diese Decisions verfeinern/ergänze
 **Ziel:** Spieler-Mitgliedschaften in einer Session sind persistiert und verwaltbar.
 
 **AC:**
-- Tabellen: `players` (id, display_name, created_at), `session_players` (session_id, player_id, token_hash, invite_status: `pending|approved|rejected|kicked`, joined_at)
-- Service: createPlayer, requestJoin, approve, reject, kick, listSessionPlayers
-- Nur `approved` Mitgliedschaften gelten als aktive Spieler
+- Tabellen: `players` (id, display_name, created_at), `session_players` (session_id, player_id, token_hash, status: `active|kicked`, joined_at) — **kein `pending`/`rejected` (D24: Auto-Join)**
+- Service: createPlayer, **joinWithCode** (legt direkt `active` an), kick, listSessionPlayers — **kein `requestJoin`/`approve`/`reject`**
+- `active` Mitgliedschaften gelten als aktive Spieler; Kick setzt `kicked` + invalidiert Token
 - Mehrere Spieler pro Session; ein Spieler-Token gehört zu genau einer Session
 - Fehlerhafte/fehlende Daten → klare Fehlermeldung, kein Crash
 - `database` prop typed as `DatabaseLike` (from `entity-service.ts`); no `unknown` or `as never` casts at call sites
@@ -133,33 +142,61 @@ Vollständige Durchspecc-Session (grill-me). Diese Decisions verfeinern/ergänze
 
 ---
 
-### M10-S05: Player-Join-Flow (Spieler-Modus-Client)
+### M10-S05: Player-Join-Flow (Spieler-Modus-Client) — **AUTO-JOIN (D24)**
 
-**Ziel:** Ein Spieler verbindet sich im Spieler-Modus per Einladungscode und wartet auf Bestätigung.
+**Ziel:** Ein Spieler gibt Server-URL + Einladungscode + Anzeigenamen ein und ist **sofort drin** — kein Warten auf Bestätigung.
 
-**AC:**
-- Spieler-Modus-Einstieg: Eingabe von Server-URL + Einladungscode + eigenem Anzeigenamen
-- Nach Absenden: Verbindungsaufbau, Status `pending` sichtbar ("Warte auf Bestätigung des Spielleiters")
-- Bei `approved`: Übergang zur Charaktererstellung (→ M10-S08), bei `rejected`: klare Meldung
-- Verbindungsabbruch wird dem Spieler angezeigt, automatischer Reconnect-Versuch (→ M10-S10)
-- Kein Inhalt der Session wird vor `approved` an den Client ausgeliefert
-- Blocked by #154 (Play-Mode Screen & Create↔Play-Toggle)
-- No `prompt()`, `alert()`, or `confirm()` calls; all user input via rendered React UI or Tauri dialog API
+**AC (D24/D25/D26):**
+- Spieler-Modus-Einstieg (**derselbe Build**, D25): Eingabe Server-URL + Einladungscode + Anzeigename.
+- Nach Absenden mit **gültigem** Code: **sofort aktives Mitglied**, direkter Übergang zur Charaktererstellung (→ M10-S08). **Kein `pending`-Zustand, kein „Warte auf Bestätigung".**
+- Fehlerfall NUR bei **ungültigem Code** oder **Server nicht erreichbar** (klare Meldung) — **nie** eine DM-Ablehnung.
+- **GM-Self-Join (D26):** derselbe Einstieg akzeptiert die **loopback/eigene** Server-URL, sodass der Host als Spieler beitritt.
+- **UI-Basics:** Eingaben als `Field`, Beitreten als `Button` (`accent`), Fehler als `StatusChip` (`failure`), Form in `Panel` — aus `src/ui/primitives.tsx`, kein nacktes HTML.
+- Verbindungsabbruch wird angezeigt, automatischer Reconnect-Versuch mit gespeichertem Token (→ M10-S10, kein Neu-Join).
+- Blocked by #154 (Play-Mode Screen) — **geschlossen**; realer Gate = S01/S02.
+- No `prompt()`, `alert()`, or `confirm()` calls; all user input via rendered React UI or Tauri dialog API.
+- `database`/Service prop typed as `DatabaseLike`; no `unknown`/`as never`.
 
 ---
 
-### M10-S06: GM-Lobby & Approve-Management
+### M10-S06: GM-Lobby (Verbundene Spieler + Kick + Copy-Code) — **KEIN Approve (D24/D27)**
 
-**Ziel:** Der DM sieht Join-Anfragen, bestätigt/lehnt ab und verwaltet verbundene Spieler.
+**Ziel:** Der DM sieht die **live verbundenen** Spieler, kann kicken, und teilt den Einladungscode/-Link bequem.
+
+**AC (D24/D27):**
+- Lobby-Panel im Play-Modus zeigt **eine** Liste: **verbundene Spieler** (Anzeigename + online/offline-Status). **KEINE `pending`-Liste, KEINE Approve/Reject-Buttons** — Auto-Join (D24).
+- Aktion je Spieler: **Kick** (entfernt aktiven Spieler, invalidiert dessen Token).
+- **Einladungscode in gesperrtem (readonly) Input-Feld + Copy-Button** (D27): Klick kopiert in die Zwischenablage mit sichtbarem „kopiert"-Feedback. Zusätzlich **teilbarer Einladungs-Link** (URL+Code) mit eigenem Copy-Button.
+- **Code neu generieren** (invalidiert alten Code für neue Joins; bestehende Spieler behalten Token).
+- Zuordnung von Spielern zu Gruppen (→ M10-S04) direkt aus der Lobby.
+- **SignalingPanel (Stufe-3-Offer/Answer) ist HIER NICHT gemountet** (D27) — LAN-Lobby zeigt keine „Antwort-Code"-Mechanik.
+- Copy in die Zwischenablage über die **Tauri-Clipboard-API bzw. `navigator.clipboard`**, nicht `prompt()`/`alert()`.
+- Mount: Lobby wird im **Play-Mode-Cockpit** (`PlayModeView`, role `dm`) über den Lobby-Button erreicht — Integrationstest durch diesen echten Pfad (nicht nur isoliertes `render(<LobbyPanel/>)`).
+- **UI-Basics:** Spielerliste als `ListSurface`, Kick als `Button`, online/offline als `StatusChip`, Code als readonly `Field` + Copy-`Button`, Rahmen `Panel` — aus `src/ui/primitives.tsx`, kein nacktes HTML.
+- `database` prop typed as `DatabaseLike`; no `unknown`/`as never`.
+
+---
+
+### M10-S22: Globaler Create↔Play-Toggle in der Top-Bar (D25)
+
+**Ziel:** Ein **immer sichtbarer** Umschalter in der Kopfzeile flippt den **ganzen Workspace** zwischen **Bearbeiten** (Worldbuilding) und **Spielen** (Session-Cockpit). Ohne ihn ist der Play-Mode für den Nutzer nicht auffindbar (5× reklamiert).
+
+**WIE — mechanisch, kein Interpretationsspielraum:**
+- **Mount-Punkt (benannt):** Der Toggle wird in der **Top-Bar/Kopfzeile von `src/ui/WorkspaceShell.tsx`** gerendert — nicht in der Seitenleiste, nicht in einem Area-Icon, nicht in `PlayModeView`. Er ist in **beiden** Modi sichtbar.
+- **Zustand:** `WorkspaceShell` hält einen Modus-State `mode: 'edit' | 'play'` (Default `'edit'`). Der Toggle schaltet ihn um. Beschriftung: `t('modeEdit','Bearbeiten')` ⟷ `t('modePlay','Spielen')`, aktueller Modus visuell markiert (`aria-pressed`/`aria-selected`).
+- **Wirkung:** Bei `mode === 'play'` rendert der Haupt-Content-Bereich das **Play-Mode-Cockpit** (`PlayModeView`, role `dm`); bei `mode === 'edit'` das bestehende Worldbuilding (Entities/Karten/Kalender). Der Umschalter ersetzt den bisherigen 🎲-`'session'`-Area-Eintrag als *primären* Zugang (Area-Eintrag darf bleiben, ist aber nicht mehr der einzige Weg).
+- **Kein prop-drilling-Bruch:** `database`/`sessionId` werden wie beim bisherigen `'session'`-Case an `PlayModeView` durchgereicht.
 
 **AC:**
-- Lobby-Panel im Play-Modus: Liste `pending` Anfragen mit Anzeigename + Zeitpunkt
-- Aktionen: Approve, Reject, Kick (entfernt aktiven Spieler, invalidiert Token)
-- Liste der `approved` Spieler mit Verbindungsstatus (online/offline)
-- Zuordnung von Spielern zu Gruppen (→ M10-S04) direkt aus der Lobby
-- Einladungscode anzeigen + neu generieren
-- Blocked by #154 (Play-Mode Screen & GM-Whiteboard)
-- `database` prop typed as `DatabaseLike` (from `entity-service.ts`); no `unknown` or `as never` casts at call sites
+- Toggle-Element mit `data-testid="mode-toggle"` in der `WorkspaceShell`-Kopfzeile, in beiden Modi sichtbar.
+- Klick auf „Spielen" → `PlayModeView` (role `dm`) erscheint im Hauptbereich; Klick auf „Bearbeiten" → Worldbuilding-Ansicht zurück.
+- Der aktive Modus ist visuell erkennbar (`aria-pressed`/`aria-selected` gesetzt).
+- Keine hardcodierten Strings — `useTranslation` + Inline-Default.
+- **Integrationstest durch den echten Mount (Pflicht, AGENTS.md:80):** rendert `WorkspaceShell` (nicht `PlayModeView` isoliert), klickt `mode-toggle`, erwartet echten `PlayModeView`-Inhalt (z.B. `data-testid="dm-cockpit"`), klickt zurück, erwartet Worldbuilding-Ansicht. Guard: `<PlayModeView` wird durch `WorkspaceShell` erreicht (grep zeigt Mount außerhalb der eigenen Datei/Tests).
+- `database` prop typed as `DatabaseLike`; no `unknown`/`as never`.
+- **UI-Basics:** Segmented-Control aus zwei `Button`s (aktiv `accent`+`aria-pressed`, inaktiv `neutral`), in die bestehende Top-Bar eingepasst — aus `src/ui/primitives.tsx`, kein nacktes `<button>`.
+
+**Out of scope:** Player-Modus-Einstieg (S05), Cockpit-Inhalte selbst (S14 ff.).
 
 ---
 
@@ -231,7 +268,10 @@ Vollständige Durchspecc-Session (grill-me). Diese Decisions verfeinern/ergänze
 | M10-S03 | #197 | p0 | — | Spieler-Mitgliedschaft — Schema & Services |
 | M10-S04 | #198 | p1 | — | Spieler-Gruppen |
 | M10-S05 | #199 | p0 | S01+S02 | **Player-Client (Hybrid) + gespeichertes Player-„Projekt"** — geschärft, absorbiert Hybrid-Auslieferung (D9/D10) |
-| M10-S06 | #200 | p0 | S01+S02 | GM-Lobby & Approve-Management (persistente Session D11) |
+| M10-S06 | #200 | p0 | S01+S02 | GM-Lobby: Verbundene Spieler + Kick + **Copy-Code (D27)**, **kein Approve (D24)** |
+| M10-S22 | #342 | p0 | — | **Globaler Create↔Play-Toggle in der Top-Bar (D25)** — Workspace-Modus-Umschalter |
+| Bug | #340 | p0 | S05/S06 | **Auto-Join statt Approve-Gate (D24) + GM-Self-Join (D26)** — korrigiert closed #196/#199/#200 |
+| Bug | #341 | p1 | S06 | **Copy-Code-Feld+Button (D27) + Signaling raus aus LAN-Lobby** |
 | M10-S07 | #201 | p0 | — | Per-Spieler/Gruppen-Visibility |
 | M10-S08 | #202 | p1 | S05 | Spieler-Charaktererstellung + Bogen als Aktionsquelle (D13) |
 | M10-S09 | #203 | p0 | — | Spieler-Live-Sicht (gefilterte Inhalte) ✅ |
@@ -251,13 +291,15 @@ Vollständige Durchspecc-Session (grill-me). Diese Decisions verfeinern/ergänze
 ## Implementierungs-Reihenfolge (verbindlich, rekursiv aufgelöst)
 
 **Phase 0 — Foundation (parallel baubar):**
+- **S22 #342** Globaler Create↔Play-Toggle in der Top-Bar (D25) · p0 — *reine UI-Shell, unabhängig; ohne ihn ist der Play-Mode gar nicht erreichbar → zuerst*
 - **S20 #337** Campaign-Klammer + `campaign_id`-Keying (Datenmodell-Basis für Roster/Overrides/Visibility, D23) · p0
 - **S01 #195** lokaler Server + Transport (HTTP serviert Player-UI + WS-Live) · p0 — *unabhängig von S20, parallel*
 - **S02 #196** Session-Identität, Codes, Token-Auth · p0
 
 **Phase 1 — Multiplayer-Kern (braucht S20 + S01 + S02):**
 - **S05 #199** Player-Client (Hybrid) + gespeichertes Player-Projekt
-- **S06 #200** GM-Lobby & Approve (Roster/Gruppen campaign-scoped aus S20)
+- **S06 #200** GM-Lobby: verbundene Spieler + Kick + Copy-Code (D27), **kein Approve** (Roster/Gruppen campaign-scoped aus S20)
+- **Korrektur-Bugs (P0/P1, gegen die schon gebauten, closed Stories):** **#340** Auto-Join statt Approve-Gate (D24) + GM-Self-Join (D26) · **#341** Copy-Code-Feld+Button (D27) + Signaling raus aus LAN-Lobby. Diese bringen das gemountete Verhalten auf D24–D27.
 
 **Phase 2 — Play:**
 - **S08 #202** Charaktererstellung (braucht S05)
