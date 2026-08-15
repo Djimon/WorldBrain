@@ -181,7 +181,7 @@ input {
 
 .workspace-shell__sidebar button[aria-pressed='true'] {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .workspace-shell__sidebar-spacer {
@@ -210,7 +210,7 @@ input {
 
 .workspace-shell__close-btn:hover {
   background: var(--color-status-failure);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .workspace-shell__content {
@@ -329,7 +329,7 @@ input {
 
 .workspace-area__sidebar ul li button[aria-pressed='true'] {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .workspace-area__main {
@@ -490,7 +490,7 @@ input {
 .btn--primary {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .btn--primary:hover {
@@ -501,7 +501,7 @@ input {
 .btn--danger {
   background: var(--color-status-failure, #c0392b);
   border-color: var(--color-status-failure, #c0392b);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .btn--danger:hover {
@@ -560,7 +560,7 @@ input {
 
 .emd__create-btn:hover {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .emd__create-form {
@@ -588,7 +588,7 @@ input {
   border: none;
   border-radius: var(--radius-sm);
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
   cursor: pointer;
   font-size: 0.8rem;
 }
@@ -915,7 +915,7 @@ input {
 .gsearch__facet--active {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .gsearch__facet-count {
@@ -1153,7 +1153,7 @@ input {
 
 .cal-add-btn:hover {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .cal-remove-btn {
@@ -1170,7 +1170,7 @@ input {
 
 .cal-remove-btn:hover {
   background: var(--color-status-failure);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 /* ── Map Viewer ──────────────────────────────────────── */
@@ -1218,7 +1218,7 @@ input {
 .map-viewer__controls button:hover,
 .map-viewer__controls button.active {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
   border-color: var(--color-accent);
 }
 
@@ -1241,7 +1241,7 @@ input {
   left: 50%;
   transform: translateX(-50%);
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
   font-size: 0.8rem;
   padding: var(--space-1) var(--space-3);
   border-radius: 100px;
@@ -1306,7 +1306,7 @@ input {
   padding: 0;
   z-index: 10;
 }
-.map-pin__move-btn:hover { background: var(--color-accent); color: #fff; }
+.map-pin__move-btn:hover { background: var(--color-accent); color: var(--color-on-accent); }
 
 .map-pin__vis-badge {
   position: absolute;
@@ -1382,7 +1382,7 @@ input {
   padding: 0 4px;
   border-radius: 10px;
   background: var(--color-accent-strong, #c0392b);
-  color: #fff;
+  color: var(--color-on-accent);
   box-shadow: 0 1px 3px rgba(0,0,0,0.6);
 }
 .map-token__counter-val {
@@ -1405,7 +1405,7 @@ input {
   justify-content: center;
   background: none;
   border: none;
-  color: #fff;
+  color: var(--color-on-accent);
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
@@ -1481,8 +1481,8 @@ input {
   justify-content: center;
   border-radius: 50%;
   background: var(--color-accent);
-  color: #fff;
-  border: 1px solid #fff;
+  color: var(--color-on-accent);
+  border: 1px solid var(--color-on-accent);
   font-size: 10px;
   line-height: 1;
   cursor: nwse-resize;
@@ -1590,7 +1590,7 @@ input {
 
 .token-editor__mode { display: flex; gap: var(--space-1); }
 .token-editor__mode-btn { flex: 1 1 auto; }
-.token-editor__mode-btn.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+.token-editor__mode-btn.active { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
 
 .token-editor__upload { align-self: flex-start; }
 
@@ -1661,7 +1661,7 @@ input {
   gap: var(--space-2);
   justify-content: space-between;
 }
-.token-editor__save { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
+.token-editor__save { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-on-accent); }
 .token-editor__delete { border-color: var(--color-status-failure, #c0392b); color: var(--color-status-failure, #c0392b); }
 
 /* ── Right map sidebar: PINS / TOKEN tabs (#302) ──
@@ -1739,7 +1739,7 @@ input {
   white-space: nowrap;
 }
 .map-token-list__name:hover { background: var(--color-background); }
-.map-token-list__row.active .map-token-list__name { background: var(--color-accent); color: #fff; }
+.map-token-list__row.active .map-token-list__name { background: var(--color-accent); color: var(--color-on-accent); }
 .map-token-list__del {
   flex: 0 0 auto;
   background: none;
@@ -2207,7 +2207,7 @@ input {
 }
 
 .map-tool-btn:hover { background: var(--color-background); }
-.map-tool-btn.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+.map-tool-btn.active { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
 
 /* ── Tool group (PS-style flyout) ─────────────────────── */
 .map-tool-group .map-tool-btn { position: relative; padding-bottom: 2px; }
@@ -2363,7 +2363,7 @@ input {
 .grid-toggle.active {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .grid-type-btns { display: flex; gap: 2px; }
@@ -2378,7 +2378,7 @@ input {
   font-size: 1rem;
 }
 
-.grid-type-btn.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+.grid-type-btn.active { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
 
 .grid-controls-panel__section-title {
   padding: var(--space-1) var(--space-3);
@@ -2746,7 +2746,7 @@ input {
   padding: 4px 10px;
   border-radius: var(--radius-sm);
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
   font-weight: 700;
   font-size: 0.82rem;
   text-align: center;
@@ -2852,7 +2852,7 @@ input {
   padding: 1px 5px;
   border-radius: 4px;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3059,7 +3059,7 @@ input {
 
 .cal-yearmode__btn.active {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 /* ── Calendar start / picker view ─────────────────────────────────────────── */
@@ -3655,7 +3655,7 @@ input {
   font-size: 0.8rem;
   white-space: nowrap;
 }
-.layer-panel__toolbar button:hover { background: var(--color-accent); color: #fff; }
+.layer-panel__toolbar button:hover { background: var(--color-accent); color: var(--color-on-accent); }
 
 /* Name input at the top of an expanded row's controls. */
 .layer-panel__name-field {
@@ -3712,7 +3712,7 @@ input {
 
 .fog-tools__btn.active {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .fog-tools__slider {
@@ -3757,7 +3757,7 @@ input {
 .map-folder-tree__confirm-yes {
   background: var(--color-status-failure, #c0392b);
   border-color: var(--color-status-failure, #c0392b);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 .map-folder-tree__confirm-no {
   background: var(--color-surface);
@@ -3866,7 +3866,7 @@ input {
 
 .scene-switcher__select[aria-pressed='true'] {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 /* icon buttons only — exclude text .btn (Speichern/Abbrechen in rename mode),
@@ -4049,7 +4049,7 @@ input {
 .channel-row__status-icon[aria-pressed='true'] {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .channel-row__waveform {
@@ -4147,7 +4147,7 @@ input {
 .channel-row__mixer-toggle[aria-expanded='true'] {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .channel-row__balance,
@@ -4190,7 +4190,7 @@ input {
 .channel-row__mute[aria-pressed='true'] {
   background: var(--color-status-failure);
   border-color: var(--color-status-failure);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .channel-row__settings-popover {

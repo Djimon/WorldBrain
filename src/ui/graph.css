@@ -14,7 +14,7 @@
   --gv-border-faint: color-mix(in srgb, var(--color-border) 30%, transparent);
   --gv-text: var(--color-text);
   --gv-accent: var(--color-accent);
-  --gv-on-accent: #fff;
+  --gv-on-accent: var(--color-on-accent);
   --gv-danger: var(--color-status-failure);
 }
 
