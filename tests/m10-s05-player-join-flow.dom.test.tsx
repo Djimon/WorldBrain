@@ -252,3 +252,78 @@ describe('#199 PlayerProjectDashboard — gespeicherte Player-Projekte', () => {
     expect(pingCalls.length).toBeLessThanOrEqual(1);
   });
 });
+
+// ── #340 D24: PlayerJoinView — sofortiger Join, kein Pending ─────────────────
+// RED: aktueller Flow zeigt "warte/pending/bestätigung" nach gültigem Code.
+// Nach Fix: gültiger Code → onJoined(token) sofort, kein Pending-Zwischenzustand.
+
+describe('#340 D24 PlayerJoinView — Auto-Join ohne Warte-Bildschirm', () => {
+  it('valid code + server URL → onJoined(token) is called immediately (no pending)', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockResolvedValue({ token: 'tok-autojoin' });
+
+    const onJoined = vi.fn();
+    render(<PlayerJoinView onJoined={onJoined} />);
+    fireEvent.change(screen.getByRole('textbox', { name: /server.*(url|ip|adresse)/i }), {
+      target: { value: 'http://192.168.1.5:9000' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /einladungscode|code/i }), {
+      target: { value: 'abc12345' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /anzeigename|name/i }), {
+      target: { value: 'Frodo' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /beitreten|join/i }));
+    await waitFor(() => expect(onJoined).toHaveBeenCalledWith('tok-autojoin'));
+  });
+
+  it('valid code does NOT show pending/waiting state (D24: no approve gate)', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockResolvedValue({ token: 'tok-direct' });
+
+    render(<PlayerJoinView />);
+    fireEvent.change(screen.getByRole('textbox', { name: /server.*(url|ip|adresse)/i }), {
+      target: { value: 'http://127.0.0.1:9000' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /einladungscode|code/i }), {
+      target: { value: 'direct01' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /anzeigename|name/i }), {
+      target: { value: 'Sam' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /beitreten|join/i }));
+    // No pending/warte text must appear after valid join
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByText(/warte|pending|bestätigung/i)).toBeNull();
+  });
+
+  it('D26: PlayerJoinView accepts loopback (127.0.0.1) as server URL (GM-Self-Join)', () => {
+    render(<PlayerJoinView />);
+    const urlInput = screen.getByRole('textbox', { name: /server.*(url|ip|adresse)/i });
+    // Loopback must be accepted as valid input (no validation error on input)
+    fireEvent.change(urlInput, { target: { value: 'http://127.0.0.1:9000' } });
+    expect(urlInput).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('invalid code → error message, no onJoined', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    (invoke as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Invalid invite code'));
+
+    const onJoined = vi.fn();
+    render(<PlayerJoinView onJoined={onJoined} />);
+    fireEvent.change(screen.getByRole('textbox', { name: /server.*(url|ip|adresse)/i }), {
+      target: { value: 'http://192.168.1.5:9000' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /einladungscode|code/i }), {
+      target: { value: 'invalid!' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /anzeigename|name/i }), {
+      target: { value: 'Pippin' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /beitreten|join/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/ungültig|fehler|error|nicht.*erreichbar/i)).toBeInTheDocument(),
+    );
+    expect(onJoined).not.toHaveBeenCalled();
+  });
+});

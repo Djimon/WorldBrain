@@ -230,3 +230,122 @@ describe('#200 LobbyPanel — AP-003', () => {
     expect(src).not.toMatch(/\b(alert|confirm|prompt)\s*\(/);
   });
 });
+
+// ── #340 D24: Auto-Join — Lobby zeigt NUR aktive Spieler + Kick ──────────────
+// RED: LobbyPanel rendert noch pending-Sektion + Approve/Reject-Buttons.
+// Nach Fix: nur status='active'-Spieler + Kick sichtbar; kein Approve/Reject.
+
+function createDbD24() {
+  // NEW schema: session_players.status (not invite_status)
+  // Fails at INSERT until schema.sql is updated → RED
+  const db = new DatabaseSync(':memory:');
+  db.exec(runtimeSchemaSql);
+  db.prepare(`INSERT INTO sessions (id,title,created_at) VALUES ('s2','D24-Runde',datetime('now'))`).run();
+  db.prepare(`INSERT INTO players (id,display_name,created_at) VALUES ('pa','Aragorn',datetime('now')),('pb','Legolas',datetime('now'))`).run();
+  // Uses NEW column 'status' (not 'invite_status') → RED until schema updated
+  db.prepare(
+    `INSERT INTO session_players (session_id,player_id,token_hash,status,joined_at)
+     VALUES ('s2','pa','ha','active',datetime('now')),('s2','pb','hb','active',datetime('now'))`,
+  ).run();
+  return makeAsyncDb(db);
+}
+
+describe('#340 D24 LobbyPanel — kein Approve-Gate, nur Kick', () => {
+  it('LobbyPanel renders NO approve/reject buttons (D24: auto-join)', async () => {
+    const db = createDbD24();
+    render(<LobbyPanel database={db} sessionId="s2" />);
+    await waitFor(() => screen.getByText('Aragorn'));
+    expect(screen.queryByRole('button', { name: /bestätigen|approve/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /ablehnen|reject/i })).toBeNull();
+  });
+
+  it('LobbyPanel renders NO pending-section (D24)', async () => {
+    const db = createDbD24();
+    render(<LobbyPanel database={db} sessionId="s2" />);
+    await waitFor(() => screen.getByText('Aragorn'));
+    expect(screen.queryByText(/ausstehend|pending|anfragen/i)).toBeNull();
+    expect(screen.queryByTestId('lobby-pending-section')).toBeNull();
+  });
+
+  it('LobbyPanel renders a Kick button for each active player', async () => {
+    const db = createDbD24();
+    render(<LobbyPanel database={db} sessionId="s2" />);
+    await waitFor(() => screen.getByText('Aragorn'));
+    const kickBtns = screen.getAllByRole('button', { name: /kick|rauswerfen/i });
+    expect(kickBtns.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('LobbyPanel only loads status=active players (not kicked)', async () => {
+    // Seed: one active, one kicked — only active should appear
+    const db = new DatabaseSync(':memory:');
+    db.exec(runtimeSchemaSql);
+    db.prepare(`INSERT INTO sessions (id,title,created_at) VALUES ('s3','Kick-Runde',datetime('now'))`).run();
+    db.prepare(`INSERT INTO players (id,display_name,created_at) VALUES ('px','Aktiver',datetime('now')),('py','Gekickt',datetime('now'))`).run();
+    db.prepare(
+      `INSERT INTO session_players (session_id,player_id,token_hash,status,joined_at)
+       VALUES ('s3','px','hx','active',datetime('now')),('s3','py','hy','kicked',datetime('now'))`,
+    ).run();
+    const asyncDb = makeAsyncDb(db);
+    render(<LobbyPanel database={asyncDb} sessionId="s3" />);
+    await waitFor(() => screen.getByText('Aktiver'));
+    expect(screen.queryByText('Gekickt')).toBeNull();
+  });
+});
+
+// ── #341 D27: Copy-Feld + kein Signaling-Leak ────────────────────────────────
+// RED: Code steht als nacktes <span>; kein readonly Input; kein Copy-Button.
+// Clipboard-write wird nicht aufgerufen.
+
+describe('#341 D27 LobbyPanel — kopierbares Code-Feld', () => {
+  it('renders a readonly input containing the invite code', async () => {
+    const { db, asyncDb } = createDb();
+    db.prepare(
+      `INSERT INTO invite_codes (code,session_id,created_at,is_active) VALUES ('COPYTEST','s1',datetime('now'),1)`,
+    ).run();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() => {
+      const input = screen.queryByDisplayValue('COPYTEST') as HTMLInputElement | null;
+      expect(input).not.toBeNull();
+      expect(input?.readOnly).toBe(true);
+    });
+  });
+
+  it('renders a copy button next to the invite code', async () => {
+    const { db, asyncDb } = createDb();
+    db.prepare(
+      `INSERT INTO invite_codes (code,session_id,created_at,is_active) VALUES ('COPYBTN1','s1',datetime('now'),1)`,
+    ).run();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() => screen.queryByDisplayValue('COPYBTN1'));
+    expect(screen.getByRole('button', { name: /kopier|copy/i })).toBeInTheDocument();
+  });
+
+  it('clicking the copy button writes the code to clipboard', async () => {
+    const writeTextSpy = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText: writeTextSpy } });
+
+    const { db, asyncDb } = createDb();
+    db.prepare(
+      `INSERT INTO invite_codes (code,session_id,created_at,is_active) VALUES ('CLIPBRD1','s1',datetime('now'),1)`,
+    ).run();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() => screen.queryByDisplayValue('CLIPBRD1'));
+    fireEvent.click(screen.getByRole('button', { name: /kopier|copy/i }));
+    await waitFor(() => expect(writeTextSpy).toHaveBeenCalledWith('CLIPBRD1'));
+  });
+
+  it('renders an invitation link field (readonly, server-url + code combined)', async () => {
+    const { db, asyncDb } = createDb();
+    db.prepare(
+      `INSERT INTO invite_codes (code,session_id,created_at,is_active) VALUES ('LINKTEST','s1',datetime('now'),1)`,
+    ).run();
+    render(<LobbyPanel database={asyncDb} sessionId="s1" />);
+    await waitFor(() => screen.queryByDisplayValue('LINKTEST'));
+    // Link-field contains the code and a URL fragment
+    const inputs = document.querySelectorAll('input[readonly]');
+    const linkField = Array.from(inputs).find((el) =>
+      el.getAttribute('value')?.includes('LINKTEST') && el.getAttribute('value')?.includes('://'),
+    );
+    expect(linkField).not.toBeNull();
+  });
+});

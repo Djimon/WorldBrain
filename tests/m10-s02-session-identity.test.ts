@@ -253,3 +253,83 @@ describe('M10-S02 escapeHtml', () => {
     expect(twice).not.toBe(once); // &lt;b&gt; → &amp;lt;b&amp;gt; → different
   });
 });
+
+// ── #340 D24: Auto-Join — kein Approve-Gate ───────────────────────────────────
+// RED: Schema hat noch invite_status (nicht status); joinWithCode setzt kein
+// session_players-Eintrag mit status='active'; kick() existiert nicht.
+
+describe('#340 D24 joinWithCode → sofort status=active (kein pending)', () => {
+  it('joinWithCode inserts a session_players row with status=active', async () => {
+    const { db, asyncDb } = createDb();
+    db.prepare(
+      `INSERT INTO invite_codes (code, session_id, created_at, is_active) VALUES ('ABC12345','s1',datetime('now'),1)`,
+    ).run();
+    const svc = await getSvc();
+    await svc.joinWithCode(asyncDb, { sessionId: 's1', code: 'ABC12345', displayName: 'Frodo' });
+    // After join: session_players must have status='active' — NOT 'pending' or 'approved'
+    const rows = db
+      .prepare(`SELECT status FROM session_players WHERE session_id='s1'`)
+      .all() as { status: string }[];
+    expect(rows.length).toBe(1);
+    expect(rows[0].status).toBe('active');
+  });
+
+  it('joinWithCode does NOT create a pending row (no invite_status column)', async () => {
+    const { db, asyncDb } = createDb();
+    db.prepare(
+      `INSERT INTO invite_codes (code, session_id, created_at, is_active) VALUES ('XY123456','s1',datetime('now'),1)`,
+    ).run();
+    const svc = await getSvc();
+    await svc.joinWithCode(asyncDb, { sessionId: 's1', code: 'XY123456', displayName: 'Sam' });
+    // Must NOT have any row with invite_status (old column should no longer exist)
+    const info = db.prepare(`PRAGMA table_info(session_players)`).all() as { name: string }[];
+    const cols = info.map((r) => r.name);
+    expect(cols).not.toContain('invite_status');
+    expect(cols).toContain('status');
+  });
+
+  it('joinWithCode returns a token immediately (no pending state)', async () => {
+    const { db, asyncDb } = createDb();
+    db.prepare(
+      `INSERT INTO invite_codes (code, session_id, created_at, is_active) VALUES ('ZZ987654','s1',datetime('now'),1)`,
+    ).run();
+    const svc = await getSvc();
+    const result = await svc.joinWithCode(asyncDb, { sessionId: 's1', code: 'ZZ987654', displayName: 'Gandalf' });
+    expect(result.token).toBeTruthy();
+    expect(result.playerId).toBeTruthy();
+  });
+});
+
+describe('#340 D24 kick() — invalidiert Token und setzt status=kicked', () => {
+  it('kick() function is exported from session-identity-service', async () => {
+    const svc = await getSvc();
+    expect(typeof svc.kick).toBe('function');
+  });
+
+  it('kick(db, playerId, sessionId) sets session_players.status=kicked', async () => {
+    const { db, asyncDb } = createDb();
+    db.prepare(
+      `INSERT INTO invite_codes (code, session_id, created_at, is_active) VALUES ('KK001122','s1',datetime('now'),1)`,
+    ).run();
+    const svc = await getSvc();
+    const joined = await svc.joinWithCode(asyncDb, { sessionId: 's1', code: 'KK001122', displayName: 'Boromir' });
+    await svc.kick(asyncDb, { playerId: joined.playerId, sessionId: 's1' });
+    const rows = db
+      .prepare(`SELECT status FROM session_players WHERE session_id='s1' AND player_id=?`)
+      .all(joined.playerId) as { status: string }[];
+    expect(rows[0].status).toBe('kicked');
+  });
+
+  it('kicked player token is rejected by validateToken', async () => {
+    const { db, asyncDb } = createDb();
+    db.prepare(
+      `INSERT INTO invite_codes (code, session_id, created_at, is_active) VALUES ('KK334455','s1',datetime('now'),1)`,
+    ).run();
+    const svc = await getSvc();
+    const joined = await svc.joinWithCode(asyncDb, { sessionId: 's1', code: 'KK334455', displayName: 'Saruman' });
+    await svc.kick(asyncDb, { playerId: joined.playerId, sessionId: 's1' });
+    await expect(
+      svc.validateToken(asyncDb, { sessionId: 's1', token: joined.token }),
+    ).rejects.toThrow();
+  });
+});

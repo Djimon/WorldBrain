@@ -226,3 +226,39 @@ describe('#332 NACHSCHÄRFUNG — DM-Cockpit', () => {
     expect(screen.queryByRole('button', { name: /lobby/i })).toBeNull();
   });
 });
+
+// ── #341 D27: SignalingPanel NICHT in LAN-Lobby gemountet ────────────────────
+// RED: PlayModeView mountet SignalingPanel aktuell in der LAN-Lobby (falsch).
+// Nach Fix: SignalingPanel nur in Stufe-3-Sicht; in LAN-Lobby nicht sichtbar.
+
+describe('#341 D27 PlayModeView — SignalingPanel nicht in LAN-Lobby', () => {
+  it('DM lobby does NOT render Antwort-Code / SignalingPanel content', async () => {
+    const db = createDb();
+    render(<PlayModeView database={db} sessionId="s1" role="dm" />);
+    await waitFor(() => screen.getByTestId('dm-lobby'));
+    fireEvent.click(screen.getByTestId('dm-lobby'));
+
+    await waitFor(() => {
+      // LobbyPanel or some lobby content should render
+      const lobbyEl = document.body.textContent;
+      expect(lobbyEl).toBeTruthy();
+    });
+    // SignalingPanel-owned text must NOT appear in LAN-lobby
+    expect(screen.queryByText(/antwort.*code|schritt 2.*antwort|answer.*code/i)).toBeNull();
+    expect(screen.queryByTestId('submit-answer-code')).toBeNull();
+  });
+
+  it('source guard: SignalingPanel JSX not rendered in LAN-Lobby branch of PlayModeView', () => {
+    const src = readFileSync('src/ui/PlayModeView.tsx', 'utf-8');
+    // After #341 fix: <SignalingPanel must not appear anywhere near the dm-lobby branch
+    // The lobby and SignalingPanel are within ~525 chars in the bug state.
+    // Guard: within 700 chars of "dm-lobby", no <SignalingPanel must appear.
+    const lobbySectionMatch = src.match(/dm-lobby[\s\S]{0,700}/);
+    if (lobbySectionMatch) {
+      expect(lobbySectionMatch[0]).not.toMatch(/<SignalingPanel/);
+    } else {
+      // If no match at all, that means dm-lobby was removed — also wrong
+      expect.fail('dm-lobby not found in PlayModeView source');
+    }
+  });
+});
