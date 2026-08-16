@@ -22,6 +22,7 @@ import { listVars } from '../services/session-variable-service';
 import type { VarRow } from '../services/session-variable-service';
 import { ConditionBuilder } from './ConditionBuilder';
 import type { VarDef } from './ConditionBuilder';
+import { Button } from './primitives';
 
 const VISIBILITY_OPTIONS: { key: string; label: string }[] = [
   { key: 'public', label: 'Öffentlich' },
@@ -1234,13 +1235,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                   </select>
                 </div>
               ) : (
-                <button className="pin-entity-add-btn" onClick={() => setShowEntityPicker(true)}>+ Entity verlinken</button>
+                <Button tone="accent" variant="outline" size="compact" onClick={() => setShowEntityPicker(true)}>+ Entity verlinken</Button>
               )}
             </div>
           </div>
           <div className="map-pin-editor__footer">
-            <button className="btn btn--primary" onClick={() => void savePin()}>Speichern</button>
-            <button className="btn" style={{ color: 'var(--color-status-failure)' }} onClick={() => void deletePin(editingPin.id)}>Löschen</button>
+            <Button tone="accent" onClick={() => void savePin()}>Speichern</Button>
+            <Button tone="danger" variant="outline" onClick={() => void deletePin(editingPin.id)}>Löschen</Button>
           </div>
         </div>
       )}
