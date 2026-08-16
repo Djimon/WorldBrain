@@ -204,6 +204,12 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [gridFlyout, setGridFlyout] = useState(false);
   const [gridFlyoutPos, setGridFlyoutPos] = useState<{ top: number; left: number } | null>(null);
   const gridBtnRef = useRef<HTMLButtonElement>(null);
+  const [pinFlyout, setPinFlyout] = useState(false);
+  const [pinFlyoutPos, setPinFlyoutPos] = useState<{ top: number; left: number } | null>(null);
+  // Icon the NEXT placed pin gets — picked from the pin-tool flyout (same
+  // grid as "Pin bearbeiten"); persists across placements.
+  const [newPinIcon, setNewPinIcon] = useState<PinIconKey>('pin');
+  const pinBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!measureFlyout) return;
@@ -218,6 +224,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [gridFlyout]);
+
+  useEffect(() => {
+    if (!pinFlyout) return;
+    const close = () => setPinFlyout(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [pinFlyout]);
 
   const dragStart = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
   const layerDrag = useRef<{ mx: number; my: number; ox: number; oy: number; last: { x: number; y: number } } | null>(null);
@@ -538,7 +551,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         map_id: mapId, entity_id: null, kind: 'pin',
         geometry_json: JSON.stringify({ x: Math.round(pos.x), y: Math.round(pos.y), notes: '' }),
         label_text: 'Neuer Pin', elevation_value: null, elevation_unit: null,
-        visibility_json: '"public"', style_json: '{}', group_name: '',
+        visibility_json: '"public"', style_json: JSON.stringify({ icon: newPinIcon }), group_name: '',
       });
       setMode('navigate');
       reloadMarkers();
@@ -727,7 +740,37 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       <div className="map-toolbar">
         <div className="map-toolbar__group">
           <button className={`map-tool-btn${mode === 'navigate' ? ' active' : ''}`} onClick={() => setMode('navigate')} title={t('all')}>🗺</button>
-          <button className={`map-tool-btn${mode === 'pin' ? ' active' : ''}`} onClick={() => setMode('pin')} title="Pin setzen">📍</button>
+          {/* Pin tool group — flyout with the pin-icon grid (reuses .pin-icon-picker
+              from "Pin bearbeiten"), pre-selects the icon for the next placed pin. */}
+          <div className="map-tool-group" style={{ position: 'relative' }}>
+            <button
+              ref={pinBtnRef}
+              className={`map-tool-btn${mode === 'pin' ? ' active' : ''}`}
+              title="Pin setzen"
+              onClick={() => {
+                setMode((m) => (m === 'pin' ? 'navigate' : 'pin'));
+                const rect = pinBtnRef.current?.getBoundingClientRect();
+                if (rect) setPinFlyoutPos({ top: rect.top, left: rect.right + 4 });
+                setPinFlyout((v) => !v);
+              }}
+            >
+              {PIN_ICONS.find((i) => i.key === newPinIcon)?.emoji ?? '📍'}
+              <span className="map-tool-group__arrow">▸</span>
+            </button>
+            {pinFlyout && pinFlyoutPos && (
+              <div className="map-tool-flyout" style={{ top: pinFlyoutPos.top, left: pinFlyoutPos.left }} onMouseDown={(e) => e.stopPropagation()}>
+                <div className="pin-icon-picker">
+                  {PIN_ICONS.map((ic) => (
+                    <button key={ic.key} type="button" title={ic.label}
+                      className={`pin-icon-btn${newPinIcon === ic.key ? ' active' : ''}`}
+                      onClick={() => { setNewPinIcon(ic.key); setMode('pin'); setPinFlyout(false); }}>
+                      {ic.emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <button className={`map-tool-btn${mode === 'token' ? ' active' : ''}`} onClick={() => setMode('token')} title={t('token.place', 'Token setzen')}>🧙</button>
           {/* Grid paint tool group — flyout with cell states */}
           <div className="map-tool-group" style={{ position: 'relative' }}>
@@ -1005,7 +1048,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               <span className="map-pin__icon">
                 {mode === 'move-pin'
                   ? getPinEmoji(markers.find((m) => m.id === movingPinId)?.style_json ?? '{}')
-                  : '📍'}
+                  : (PIN_ICONS.find((i) => i.key === newPinIcon)?.emoji ?? '📍')}
               </span>
             </div>
           )}

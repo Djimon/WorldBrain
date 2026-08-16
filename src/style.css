@@ -1693,6 +1693,15 @@ input {
   margin-bottom: var(--space-2);
 }
 
+/* Same grid reused inside the pin tool flyout — drop the editor's divider,
+   pad it as a standalone popover, and cap the width to ~5 icons per row. */
+.map-tool-flyout .pin-icon-picker {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding: var(--space-2);
+  max-width: 210px;
+}
+
 .pin-icon-btn {
   width: 36px; height: 36px;
   flex-shrink: 0;
@@ -1711,30 +1720,6 @@ input {
   border-color: var(--color-accent);
   background: color-mix(in srgb, var(--color-accent) 15%, transparent);
 }
-
-.grid-state-add-btn {
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-accent);
-  font-size: 0.72rem;
-  padding: 1px 7px;
-  cursor: pointer;
-  margin-right: var(--space-2);
-}
-.grid-state-add-btn:hover { background: var(--color-surface-hover); }
-
-.grid-state-del-btn {
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 0.75rem;
-  padding: 0 4px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-.grid-state-del-btn:hover { color: var(--color-status-failure); }
 
 .map-pin-tree__search-wrap {
   padding: var(--space-2) var(--space-3);
@@ -2165,36 +2150,6 @@ input {
 }
 
 .grid-controls-panel__number-input span { color: var(--color-text-muted); font-size: 0.7rem; }
-
-.grid-toggle {
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-alt);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 0.75rem;
-}
-
-.grid-toggle.active {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-on-accent);
-}
-
-.grid-type-btns { display: flex; gap: 2px; }
-
-.grid-type-btn {
-  padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-alt);
-  color: var(--color-text);
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.grid-type-btn.active { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
 
 .grid-controls-panel__section-title {
   padding: var(--space-1) var(--space-3);
