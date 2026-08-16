@@ -276,7 +276,7 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
   const { t } = useTranslation('map');
   const [open, setOpen] = useState(false);
   const [panelPos, setPanelPos] = useState({ top: 80, left: 120 });
-  const btnRef = useRef<HTMLButtonElement>(null);
+  const btnRef = useRef<HTMLDivElement>(null);
   const [isGridChanging, startGridTransition] = useTransition();
 
   function toggleOpen() {
@@ -298,8 +298,8 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
   }
 
   return (
-    <div className="grid-controls-wrap">
-      <button ref={btnRef} className={`map-tool-btn${open ? ' active' : ''}`} onClick={toggleOpen} title="Grid Controls">⊞</button>
+    <div className="grid-controls-wrap" ref={btnRef}>
+      <Button size="icon" aria-pressed={open} onClick={toggleOpen} title="Grid Controls">⊞</Button>
 
       {open && (
         <div className="grid-controls-panel" style={{ position: 'fixed', top: panelPos.top, left: panelPos.left }}>

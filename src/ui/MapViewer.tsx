@@ -203,13 +203,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [activeCellStateId, setActiveCellStateId] = useState(1);
   const [gridFlyout, setGridFlyout] = useState(false);
   const [gridFlyoutPos, setGridFlyoutPos] = useState<{ top: number; left: number } | null>(null);
-  const gridBtnRef = useRef<HTMLButtonElement>(null);
+  const gridGroupRef = useRef<HTMLDivElement>(null);
   const [pinFlyout, setPinFlyout] = useState(false);
   const [pinFlyoutPos, setPinFlyoutPos] = useState<{ top: number; left: number } | null>(null);
   // Icon the NEXT placed pin gets — picked from the pin-tool flyout (same
   // grid as "Pin bearbeiten"); persists across placements.
   const [newPinIcon, setNewPinIcon] = useState<PinIconKey>('pin');
-  const pinBtnRef = useRef<HTMLButtonElement>(null);
+  const pinGroupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!measureFlyout) return;
@@ -239,7 +239,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const tokenScaleDrag = useRef<{ id: string; startScale: number; startX: number; last: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const measureBtnRef = useRef<HTMLButtonElement>(null);
+  const measureGroupRef = useRef<HTMLDivElement>(null);
   const [flyoutPos, setFlyoutPos] = useState<{ top: number; left: number } | null>(null);
   const pinResizeStartX = useRef<number | null>(null);
   const pinResizeStartW = useRef<number>(220);
@@ -739,24 +739,24 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       {/* Left toolbar */}
       <div className="map-toolbar">
         <div className="map-toolbar__group">
-          <button className={`map-tool-btn${mode === 'navigate' ? ' active' : ''}`} onClick={() => setMode('navigate')} title={t('all')}>🗺</button>
+          <Button size="icon" aria-pressed={mode === 'navigate'} onClick={() => setMode('navigate')} title={t('all')}>🗺</Button>
           {/* Pin tool group — flyout with the pin-icon grid (reuses .pin-icon-picker
               from "Pin bearbeiten"), pre-selects the icon for the next placed pin. */}
-          <div className="map-tool-group" style={{ position: 'relative' }}>
-            <button
-              ref={pinBtnRef}
-              className={`map-tool-btn${mode === 'pin' ? ' active' : ''}`}
+          <div className="map-tool-group" style={{ position: 'relative' }} ref={pinGroupRef}>
+            <Button
+              size="icon"
+              aria-pressed={mode === 'pin'}
               title="Pin setzen"
               onClick={() => {
                 setMode((m) => (m === 'pin' ? 'navigate' : 'pin'));
-                const rect = pinBtnRef.current?.getBoundingClientRect();
+                const rect = pinGroupRef.current?.getBoundingClientRect();
                 if (rect) setPinFlyoutPos({ top: rect.top, left: rect.right + 4 });
                 setPinFlyout((v) => !v);
               }}
             >
               {PIN_ICONS.find((i) => i.key === newPinIcon)?.emoji ?? '📍'}
               <span className="map-tool-group__arrow">▸</span>
-            </button>
+            </Button>
             {pinFlyout && pinFlyoutPos && (
               <div className="map-tool-flyout" style={{ top: pinFlyoutPos.top, left: pinFlyoutPos.left }} onMouseDown={(e) => e.stopPropagation()}>
                 <div className="pin-icon-picker">
@@ -771,19 +771,19 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               </div>
             )}
           </div>
-          <button className={`map-tool-btn${mode === 'token' ? ' active' : ''}`} onClick={() => setMode('token')} title={t('token.place', 'Token setzen')}>🧙</button>
+          <Button size="icon" aria-pressed={mode === 'token'} onClick={() => setMode('token')} title={t('token.place', 'Token setzen')}>🧙</Button>
           {/* Grid paint tool group — flyout with cell states */}
-          <div className="map-tool-group" style={{ position: 'relative' }}>
+          <div className="map-tool-group" style={{ position: 'relative' }} ref={gridGroupRef}>
             {(() => {
               const activeState = gridSettings.cellStates.find((s) => s.id === activeCellStateId) ?? gridSettings.cellStates[0];
               return (
-                <button
-                  ref={gridBtnRef}
-                  className={`map-tool-btn${mode === 'grid' ? ' active' : ''}`}
+                <Button
+                  size="icon"
+                  aria-pressed={mode === 'grid'}
                   title="Grid malen"
                   onClick={() => {
                     setMode((m) => m === 'grid' ? 'navigate' : 'grid');
-                    const rect = gridBtnRef.current?.getBoundingClientRect();
+                    const rect = gridGroupRef.current?.getBoundingClientRect();
                     if (rect) setGridFlyoutPos({ top: rect.top, left: rect.right + 4 });
                     setGridFlyout((v) => !v);
                   }}
@@ -794,7 +794,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                       ? <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 2, background: activeState.color, border: '1px solid rgba(255,255,255,0.3)', verticalAlign: 'middle' }} />
                       : '⬜'}
                   <span className="map-tool-group__arrow">▸</span>
-                </button>
+                </Button>
               );
             })()}
             {gridFlyout && gridFlyoutPos && (
@@ -822,20 +822,20 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             )}
           </div>
           {/* Measure tool group — PS-style flyout */}
-          <div className="map-tool-group" style={{ position: 'relative' }}>
-            <button
-              ref={measureBtnRef}
-              className={`map-tool-btn${(mode === 'measure' || mode === 'radius') ? ' active' : ''}`}
+          <div className="map-tool-group" style={{ position: 'relative' }} ref={measureGroupRef}>
+            <Button
+              size="icon"
+              aria-pressed={mode === 'measure' || mode === 'radius'}
               title="Messwerkzeuge"
               onClick={() => {
-                const rect = measureBtnRef.current?.getBoundingClientRect();
+                const rect = measureGroupRef.current?.getBoundingClientRect();
                 if (rect) setFlyoutPos({ top: rect.top, left: rect.right + 4 });
                 setMeasureFlyout((v) => !v);
               }}
             >
               {lastMeasureTool === 'measure' ? '📏' : '⭕'}
               <span className="map-tool-group__arrow">▸</span>
-            </button>
+            </Button>
             {measureFlyout && flyoutPos && (
               <div className="map-tool-flyout" style={{ top: flyoutPos.top, left: flyoutPos.left }} onMouseDown={(e) => e.stopPropagation()}>
                 {([
@@ -879,9 +879,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       >
         {/* Zoom controls — top right overlay */}
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4, zIndex: 10 }}>
-          <button className="map-tool-btn" onClick={() => setScale((s) => Math.min(10, s * 1.25))} title="Zoom +">＋</button>
-          <button className="map-tool-btn" onClick={() => setScale((s) => Math.max(0.1, s * 0.8))} title="Zoom −">-</button>
-          <button className="map-tool-btn" onClick={resetView} title="Reset">⌂</button>
+          <Button size="icon" onClick={() => setScale((s) => Math.min(10, s * 1.25))} title="Zoom +">＋</Button>
+          <Button size="icon" onClick={() => setScale((s) => Math.max(0.1, s * 0.8))} title="Zoom −">-</Button>
+          <Button size="icon" onClick={resetView} title="Reset">⌂</Button>
         </div>
 
         {/* Fog paint toolbar — only while the selected fog layer still exists
