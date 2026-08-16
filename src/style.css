@@ -1349,7 +1349,11 @@ input {
   top: 12px;
   right: 12px;
   width: 260px;
-  /* Auto-grow with content — no inner scrollbar (e.g. when adding chips). */
+  /* Grow with content, but never past the visible map area: the WHOLE panel
+     (not just the chips) scrolls only when it would overflow — top 12px +
+     12px bottom breathing room. Short content stays unscrolled as before. */
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
