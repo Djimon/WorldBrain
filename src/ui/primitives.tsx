@@ -7,12 +7,14 @@ import type {
 import './primitives.css';
 
 type ButtonTone = 'neutral' | 'accent' | 'danger';
+type ButtonVariant = 'solid' | 'outline' | 'ghost';
 type ButtonSize = 'md' | 'compact' | 'icon';
 type ButtonShape = 'default' | 'circle';
 type StatusTone = 'muted' | 'success' | 'warning' | 'failure';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   tone?: ButtonTone;
+  variant?: ButtonVariant;
   size?: ButtonSize;
   shape?: ButtonShape;
 };
@@ -49,6 +51,7 @@ type SurfaceProps = HTMLAttributes<HTMLDivElement> & {
 
 export function Button({
   tone = 'neutral',
+  variant = 'solid',
   size = 'md',
   shape = 'default',
   type = 'button',
@@ -58,6 +61,7 @@ export function Button({
     <button
       className="ui-button"
       data-tone={tone}
+      data-variant={variant === 'solid' ? undefined : variant}
       data-size={size === 'md' ? undefined : size}
       data-shape={shape === 'default' ? undefined : shape}
       type={type}
