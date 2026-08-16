@@ -58,21 +58,12 @@
 }
 .gv-detail__body { padding: 0 10px 12px; }
 
-.gv-btn {
-  padding: 4px 10px; border-radius: 6px; cursor: pointer;
-  border: 1px solid var(--color-overlay-border); background: transparent; color: var(--gv-text);
-}
-.gv-btn--primary { background: var(--gv-accent); color: var(--gv-on-accent); }
-
 /* settings gear + panel (bottom-right) */
 .gv-gear-wrap {
   position: absolute; right: 16px; bottom: 16px; z-index: 5;
   display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
 }
-.gv-gear {
-  width: 40px; height: 40px; border-radius: 20px; cursor: pointer; font-size: 20px; line-height: 1;
-  background: var(--gv-panel-bg); border: 1px solid var(--gv-border); color: var(--gv-text);
-}
+.gv-gear { font-size: 20px; line-height: 1; }
 .gv-panel {
   width: 260px; padding: 12px 14px; background: var(--gv-panel-bg); border-radius: 10px;
   border: 1px solid var(--gv-border-soft); color: var(--gv-text); font-size: 13px;
@@ -89,11 +80,7 @@
 .gv-group__title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
 
 /* relation-type filter (bottom pane + funnel FAB) */
-.gv-fab {
-  position: absolute; width: 40px; height: 40px; border-radius: 20px; cursor: pointer; line-height: 1;
-  background: var(--gv-panel-bg); border: 1px solid var(--gv-border); color: var(--gv-text);
-}
-.gv-fab--filter { right: 64px; bottom: 16px; z-index: 5; font-size: 18px; }
+.gv-fab--filter { position: absolute; right: 64px; bottom: 16px; z-index: 5; font-size: 18px; }
 .gv-fab--active { color: var(--gv-danger); }
 .gv-filter-pane {
   position: absolute; left: 0; right: 0; bottom: 64px; z-index: 5; padding: 12px 16px;
@@ -103,10 +90,6 @@
 .gv-filter-pane__head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .gv-filter-pane__title { font-size: 13px; }
 .gv-filter-pane__list { display: flex; flex-wrap: wrap; gap: 6px 16px; }
-.gv-mini-btn {
-  padding: 2px 10px; border-radius: 6px; cursor: pointer; font-size: 12px;
-  border: 1px solid var(--color-overlay-border); background: transparent; color: var(--gv-text);
-}
 .gv-check--inline { display: flex; gap: 6px; align-items: center; font-size: 12px; }
 .gv-muted { opacity: 0.6; font-size: 12px; }
 

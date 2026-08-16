@@ -7,7 +7,7 @@ import type {
 import './primitives.css';
 
 type ButtonTone = 'neutral' | 'accent' | 'danger';
-type ButtonVariant = 'solid' | 'outline' | 'ghost';
+type ButtonVariant = 'solid' | 'outline' | 'ghost' | 'glass';
 type ButtonSize = 'md' | 'compact' | 'icon';
 type ButtonShape = 'default' | 'circle';
 type StatusTone = 'muted' | 'success' | 'warning' | 'failure';

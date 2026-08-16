@@ -78,6 +78,15 @@
   background: var(--color-surface-hover);
 }
 
+/* ── Glass variant (translucent surface + blur, for controls over a canvas) ── */
+.ui-button[data-variant='glass'] {
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  backdrop-filter: blur(4px);
+}
+.ui-button[data-variant='glass']:hover {
+  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
+}
+
 /* ── Sizes & shape ── */
 .ui-button[data-size='compact'] {
   min-height: 28px;

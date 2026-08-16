@@ -25,6 +25,7 @@ import type { GraphSettings } from './GraphSettingsPanel';
 import { GraphFilterPanel } from './GraphFilterPanel';
 import { EntityDetailView } from './EntityDetailView';
 import './graph.css';
+import { Button } from './primitives';
 
 export interface GlobalGraphViewProps {
   database: DatabaseLike;
@@ -352,10 +353,10 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
       {selectedId && (
         <div className="gv-detail">
           <div className="gv-detail__bar">
-            <button className="gv-btn gv-btn--primary" onClick={() => onNavigate(selectedId)}>
+            <Button tone="accent" size="compact" onClick={() => onNavigate(selectedId)}>
               {t('graphOpenEntity', 'Öffnen')}
-            </button>
-            <button className="gv-btn" onClick={() => setSelectedId(null)} aria-label={t('graphCloseDetail', 'Schließen')}>×</button>
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setSelectedId(null)} aria-label={t('graphCloseDetail', 'Schließen')}>×</Button>
           </div>
           <div className="gv-detail__body">
             <EntityDetailView entityId={selectedId} database={database} onNavigateToEntity={setSelectedId} />
