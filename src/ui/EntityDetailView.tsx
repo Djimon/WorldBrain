@@ -372,7 +372,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
             )}
           </>
         ) : (
-          <button className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', 'Bearbeiten')} title={t('edit', 'Bearbeiten')}>✏️</button>
+          <Button variant="ghost" size="icon" className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', 'Bearbeiten')} title={t('edit', 'Bearbeiten')}>✏️</Button>
         )}
       </div>
       <div className="entity-detail__tabs" role="tablist">
