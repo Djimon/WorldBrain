@@ -87,6 +87,17 @@
   background: color-mix(in srgb, var(--color-surface) 96%, transparent);
 }
 
+/* ── Pressed / active toggle state (aria-pressed; wins over tone & variant) ── */
+.ui-button[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+}
+.ui-button[aria-pressed='true']:hover {
+  border-color: var(--color-accent-strong);
+  background: var(--color-accent-strong);
+}
+
 /* ── Sizes & shape ── */
 .ui-button[data-size='compact'] {
   min-height: 28px;
@@ -113,6 +124,15 @@
   border-color: var(--color-border);
   cursor: default;
   pointer-events: none;
+}
+
+.ui-segmented {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.ui-segmented[data-orientation='vertical'] {
+  flex-direction: column;
 }
 
 .ui-panel {

@@ -35,6 +35,21 @@ type TabsProps = {
   label: string;
 };
 
+type SegmentedOption = {
+  id: string;
+  label: ReactNode;
+  title?: string;
+};
+
+type SegmentedProps = {
+  value: string;
+  options: readonly SegmentedOption[];
+  onChange: (id: string) => void;
+  label: string;
+  orientation?: 'horizontal' | 'vertical';
+  size?: ButtonSize;
+};
+
 type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   hint?: string;
@@ -68,6 +83,36 @@ export function Button({
       type={type}
       {...props}
     />
+  );
+}
+
+export function Segmented({
+  value,
+  options,
+  onChange,
+  label,
+  orientation = 'horizontal',
+  size = 'md',
+}: SegmentedProps) {
+  return (
+    <div
+      className="ui-segmented"
+      role="group"
+      aria-label={label}
+      data-orientation={orientation === 'horizontal' ? undefined : orientation}
+    >
+      {options.map((option) => (
+        <Button
+          key={option.id}
+          size={size}
+          aria-pressed={option.id === value}
+          title={option.title}
+          onClick={() => onChange(option.id)}
+        >
+          {option.label}
+        </Button>
+      ))}
+    </div>
   );
 }
 
