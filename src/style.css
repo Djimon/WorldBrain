@@ -188,11 +188,6 @@ input {
   flex: 1;
 }
 
-.audio-soundboard-window {
-  padding: var(--space-4);
-  color: var(--color-text);
-}
-
 .workspace-shell__close-btn {
   width: 36px;
   height: 36px;
@@ -1252,16 +1247,6 @@ input {
   /* counter-scale applied inline via style prop */
 }
 
-.map-pin__label {
-  font-size: 11px;
-  background: rgba(0,0,0,0.65);
-  color: #fff;
-  padding: 1px 4px;
-  border-radius: 3px;
-  white-space: nowrap;
-  margin-top: 2px;
-}
-
 .map-pin--selected .map-pin__icon { filter: drop-shadow(0 0 4px var(--color-accent-strong)); }
 .map-pin--selected .map-pin__label { background: var(--color-accent); }
 
@@ -1918,16 +1903,9 @@ input {
   padding: var(--space-1) 0;
 }
 
-.map-folder-tree,
-.map-folder-tree__confirm-dialog {
+.map-folder-tree {
   display: flex;
   flex-direction: column;
-}
-
-.map-folder-tree__confirm-dialog {
-  gap: var(--space-2);
-  padding: var(--space-3);
-  font-size: 0.85rem;
 }
 .map-folder-tree__confirm-dialog p { margin: 0; color: var(--color-text); }
 .map-folder-tree__confirm-dialog button {
@@ -2120,6 +2098,7 @@ input {
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.1s;
+  margin-top: 2px;
 }
 
 .map-pin:hover .map-pin__label {
@@ -3711,6 +3690,7 @@ input {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
+  font-size: 0.85rem;
 }
 .map-folder-tree__confirm-text { margin: 0; font-size: 0.8rem; color: var(--color-text-muted); }
 .map-folder-tree__confirm-actions { display: flex; gap: var(--space-2); }
@@ -3743,6 +3723,8 @@ input {
    colors stay on this app's own tokens, not the reference concept art's palette. */
 
 .audio-soundboard-window {
+  padding: var(--space-4);
+  color: var(--color-text);
   height: 100%;
   overflow-y: auto;
 }
