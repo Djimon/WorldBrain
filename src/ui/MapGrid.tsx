@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useTransition, useEffect, memo } from 'r
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { getActivatedCells, setCellState } from '../services/session-grid-service';
-import { Button } from './primitives';
+import { Button, Segmented } from './primitives';
 
 export interface CellState {
   id: number;
@@ -305,7 +305,7 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
         <div className="grid-controls-panel" style={{ position: 'fixed', top: panelPos.top, left: panelPos.left }}>
           <div className="grid-controls-panel__header">
             <span>Grid Controls</span>
-            <button onClick={() => setOpen(false)}>✕</button>
+            <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>✕</Button>
           </div>
 
           <div className="grid-controls-panel__row">
@@ -346,64 +346,74 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
             </div>
             <div className="grid-controls-panel__col">
               <label>Snapping</label>
-              <button className={`grid-toggle${settings.snapping ? ' active' : ''}`}
+              <Button size="compact" aria-pressed={settings.snapping}
                 onClick={() => set('snapping', !settings.snapping)}>
                 {settings.snapping ? 'ON' : 'OFF'}
-              </button>
+              </Button>
             </div>
           </div>
 
           <div className="grid-controls-panel__row">
             <div className="grid-controls-panel__col">
               <label>Grid Type{isGridChanging && ' …'}</label>
-              <div className="grid-type-btns">
-                {(['square', 'hex-flat'] as const).map((gt) => (
-                  <button key={gt}
-                    className={`grid-type-btn${settings.type === gt ? ' active' : ''}${isGridChanging ? ' pending' : ''}`}
-                    onClick={() => setGridType(gt)} title={gt} disabled={isGridChanging}>
-                    {gt === 'square' ? '⬜' : '⬢'}
-                  </button>
-                ))}
-              </div>
+              <Segmented
+                label="Grid Type"
+                size="compact"
+                disabled={isGridChanging}
+                value={settings.type}
+                onChange={(id) => setGridType(id as 'square' | 'hex-flat')}
+                options={[
+                  { id: 'square', label: '⬜', title: 'square' },
+                  { id: 'hex-flat', label: '⬢', title: 'hex-flat' },
+                ]}
+              />
             </div>
             <div className="grid-controls-panel__col">
               <label>Line Type</label>
-              <div className="grid-type-btns">
-                {(['solid', 'dashed', 'dotted'] as const).map((d) => (
-                  <button key={d} className={`grid-type-btn${settings.lineDash === d ? ' active' : ''}`}
-                    onClick={() => set('lineDash', d)}>
-                    {d === 'solid' ? '—' : d === 'dashed' ? '- -' : '···'}
-                  </button>
-                ))}
-              </div>
+              <Segmented
+                label="Line Type"
+                size="compact"
+                value={settings.lineDash}
+                onChange={(id) => set('lineDash', id as 'solid' | 'dashed' | 'dotted')}
+                options={[
+                  { id: 'solid', label: '—' },
+                  { id: 'dashed', label: '- -' },
+                  { id: 'dotted', label: '···' },
+                ]}
+              />
             </div>
           </div>
 
           <div className="grid-controls-panel__row">
             <div className="grid-controls-panel__col">
               <label>Visible</label>
-              <button className={`grid-toggle${settings.visible ? ' active' : ''}`}
+              <Button size="compact" aria-pressed={settings.visible}
                 onClick={() => set('visible', !settings.visible)}>
                 {settings.visible ? 'Sichtbar' : 'Versteckt'}
-              </button>
+              </Button>
             </div>
             <div className="grid-controls-panel__col">
               <label>Pin-Größe</label>
-              <div className="grid-type-btns">
-                {(['S', 'M', 'L'] as const).map((sz) => (
-                  <button key={sz} className={`grid-type-btn${settings.pinSize === sz ? ' active' : ''}`}
-                    onClick={() => set('pinSize', sz)}>{sz}</button>
-                ))}
-              </div>
+              <Segmented
+                label="Pin-Größe"
+                size="compact"
+                value={settings.pinSize}
+                onChange={(id) => set('pinSize', id as 'S' | 'M' | 'L')}
+                options={[
+                  { id: 'S', label: 'S' },
+                  { id: 'M', label: 'M' },
+                  { id: 'L', label: 'L' },
+                ]}
+              />
             </div>
           </div>
 
           <div className="grid-controls-panel__section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>Zell-Zustände</span>
-            <button className="grid-state-add-btn" onClick={() => {
+            <Button tone="accent" variant="outline" size="compact" onClick={() => {
               const maxId = settings.cellStates.reduce((m, s) => Math.max(m, s.id), 0);
               set('cellStates', [...settings.cellStates, { id: maxId + 1, name: 'Neu', color: '#aaaaaa' }]);
-            }}>+ Neu</button>
+            }}>+ Neu</Button>
           </div>
           {settings.cellStates.map((st, i) => (
             <div key={st.id} className="grid-controls-panel__row grid-controls-panel__state-row">
@@ -417,8 +427,8 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
                   const next = settings.cellStates.map((s, j) => j === i ? { ...s, name: e.target.value } : s);
                   set('cellStates', next);
                 }} />
-              <button className="grid-state-del-btn" title="Löschen"
-                onClick={() => set('cellStates', settings.cellStates.filter((_, j) => j !== i))}>✕</button>
+              <Button variant="ghost" size="compact" title="Löschen"
+                onClick={() => set('cellStates', settings.cellStates.filter((_, j) => j !== i))}>✕</Button>
             </div>
           ))}
 

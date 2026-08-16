@@ -48,6 +48,7 @@ type SegmentedProps = {
   label: string;
   orientation?: 'horizontal' | 'vertical';
   size?: ButtonSize;
+  disabled?: boolean;
 };
 
 type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
@@ -93,6 +94,7 @@ export function Segmented({
   label,
   orientation = 'horizontal',
   size = 'md',
+  disabled = false,
 }: SegmentedProps) {
   return (
     <div
@@ -106,6 +108,7 @@ export function Segmented({
           key={option.id}
           size={size}
           aria-pressed={option.id === value}
+          disabled={disabled}
           title={option.title}
           onClick={() => onChange(option.id)}
         >
