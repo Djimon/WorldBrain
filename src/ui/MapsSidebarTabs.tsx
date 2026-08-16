@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Tabs } from './primitives';
 
 export interface MapsSidebarTabsProps {
   selectedMapId: string | null;
@@ -56,26 +57,17 @@ export function MapsSidebarTabs({ selectedMapId, mapsTabContent, layersTabConten
 
   return (
     <div className="maps-sidebar-tabs">
-      <div role="tablist" className="maps-sidebar-tabs__list">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'maps'}
-          className={`maps-sidebar-tabs__tab${activeTab === 'maps' ? ' maps-sidebar-tabs__tab--active' : ''}`}
-          onClick={() => setActiveTab('maps')}
-        >
-          {t('mapsSidebarTabs.maps', 'Karten')}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'layers'}
-          className={`maps-sidebar-tabs__tab${activeTab === 'layers' ? ' maps-sidebar-tabs__tab--active' : ''}`}
-          disabled={!selectedMapId}
-          onClick={() => setActiveTab('layers')}
-        >
-          {t('mapsSidebarTabs.layers', 'Ebenen')}
-        </button>
+      <div className="maps-sidebar-tabs__list">
+        <Tabs
+          fill
+          label={t('mapsSidebarTabs.label', 'Karten und Ebenen')}
+          activeId={activeTab}
+          onSelect={(id) => setActiveTab(id as Tab)}
+          options={[
+            { id: 'maps', label: t('mapsSidebarTabs.maps', 'Karten') },
+            { id: 'layers', label: t('mapsSidebarTabs.layers', 'Ebenen'), disabled: !selectedMapId },
+          ]}
+        />
         {onToggleCollapse && (
           <button type="button" className="map-side-collapse-btn" title={t('collapse', 'Einklappen')}
             onClick={onToggleCollapse}>◀</button>

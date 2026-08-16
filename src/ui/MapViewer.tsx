@@ -22,7 +22,7 @@ import { listVars } from '../services/session-variable-service';
 import type { VarRow } from '../services/session-variable-service';
 import { ConditionBuilder } from './ConditionBuilder';
 import type { VarDef } from './ConditionBuilder';
-import { Button } from './primitives';
+import { Button, Tabs } from './primitives';
 
 const VISIBILITY_OPTIONS: { key: string; label: string }[] = [
   { key: 'public', label: 'Öffentlich' },
@@ -1104,13 +1104,17 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           </div>
         ) : (
         <>
-        <div className="maps-sidebar-tabs__list" role="tablist">
-          <button type="button" role="tab" aria-selected={rightTab === 'pins'}
-            className={`maps-sidebar-tabs__tab${rightTab === 'pins' ? ' maps-sidebar-tabs__tab--active' : ''}`}
-            onClick={() => setRightTab('pins')}>{t('mapSideTabs.pins', 'Pins')}</button>
-          <button type="button" role="tab" aria-selected={rightTab === 'tokens'}
-            className={`maps-sidebar-tabs__tab${rightTab === 'tokens' ? ' maps-sidebar-tabs__tab--active' : ''}`}
-            onClick={() => setRightTab('tokens')}>{t('mapSideTabs.tokens', 'Token')}</button>
+        <div className="maps-sidebar-tabs__list">
+          <Tabs
+            fill
+            label={t('mapSideTabs.label', 'Pins und Token')}
+            activeId={rightTab}
+            onSelect={(id) => setRightTab(id as 'pins' | 'tokens')}
+            options={[
+              { id: 'pins', label: t('mapSideTabs.pins', 'Pins') },
+              { id: 'tokens', label: t('mapSideTabs.tokens', 'Token') },
+            ]}
+          />
           <button type="button" className="map-side-collapse-btn" title={t('collapse', 'Einklappen')}
             onClick={() => setPinTreeCollapsed(true)}>◀</button>
         </div>

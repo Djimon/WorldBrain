@@ -26,6 +26,7 @@ type PanelProps = HTMLAttributes<HTMLElement> & {
 type TabOption = {
   id: string;
   label: string;
+  disabled?: boolean;
 };
 
 type TabsProps = {
@@ -33,6 +34,8 @@ type TabsProps = {
   options: readonly TabOption[];
   onSelect: (id: string) => void;
   label: string;
+  /** Stretch the tabs to fill the strip's width (equal-width tabs). */
+  fill?: boolean;
   /** Positioning / layout only — merged onto the tablist wrapper. */
   className?: string;
 };
@@ -137,7 +140,7 @@ export function Panel({ children, ...props }: PanelProps) {
   );
 }
 
-export function Tabs({ activeId, options, onSelect, label, className }: TabsProps) {
+export function Tabs({ activeId, options, onSelect, label, fill = false, className }: TabsProps) {
   const tabButtons: ReactNode[] = [];
 
   for (const option of options) {
@@ -145,6 +148,7 @@ export function Tabs({ activeId, options, onSelect, label, className }: TabsProp
       <button
         aria-selected={option.id === activeId}
         className="ui-tabs__tab"
+        disabled={option.disabled}
         key={option.id}
         onClick={() => onSelect(option.id)}
         role="tab"
@@ -156,7 +160,12 @@ export function Tabs({ activeId, options, onSelect, label, className }: TabsProp
   }
 
   return (
-    <nav aria-label={label} className={className ? `ui-tabs ${className}` : 'ui-tabs'} role="tablist">
+    <nav
+      aria-label={label}
+      className={className ? `ui-tabs ${className}` : 'ui-tabs'}
+      data-fill={fill ? '' : undefined}
+      role="tablist"
+    >
       {tabButtons}
     </nav>
   );

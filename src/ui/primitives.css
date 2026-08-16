@@ -191,6 +191,20 @@
   color: var(--color-text);
 }
 
+.ui-tabs__tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* fill = equal-width tabs stretched across the strip (the tablist itself grows
+   too, so it can share a row with a trailing action e.g. a collapse button). */
+.ui-tabs[data-fill] {
+  flex: 1;
+}
+.ui-tabs[data-fill] .ui-tabs__tab {
+  flex: 1 1 auto;
+}
+
 .ui-field {
   display: grid;
   gap: var(--space-1);

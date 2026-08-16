@@ -3209,37 +3209,17 @@ input {
   min-height: 0;
 }
 
+/* Flex row holding the <Tabs fill> strip + the trailing collapse button; the
+   1px underline lives here (continuous under both), so the nested .ui-tabs
+   drops its own border to avoid doubling it. */
 .maps-sidebar-tabs__list {
   display: flex;
   gap: 2px;
   border-bottom: 1px solid var(--color-border);
   margin-bottom: var(--space-2);
 }
-
-.maps-sidebar-tabs__tab {
-  flex: 1 1 auto;
-  padding: 6px 10px;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.maps-sidebar-tabs__tab:hover:not(:disabled) {
-  color: var(--color-text);
-}
-
-.maps-sidebar-tabs__tab--active {
-  color: var(--color-accent);
-  border-bottom-color: var(--color-accent);
-}
-
-.maps-sidebar-tabs__tab:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.maps-sidebar-tabs__list .ui-tabs {
+  border-bottom: none;
 }
 
 .maps-sidebar-tabs__panel {
