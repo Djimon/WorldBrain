@@ -18,6 +18,7 @@ import { SceneSwitcher } from './SceneSwitcher';
 import { SoundboardBoard } from './SoundboardBoard';
 import { ClipEditor } from './ClipEditor';
 import { EmojiPickerHostProvider } from './EmojiPickerHost';
+import { Button } from './primitives';
 
 type WindowMode =
   | { kind: 'loading' }
@@ -82,14 +83,14 @@ export function AudioSoundboardWindow({ dbPath, projectDir }: AudioSoundboardWin
     return (
       <div className="audio-soundboard-window audio-soundboard-window__gate" role="dialog" aria-label={t('audioSoundboardGateTitle', 'Audiowiedergabe freigeben')}>
         <p>{t('audioSoundboardGateHint', 'Der Browser blockiert Audiowiedergabe ohne Nutzeraktion. Bitte freigeben.')}</p>
-        <button
-          className="btn btn--primary"
+        <Button
+          tone="accent"
           onClick={() => {
             void audioContext.resume().then(() => setMode({ kind: 'ready', db, audioContext }));
           }}
         >
           {t('audioSoundboardGateButton', 'Soundboard aktivieren')}
-        </button>
+        </Button>
       </div>
     );
   }

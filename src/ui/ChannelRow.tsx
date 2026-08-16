@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClipButton } from './ClipButton';
 import type { AudioChannelRow, AudioPresetRow, ChannelMixerPatch } from '../services/audio-service';
+import { Button } from './primitives';
 
 const MAX_CLIP_SLOTS = 8;
 
@@ -181,9 +182,9 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
             <input type="range" min={-12} max={12} step={0.5} value={channel.eq_high} disabled={hasActiveLinkClip}
               onChange={(e) => onMixerChange({ eq_high: Number(e.target.value) })} />
           </label>
-          <button type="button" className="btn" onClick={() => setMixerExpanded(false)}>
+          <Button onClick={() => setMixerExpanded(false)}>
             {t('audioSettingsClose', 'Schließen')}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -216,9 +217,9 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
             <input type="number" min={0} step={0.1} value={channel.transition_seconds}
               onChange={(e) => onMixerChange({ transition_seconds: Number(e.target.value) })} />
           </label>
-          <button type="button" className="btn" onClick={() => setSettingsOpen(false)}>
+          <Button onClick={() => setSettingsOpen(false)}>
             {t('audioSettingsClose', 'Schließen')}
-          </button>
+          </Button>
         </div>
       )}
     </div>
