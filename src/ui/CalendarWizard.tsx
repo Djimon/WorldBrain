@@ -6,6 +6,7 @@ import type { EraRow } from '../services/era-service';
 import { CALENDAR_PRESETS } from '../../core_data/calendar-schema';
 import type { DatabaseLike } from '../services/entity-service';
 import { CalendarDateInput } from './CalendarDateInput';
+import { Button } from './primitives';
 
 interface CalendarInitial {
   id?: string;
@@ -144,11 +145,11 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
     <div className="cal-form">
       <div className="cal-form__header">
         <h2 className="cal-form__title">Kalender konfigurieren</h2>
-        <button className="btn btn--primary" onClick={() => void handleSave()} disabled={saving}>
+        <Button tone="accent" onClick={() => void handleSave()} disabled={saving}>
           {saving ? 'Speichern…' : 'Kalender speichern'}
-        </button>
+        </Button>
         {onCancel && (
-          <button className="btn" onClick={onCancel} disabled={saving}>Abbrechen</button>
+          <Button onClick={onCancel} disabled={saving}>Abbrechen</Button>
         )}
       </div>
 
@@ -237,7 +238,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
           <section className="cal-section">
             <div className="cal-section__head">
               <h3 className="cal-section__title">Monate ({months.length})</h3>
-              <button className="cal-add-btn" onClick={addMonth}>+ Monat</button>
+              <Button tone="accent" variant="outline" size="compact" onClick={addMonth}>+ Monat</Button>
             </div>
             <div className="cal-month-grid">
               {months.map((m, i) => (
@@ -248,7 +249,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
                   <input className="cal-form__input cal-month-days" type="number" min={1} max={99} value={m.days}
                     onChange={(e) => updateMonth(i, 'days', e.target.value)} />
                   <span className="cal-month-days-label">T</span>
-                  <button className="cal-remove-btn" onClick={() => removeMonth(i)} title="Entfernen">✕</button>
+                  <Button variant="ghost" size="compact" onClick={() => removeMonth(i)} title="Entfernen">✕</Button>
                 </div>
               ))}
             </div>
@@ -259,7 +260,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
           <section className="cal-section">
             <div className="cal-section__head">
               <h3 className="cal-section__title">Wochentage ({week.length})</h3>
-              <button className="cal-add-btn" onClick={addWeekday}>+ Tag</button>
+              <Button tone="accent" variant="outline" size="compact" onClick={addWeekday}>+ Tag</Button>
             </div>
             <div className="cal-week-grid">
               {week.map((d, i) => (
@@ -267,7 +268,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
                   <span className="cal-month-num">{i + 1}.</span>
                   <input className="cal-form__input" value={d}
                     onChange={(e) => updateWeekday(i, e.target.value)} placeholder="Tagesname" />
-                  <button className="cal-remove-btn" onClick={() => removeWeekday(i)} title="Entfernen">✕</button>
+                  <Button variant="ghost" size="compact" onClick={() => removeWeekday(i)} title="Entfernen">✕</Button>
                 </div>
               ))}
             </div>
@@ -278,7 +279,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
           <section className="cal-section">
             <div className="cal-section__head">
               <h3 className="cal-section__title">Ären ({eras.length})</h3>
-              <button className="cal-add-btn" onClick={addEra}>+ Ära</button>
+              <Button tone="accent" variant="outline" size="compact" onClick={addEra}>+ Ära</Button>
             </div>
             <div className="cal-era-grid">
               {eras.map((e, i) => (
@@ -289,7 +290,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
                     <input className="cal-form__input cal-era-abbr" value={e.abbr}
                       onChange={(ev) => updateEra(i, { abbr: ev.target.value })}
                       placeholder="Kürzel" title="Kürzel — offizielle Jahreseinheit, z.B. E.K." />
-                    <button className="cal-remove-btn" onClick={() => removeEra(i)} title="Entfernen">✕</button>
+                    <Button variant="ghost" size="compact" onClick={() => removeEra(i)} title="Entfernen">✕</Button>
                   </div>
                   <div className="cal-era-row__dates">
                     <span className="cal-era-label">Start</span>

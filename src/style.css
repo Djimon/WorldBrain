@@ -1083,38 +1083,6 @@ input {
   width: 32px;
 }
 
-.cal-add-btn {
-  padding: 2px var(--space-2);
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-accent);
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
-.cal-add-btn:hover {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-}
-
-.cal-remove-btn {
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 0.75rem;
-  flex-shrink: 0;
-}
-
-.cal-remove-btn:hover {
-  background: var(--color-status-failure);
-  color: var(--color-on-accent);
-}
-
 /* ── Map Viewer ──────────────────────────────────────── */
 
 .map-viewer {
