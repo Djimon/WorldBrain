@@ -10,7 +10,8 @@
   color: var(--color-text);
   background: var(--color-surface);
   font: inherit;
-  font-weight: 650;
+  font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.1s, border-color 0.1s, color 0.1s;
 }
@@ -81,6 +82,7 @@
 .ui-button[data-size='compact'] {
   min-height: 28px;
   padding: var(--space-1) var(--space-2);
+  font-size: 0.8rem;
 }
 
 .ui-button[data-size='icon'] {
