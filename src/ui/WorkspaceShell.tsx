@@ -561,14 +561,14 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                   {deletePrompt ? (
                     <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                       <span>Kalender „{activeCalendar.title}" löschen — bist du sicher?</span>
-                      <button className="btn" style={{ color: 'var(--color-status-failure)' }} onClick={removeActiveCalendar}>Ja, löschen</button>
-                      <button className="btn" onClick={() => setDeletePrompt(false)}>Abbrechen</button>
+                      <Button tone="danger" variant="outline" onClick={removeActiveCalendar}>Ja, löschen</Button>
+                      <Button onClick={() => setDeletePrompt(false)}>Abbrechen</Button>
                     </span>
                   ) : (
                     <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                      <button className="btn" onClick={() => setShowPicker(true)}>Kalenderauswahl</button>
-                      <button className="btn" onClick={() => setWizardCal(activeCalendar)}>{t('changeCalendar')}</button>
-                      <button className="btn" style={{ color: 'var(--color-status-failure)' }} onClick={() => setDeletePrompt(true)}>Löschen</button>
+                      <Button onClick={() => setShowPicker(true)}>Kalenderauswahl</Button>
+                      <Button onClick={() => setWizardCal(activeCalendar)}>{t('changeCalendar')}</Button>
+                      <Button tone="danger" variant="outline" onClick={() => setDeletePrompt(true)}>Löschen</Button>
                     </span>
                   )}
                 </div>
@@ -612,8 +612,8 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                               .catch(console.error);
                           }}
                         />
-                        <button
-                          className="btn btn--primary"
+                        <Button
+                          tone="accent"
                           disabled={!calendarNewTitle.trim()}
                           onClick={() => {
                             createEventEntity(database, { title: calendarNewTitle.trim(), start_day: calendarNewDay, event_kind: 'single' })
@@ -626,8 +626,8 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                           }}
                         >
                           Erstellen
-                        </button>
-                        <button className="btn" onClick={() => setCalendarNewDay(null)}>Abbrechen</button>
+                        </Button>
+                        <Button onClick={() => setCalendarNewDay(null)}>Abbrechen</Button>
                       </div>
                     </div>
                   )}
@@ -635,15 +635,14 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                     <div className="cal-inline-event-editor">
                       <div className="cal-inline-event-editor__header">
                         <span>Event bearbeiten</span>
-                        <button
-                          className="btn"
+                        <Button
                           onClick={() => {
                             setCalendarEditingEventId(null);
                             setCalendarRefreshToken((n) => n + 1);
                           }}
                         >
                           Schließen
-                        </button>
+                        </Button>
                       </div>
                       <EntityDetailView
                         entityId={calendarEditingEventId}
@@ -680,12 +679,12 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                       ? <option value="">Noch keine Kalender</option>
                       : calendarList.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                   </select>
-                  <button className="btn btn--primary" disabled={!startSelId} onClick={() => activateCalendar(startSelId)}>Aktivieren</button>
-                  <button className="btn" disabled={!startSelId} onClick={() => editCalendarById(startSelId)}>Bearbeiten</button>
+                  <Button tone="accent" disabled={!startSelId} onClick={() => activateCalendar(startSelId)}>Aktivieren</Button>
+                  <Button disabled={!startSelId} onClick={() => editCalendarById(startSelId)}>Bearbeiten</Button>
                 </div>
-                <button className="btn cal-start__new" onClick={() => setWizardCal('new')}>+ Neuen Kalender erstellen</button>
+                <Button className="cal-start__new" onClick={() => setWizardCal('new')}>+ Neuen Kalender erstellen</Button>
                 {activeCalendar && (
-                  <button className="btn cal-start__new" onClick={() => setShowPicker(false)}>← Zurück zur Ansicht</button>
+                  <Button className="cal-start__new" onClick={() => setShowPicker(false)}>← Zurück zur Ansicht</Button>
                 )}
               </div>
             )}
@@ -779,13 +778,13 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           <div className="workspace-area">
             <div className="workspace-area__main">
               <h2>{t('audio')}</h2>
-              <button
-                className="btn btn--primary"
+              <Button
+                tone="accent"
                 onClick={() => void handleOpenSoundboard()}
                 disabled={soundboardOpen}
               >
                 {soundboardOpen ? t('audioSoundboardRunning', 'Audio-Player läuft bereits') : t('audioSoundboardStart', 'Audio-Player starten')}
-              </button>
+              </Button>
             </div>
           </div>
         );

@@ -464,51 +464,6 @@ input {
   gap: var(--space-3);
 }
 
-/* ── Generic Buttons ─────────────────────────────────── */
-
-.btn {
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  cursor: pointer;
-  font-size: 0.875rem;
-  color: var(--color-text);
-  transition: background 0.1s, border-color 0.1s;
-}
-
-.btn:hover {
-  background: var(--color-surface-alt);
-  border-color: var(--color-accent);
-}
-
-.btn--primary {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-on-accent);
-}
-
-.btn--primary:hover {
-  background: var(--color-accent-strong);
-  border-color: var(--color-accent-strong);
-}
-
-.btn--danger {
-  background: var(--color-status-failure);
-  border-color: var(--color-status-failure);
-  color: var(--color-on-accent);
-}
-
-.btn--danger:hover {
-  filter: brightness(1.1);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-  pointer-events: none;
-}
-
 /* ── Entity Master Detail ────────────────────────────── */
 
 .emd {

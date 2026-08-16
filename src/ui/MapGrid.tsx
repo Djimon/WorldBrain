@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useTransition, useEffect, memo } from 'r
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { getActivatedCells, setCellState } from '../services/session-grid-service';
+import { Button } from './primitives';
 
 export interface CellState {
   id: number;
@@ -457,9 +458,9 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
 
           <div className="grid-controls-panel__footer">
             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{activeCellCount} Zellen markiert</span>
-            <button className="btn" style={{ fontSize: '0.75rem', color: 'var(--color-status-failure)' }} onClick={onClear}>
+            <Button tone="danger" variant="outline" size="compact" onClick={onClear}>
               {t('all')}
-            </button>
+            </Button>
           </div>
         </div>
       )}
