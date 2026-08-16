@@ -55,11 +55,12 @@ export function Button({
   size = 'md',
   shape = 'default',
   type = 'button',
+  className,
   ...props
 }: ButtonProps) {
   return (
     <button
-      className="ui-button"
+      className={className ? `ui-button ${className}` : 'ui-button'}
       data-tone={tone}
       data-variant={variant === 'solid' ? undefined : variant}
       data-size={size === 'md' ? undefined : size}
