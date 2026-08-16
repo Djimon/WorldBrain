@@ -15,11 +15,16 @@ inline and done (pin-icon flyout, TokenEditor scroll) — do only what the user 
   `size` = md | compact | icon · `shape` = default | circle · merges a passed `className` ·
   spreads `...props` so `aria-pressed`, `disabled`, `title` work. `.ui-button[aria-pressed='true']`
   → accent fill (wins over tone/variant) = **single toggle**. Typography: 0.875rem / weight 500
-  (compact 0.8rem) — tuned to match the app; do NOT bump back to 650.
+  (compact 0.8rem) — tuned to match the app; do NOT bump back to 650. Note: `<Button>` does NOT
+  forward `ref` — for a flyout trigger needing getBoundingClientRect, put the ref on the wrapping div.
 - **`<Segmented>`**: `value` · `options: {id,label,title?}[]` · `onChange(id)` · `label` (aria) ·
-  `orientation` · `size` · `disabled` (disables the whole group). Renders a `role="group"` of
-  `<Button aria-pressed>` items. **Look = separated individual buttons** (user's explicit choice
-  over iOS-joined). `.ui-segmented` is just a flex wrapper.
+  `orientation` · `size` · `variant` = default | **glass** · `disabled` · `className`. Renders a
+  `role="group"` of `<Button aria-pressed>` items. **Default look = separated individual buttons**
+  (user's explicit choice over iOS-joined). **`variant="glass"`** = translucent framed pill with
+  borderless joined-look buttons, for a control over a canvas (graph layout toggle).
+- **`<Tabs>`**: `activeId` · `options: {id,label,disabled?}[]` · `onSelect(id)` · `label` (aria) ·
+  `fill` (equal-width stretched tabs; tablist grows too) · `className`. Renders `.ui-tabs` (underline
+  tabs, accent underline + normal text on the active tab — **not** accent-colored label).
 
 ## Canonical mapping rules (apply these; they're the pattern used in every commit so far)
 - `.btn` → `<Button>` · `.btn--primary` → `tone=accent` · `.btn--danger` → `tone=danger`
@@ -45,37 +50,19 @@ session/play views, entity views, WorkspaceShell, MapGrid-clear, Graph chrome (g
 **Segmented rollout — 4 of the toggle sites done**: FogTools (`2c61cab`), CalendarMonthView year-mode
 (`1a32bd5`), TokenEditor mode+element-selector (`80984b6`), MapGrid grid-controls (`906b752`).
 Mini-features: pin-icon flyout (`cca347b`), TokenEditor whole-panel scroll (`656060d`).
+**MapViewer tool-rail → `<Button size=icon>`** (`a4fb2cb`): mode buttons = aria-pressed, zoom = icon
+actions, MapGrid ⊞ trigger migrated too; flyout refs moved to the wrapping div; `.map-tool-btn` deleted.
+**LayerPanel buttons → `<Button>`** (`22e0e4a`): toolbar element-selector retargeted to `.ui-button`
+(layout only), row controls migrated, delete=danger/outline; collapse chevron left as its own twisty.
+**Segmented `variant="glass"` + Graph layout toggle** (`7273ed4`): promoted the graph glass-pill look to
+a reusable primitive variant.
+**Tabs consolidation — all 4 strips done**: CalendarWizard `.cal-tabs` (`06ca784`), EntityDetailView
+`.entity-detail__tab` (`6fd0c8f`), maps sidebar Karten/Ebenen + Pins/Token (`7273f40`, added `<Tabs fill>`
++ per-option `disabled`; collapse button + collapsed vertical strip stay bespoke).
 
-## REMAINING (do next, in this order)
-1. **MapViewer Tool-Leiste** (`src/ui/MapViewer.tsx` ~line 726-845). The mode buttons
-   (navigate 🗺 / pin 📍 / token 🧙 / grid ⊞ / measure) use `.map-tool-btn` with `.active`. Tricky
-   because: the **grid ⊞** and **measure** buttons are `.map-tool-group` **flyout triggers** (open
-   `.map-tool-flyout` menus — must keep that logic), and **zoom +/−/⌂** (~838-840) are plain
-   `.map-tool-btn` actions. The **pin 📍** button is now also a flyout group (from feature `cca347b`) —
-   don't break it. Plan: the pure mode buttons could become `<Button size=icon aria-pressed>` (icon
-   toggles), keeping the flyout `<div>`s around the grid/measure/pin ones; zoom → `<Button variant=ghost size=icon>`.
-   `.map-tool-btn` / `.map-toolbar` / `.map-tool-group`/`__arrow` / `.map-tool-flyout*` CSS lives in
-   style.css ~2130-2250. Keep the flyout CSS. Verify: no `.map-tool-btn` uses remain, flyouts still open.
-2. **LayerPanel** (`src/ui/LayerPanel.tsx`). `.layer-panel__toolbar button` **element selector**
-   (style.css ~3596, "Outline-accent action button" comment) styles the toolbar buttons; the row
-   `.layer-panel__controls` buttons (visibility/move/delete) are currently UNSTYLED raw buttons.
-   Same playbook as TokenEditor: migrate all buttons in the panel → `<Button>` (toolbar ones =
-   `tone=accent variant=outline size=compact`; row icons = `variant=ghost size=icon`), then delete the
-   `.layer-panel__toolbar button` element selector. Check for a `.layer-panel__delete-confirm` (inverse-dead).
-3. **Graph Layout-Toggle** (`src/ui/GlobalGraphView.tsx`, `.gv-layout-toggle` / `.gv-layout-toggle__btn`
-   3D/2D, in graph.css ~29-38). It's a **glass** pill container over the canvas. Migrate to `<Segmented>`;
-   the items need the glass look → either pass a glass-ish wrapper or add `size` and accept the separated
-   look. Since Segmented items are solid `<Button>`, over the canvas they'll be opaque — decide with the
-   user whether that's ok or whether Segmented needs a glass mode. (Graph panels use `--gv-panel-bg`.)
-   Delete `.gv-layout-toggle__btn` after.
-4. **Tabs consolidation** → use the EXISTING **`<Tabs>`** primitive (already in primitives.tsx:
-   `activeId`/`options`/`onSelect`/`label`), NOT Segmented. Three real tab strips:
-   - `.cal-tabs`/`.cal-tab` — CalendarWizard (`src/ui/CalendarWizard.tsx:230`), drop-in (audit said API matches 1:1).
-   - `.entity-detail__tab` — EntityDetailView (~381): **structural** — each tab carries a `render()` fn
-     (`TabDefinition.render`), so keep the content dispatch and swap only the tab-strip UI for `<Tabs>`.
-   - `.maps-sidebar-tabs__*` / `.map-side-collapsed__tab` — MapsSidebarTabs + MapViewer's hand-rolled
-     duplicate (MapViewer:1052) — has a collapsed/vertical mode `<Tabs>` doesn't support yet (needs a variant).
-   Delete the `.cal-tab*` / `.entity-detail__tab*` / `.maps-sidebar-tabs*` CSS as each is emptied.
+## REMAINING
+The button/toggle/tabs consolidation from the original audit is **complete** — no generic `.btn`, no
+hand-rolled toggle groups, no hand-rolled tab strips remain. Next up is the bigger-picture work below.
 
 ## Conventions / gotchas (do every time)
 - **Per commit**: `export PATH="/c/Program Files/nodejs:$PATH"` then `npx tsc --noEmit`; the pre-commit
@@ -86,10 +73,12 @@ Mini-features: pin-icon flyout (`cca347b`), TokenEditor whole-panel scroll (`656
   intentional visual change to the user (they eyeball in the running Tauri app — this agent can't
   boot Tauri/SQLite here, so verify via `tsc` + targeted vitest + reasoning, and ask the user to eyeball).
 - **Pre-existing broken tests to IGNORE** (not caused by this work — confirmed via `git stash`):
-  `m2-s06/m2-s07` EntityDetailView `.status` crash (filed as **#343** in Djimon/WorldBrain),
-  `m15-s06-map-tokens` column-count schema drift, `m11-s04` opens deleted `MapMarkers.tsx` (ENOENT),
-  `m5-s10-map-viewer` + `m5-s16` stale (canvas-vs-img). When a test run shows failures, diff against
-  baseline (`git stash` the change) before blaming your edit.
+  `m2-s06/m2-s07/m2-s12` EntityDetailView/relations-tab `.status` crash (filed as **#343** in
+  Djimon/WorldBrain), `m15-s06-map-tokens` column-count schema drift, `m11-s04` opens deleted
+  `MapMarkers.tsx` (ENOENT), `m5-s10-map-viewer` + `m5-s16` stale (canvas-vs-img),
+  `m5-s02-calendar-wizard` (13, stale multi-step-wizard tests vs the current tabbed form),
+  `m14-s06-day-click` (1, title-gate). When a test run shows failures, diff against baseline
+  (`git stash` the change) before blaming your edit.
 - **LF→CRLF warnings** on commit are harmless (git autocrlf).
 - Verify each migration with `grep` that the old classes are gone from BOTH the .tsx and style.css,
   and that self-styled/kept widgets survive (e.g. `.token-editor__chip-icon-trigger`, `.pin-icon-picker`).
