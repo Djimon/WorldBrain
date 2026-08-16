@@ -33,6 +33,8 @@ type TabsProps = {
   options: readonly TabOption[];
   onSelect: (id: string) => void;
   label: string;
+  /** Positioning / layout only — merged onto the tablist wrapper. */
+  className?: string;
 };
 
 type SegmentedOption = {
@@ -135,7 +137,7 @@ export function Panel({ children, ...props }: PanelProps) {
   );
 }
 
-export function Tabs({ activeId, options, onSelect, label }: TabsProps) {
+export function Tabs({ activeId, options, onSelect, label, className }: TabsProps) {
   const tabButtons: ReactNode[] = [];
 
   for (const option of options) {
@@ -154,7 +156,7 @@ export function Tabs({ activeId, options, onSelect, label }: TabsProps) {
   }
 
   return (
-    <nav aria-label={label} className="ui-tabs" role="tablist">
+    <nav aria-label={label} className={className ? `ui-tabs ${className}` : 'ui-tabs'} role="tablist">
       {tabButtons}
     </nav>
   );

@@ -2676,31 +2676,10 @@ input {
 }
 
 /* ── Wizard tabs (Monate / Wochentage / Ären) ─────────────────────────────── */
+/* Layout only — the tab strip itself is <Tabs> (.ui-tabs); this just spaces it
+   from the section above/below. */
 .cal-tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--color-border);
   margin: 8px 0 12px;
-}
-
-.cal-tab {
-  padding: 7px 14px;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--color-text);
-  opacity: 0.6;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.cal-tab:hover {
-  opacity: 0.9;
-}
-
-.cal-tab.active {
-  opacity: 1;
-  border-bottom-color: var(--color-accent);
 }
 
 /* labelled day/month/year input group */

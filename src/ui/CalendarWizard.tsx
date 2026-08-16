@@ -6,7 +6,7 @@ import type { EraRow } from '../services/era-service';
 import { CALENDAR_PRESETS } from '../../core_data/calendar-schema';
 import type { DatabaseLike } from '../services/entity-service';
 import { CalendarDateInput } from './CalendarDateInput';
-import { Button } from './primitives';
+import { Button, Tabs } from './primitives';
 
 interface CalendarInitial {
   id?: string;
@@ -228,11 +228,17 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
         </section>
 
         {/* Tabs — je Bereich volle Breite, kein Platz-Konkurrieren */}
-        <div className="cal-tabs" role="tablist">
-          <button role="tab" aria-selected={tab === 'months'} className={`cal-tab${tab === 'months' ? ' active' : ''}`} onClick={() => setTab('months')}>Monate ({months.length})</button>
-          <button role="tab" aria-selected={tab === 'weekdays'} className={`cal-tab${tab === 'weekdays' ? ' active' : ''}`} onClick={() => setTab('weekdays')}>Wochentage ({week.length})</button>
-          <button role="tab" aria-selected={tab === 'eras'} className={`cal-tab${tab === 'eras' ? ' active' : ''}`} onClick={() => setTab('eras')}>Ären ({eras.length})</button>
-        </div>
+        <Tabs
+          className="cal-tabs"
+          label="Kalender-Bereiche"
+          activeId={tab}
+          onSelect={(id) => setTab(id as WizardTab)}
+          options={[
+            { id: 'months', label: `Monate (${months.length})` },
+            { id: 'weekdays', label: `Wochentage (${week.length})` },
+            { id: 'eras', label: `Ären (${eras.length})` },
+          ]}
+        />
 
         {tab === 'months' && (
           <section className="cal-section">
