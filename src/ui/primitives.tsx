@@ -71,6 +71,16 @@ type StatusChipProps = HTMLAttributes<HTMLSpanElement> & {
   children: ReactNode;
 };
 
+type ChipProps = HTMLAttributes<HTMLSpanElement> & {
+  /** neutral = normal text · accent = accent-colored text. */
+  tone?: 'neutral' | 'accent';
+  /** soft = surface-active pill (default) · filled = accent-tinted fill + border. */
+  variant?: 'soft' | 'filled';
+  /** Adds pointer cursor + hover feedback for clickable chips (e.g. mentions). */
+  interactive?: boolean;
+  children: ReactNode;
+};
+
 type SurfaceProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
 };
@@ -191,6 +201,27 @@ export function Field({ label, hint, id, ...props }: FieldProps) {
 export function StatusChip({ tone = 'muted', children, ...props }: StatusChipProps) {
   return (
     <span className="ui-status-chip" data-tone={tone} {...props}>
+      {children}
+    </span>
+  );
+}
+
+export function Chip({
+  tone = 'neutral',
+  variant = 'soft',
+  interactive = false,
+  children,
+  className,
+  ...props
+}: ChipProps) {
+  return (
+    <span
+      className={className ? `ui-chip ${className}` : 'ui-chip'}
+      data-tone={tone === 'neutral' ? undefined : tone}
+      data-variant={variant === 'soft' ? undefined : variant}
+      data-interactive={interactive ? '' : undefined}
+      {...props}
+    >
       {children}
     </span>
   );

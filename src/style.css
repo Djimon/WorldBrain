@@ -607,14 +607,11 @@ input {
   flex: 1;
 }
 
+/* Typographic modifier only — the pill (bg/color/radius/padding) is <Chip
+   tone="accent">; the type name is shown uppercased. */
 .entity-detail__type-badge {
-  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background: var(--color-surface-active);
-  color: var(--color-accent);
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
 }
 
 /* Layout only — the tab strip is <Tabs> (.ui-tabs); this just spaces it from
@@ -1609,18 +1606,7 @@ input {
 }
 
 /* ── @ Mentions ── */
-.mention-chip {
-  display: inline-block;
-  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
-  color: var(--color-accent);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
-  border-radius: var(--radius-pill);
-  padding: 0 7px;
-  font-size: 0.82em;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.mention-chip:hover { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
+/* .mention-chip is now <Chip tone="accent" variant="filled" interactive>. */
 
 .mention-suggest {
   position: absolute;
@@ -1661,12 +1647,7 @@ input {
 .mention-suggest__name { color: var(--color-text); }
 
 .tag-field__chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
-.tag-field__chip {
-  display: flex; align-items: center; gap: 4px;
-  background: var(--color-surface-active);
-  border-radius: var(--radius-pill); padding: 1px 8px;
-  font-size: 0.8rem; color: var(--color-text);
-}
+/* The chip pill is <Chip>; this class only styles the ✕ remove button inside it. */
 .tag-field__chip button {
   background: transparent; border: none; cursor: pointer;
   color: var(--color-text-muted); font-size: 0.9rem; line-height: 1;
@@ -3087,13 +3068,9 @@ input {
 .relations-tab__row--inactive { opacity: 0.5; }
 .relations-tab__row button { margin-left: auto; }
 
+/* Typographic modifier only — the pill is <Chip tone="accent">. */
 .relations-tab__badge {
-  font-size: 0.7rem;
   text-transform: uppercase;
-  background: var(--color-surface-active);
-  color: var(--color-accent);
-  padding: 1px 6px;
-  border-radius: var(--radius-pill);
 }
 
 .relations-tab__notes { color: var(--color-text-muted); font-size: 0.8rem; }

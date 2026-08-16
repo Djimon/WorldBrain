@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Chip } from './primitives';
 
 type PropertySchema = {
   type: 'string' | 'boolean' | 'number' | 'array';
@@ -42,10 +43,10 @@ export function MentionText({ text, onNavigate }: { text: string; onNavigate?: (
     <span>
       {parts.map((p, i) =>
         p.type === 'mention' ? (
-          <span key={i} className="mention-chip" onClick={() => p.id && onNavigate?.(p.id)}
+          <Chip key={i} tone="accent" variant="filled" interactive onClick={() => p.id && onNavigate?.(p.id)}
             title={`→ ${p.value}`}>
             @{p.value}
-          </span>
+          </Chip>
         ) : (
           <span key={i}>{p.value}</span>
         ),
@@ -179,10 +180,10 @@ function TagField({ fieldKey, label, required, items, onChange }: TagFieldProps)
       <label data-required={required ? 'true' : undefined}>{label}</label>
       <div className="tag-field__chips">
         {items.map((item, i) => (
-          <span key={i} className="tag-field__chip">
+          <Chip key={i} className="tag-field__chip">
             {item}
             <button type="button" aria-label={`Remove ${item}`} onClick={() => handleRemove(i)}>×</button>
-          </span>
+          </Chip>
         ))}
       </div>
       <input type="text" aria-label={`Add ${label}`} placeholder="Enter → hinzufügen"

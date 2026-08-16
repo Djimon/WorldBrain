@@ -255,6 +255,35 @@
   color: var(--color-status-failure);
 }
 
+/* ── Chip — a pill label/tag/mention (distinct from the tone-semantic
+   StatusChip). soft = surface-active fill; filled = accent-tinted. ── */
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 1px var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  background: var(--color-surface-active);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.ui-chip[data-tone='accent'] {
+  color: var(--color-accent);
+}
+.ui-chip[data-variant='filled'] {
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+.ui-chip[data-interactive] {
+  cursor: pointer;
+}
+.ui-chip[data-interactive]:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
 .ui-table-surface,
 .ui-list-surface {
   overflow: auto;

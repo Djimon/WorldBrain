@@ -5,7 +5,7 @@ import { getEffectiveEntity } from '../services/entity-service';
 import { getRelations, addRelation, deactivateRelation, reactivateRelation, RelationRow } from '../services/relation-service';
 import { getRelationTypeDefinition, getAllRelationTypes } from '../data/relation-type-registry';
 import { EntityPicker } from './EntityPicker';
-import { Button } from './primitives';
+import { Button, Chip } from './primitives';
 
 interface Props {
   entityId: string;
@@ -91,7 +91,7 @@ export function RelationsTab({ entityId, database }: Props) {
           return (
             <div key={rel.id} className="relations-tab__row">
               <span>{label} → <EntityTitle entityId={otherId} database={db} /></span>
-              {visibility === 'gm_only' && <span className="relations-tab__badge">GM only</span>}
+              {visibility === 'gm_only' && <Chip tone="accent" className="relations-tab__badge">GM only</Chip>}
               {rel.notes && <span className="relations-tab__notes">({rel.notes})</span>}
               <Button onClick={() => void handleDeactivate(rel.id)} aria-label="Deactivate">
                 Deactivate

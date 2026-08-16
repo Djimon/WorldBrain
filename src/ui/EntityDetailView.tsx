@@ -16,7 +16,7 @@ import { formatCalendarDate } from '../../core_data/calendar-schema';
 import { loadActiveCalendar } from '../services/calendar-service';
 import { getRelations } from '../services/relation-service';
 import type { RelationRow } from '../services/relation-service';
-import { Button, Tabs } from './primitives';
+import { Button, Chip, Tabs } from './primitives';
 
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
@@ -356,7 +356,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
         ) : (
           <div className="entity-detail__name">{entity.title}</div>
         )}
-        <div className="entity-detail__type-badge">{entity.type}</div>
+        <Chip tone="accent" className="entity-detail__type-badge">{entity.type}</Chip>
         {editing ? (
           <>
             <Button tone="accent" size="compact" onClick={() => void commitEdit()}>{t('save')}</Button>
