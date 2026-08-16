@@ -543,21 +543,6 @@ input {
   color: var(--color-text-muted);
 }
 
-.emd__create-btn {
-  padding: 2px var(--space-2);
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  cursor: pointer;
-  font-size: 0.8rem;
-  color: var(--color-accent);
-}
-
-.emd__create-btn:hover {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-}
-
 .emd__create-form {
   display: flex;
   gap: var(--space-1);
@@ -576,26 +561,6 @@ input {
   color: var(--color-text);
   font: inherit;
   font-size: 0.875rem;
-}
-
-.emd__create-confirm {
-  padding: var(--space-1) var(--space-2);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
-.emd__create-cancel {
-  padding: var(--space-1);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 0.8rem;
 }
 
 .emd__empty {
@@ -3594,7 +3559,7 @@ input {
 .layer-panel__row { padding: 3px 4px; border-radius: var(--radius-sm); }
 .layer-panel__row-header { line-height: 1.6; }
 .layer-panel__row.editing { background: var(--color-surface-alt, transparent); }
-/* Same look as the "+ Karte importieren" button (.emd__create-btn). */
+/* Outline-accent action button (matches Button variant="outline" tone="accent"). */
 .layer-panel__toolbar button {
   flex: 1 1 auto;
   min-width: 110px;
