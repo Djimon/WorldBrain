@@ -16,6 +16,7 @@ import { formatCalendarDate } from '../../core_data/calendar-schema';
 import { loadActiveCalendar } from '../services/calendar-service';
 import { getRelations } from '../services/relation-service';
 import type { RelationRow } from '../services/relation-service';
+import { Button } from './primitives';
 
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
@@ -358,20 +359,16 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
         <div className="entity-detail__type-badge">{entity.type}</div>
         {editing ? (
           <>
-            <button className="btn btn--primary" style={{ fontSize: '0.8rem', padding: '3px 10px' }}
-              onClick={() => void commitEdit()}>{t('save')}</button>
-            <button className="btn" style={{ fontSize: '0.8rem', padding: '3px 10px' }}
-              onClick={() => setEditing(false)}>{t('cancel')}</button>
+            <Button tone="accent" size="compact" onClick={() => void commitEdit()}>{t('save')}</Button>
+            <Button size="compact" onClick={() => setEditing(false)}>{t('cancel')}</Button>
             {deletePrompt ? (
               <span className="entity-detail__delete-confirm">
                 <span>{t('deleteConfirm', 'Wirklich löschen?')}</span>
-                <button className="btn" style={{ color: 'var(--color-status-failure)' }}
-                  onClick={() => void handleDelete()}>{t('deleteConfirmYes', 'Ja, löschen')}</button>
-                <button className="btn" onClick={() => setDeletePrompt(false)}>{t('cancel')}</button>
+                <Button tone="danger" variant="outline" size="compact" onClick={() => void handleDelete()}>{t('deleteConfirmYes', 'Ja, löschen')}</Button>
+                <Button size="compact" onClick={() => setDeletePrompt(false)}>{t('cancel')}</Button>
               </span>
             ) : (
-              <button className="btn" style={{ fontSize: '0.8rem', padding: '3px 10px', color: 'var(--color-status-failure)' }}
-                onClick={() => setDeletePrompt(true)}>{t('delete', 'Löschen')}</button>
+              <Button tone="danger" variant="outline" size="compact" onClick={() => setDeletePrompt(true)}>{t('delete', 'Löschen')}</Button>
             )}
           </>
         ) : (

@@ -5,6 +5,7 @@ import { getEffectiveEntity } from '../services/entity-service';
 import { getRelations, addRelation, deactivateRelation, reactivateRelation, RelationRow } from '../services/relation-service';
 import { getRelationTypeDefinition, getAllRelationTypes } from '../data/relation-type-registry';
 import { EntityPicker } from './EntityPicker';
+import { Button } from './primitives';
 
 interface Props {
   entityId: string;
@@ -92,9 +93,9 @@ export function RelationsTab({ entityId, database }: Props) {
               <span>{label} → <EntityTitle entityId={otherId} database={db} /></span>
               {visibility === 'gm_only' && <span className="relations-tab__badge">GM only</span>}
               {rel.notes && <span className="relations-tab__notes">({rel.notes})</span>}
-              <button className="btn" onClick={() => void handleDeactivate(rel.id)} aria-label="Deactivate">
+              <Button onClick={() => void handleDeactivate(rel.id)} aria-label="Deactivate">
                 Deactivate
-              </button>
+              </Button>
             </div>
           );
         })}
@@ -111,9 +112,9 @@ export function RelationsTab({ entityId, database }: Props) {
               <div key={rel.id} className="relations-tab__row relations-tab__row--inactive">
                 <span>{label} → <EntityTitle entityId={otherId} database={db} /></span>
                 {rel.notes && <span className="relations-tab__notes">({rel.notes})</span>}
-                <button className="btn" onClick={() => void handleReactivate(rel.id)} aria-label="Reactivate">
+                <Button onClick={() => void handleReactivate(rel.id)} aria-label="Reactivate">
                   Reactivate
-                </button>
+                </Button>
               </div>
             );
           })}
@@ -121,7 +122,7 @@ export function RelationsTab({ entityId, database }: Props) {
       )}
 
       <div className="relations-tab__add">
-        <button className="btn" onClick={() => setShowAddForm((v) => !v)}>Add relation</button>
+        <Button onClick={() => setShowAddForm((v) => !v)}>Add relation</Button>
         {showAddForm && (
           <div className="relations-tab__add-form">
             <select
