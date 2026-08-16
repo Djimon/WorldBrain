@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { addLogEntry } from '../services/session-log-service';
 import type { DatabaseLike } from '../services/entity-service';
+import { Button } from './primitives';
 
 interface Encounter {
   id: string;
@@ -61,9 +62,9 @@ export function EncounterMode({ database, sessionId, encounters, onEncounterEnd 
     return (
       <div className="encounter-mode__active">
         <h3>{activeEncounter.title}</h3>
-        <button className="btn" onClick={handleEnd}>
+        <Button onClick={handleEnd}>
           {t('encounter.end', 'Encounter beenden')}
-        </button>
+        </Button>
       </div>
     );
   }
@@ -85,9 +86,9 @@ export function EncounterMode({ database, sessionId, encounters, onEncounterEnd 
             {list.map((enc) => (
               <li key={enc.id}>
                 <span>{enc.title}</span>
-                <button className="btn" onClick={() => handleStart(enc)}>
+                <Button onClick={() => handleStart(enc)}>
                   {t('encounter.start', 'Encounter starten')}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>

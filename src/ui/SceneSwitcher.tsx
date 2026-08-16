@@ -11,6 +11,7 @@ import {
 } from '../services/audio-service';
 import type { AudioSceneRow } from '../services/audio-service';
 import { exportScenesToJson, importAudioBoardFromJson } from '../services/audio-export-import-service';
+import { Button } from './primitives';
 
 export interface SceneSwitcherProps {
   database: DatabaseLike;
@@ -122,12 +123,12 @@ export function SceneSwitcher({ database, activeSceneId, onSelectScene, onScenes
         <div role="dialog" aria-label={t('audioSceneConfirmDeleteTitle', 'Szene löschen?')} className="scene-switcher__confirm-dialog">
           <p>{t('audioSceneConfirmDeleteBody', 'Die Szene wird mit allen Kanälen und Clips gelöscht.')}</p>
           <div className="scene-switcher__confirm-actions">
-            <button type="button" className="btn btn--primary" onClick={() => void handleConfirmDelete()}>
+            <Button tone="accent" onClick={() => void handleConfirmDelete()}>
               {t('audioSceneConfirmDeleteAction', 'Löschen')}
-            </button>
-            <button type="button" className="btn" onClick={() => setConfirmDeleteId(null)}>
+            </Button>
+            <Button onClick={() => setConfirmDeleteId(null)}>
               {t('audioSceneCancel', 'Abbrechen')}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -146,12 +147,12 @@ export function SceneSwitcher({ database, activeSceneId, onSelectScene, onScenes
                   aria-label={t('audioSceneRenameInput', 'Szenenname')}
                   onChange={(e) => setRenameValue(e.target.value)}
                 />
-                <button type="button" className="btn btn--primary" onClick={() => void handleRenameCommit()}>
+                <Button tone="accent" onClick={() => void handleRenameCommit()}>
                   {t('audioSceneRenameSave', 'Speichern')}
-                </button>
-                <button type="button" className="btn" onClick={() => setRenamingId(null)}>
+                </Button>
+                <Button onClick={() => setRenamingId(null)}>
                   {t('audioSceneCancel', 'Abbrechen')}
-                </button>
+                </Button>
               </>
             ) : (
               <>
@@ -174,15 +175,15 @@ export function SceneSwitcher({ database, activeSceneId, onSelectScene, onScenes
         ))}
       </ul>
       <div className="scene-switcher__actions">
-        <button type="button" className="btn" onClick={() => void handleCreate()}>
+        <Button onClick={() => void handleCreate()}>
           {t('audioSceneCreate', '+ Neue Szene')}
-        </button>
-        <button type="button" className="btn btn--danger" onClick={handleOpenExportDialog}>
+        </Button>
+        <Button tone="danger" onClick={handleOpenExportDialog}>
           {t('audioExport', 'Export')}
-        </button>
-        <button type="button" className="btn" onClick={() => void handleImportClick()}>
+        </Button>
+        <Button onClick={() => void handleImportClick()}>
           {t('audioImport', 'Import')}
-        </button>
+        </Button>
       </div>
       {importError && (
         <div role="alert" className="scene-switcher__import-error">{importError}</div>
@@ -193,12 +194,12 @@ export function SceneSwitcher({ database, activeSceneId, onSelectScene, onScenes
             {t('audioExportDialogHeading', 'Wähle zu exportierende Szenen')}
           </h2>
           <div className="scene-switcher__export-select-actions">
-            <button type="button" className="btn" onClick={() => setSelectedSceneIds(new Set(scenes.map((s) => s.id)))}>
+            <Button onClick={() => setSelectedSceneIds(new Set(scenes.map((s) => s.id)))}>
               {t('audioExportSelectAll', 'Alle auswählen')}
-            </button>
-            <button type="button" className="btn" onClick={() => setSelectedSceneIds(new Set())}>
+            </Button>
+            <Button onClick={() => setSelectedSceneIds(new Set())}>
               {t('audioExportSelectNone', 'Alle abwählen')}
-            </button>
+            </Button>
           </div>
           <ul>
             {scenes.map((scene) => (
@@ -214,12 +215,12 @@ export function SceneSwitcher({ database, activeSceneId, onSelectScene, onScenes
             ))}
           </ul>
           <div className="scene-switcher__export-actions">
-            <button type="button" className="btn" onClick={() => setExportDialogOpen(false)}>
+            <Button onClick={() => setExportDialogOpen(false)}>
               {t('audioSceneCancel', 'Abbrechen')}
-            </button>
-            <button type="button" className="btn btn--danger" onClick={() => void handleExportConfirm()}>
+            </Button>
+            <Button tone="danger" onClick={() => void handleExportConfirm()}>
               {t('audioExport', 'Export')}
-            </button>
+            </Button>
           </div>
         </div>
       )}

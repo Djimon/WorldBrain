@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { listSessions, createSession, archiveSession } from '../services/session-service';
 import type { Session } from '../services/session-service';
+import { Button } from './primitives';
 
 interface SessionListProps {
   projectId: string;
@@ -47,12 +48,12 @@ export function SessionList({ projectId, projectDir, onResumeSession }: SessionL
   return (
     <div className="session-list">
       <div className="session-list__toolbar">
-        <button className="btn btn--primary" onClick={() => setShowNewForm((v) => !v)}>
+        <Button tone="accent" onClick={() => setShowNewForm((v) => !v)}>
           {t('sessionList.newSession', 'Neue Session')}
-        </button>
-        <button className="btn" onClick={() => setShowArchive((v) => !v)}>
+        </Button>
+        <Button onClick={() => setShowArchive((v) => !v)}>
           {t('sessionList.showArchive', 'Archiv anzeigen')}
-        </button>
+        </Button>
       </div>
 
       {showNewForm && (
@@ -76,9 +77,9 @@ export function SessionList({ projectId, projectDir, onResumeSession }: SessionL
               <option value="">{t('sessionList.noPlugin', 'Kein System')}</option>
             </select>
           </label>
-          <button className="btn btn--primary" onClick={handleCreate}>
+          <Button tone="accent" onClick={handleCreate}>
             {t('sessionList.create', 'Erstellen')}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -97,12 +98,12 @@ export function SessionList({ projectId, projectDir, onResumeSession }: SessionL
               {session.system_plugin_id != null && (
                 <span className="session-list__item-plugin">{session.system_plugin_id}</span>
               )}
-              <button className="btn" onClick={() => onResumeSession(session.id)}>
+              <Button onClick={() => onResumeSession(session.id)}>
                 {t('sessionList.resume', 'Fortsetzen')}
-              </button>
-              <button className="btn" onClick={() => handleArchive(session.id)}>
+              </Button>
+              <Button onClick={() => handleArchive(session.id)}>
                 {t('sessionList.archive', 'Archivieren')}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
