@@ -1367,13 +1367,6 @@ input {
   justify-content: space-between;
 }
 
-.token-editor__close {
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 14px;
-}
 
 .token-editor__field,
 .token-editor__art,
@@ -1428,22 +1421,6 @@ input {
 }
 
 /* Buttons follow the app button convention (surface + border, accent hover). */
-.token-editor button {
-  padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-.token-editor button:hover { border-color: var(--color-accent); }
-.token-editor__close { padding: 0; border: none; }
-
-.token-editor__mode { display: flex; gap: var(--space-1); }
-.token-editor__mode-btn { flex: 1 1 auto; }
-.token-editor__mode-btn.active { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
-
 .token-editor__upload { align-self: flex-start; }
 
 .token-editor__crop {
@@ -1501,20 +1478,13 @@ input {
 }
 
 .token-editor__add-chip { align-self: flex-start; }
-.token-editor .token-editor__counter-clear {
-  align-self: flex-start;
-  font-size: 0.72rem;
-  color: var(--color-status-failure);
-  border-color: var(--color-status-failure);
-}
+.token-editor__counter-clear { align-self: flex-start; }
 
 .token-editor__actions {
   display: flex;
   gap: var(--space-2);
   justify-content: space-between;
 }
-.token-editor__save { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-on-accent); }
-.token-editor__delete { border-color: var(--color-status-failure); color: var(--color-status-failure); }
 
 /* ── Right map sidebar: PINS / TOKEN tabs (#302) ──
    Expanded tabs reuse the .maps-sidebar-tabs__* style (same as Karten/Ebenen). */

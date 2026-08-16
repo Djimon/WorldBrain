@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import type { MapTokenRow, StatusChip, TokenRenderStyle } from '../services/map-token-service';
 import { getIcon } from '../services/icon-set-registry';
 import { IconPicker } from './IconPicker';
+import { Button, Segmented } from './primitives';
 
 // #300: chip.icon may be a registry ref ("set_id:icon_key") or a legacy
 // literal glyph string (no colon -> getIcon returns undefined, falls back
@@ -120,7 +121,7 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
     <div className="token-editor" role="dialog" aria-label={t('token.editorTitle', 'Token bearbeiten')}>
       <div className="token-editor__header">
         <strong>{t('token.editorTitle', 'Token bearbeiten')}</strong>
-        <button type="button" className="token-editor__close" onClick={onClose} title={t('close', 'Schließen')}>✕</button>
+        <Button variant="ghost" size="icon" onClick={onClose} title={t('close', 'Schließen')}>✕</Button>
       </div>
 
       <label className="token-editor__field">
@@ -130,19 +131,19 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
 
       <fieldset className="token-editor__art">
         <legend>{t('token.art', 'Bild')}</legend>
-        <div className="token-editor__mode">
-          <button type="button" className={`token-editor__mode-btn${renderStyle === 'token' ? ' active' : ''}`}
-            aria-pressed={renderStyle === 'token'} onClick={() => setRenderStyle('token')}>
-            {t('token.modeToken', 'Token (Kreis)')}
-          </button>
-          <button type="button" className={`token-editor__mode-btn${renderStyle === 'plain' ? ' active' : ''}`}
-            aria-pressed={renderStyle === 'plain'} onClick={() => setRenderStyle('plain')}>
-            {t('token.modePlain', 'Plain (ganzes Bild)')}
-          </button>
-        </div>
-        <button type="button" className="token-editor__upload" onClick={() => void pickArt()}>
+        <Segmented
+          label={t('token.mode', 'Darstellung')}
+          size="compact"
+          value={renderStyle}
+          onChange={(id) => setRenderStyle(id as TokenRenderStyle)}
+          options={[
+            { id: 'token', label: t('token.modeToken', 'Token (Kreis)') },
+            { id: 'plain', label: t('token.modePlain', 'Plain (ganzes Bild)') },
+          ]}
+        />
+        <Button size="compact" className="token-editor__upload" onClick={() => void pickArt()}>
           {artAssetId ? t('token.replaceArt', 'Bild ersetzen') : t('token.uploadArt', 'Bild hochladen')}
-        </button>
+        </Button>
 
         {artSrc && renderStyle === 'token' && (
           <div
@@ -176,10 +177,10 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
         <input type="number" aria-label={t('token.counterValue', 'Zähler-Wert')} placeholder="0"
           value={counterValue} onChange={(e) => setCounterValue(e.target.value)} />
         {(counterLabel || counterValue) && (
-          <button type="button" className="token-editor__counter-clear"
+          <Button tone="danger" variant="outline" size="compact" className="token-editor__counter-clear"
             onClick={() => { setCounterLabel(''); setCounterValue(''); }}>
             {t('token.clearCounter', 'Zähler entfernen')}
-          </button>
+          </Button>
         )}
       </fieldset>
 
@@ -211,19 +212,19 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
               value={chip.text ?? ''} onChange={(e) => updateChip(i, { text: e.target.value })} />
             <input type="color" aria-label={t('token.chipColor', 'Chip-Farbe')}
               value={chip.color || '#ffffff'} onChange={(e) => updateChip(i, { color: e.target.value })} />
-            <button type="button" onClick={() => removeChip(i)} title={t('token.removeChip', 'Chip entfernen')}>✕</button>
+            <Button variant="ghost" size="compact" onClick={() => removeChip(i)} title={t('token.removeChip', 'Chip entfernen')}>✕</Button>
           </div>
         ))}
-        <button type="button" className="token-editor__add-chip" onClick={addChip}
+        <Button size="compact" className="token-editor__add-chip" onClick={addChip}
           disabled={chips.length >= MAX_STATUS_CHIPS}
           title={chips.length >= MAX_STATUS_CHIPS ? t('token.chipsMaxed', 'Maximal 12 Chips (voller Kreis)') : undefined}>
           {t('token.addChip', '+ Chip')}
-        </button>
+        </Button>
       </fieldset>
 
       <div className="token-editor__actions">
-        <button type="button" className="token-editor__save" onClick={save}>{t('save', 'Speichern')}</button>
-        <button type="button" className="token-editor__delete" onClick={onDelete}>{t('token.delete', 'Token löschen')}</button>
+        <Button tone="accent" size="compact" onClick={save}>{t('save', 'Speichern')}</Button>
+        <Button tone="danger" variant="outline" size="compact" onClick={onDelete}>{t('token.delete', 'Token löschen')}</Button>
       </div>
     </div>
   );
