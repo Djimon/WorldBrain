@@ -48,7 +48,12 @@ type SegmentedProps = {
   label: string;
   orientation?: 'horizontal' | 'vertical';
   size?: ButtonSize;
+  /** 'glass' = translucent framed pill with borderless (joined-look) buttons,
+   *  for a control sitting over a canvas. Default = separated buttons. */
+  variant?: 'default' | 'glass';
   disabled?: boolean;
+  /** Positioning / layout only — merged onto the group wrapper. */
+  className?: string;
 };
 
 type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
@@ -94,14 +99,17 @@ export function Segmented({
   label,
   orientation = 'horizontal',
   size = 'md',
+  variant = 'default',
   disabled = false,
+  className,
 }: SegmentedProps) {
   return (
     <div
-      className="ui-segmented"
+      className={className ? `ui-segmented ${className}` : 'ui-segmented'}
       role="group"
       aria-label={label}
       data-orientation={orientation === 'horizontal' ? undefined : orientation}
+      data-variant={variant === 'default' ? undefined : variant}
     >
       {options.map((option) => (
         <Button

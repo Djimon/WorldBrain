@@ -25,7 +25,7 @@ import type { GraphSettings } from './GraphSettingsPanel';
 import { GraphFilterPanel } from './GraphFilterPanel';
 import { EntityDetailView } from './EntityDetailView';
 import './graph.css';
-import { Button } from './primitives';
+import { Button, Segmented } from './primitives';
 
 export interface GlobalGraphViewProps {
   database: DatabaseLike;
@@ -329,25 +329,27 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
       )}
 
       {!egoFocusId && (
-        <div className="gv-layout-toggle" role="group" aria-label={t('graphLayout', 'Layout')}>
-          {(['galaxy', 'ring'] as const).map((m) => (
-            <button
-              key={m}
-              className="gv-layout-toggle__btn"
-              onClick={() => {
-                patch({ layoutMode: m });
-                // Carry the active selection into the new layout: the scene
-                // rebuilds with new positions, so we fire a fresh focusReq
-                // (incremented nonce) so GraphCanvas zooms there again.
-                if (selectedId) {
-                  focusNonce.current += 1;
-                  setFocusReq({ id: selectedId, nonce: focusNonce.current });
-                }
-              }}
-              aria-pressed={layoutMode === m}
-            >{m === 'galaxy' ? t('graphLayoutGalaxy', 'Galaxy') : t('graphLayoutDisc', 'Disc')}</button>
-          ))}
-        </div>
+        <Segmented
+          className="gv-layout-toggle"
+          variant="glass"
+          size="compact"
+          label={t('graphLayout', 'Layout')}
+          value={layoutMode}
+          options={[
+            { id: 'galaxy', label: t('graphLayoutGalaxy', 'Galaxy') },
+            { id: 'ring', label: t('graphLayoutDisc', 'Disc') },
+          ]}
+          onChange={(m) => {
+            patch({ layoutMode: m as 'galaxy' | 'ring' });
+            // Carry the active selection into the new layout: the scene
+            // rebuilds with new positions, so we fire a fresh focusReq
+            // (incremented nonce) so GraphCanvas zooms there again.
+            if (selectedId) {
+              focusNonce.current += 1;
+              setFocusReq({ id: selectedId, nonce: focusNonce.current });
+            }
+          }}
+        />
       )}
 
       {selectedId && (

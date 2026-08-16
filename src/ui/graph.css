@@ -18,16 +18,11 @@
   --gv-danger: var(--color-status-failure);
 }
 
-/* layout toggle (top-right, borderless buttons inside a framed pill) */
+/* layout toggle (top-right) — <Segmented variant="glass">; this rule is
+   positioning only, the framed-pill glass look comes from the primitive. */
 .gv-layout-toggle {
-  position: absolute; top: 12px; right: 12px; z-index: 7; display: flex; gap: 4px;
-  padding: 3px; border-radius: 8px; background: var(--gv-panel-bg); border: 1px solid var(--gv-border);
+  position: absolute; top: 12px; right: 12px; z-index: 7;
 }
-.gv-layout-toggle__btn {
-  padding: 5px 12px; border-radius: 6px; cursor: pointer; color: var(--gv-text);
-  font-size: 13px; border: none; background: transparent;
-}
-.gv-layout-toggle__btn[aria-pressed='true'] { background: var(--gv-accent); color: var(--gv-on-accent); }
 
 /* name search (top-left) */
 .gv-search { position: absolute; top: 12px; left: 12px; width: 260px; z-index: 6; }

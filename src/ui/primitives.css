@@ -135,6 +135,30 @@
   flex-direction: column;
 }
 
+/* ── Glass variant — translucent framed pill with borderless (joined-look)
+   buttons, for a Segmented sitting over a canvas (e.g. the graph layout
+   toggle). The frame carries the surface; the buttons are transparent until
+   pressed, when they get the accent fill. ── */
+.ui-segmented[data-variant='glass'] {
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  backdrop-filter: blur(4px);
+}
+.ui-segmented[data-variant='glass'] .ui-button {
+  border-color: transparent;
+  background: transparent;
+}
+.ui-segmented[data-variant='glass'] .ui-button:not([aria-pressed='true']):hover {
+  background: var(--color-surface-hover);
+}
+.ui-segmented[data-variant='glass'] .ui-button[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
 .ui-panel {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
