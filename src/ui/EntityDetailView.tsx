@@ -16,7 +16,7 @@ import { formatCalendarDate } from '../../core_data/calendar-schema';
 import { loadActiveCalendar } from '../services/calendar-service';
 import { getRelations } from '../services/relation-service';
 import type { RelationRow } from '../services/relation-service';
-import { Button } from './primitives';
+import { Button, Tabs } from './primitives';
 
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
@@ -375,15 +375,13 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
           <Button variant="ghost" size="icon" className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', 'Bearbeiten')} title={t('edit', 'Bearbeiten')}>✏️</Button>
         )}
       </div>
-      <div className="entity-detail__tabs" role="tablist">
-        {tabs.map((tab) => (
-          <button key={tab.id} role="tab" aria-selected={activeTab === tab.id}
-            className={`entity-detail__tab${activeTab === tab.id ? ' active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        className="entity-detail__tabs"
+        label={t('entityDetailTabs', 'Detailbereiche')}
+        activeId={activeTab}
+        onSelect={setActiveTab}
+        options={tabs.map((tab) => ({ id: tab.id, label: tab.label }))}
+      />
       <div className="entity-detail__body" role="tabpanel">
         {activeTabDef?.render({ entityId, database, onNavigate: onNavigateToEntity })}
       </div>

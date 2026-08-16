@@ -617,26 +617,11 @@ input {
   border-radius: var(--radius-pill);
 }
 
+/* Layout only — the tab strip is <Tabs> (.ui-tabs); this just spaces it from
+   the detail body below. */
 .entity-detail__tabs {
-  display: flex;
-  gap: 2px;
   margin-bottom: var(--space-3);
-  border-bottom: 1px solid var(--color-border);
 }
-
-.entity-detail__tab {
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: 6px 12px;
-  cursor: pointer;
-  color: var(--color-text-muted);
-  font-size: 0.82rem;
-  margin-bottom: -1px;
-}
-
-.entity-detail__tab:hover { color: var(--color-text); }
-.entity-detail__tab.active { color: var(--color-accent); border-bottom-color: var(--color-accent); }
 
 .entity-detail__body { flex: 1; overflow-y: auto; overflow-x: hidden; }
 
