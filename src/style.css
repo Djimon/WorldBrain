@@ -3521,31 +3521,6 @@ input {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
 
-.fog-tools__group {
-  display: inline-flex;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.fog-tools__btn {
-  padding: 4px 10px;
-  background: var(--color-surface-alt, var(--color-background));
-  border: none;
-  color: var(--color-text);
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
-.fog-tools__group .fog-tools__btn + .fog-tools__btn {
-  border-left: 1px solid var(--color-border);
-}
-
-.fog-tools__btn.active {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-}
-
 .fog-tools__slider {
   display: inline-flex;
   align-items: center;

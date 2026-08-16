@@ -4,6 +4,7 @@
 import { useTranslation } from 'react-i18next';
 import { stampCellCount } from './fogStampGeometry';
 import type { FogStampGridType, FogStampLevel } from './fogStampGeometry';
+import { Segmented } from './primitives';
 
 const STAMP_LEVELS: FogStampLevel[] = [0, 1, 2, 3, 4];
 
@@ -38,52 +39,41 @@ export function FogTools({
   const { t } = useTranslation();
   return (
     <div className="fog-tools">
-      <div className="fog-tools__group">
-        <button type="button" className={`fog-tools__btn${shape === 'brush' ? ' active' : ''}`}
-          aria-pressed={shape === 'brush'} onClick={() => onShapeChange('brush')}>
-          {t('fog.brush', 'Pinsel')}
-        </button>
-        <button type="button" className={`fog-tools__btn${shape === 'square' ? ' active' : ''}`}
-          aria-pressed={shape === 'square'} onClick={() => onShapeChange('square')}>
-          {t('fog.square', 'Rechteck')}
-        </button>
-        <button type="button" className={`fog-tools__btn${shape === 'region' ? ' active' : ''}`}
-          aria-pressed={shape === 'region'} onClick={() => onShapeChange('region')}>
-          {t('fog.region', 'Bereich')}
-        </button>
-        {gridActive && gridType && (
-          <button type="button" className={`fog-tools__btn${shape === 'grid-stamp' ? ' active' : ''}`}
-            aria-pressed={shape === 'grid-stamp'} onClick={() => onShapeChange('grid-stamp')}>
-            {t('fog.gridStamp', 'Grid-Stempel')}
-          </button>
-        )}
-      </div>
+      <Segmented
+        label={t('fog.shape', 'Form')}
+        value={shape}
+        onChange={(id) => onShapeChange(id as FogToolShape)}
+        options={[
+          { id: 'brush', label: t('fog.brush', 'Pinsel') },
+          { id: 'square', label: t('fog.square', 'Rechteck') },
+          { id: 'region', label: t('fog.region', 'Bereich') },
+          ...(gridActive && gridType ? [{ id: 'grid-stamp', label: t('fog.gridStamp', 'Grid-Stempel') }] : []),
+        ]}
+      />
 
       {/* #295: size flyout, only when the grid stamp is the active shape —
           five levels, cell count is grid-type-specific (square vs. hex ring). */}
       {shape === 'grid-stamp' && gridActive && gridType && (
-        <div className="fog-tools__group fog-tools__stamp-levels">
-          {STAMP_LEVELS.map((level) => (
-            <button key={level} type="button"
-              className={`fog-tools__btn${stampLevel === level ? ' active' : ''}`}
-              aria-pressed={stampLevel === level}
-              onClick={() => onStampLevelChange?.(level)}>
-              {stampCellCount(level, gridType)} {t('fog.cells', 'Zellen')}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label={t('fog.stampSize', 'Stempelgröße')}
+          value={String(stampLevel)}
+          onChange={(id) => onStampLevelChange?.(Number(id) as FogStampLevel)}
+          options={STAMP_LEVELS.map((level) => ({
+            id: String(level),
+            label: `${stampCellCount(level, gridType)} ${t('fog.cells', 'Zellen')}`,
+          }))}
+        />
       )}
 
-      <div className="fog-tools__group">
-        <button type="button" className={`fog-tools__btn${mode === 'reveal' ? ' active' : ''}`}
-          aria-pressed={mode === 'reveal'} onClick={() => onModeChange('reveal')}>
-          {t('fog.reveal', 'Aufdecken')}
-        </button>
-        <button type="button" className={`fog-tools__btn${mode === 'cover' ? ' active' : ''}`}
-          aria-pressed={mode === 'cover'} onClick={() => onModeChange('cover')}>
-          {t('fog.cover', 'Verdecken')}
-        </button>
-      </div>
+      <Segmented
+        label={t('fog.mode', 'Modus')}
+        value={mode}
+        onChange={(id) => onModeChange(id as FogToolMode)}
+        options={[
+          { id: 'reveal', label: t('fog.reveal', 'Aufdecken') },
+          { id: 'cover', label: t('fog.cover', 'Verdecken') },
+        ]}
+      />
 
       {(shape === 'brush' || shape === 'square') && (
         <>
