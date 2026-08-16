@@ -6,11 +6,15 @@ import type {
 } from 'react';
 import './primitives.css';
 
-type ButtonTone = 'neutral' | 'accent';
+type ButtonTone = 'neutral' | 'accent' | 'danger';
+type ButtonSize = 'md' | 'compact' | 'icon';
+type ButtonShape = 'default' | 'circle';
 type StatusTone = 'muted' | 'success' | 'warning' | 'failure';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   tone?: ButtonTone;
+  size?: ButtonSize;
+  shape?: ButtonShape;
 };
 
 type PanelProps = HTMLAttributes<HTMLElement> & {
@@ -43,8 +47,23 @@ type SurfaceProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
 };
 
-export function Button({ tone = 'neutral', type = 'button', ...props }: ButtonProps) {
-  return <button className="ui-button" data-tone={tone} type={type} {...props} />;
+export function Button({
+  tone = 'neutral',
+  size = 'md',
+  shape = 'default',
+  type = 'button',
+  ...props
+}: ButtonProps) {
+  return (
+    <button
+      className="ui-button"
+      data-tone={tone}
+      data-size={size === 'md' ? undefined : size}
+      data-shape={shape === 'default' ? undefined : shape}
+      type={type}
+      {...props}
+    />
+  );
 }
 
 export function Panel({ children, ...props }: PanelProps) {

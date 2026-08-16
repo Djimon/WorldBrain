@@ -18,6 +18,30 @@
   background: var(--color-accent);
 }
 
+.ui-button[data-tone='danger'] {
+  border-color: var(--color-status-failure);
+  color: var(--color-on-accent);
+  background: var(--color-status-failure);
+}
+
+.ui-button[data-size='compact'] {
+  min-height: 28px;
+  padding: var(--space-1) var(--space-2);
+}
+
+.ui-button[data-size='icon'] {
+  min-height: 32px;
+  width: 32px;
+  padding: 0;
+}
+
+.ui-button[data-shape='circle'] {
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+}
+
 .ui-button:disabled {
   color: var(--color-text-muted);
   background: var(--color-surface-alt);
