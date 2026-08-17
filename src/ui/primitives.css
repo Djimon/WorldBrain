@@ -225,6 +225,11 @@
   background: var(--color-surface);
   font: inherit;
 }
+/* App-wide field standard: border-only focus (accent border, no ring). */
+.ui-field__control:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
 
 .ui-field__hint {
   color: var(--color-text-muted);
