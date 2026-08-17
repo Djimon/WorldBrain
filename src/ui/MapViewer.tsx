@@ -80,6 +80,28 @@ const PIN_ICONS = [
 
 type PinIconKey = typeof PIN_ICONS[number]['key'];
 
+// Shared 15-icon grid used both in the pin-tool flyout and the pin editor
+// (was duplicated inline in both). Selection = accent outline + tint, not a
+// solid fill, so it stays a bespoke grid cell rather than <Button>.
+function PinIconGrid({ value, onSelect }: { value: PinIconKey; onSelect: (key: PinIconKey) => void }) {
+  return (
+    <div className="pin-icon-picker">
+      {PIN_ICONS.map((ic) => (
+        <button
+          key={ic.key}
+          type="button"
+          title={ic.label}
+          aria-pressed={value === ic.key}
+          className={`pin-icon-btn${value === ic.key ? ' active' : ''}`}
+          onClick={() => onSelect(ic.key)}
+        >
+          {ic.emoji}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function getPinEmoji(styleJson: string): string {
   try {
     const s = JSON.parse(styleJson) as { icon?: string };
@@ -759,15 +781,10 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             </Button>
             {pinFlyout && pinFlyoutPos && (
               <div className="map-tool-flyout" style={{ top: pinFlyoutPos.top, left: pinFlyoutPos.left }} onMouseDown={(e) => e.stopPropagation()}>
-                <div className="pin-icon-picker">
-                  {PIN_ICONS.map((ic) => (
-                    <button key={ic.key} type="button" title={ic.label}
-                      className={`pin-icon-btn${newPinIcon === ic.key ? ' active' : ''}`}
-                      onClick={() => { setNewPinIcon(ic.key); setMode('pin'); setPinFlyout(false); }}>
-                      {ic.emoji}
-                    </button>
-                  ))}
-                </div>
+                <PinIconGrid
+                  value={newPinIcon}
+                  onSelect={(k) => { setNewPinIcon(k); setMode('pin'); setPinFlyout(false); }}
+                />
               </div>
             )}
           </div>
@@ -1213,16 +1230,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             <button onClick={() => setEditingPin(null)}>✕</button>
           </div>
           <div className="map-pin-editor__body">
-            <div className="pin-icon-picker">
-              {PIN_ICONS.map((ic) => (
-                <button key={ic.key}
-                  className={`pin-icon-btn${editIcon === ic.key ? ' active' : ''}`}
-                  title={ic.label}
-                  onClick={() => setEditIcon(ic.key)}>
-                  {ic.emoji}
-                </button>
-              ))}
-            </div>
+            <PinIconGrid value={editIcon} onSelect={setEditIcon} />
             <label className="map-pin-editor__label">Name</label>
             <input className="map-pin-editor__name-input" value={editLabel} onChange={(e) => setEditLabel(e.target.value)} />
             <label className="map-pin-editor__label">Notizen</label>
