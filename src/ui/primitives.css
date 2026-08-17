@@ -276,12 +276,26 @@
   border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
   background: color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
+.ui-chip[data-variant='outline'] {
+  border-color: var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+}
+.ui-chip[data-size='sm'] {
+  font-size: 0.65rem;
+}
 .ui-chip[data-interactive] {
   cursor: pointer;
 }
-.ui-chip[data-interactive]:hover {
+.ui-chip[data-interactive]:not([data-selected]):hover {
   border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
   background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+/* Toggle-selected (facet) — wins over tone/variant, so it goes last. */
+.ui-chip[data-selected] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .ui-table-surface,

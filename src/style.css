@@ -795,22 +795,7 @@ input {
   gap: var(--space-1);
 }
 
-.gsearch__facet {
-  padding: 2px var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
-.gsearch__facet--active {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-on-accent);
-}
-
+/* The facet pill is <Chip as="button" variant="outline">; only the count needs styling. */
 .gsearch__facet-count {
   opacity: 0.7;
 }
@@ -3245,21 +3230,23 @@ input {
 .layer-panel__hidden-indicator { flex: 0 0 auto; }
 
 /* Type pill — colored text + matching border, right side, non-shrinking. */
-.layer-panel__type {
+/* A colored-outline <Chip> — the pill base is .ui-chip; these override it to a
+   currentColor border + per-type hue + tiny uppercase. Prefixed with .ui-chip
+   so the hue reliably wins over the base chip color. */
+.ui-chip.layer-panel__type {
   flex: 0 0 auto;
   padding: 1px 7px;
-  border: 1px solid currentColor;
-  border-radius: var(--radius-pill);
+  border-color: currentColor;
+  background: transparent;
   font-size: 0.6rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   line-height: 1.5;
-  white-space: nowrap;
 }
-.layer-panel__type--image { color: #6ea8fe; }
-.layer-panel__type--fog { color: #b0b8c4; }
-.layer-panel__type--token { color: #e0a15a; }
+.ui-chip.layer-panel__type--image { color: #6ea8fe; }
+.ui-chip.layer-panel__type--fog { color: #b0b8c4; }
+.ui-chip.layer-panel__type--token { color: #e0a15a; }
 
 /* Add-layer toolbar: buttons side by side when there's room, wrapping to
    stacked full-width rows when the sidebar is narrow. */
@@ -3662,20 +3649,6 @@ input {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-}
-
-.channel-row__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 6px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-alt);
-  color: var(--color-text-muted);
-  font-size: 0.65rem;
-  line-height: 1.4;
-  white-space: nowrap;
 }
 
 .channel-row__clips {

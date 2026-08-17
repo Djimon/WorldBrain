@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { listLayers, updateLayer, deleteLayer, reorderLayers, type MapLayerRow } from '../services/map-layer-service';
-import { Button } from './primitives';
+import { Button, Chip } from './primitives';
 
 export interface LayerPanelProps {
   database: DatabaseLike;
@@ -135,9 +135,9 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, ed
               {!layer.visible && (
                 <span className="layer-panel__hidden-indicator" title={t('layerPanel.hiddenIndicator', 'Ausgeblendet')}>🚫</span>
               )}
-              <span className={`layer-panel__type layer-panel__type--${layer.layer_type}`}>
+              <Chip className={`layer-panel__type layer-panel__type--${layer.layer_type}`}>
                 {layerTypeLabel[layer.layer_type] ?? layer.layer_type}
-              </span>
+              </Chip>
             </div>
             {isExpanded(layer.id) && (
               <div className="layer-panel__controls">

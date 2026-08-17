@@ -71,13 +71,19 @@ type StatusChipProps = HTMLAttributes<HTMLSpanElement> & {
   children: ReactNode;
 };
 
-type ChipProps = HTMLAttributes<HTMLSpanElement> & {
+type ChipProps = HTMLAttributes<HTMLElement> & {
   /** neutral = normal text · accent = accent-colored text. */
   tone?: 'neutral' | 'accent';
-  /** soft = surface-active pill (default) · filled = accent-tinted fill + border. */
-  variant?: 'soft' | 'filled';
-  /** Adds pointer cursor + hover feedback for clickable chips (e.g. mentions). */
+  /** soft = surface-active fill (default) · filled = accent-tinted · outline = border + muted text, transparent. */
+  variant?: 'soft' | 'filled' | 'outline';
+  /** sm = smaller font for dense rows (layer/channel chips). */
+  size?: 'md' | 'sm';
+  /** Pointer cursor + hover feedback (auto-on when as="button"). */
   interactive?: boolean;
+  /** Toggle-selected look (accent fill) — for filter/facet chips. */
+  selected?: boolean;
+  /** Render as a real <button> for clickable toggles (keeps chip styling). */
+  as?: 'span' | 'button';
   children: ReactNode;
 };
 
@@ -209,17 +215,38 @@ export function StatusChip({ tone = 'muted', children, ...props }: StatusChipPro
 export function Chip({
   tone = 'neutral',
   variant = 'soft',
+  size = 'md',
   interactive = false,
+  selected = false,
+  as = 'span',
   children,
   className,
   ...props
 }: ChipProps) {
+  if (as === 'button') {
+    return (
+      <button
+        type="button"
+        className={className ? `ui-chip ${className}` : 'ui-chip'}
+        data-tone={tone === 'neutral' ? undefined : tone}
+        data-variant={variant === 'soft' ? undefined : variant}
+        data-size={size === 'md' ? undefined : size}
+        data-interactive=""
+        data-selected={selected ? '' : undefined}
+        {...props}
+      >
+        {children}
+      </button>
+    );
+  }
   return (
     <span
       className={className ? `ui-chip ${className}` : 'ui-chip'}
       data-tone={tone === 'neutral' ? undefined : tone}
       data-variant={variant === 'soft' ? undefined : variant}
+      data-size={size === 'md' ? undefined : size}
       data-interactive={interactive ? '' : undefined}
+      data-selected={selected ? '' : undefined}
       {...props}
     >
       {children}

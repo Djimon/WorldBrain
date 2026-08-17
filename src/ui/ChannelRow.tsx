@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClipButton } from './ClipButton';
 import type { AudioChannelRow, AudioPresetRow, ChannelMixerPatch } from '../services/audio-service';
-import { Button } from './primitives';
+import { Button, Chip } from './primitives';
 
 const MAX_CLIP_SLOTS = 8;
 
@@ -92,13 +92,13 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
       <div className="channel-row__name-block">
         <div className="channel-row__name">{channel.name || t('audioChannelUnnamed', 'Kanal')}</div>
         <div className="channel-row__chips">
-          <span className="channel-row__chip">
+          <Chip variant="outline" size="sm">
             {channel.mode === 'add' ? t('audioModeAdd', 'Hinzufügen') : t('audioModeReplace', 'Ersetzen')}
-          </span>
-          <span className="channel-row__chip">
+          </Chip>
+          <Chip variant="outline" size="sm">
             {channel.transition_type === 'fade' ? <FadeIcon /> : <CutIcon />}
             {channel.transition_type === 'fade' ? t('audioTransitionFade', 'Überblenden') : t('audioTransitionCut', 'Schnitt')}
-          </span>
+          </Chip>
         </div>
       </div>
 

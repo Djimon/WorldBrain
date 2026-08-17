@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Chip } from './primitives';
 import { stripMarkdown } from '../utils/markdown';
 import { searchEntities, getSearchFacets, rebuildSearchIndex } from '../services/search-service';
 import type { SearchResult, SearchFacets } from '../services/search-service';
@@ -84,13 +85,15 @@ export function GlobalSearch({ onNavigate, database }: Props) {
       {facets && Object.keys(facets.entityTypes).length > 0 && (
         <div className="gsearch__facets">
           {Object.entries(facets.entityTypes).map(([type, count]) => (
-            <button
+            <Chip
               key={type}
-              className={`gsearch__facet${activeTypeFilter === type ? ' gsearch__facet--active' : ''}`}
+              as="button"
+              variant="outline"
+              selected={activeTypeFilter === type}
               onClick={() => setActiveTypeFilter(activeTypeFilter === type ? null : type)}
             >
               {type} <span className="gsearch__facet-count">{count}</span>
-            </button>
+            </Chip>
           ))}
         </div>
       )}
