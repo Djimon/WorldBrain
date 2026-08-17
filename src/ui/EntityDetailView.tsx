@@ -230,14 +230,12 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
           ) : Object.keys(schema.properties).length > 0 && (
             <div className="entity-detail__field">
               <label className="entity-detail__field-label">{t('field.properties')}</label>
-              <div className="entity-detail__props-form">
-                <PropertiesForm
-                  schema={schema.properties}
-                  values={editProps}
-                  onChange={(patch) => setEditProps((prev) => ({ ...prev, ...patch }))}
-                  entities={allEntities}
-                />
-              </div>
+              <PropertiesForm
+                schema={schema.properties}
+                values={editProps}
+                onChange={(patch) => setEditProps((prev) => ({ ...prev, ...patch }))}
+                entities={allEntities}
+              />
             </div>
           )}
         </div>

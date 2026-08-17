@@ -699,26 +699,26 @@ input {
 }
 .entity-detail__textarea:focus { border-color: var(--color-accent); outline: none; }
 
-.entity-detail__props-form { display: flex; flex-direction: column; gap: var(--space-2); }
-
-/* PropertiesForm fields inherit entity-detail styling */
-.entity-detail__props-form label {
+/* PropertiesForm owns its own styling (class rendered by the component itself),
+   so it stays styled anywhere it's reused — not only inside EntityDetailView. */
+.props-form { display: flex; flex-direction: column; gap: var(--space-2); }
+.props-form label {
   display: flex; flex-direction: column; gap: 3px;
   font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--color-text-muted);
 }
-.entity-detail__props-form input[type="text"],
-.entity-detail__props-form input[type="number"],
-.entity-detail__props-form select {
+.props-form input[type="text"],
+.props-form input[type="number"],
+.props-form select {
   background: var(--color-surface); border: 1px solid var(--color-border);
   border-radius: var(--radius-sm); padding: 5px 8px;
   color: var(--color-text); font-size: 0.88rem; width: 100%;
 }
-.entity-detail__props-form input[type="text"]:focus,
-.entity-detail__props-form input[type="number"]:focus,
-.entity-detail__props-form select:focus { border-color: var(--color-accent); outline: none; }
-.entity-detail__props-form input[type="checkbox"] { width: auto; margin-right: 6px; }
-.entity-detail__props-form label:has(input[type="checkbox"]) {
+.props-form input[type="text"]:focus,
+.props-form input[type="number"]:focus,
+.props-form select:focus { border-color: var(--color-accent); outline: none; }
+.props-form input[type="checkbox"] { width: auto; margin-right: 6px; }
+.props-form label:has(input[type="checkbox"]) {
   flex-direction: row; align-items: center; text-transform: none;
   font-size: 0.88rem; color: var(--color-text);
 }

@@ -205,7 +205,7 @@ export function PropertiesForm({ schema, values, onChange, entities = [] }: Prop
   const { t } = useTranslation('entity');
   void t; // used for i18n readiness
   return (
-    <div>
+    <div className="props-form">
       {Object.entries(schema).map(([key, fieldSchema]) => {
         const label = fieldSchema.title ?? key;
         const value = values[key];
