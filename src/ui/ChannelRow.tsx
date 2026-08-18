@@ -115,16 +115,16 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
       </div>
 
       <div className="channel-row__mixer">
-        <button
-          type="button"
-          className="channel-row__mixer-toggle"
-          aria-expanded={mixerExpanded}
+        <Button
+          size="icon"
+          className="u-noshrink"
+          aria-pressed={mixerExpanded}
           aria-label={t('audioMixerToggle', 'Balance & EQ')}
           title={t('audioMixerToggle', 'Balance & EQ')}
           onClick={() => setMixerExpanded((v) => !v)}
         >
           🎚
-        </button>
+        </Button>
 
         <label className="channel-row__volume">
           {t('audioVolume', 'Lautstärke')}
@@ -144,16 +144,16 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
           {channel.muted ? '🔇' : '🔊'}
         </button>
 
-        <button
-          type="button"
-          className="channel-row__settings-btn"
+        <Button
+          size="icon"
+          className="u-noshrink"
           aria-label={t('audioChannelSettings', 'Kanaleinstellungen')}
           title={t('audioChannelSettings', 'Kanaleinstellungen')}
-          aria-expanded={settingsOpen}
+          aria-pressed={settingsOpen}
           onClick={() => setSettingsOpen((v) => !v)}
         >
           ⚙
-        </button>
+        </Button>
       </div>
 
       {mixerExpanded && (

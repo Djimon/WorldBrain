@@ -438,13 +438,15 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           <div className="workspace-area" style={{ overflow: 'hidden' }}>
             <div className="workspace-area__sidebar maps-sidebar" style={{ width: mapsSidebarCollapsed ? 32 : mapsSidebarWidth, padding: mapsSidebarCollapsed ? 'var(--space-2) 0' : undefined }}>
               {!mapsSidebarCollapsed && (
-                <button
-                  className="emd__create-btn maps-sidebar__import"
+                <Button
+                  tone="accent"
+                  variant="outline"
+                  className="maps-sidebar__import"
                   onClick={() => void handleMapImport()}
                   disabled={mapImporting}
                 >
                   {mapImporting ? t('mapImporting', '⏳ Importiere…') : t('importMap', '+ Karte importieren')}
-                </button>
+                </Button>
               )}
               <MapsSidebarTabs
                 selectedMapId={selectedMapId}

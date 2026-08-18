@@ -13,6 +13,7 @@
 .u-row     { display: flex; align-items: center; }
 .u-cluster { display: flex; flex-wrap: wrap; align-items: center; }
 .u-grow    { flex: 1 1 auto; min-width: 0; }
+.u-noshrink { flex: 0 0 auto; }
 
 /* cross-axis / main-axis alignment modifiers */
 .u-items-start    { align-items: flex-start; }
