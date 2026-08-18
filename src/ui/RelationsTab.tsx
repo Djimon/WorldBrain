@@ -5,7 +5,7 @@ import { getEffectiveEntity } from '../services/entity-service';
 import { getRelations, addRelation, deactivateRelation, reactivateRelation, RelationRow } from '../services/relation-service';
 import { getRelationTypeDefinition, getAllRelationTypes } from '../data/relation-type-registry';
 import { EntityPicker } from './EntityPicker';
-import { Button, Chip } from './primitives';
+import { Button, Chip, ListRow } from './primitives';
 
 interface Props {
   entityId: string;
@@ -89,14 +89,14 @@ export function RelationsTab({ entityId, database }: Props) {
           const otherId = getOtherEntityId(rel, entityId);
           const visibility = JSON.parse(rel.visibility_json ?? '"public"');
           return (
-            <div key={rel.id} className="relations-tab__row">
+            <ListRow as="div" interactive={false} key={rel.id} className="relations-tab__row">
               <span>{label} → <EntityTitle entityId={otherId} database={db} /></span>
               {visibility === 'gm_only' && <Chip tone="accent" className="relations-tab__badge">GM only</Chip>}
               {rel.notes && <span className="relations-tab__notes">({rel.notes})</span>}
               <Button onClick={() => void handleDeactivate(rel.id)} aria-label="Deactivate">
                 Deactivate
               </Button>
-            </div>
+            </ListRow>
           );
         })}
         {active.length === 0 && <span className="relations-tab__empty">{t('relations.none', 'Keine Relationen')}</span>}
@@ -109,13 +109,13 @@ export function RelationsTab({ entityId, database }: Props) {
             const label = getLabel(rel, entityId);
             const otherId = getOtherEntityId(rel, entityId);
             return (
-              <div key={rel.id} className="relations-tab__row relations-tab__row--inactive">
+              <ListRow as="div" interactive={false} key={rel.id} className="relations-tab__row relations-tab__row--inactive">
                 <span>{label} → <EntityTitle entityId={otherId} database={db} /></span>
                 {rel.notes && <span className="relations-tab__notes">({rel.notes})</span>}
                 <Button onClick={() => void handleReactivate(rel.id)} aria-label="Reactivate">
                   Reactivate
                 </Button>
-              </div>
+              </ListRow>
             );
           })}
         </section>

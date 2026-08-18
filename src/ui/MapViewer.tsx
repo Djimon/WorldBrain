@@ -22,7 +22,7 @@ import { listVars } from '../services/session-variable-service';
 import type { VarRow } from '../services/session-variable-service';
 import { ConditionBuilder } from './ConditionBuilder';
 import type { VarDef } from './ConditionBuilder';
-import { Button, Tabs } from './primitives';
+import { Button, ListRow, Tabs } from './primitives';
 
 const VISIBILITY_OPTIONS: { key: string; label: string }[] = [
   { key: 'public', label: 'Öffentlich' },
@@ -1141,7 +1141,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               <div className="map-token-list__empty">{t('mapSideTabs.noTokens', 'Keine Tokens. Token-Werkzeug + Klick auf die Karte.')}</div>
             )}
             {tokens.map((tk) => (
-              <div key={tk.id} className={`map-token-list__row${selectedTokenId === tk.id ? ' active' : ''}`}>
+              <ListRow as="div" interactive={false} key={tk.id} selected={selectedTokenId === tk.id} className="map-token-list__row">
                 <span
                   className={`map-token-list__swatch map-token-list__swatch--${tk.render_style}`}
                   style={tk.render_style === 'token' ? { background: tk.ring_color || 'var(--color-accent)' } : undefined}
@@ -1157,7 +1157,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                     setSelectedTokenId((cur) => (cur === tk.id ? null : cur));
                     deleteToken(database, tk.id).then(reloadTokens).catch(console.error);
                   }}>✕</button>
-              </div>
+              </ListRow>
             ))}
           </div>
         ) : confirmDeleteFolderPath ? (

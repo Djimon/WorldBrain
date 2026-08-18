@@ -1475,7 +1475,8 @@ input {
   min-height: 0;
 }
 .map-token-list__empty { font-size: 0.8rem; color: var(--color-text-muted); padding: var(--space-2); }
-.map-token-list__row { display: flex; align-items: center; gap: 6px; }
+/* Gap + density only — chrome + selected state are <ListRow>. */
+.map-token-list__row { gap: 6px; padding: 0; }
 /* Indicator before the name: shape = render style (circle token / square plain),
    fill = ring color for token mode. */
 .map-token-list__swatch {
@@ -1508,7 +1509,6 @@ input {
   white-space: nowrap;
 }
 .map-token-list__name:hover { background: var(--color-background); }
-.map-token-list__row.active .map-token-list__name { background: var(--color-accent); color: var(--color-on-accent); }
 .map-token-list__del {
   flex: 0 0 auto;
   background: none;
@@ -1582,21 +1582,12 @@ input {
   overflow: hidden;
 }
 
+/* Content layout only — chrome + hover/selected states are <ListRow>. */
 .mention-suggest__item {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  width: 100%;
   padding: 6px 12px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--color-text);
   font-size: 0.85rem;
-  text-align: left;
 }
-.mention-suggest__item:hover,
-.mention-suggest__item.active { background: var(--color-surface-active); }
 
 .mention-suggest__type {
   font-size: 0.7rem;
@@ -2295,25 +2286,10 @@ input {
   gap: 4px;
 }
 
+/* Content layout only — the card chrome + hover are <ListRow variant="card">. */
 .backlinks__item {
-  width: 100%;
-  display: flex;
-  align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 8px 12px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  color: var(--color-text);
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 0.12s, background 0.12s;
-}
-
-.backlinks__item:hover {
-  border-color: var(--color-accent);
-  background: var(--color-surface-hover, var(--color-surface));
 }
 
 .backlinks__title {
@@ -3015,15 +2991,11 @@ input {
   margin: 0 0 var(--space-2);
 }
 
+/* Fill + spacing only — the row structure is <ListRow as="div" interactive={false}>. */
 .relations-tab__row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
   padding: 5px 8px;
   background: var(--color-surface-alt);
-  border-radius: var(--radius-sm);
   font-size: 0.85rem;
-  color: var(--color-text);
   margin-bottom: 4px;
 }
 .relations-tab__row--inactive { opacity: 0.5; }
@@ -3093,17 +3065,13 @@ input {
   background: var(--color-surface);
 }
 
+/* Content layout only — chrome + hover/selected states are <ListRow>. */
 .entity-picker__item {
-  display: flex;
   align-items: baseline;
   gap: 8px;
   padding: 6px 10px;
-  cursor: pointer;
-  color: var(--color-text);
   font-size: 0.85rem;
 }
-.entity-picker__item:hover,
-.entity-picker__item.active { background: var(--color-surface-active); }
 
 .entity-picker__item-type { font-size: 0.75rem; color: var(--color-accent); opacity: 0.8; }
 .entity-picker__item-summary { font-size: 0.78rem; color: var(--color-text-muted); }

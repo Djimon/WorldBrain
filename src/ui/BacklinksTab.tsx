@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
+import { ListRow } from './primitives';
 import { parseMentions } from './PropertiesForm';
 
 interface Backlink { id: string; type: string; title: string }
@@ -51,10 +52,10 @@ export function BacklinksTab({ entityId, database, onNavigate }: Props) {
     <ul className="backlinks">
       {links.map((l) => (
         <li key={l.id}>
-          <button className="backlinks__item" onClick={() => onNavigate?.(l.id)} title={t('backlinks.jump', 'Zur Entity springen')}>
+          <ListRow variant="card" className="backlinks__item" onClick={() => onNavigate?.(l.id)} title={t('backlinks.jump', 'Zur Entity springen')}>
             <span className="backlinks__title">{l.title}</span>
             <span className="backlinks__type">{l.type}</span>
-          </button>
+          </ListRow>
         </li>
       ))}
     </ul>

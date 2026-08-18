@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Chip } from './primitives';
+import { Chip, ListRow } from './primitives';
 
 type PropertySchema = {
   type: 'string' | 'boolean' | 'number' | 'array';
@@ -136,13 +136,14 @@ function MentionInput({ value, onChange, entities, placeholder }: MentionInputPr
       {showSuggest && suggestions.length > 0 && (
         <div className="mention-suggest">
           {suggestions.map((e, i) => (
-            <button key={e.id}
-              className={`mention-suggest__item${i === highlightIdx ? ' active' : ''}`}
+            <ListRow key={e.id}
+              className="mention-suggest__item"
+              selected={i === highlightIdx}
               onMouseDown={(ev) => { ev.preventDefault(); insertMention(e); }}
             >
               <span className="mention-suggest__type">{e.type}</span>
               <span className="mention-suggest__name">{e.title}</span>
-            </button>
+            </ListRow>
           ))}
         </div>
       )}
