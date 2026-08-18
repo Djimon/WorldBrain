@@ -5,7 +5,7 @@ import { getEffectiveEntity } from '../services/entity-service';
 import { getRelations, addRelation, deactivateRelation, reactivateRelation, RelationRow } from '../services/relation-service';
 import { getRelationTypeDefinition, getAllRelationTypes } from '../data/relation-type-registry';
 import { EntityPicker } from './EntityPicker';
-import { Button, Chip, ListRow } from './primitives';
+import { Button, Chip, ListRow, Panel } from './primitives';
 
 interface Props {
   entityId: string;
@@ -124,7 +124,7 @@ export function RelationsTab({ entityId, database }: Props) {
       <div className="relations-tab__add">
         <Button onClick={() => setShowAddForm((v) => !v)}>Add relation</Button>
         {showAddForm && (
-          <div className="relations-tab__add-form">
+          <Panel className="relations-tab__add-form u-stack u-gap-2">
             <select
               aria-label="Relation type"
               value={newRelationType}
@@ -154,7 +154,7 @@ export function RelationsTab({ entityId, database }: Props) {
             ) : (
               <span className="relations-tab__hint">Bitte zuerst einen Relation-Typ wählen.</span>
             )}
-          </div>
+          </Panel>
         )}
       </div>
     </div>

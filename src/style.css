@@ -2996,14 +2996,12 @@ input {
 .relations-tab__notes { color: var(--color-text-muted); font-size: 0.8rem; }
 .relations-tab__empty { font-size: 0.82rem; color: var(--color-text-muted); font-style: italic; }
 
+/* Inset (surface-alt) form — surface/border from <Panel>, column+gap from
+   utilities; keeps its sunken fill + tighter radius/padding. */
 .relations-tab__add-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
   margin-top: var(--space-2);
   padding: var(--space-3);
   background: var(--color-surface-alt);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
 }
 
@@ -3627,17 +3625,14 @@ input {
   color: var(--color-on-accent);
 }
 
+/* Inset (surface-alt) form — surface/border from <Panel>, wrap+align+gap from
+   utilities; keeps its full width, sunken fill + tighter radius/padding. */
 .channel-row__settings-popover {
   width: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  align-items: flex-end;
   margin-top: var(--space-2);
   padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
   background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
 }
 
 .channel-row__settings-popover label {

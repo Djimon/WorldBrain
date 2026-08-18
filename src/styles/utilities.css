@@ -17,6 +17,7 @@
 
 /* cross-axis / main-axis alignment modifiers */
 .u-items-start    { align-items: flex-start; }
+.u-items-end      { align-items: flex-end; }
 .u-items-stretch  { align-items: stretch; }
 .u-items-baseline { align-items: baseline; }
 .u-justify-between { justify-content: space-between; }

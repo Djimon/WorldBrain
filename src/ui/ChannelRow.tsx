@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClipButton } from './ClipButton';
 import type { AudioChannelRow, AudioPresetRow, ChannelMixerPatch } from '../services/audio-service';
-import { Button, Chip } from './primitives';
+import { Button, Chip, Panel } from './primitives';
 
 const MAX_CLIP_SLOTS = 8;
 
@@ -157,7 +157,7 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
       </div>
 
       {mixerExpanded && (
-        <div className="channel-row__settings-popover" role="group" aria-label={t('audioMixerToggle', 'Balance & EQ')}>
+        <Panel className="channel-row__settings-popover u-cluster u-items-end u-gap-3" role="group" aria-label={t('audioMixerToggle', 'Balance & EQ')}>
           <label className="channel-row__balance" title={eqDisabledTitle}>
             {t('audioBalance', 'Balance')}
             <input
@@ -185,11 +185,11 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
           <Button onClick={() => setMixerExpanded(false)}>
             {t('audioSettingsClose', 'Schließen')}
           </Button>
-        </div>
+        </Panel>
       )}
 
       {settingsOpen && (
-        <div className="channel-row__settings-popover" role="dialog" aria-label={t('audioChannelSettings', 'Kanaleinstellungen')}>
+        <Panel className="channel-row__settings-popover u-cluster u-items-end u-gap-3" role="dialog" aria-label={t('audioChannelSettings', 'Kanaleinstellungen')}>
           <label>
             {t('audioChannelName', 'Kanalname')}
             <input
@@ -220,7 +220,7 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
           <Button onClick={() => setSettingsOpen(false)}>
             {t('audioSettingsClose', 'Schließen')}
           </Button>
-        </div>
+        </Panel>
       )}
     </div>
   );
