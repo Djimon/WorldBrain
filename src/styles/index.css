@@ -6,6 +6,19 @@
 
 @import './tokens.css' layer(tokens);
 @import '../ui/primitives.css' layer(primitives);
+
+/* components — order matters within the layer: it must match the original
+   single-file source order 1:1 so the cascade stays byte-identical. */
 @import '../ui/graph.css' layer(components);
-@import '../style.css' layer(components);
+@import './base.css' layer(components);
+@import './components/shell.css' layer(components);
+@import './components/entities.css' layer(components);
+@import './components/search.css' layer(components);
+@import './components/calendar.css' layer(components);
+@import './components/maps.css' layer(components);
+@import './components/calendar-extras.css' layer(components);
+@import './components/maps-panels.css' layer(components);
+@import './components/audio.css' layer(components);
+@import './components/pickers.css' layer(components);
+
 @import './utilities.css' layer(utilities);
