@@ -6,7 +6,7 @@ import type { EraRow } from '../services/era-service';
 import { CALENDAR_PRESETS } from '../../core_data/calendar-schema';
 import type { DatabaseLike } from '../services/entity-service';
 import { CalendarDateInput } from './CalendarDateInput';
-import { Button, Tabs } from './primitives';
+import { Button, Panel, Tabs } from './primitives';
 
 interface CalendarInitial {
   id?: string;
@@ -168,7 +168,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
 
       <div className="cal-form__body">
         {/* Grundeinstellungen */}
-        <section className="cal-section">
+        <Panel className="cal-section u-stack u-gap-3">
           <h3 className="cal-section__title">Grundeinstellungen</h3>
           <div className="cal-form__row">
             <label className="cal-form__label">Name</label>
@@ -225,7 +225,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
             </span>
             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>„Die Welt beginnt an diesem Datum"</span>
           </div>
-        </section>
+        </Panel>
 
         {/* Tabs — je Bereich volle Breite, kein Platz-Konkurrieren */}
         <Tabs
@@ -241,7 +241,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
         />
 
         {tab === 'months' && (
-          <section className="cal-section">
+          <Panel className="cal-section u-stack u-gap-3">
             <div className="cal-section__head">
               <h3 className="cal-section__title">Monate ({months.length})</h3>
               <Button tone="accent" variant="outline" size="compact" onClick={addMonth}>+ Monat</Button>
@@ -259,11 +259,11 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
                 </div>
               ))}
             </div>
-          </section>
+          </Panel>
         )}
 
         {tab === 'weekdays' && (
-          <section className="cal-section">
+          <Panel className="cal-section u-stack u-gap-3">
             <div className="cal-section__head">
               <h3 className="cal-section__title">Wochentage ({week.length})</h3>
               <Button tone="accent" variant="outline" size="compact" onClick={addWeekday}>+ Tag</Button>
@@ -278,11 +278,11 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
                 </div>
               ))}
             </div>
-          </section>
+          </Panel>
         )}
 
         {tab === 'eras' && (
-          <section className="cal-section">
+          <Panel className="cal-section u-stack u-gap-3">
             <div className="cal-section__head">
               <h3 className="cal-section__title">Ären ({eras.length})</h3>
               <Button tone="accent" variant="outline" size="compact" onClick={addEra}>+ Ära</Button>
@@ -319,7 +319,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
                 <p className="cal-hint">Noch keine Ären. „+ Ära" legt einen benannten Zeitraum mit festem Start- und Enddatum an. Ären dürfen sich überschneiden und Lücken lassen. Übernahme beim Speichern.</p>
               )}
             </div>
-          </section>
+          </Panel>
         )}
       </div>
     </div>
