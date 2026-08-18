@@ -231,12 +231,18 @@ Layers = Import-Reihenfolge → 1:1 wie heute halten).
    (`.emd__item` ganz gelöscht; entity-picker/mention/backlinks/new-project/token-editor/cal-section
    reduziert). **Bewusst NICHT** flächendeckend (siehe ROI-Grenze oben).
 
-**Nächster / größter verbleibender Schritt:**
-4. ⛔ **Schritt 3 (ITCSS-Split)** — `style.css` (~3.985 Zeilen) in Feature-Layer-Dateien zerlegen.
-   Rein mechanisch, `@layer`-Fundament liegt; das ist der eigentliche theme-fähige Endzustand und der
-   größte verbleibende Wert. Kaskaden-sensibel → Import-Reihenfolge 1:1 halten, pro Commit visuell prüfen.
+4. ✅ **Schritt 3 (ITCSS-Split)** — `style.css` (3.985 Zeilen) in 10 Feature-Dateien unter `src/styles/`
+   zerlegt (`base.css` + `components/{shell,entities,search,calendar,maps,calendar-extras,maps-panels,
+   audio,pickers}.css`), alle via `styles/index.css` in `layer(components)` in **exakter** Original-
+   Reihenfolge → Kaskade byte-identisch (per Konkatenations-Diff verifiziert). `style.css` gelöscht.
 
-Der flächendeckende Flex→Utility-Sweep (die ~173 restlichen `display:flex`) wird **nicht** als eigener
-Schritt verfolgt — nur punktueller Kollaps bei echter Duplikation (ROI-Grenze).
+**Damit ist der theme-fähige Endzustand erreicht:** tokens → primitives → components (Feature-Dateien)
+→ utilities, alle unter `@layer`, Farben über Tokens. Ein Community-Theme = eine Datei, die die
+`--color-*`/`--space-*`/`--radius-*`-Variablen überschreibt.
+
+**Verbleibend = nur bewusste Specials + opportunistischer Feinschliff** (kein eigener Schritt):
+ClipButton (per-Preset-Farbe), Graph-`--gv-*`-Glass, pin-icon-Grid, Flyout-Menüs, vertikaler Sidebar-
+Streifen; sowie punktueller Utility-Kollaps, falls irgendwo echte Duplikation auffällt. Der
+flächendeckende Flex→Utility-Sweep wird bewusst **nicht** verfolgt (ROI-Grenze oben).
 
 
