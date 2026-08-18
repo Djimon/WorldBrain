@@ -3615,16 +3615,6 @@ input {
 .channel-row input[type='range'] { width: 90px; accent-color: var(--color-accent); }
 .channel-row__volume input[type='range'] { width: 110px; }
 
-.channel-row__mute,
-
-.channel-row__mute:hover { color: var(--color-text); border-color: var(--color-accent); }
-
-.channel-row__mute[aria-pressed='true'] {
-  background: var(--color-status-failure);
-  border-color: var(--color-status-failure);
-  color: var(--color-on-accent);
-}
-
 /* Inset (surface-alt) form — surface/border from <Panel>, wrap+align+gap from
    utilities; keeps its full width, sunken fill + tighter radius/padding. */
 .channel-row__settings-popover {

@@ -133,16 +133,16 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
           <span className="channel-row__db">{dbFromLinear(channel.volume)}</span>
         </label>
 
-        <button
-          type="button"
-          className="channel-row__mute"
+        <Button
+          size="icon"
+          className="u-noshrink"
           aria-pressed={!!channel.muted}
           aria-label={t('audioMute', 'Stumm')}
           title={t('audioMute', 'Stumm')}
           onClick={() => onMixerChange({ muted: !channel.muted })}
         >
           {channel.muted ? '🔇' : '🔊'}
-        </button>
+        </Button>
 
         <Button
           size="icon"
