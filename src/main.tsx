@@ -4,15 +4,14 @@ import './i18n';
 import { App } from './App';
 import { AudioSoundboardWindow } from './ui/AudioSoundboardWindow';
 import { PlayerClientApp } from './ui/PlayerClientApp';
+import { initTheme } from './theme';
 
-// Apply persisted theme before first render to avoid flash. Symmetric add/
-// remove (not just add) — index.html hardcodes data-theme="dark", and only
-// the main window's ThemeToggle (mount-time effect) ever removed it for
-// light mode; the soundboard window has no ThemeToggle, so it was always
-// stuck on the hardcoded dark default regardless of the stored preference.
-const storedTheme = localStorage.getItem('theme') ?? 'dark';
-if (storedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-else document.documentElement.removeAttribute('data-theme');
+// Apply the persisted theme before first render (no flash) and keep this window
+// in sync with theme changes from other windows. Runs for EVERY window — the
+// detached soundboard/player windows have no ThemeToggle, so this is the only
+// thing that themes them (previously only 'dark' was handled, so a 'toxic'
+// preference stripped data-theme and left detached windows on light).
+initTheme();
 
 const rootElement = document.getElementById('root');
 

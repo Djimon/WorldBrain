@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
+import { applyTheme, getStoredTheme, THEME_ORDER, type Theme } from '../theme';
 
-type Theme = 'light' | 'dark' | 'toxic';
-
-const ORDER: Theme[] = ['light', 'dark', 'toxic'];
 const LABEL: Record<Theme, string> = { light: '☀️', dark: '🌙', toxic: '🧪' };
 const NEXT_TITLE: Record<Theme, string> = {
   light: 'Dark mode',
@@ -10,26 +8,15 @@ const NEXT_TITLE: Record<Theme, string> = {
   toxic: 'Light mode',
 };
 
-function getStoredTheme(): Theme {
-  const t = localStorage.getItem('theme');
-  return t === 'light' || t === 'dark' || t === 'toxic' ? t : 'dark';
-}
-
-function applyTheme(theme: Theme) {
-  if (theme === 'light') {
-    document.documentElement.removeAttribute('data-theme');
-  } else {
-    document.documentElement.setAttribute('data-theme', theme);
-  }
-  localStorage.setItem('theme', theme);
-}
-
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(getStoredTheme);
 
-  useEffect(() => { applyTheme(theme); }, [theme]);
+  useEffect(() => {
+    localStorage.setItem('theme', theme);
+    applyTheme(theme);
+  }, [theme]);
 
-  const next = () => setTheme((t) => ORDER[(ORDER.indexOf(t) + 1) % ORDER.length]);
+  const next = () => setTheme((t) => THEME_ORDER[(THEME_ORDER.indexOf(t) + 1) % THEME_ORDER.length]);
 
   return (
     <button
