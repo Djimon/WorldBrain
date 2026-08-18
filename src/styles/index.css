@@ -5,6 +5,7 @@
 @layer tokens, primitives, components, utilities;
 
 @import './tokens.css' layer(tokens);
+@import './themes/toxic.css' layer(tokens);
 @import '../ui/primitives.css' layer(primitives);
 
 /* components — order matters within the layer: it must match the original

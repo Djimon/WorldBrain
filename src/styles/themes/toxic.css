@@ -1,0 +1,33 @@
+/* ── "Toxic" — proof-of-concept community theme ─────────────────────────────
+   Demonstrates that a whole theme is ONE file overriding token variables:
+   giftgrün accent + azurblau borders on a slightly-darkened grey base (not a
+   real dark mode). Only --* variables are touched — no component CSS. Activated
+   by data-theme="toxic" on <html> (see ThemeToggle). Lives in @layer tokens and
+   is imported after tokens.css, so it wins by source order. */
+[data-theme='toxic'] {
+  --color-text:           #eafff2;   /* near-white, faint green */
+  --color-text-muted:     #a8c7d6;   /* muted azure-grey */
+
+  --color-accent:         #66ff33;   /* giftgrün — neon */
+  --color-accent-strong:  #45e015;   /* deeper toxic green */
+  --color-accent-soft:    #14361d;   /* dark green tint (accent-soft fills) */
+
+  --color-surface:        #3e444a;   /* mid-dark grey */
+  --color-surface-alt:    #464d54;
+  --color-surface-hover:  #4e565e;
+  --color-surface-active: #0f4152;   /* azure-tinted selection */
+  --color-background:     #33383d;   /* slightly darker grey (not black) */
+
+  --color-border:         #00c2ff;   /* azurblau — borders glow */
+
+  --color-status-success: #66ff33;
+  --color-status-warning: #ffd21a;
+  --color-status-failure: #ff4d6d;
+  --color-status-muted:   #9fb8c4;
+
+  --color-on-accent:      #06180a;   /* dark text on the neon-green fills */
+  --color-scrim:          rgb(0 0 0 / 0.6);
+  --color-overlay-border: rgb(0 194 255 / 0.45); /* azure glass hairline */
+
+  --shadow-panel: 0 12px 28px rgba(0, 0, 0, 0.5);
+}
