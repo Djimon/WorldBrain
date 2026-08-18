@@ -115,7 +115,7 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
           {entities.map((e) => (
             <li key={e.id}>
               <ListRow
-                className="emd__item"
+                className="u-stack u-items-start u-gap-0"
                 selected={selectedId === e.id}
                 onClick={() => handleSelect(e.id)}
               >

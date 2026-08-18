@@ -28,7 +28,7 @@ export function NewProjectDialog({ onCreated, onCancel, baseDir }: NewProjectDia
 
   return (
     <div className="new-project">
-      <Panel className="new-project__card">
+      <Panel className="new-project__card u-stack u-gap-4">
         <h2>{t('createNewProject')}</h2>
 
         {error && <div className="new-project__error" role="alert">{error}</div>}

@@ -71,7 +71,7 @@ export function EntityPicker({ onSelect, typeFilter = null, database }: Props) {
           <ListRow
             as="li"
             key={entity.id}
-            className="entity-picker__item"
+            className="u-items-baseline entity-picker__item"
             selected={i === activeIndex}
             role="option"
             aria-selected={i === activeIndex}

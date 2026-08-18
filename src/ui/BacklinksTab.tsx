@@ -52,7 +52,7 @@ export function BacklinksTab({ entityId, database, onNavigate }: Props) {
     <ul className="backlinks">
       {links.map((l) => (
         <li key={l.id}>
-          <ListRow variant="card" className="backlinks__item" onClick={() => onNavigate?.(l.id)} title={t('backlinks.jump', 'Zur Entity springen')}>
+          <ListRow variant="card" className="u-justify-between backlinks__item" onClick={() => onNavigate?.(l.id)} title={t('backlinks.jump', 'Zur Entity springen')}>
             <span className="backlinks__title">{l.title}</span>
             <span className="backlinks__type">{l.type}</span>
           </ListRow>

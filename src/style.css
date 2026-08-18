@@ -409,11 +409,8 @@ input {
   background: var(--color-background);
 }
 
-/* Content layout only — the surface (border/radius/bg) is <Panel>. */
+/* Specifics only — surface via <Panel>, column+gap via u-stack/u-gap-4. */
 .new-project__card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
   width: 420px;
   padding: var(--space-5);
 }
@@ -536,13 +533,6 @@ input {
   padding: var(--space-1) 0;
 }
 
-/* Content layout only — the row chrome + states are <ListRow>; emd stacks its
-   title over the summary. */
-.emd__item {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
-}
 
 .emd__item-title {
   font-size: 0.875rem;
@@ -1279,7 +1269,8 @@ input {
 }
 
 /* ── Token editor panel (M15-S07) ── */
-/* Positioning + content layout only — surface + shadow are <Panel variant="popover">. */
+/* Positioning + size only — surface/shadow via <Panel variant="popover">,
+   column+gap via u-stack/u-gap-2. */
 .token-editor {
   position: absolute;
   top: 12px;
@@ -1292,9 +1283,6 @@ input {
   overflow-y: auto;
   padding: var(--space-3);
   z-index: 20;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
 }
 
 .token-editor__header {
@@ -1569,9 +1557,8 @@ input {
   overflow: hidden;
 }
 
-/* Content layout only — chrome + hover/selected states are <ListRow>. */
+/* Specifics only — chrome/states + row gap via <ListRow>. */
 .mention-suggest__item {
-  gap: 8px;
   padding: 6px 12px;
   font-size: 0.85rem;
 }
@@ -2273,9 +2260,8 @@ input {
   gap: 4px;
 }
 
-/* Content layout only — the card chrome + hover are <ListRow variant="card">. */
+/* Specifics only — card chrome/hover via <ListRow variant="card">, justify via utility. */
 .backlinks__item {
-  justify-content: space-between;
   gap: 10px;
 }
 
@@ -3050,10 +3036,8 @@ input {
   background: var(--color-surface);
 }
 
-/* Content layout only — chrome + hover/selected states are <ListRow>. */
+/* Specifics only — chrome/states via <ListRow>, baseline align via u-items-baseline. */
 .entity-picker__item {
-  align-items: baseline;
-  gap: 8px;
   padding: 6px 10px;
   font-size: 0.85rem;
 }
