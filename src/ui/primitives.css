@@ -168,11 +168,6 @@
 .ui-panel[data-variant='popover'] {
   box-shadow: var(--shadow-panel);
 }
-.ui-panel[data-variant='glass'] {
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
-  backdrop-filter: blur(4px);
-  box-shadow: var(--shadow-panel);
-}
 
 .ui-tabs {
   display: flex;

@@ -20,9 +20,9 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 type PanelProps = HTMLAttributes<HTMLElement> & {
-  /** default = inline surface card (no shadow) · popover = + drop shadow ·
-   *  glass = translucent + blur (over a canvas). Positioning/padding via className. */
-  variant?: 'default' | 'popover' | 'glass';
+  /** default = inline surface card (no shadow) · popover = + drop shadow.
+   *  Positioning/padding via className. */
+  variant?: 'default' | 'popover';
   children: ReactNode;
 };
 
