@@ -140,10 +140,19 @@ Konkret offen (Stand jetzt):
 **Akzeptanz:** `grep` findet keine handgerollten Button-/Row-/Chip-/Panel-Klassen mehr außer den oben
 gelisteten Sonderfällen.
 
-### Schritt 2 — Layout-Klassen auf Utilities kollabieren
-**Ziel:** Die pro-Komponente Layout-Klassen (die nur `display:flex`/`direction`/`align`/`gap` halten)
-werden durch die geteilten `.u-*`-Utilities ersetzt und **gelöscht**. Was bleibt, sind nur noch
+### Schritt 2 — Layout-Klassen auf Utilities kollabieren (gezielt, nicht flächendeckend)
+**Ziel:** Wo eine Layout-Klasse **mehrfach dupliziert** ist oder zu einem migrierten Widget gehört,
+wird sie durch die geteilten `.u-*`-Utilities ersetzt und **gelöscht**. Was bleibt, sind nur noch
 komponenten-*spezifische* Reste (Breite, absolute Koordinaten, Grid-Template, spezielle Farbe).
+
+> **Wichtige ROI-Grenze (2026-08, mit dem User bestätigt):** *Nicht* jede handgerollte `display:flex`-Regel
+> blind auf Utilities umbauen. Einzweck-Container mit **semantischem Namen** bleiben als BEM-Klasse — z.B.
+> `.entity-detail__field` (17× verwendet): eine Umstellung auf `u-stack u-gap-1` würde 17 JSX-Stellen
+> verrauschen, den sprechenden Namen kosten, **nichts** fürs Theming bringen (Layout ≠ Farbe) und nur eine
+> kleine Regel einsparen — also **schlechter, nicht besser**. Auch utility-first-Systeme behalten
+> Komponenten-Teil-Klassen für wiederkehrende Strukturen. Das eigentliche Ziel „keine Klassen *neu
+> erfinden*" war auf *reinventierte Komponenten* gemünzt (20 Button-Klassen, 9 Row-Klassen …) — und das
+> ist über die Primitives + Long-tail erledigt. Utility-Kollaps daher nur bei **echter Duplikation**.
 
 Vorgehen (pro Widget):
 1. In der `.tsx` die bespoke Layout-Klasse durch Utility-Klassen ersetzen
@@ -212,14 +221,22 @@ Layers = Import-Reihenfolge → 1:1 wie heute halten).
 
 ---
 
-## 6. Reihenfolge-Empfehlung
-1. **Schritt 1 (Long-tail)** zuerst — killt die reinventierten Komponenten, hebt die Fortschritts-%,
-   niedriges Risiko.
-2. **Schritt 2 (Utilities-Kollaps)** — der eigentliche „kaum-neue-Klassen"-Hebel; pro Feature-Bereich
-   durchgehen.
-3. **Schritt 3 (ITCSS-Split)** zuletzt — rein mechanisch, aber kaskaden-sensibel; braucht visuelle QA
-   pro Commit.
+## 6. Stand & Reihenfolge
 
-Verwandte offene Punkte außerhalb dieses Plans: Issue **#344** (Suche soll `EntityDetailView` rechts als
-Master-Detail wiederverwenden — erst dann ist der `<ListRow selected>`-Zustand in der Suche sichtbar/
-validierbar).
+**Erledigt:**
+1. ✅ **Schritt 1 (Long-tail)** — keine reinventierten Button/Panel-Klassen mehr außer echten Specials.
+   Audio-Buttons (settings/mixer/mute), Map-Import, cal-section (5×), Inset-Forms sind auf Primitives.
+2. ✅ **Fundament** — `@layer`-Ordnung (`styles/index.css`) + Kompositions-Utilities (`styles/utilities.css`).
+3. ✅ **Schritt 2 gezielt** — Layout-Duplikation der migrierten Widgets auf Utilities kollabiert
+   (`.emd__item` ganz gelöscht; entity-picker/mention/backlinks/new-project/token-editor/cal-section
+   reduziert). **Bewusst NICHT** flächendeckend (siehe ROI-Grenze oben).
+
+**Nächster / größter verbleibender Schritt:**
+4. ⛔ **Schritt 3 (ITCSS-Split)** — `style.css` (~3.985 Zeilen) in Feature-Layer-Dateien zerlegen.
+   Rein mechanisch, `@layer`-Fundament liegt; das ist der eigentliche theme-fähige Endzustand und der
+   größte verbleibende Wert. Kaskaden-sensibel → Import-Reihenfolge 1:1 halten, pro Commit visuell prüfen.
+
+Der flächendeckende Flex→Utility-Sweep (die ~173 restlichen `display:flex`) wird **nicht** als eigener
+Schritt verfolgt — nur punktueller Kollaps bei echter Duplikation (ROI-Grenze).
+
+
