@@ -4,8 +4,8 @@ import { applyTheme, getStoredTheme, THEME_ORDER, type Theme } from '../theme';
 const LABEL: Record<Theme, string> = { light: '☀️', dark: '🌙', toxic: '🧪' };
 const NEXT_TITLE: Record<Theme, string> = {
   light: 'Dark mode',
-  dark: 'Toxic theme',
-  toxic: 'Light mode',
+  dark: 'Light mode',
+  toxic: 'Light mode', // toxic is out of the cycle; a click exits to light
 };
 
 export function ThemeToggle() {

@@ -6,7 +6,12 @@
 
 export type Theme = 'light' | 'dark' | 'toxic';
 
-export const THEME_ORDER: Theme[] = ['light', 'dark', 'toxic'];
+// Themes reachable via the ThemeToggle click-cycle. 'toxic' is intentionally
+// left out (deactivated) but kept fully supported — activate it for testing via
+// devtools (`document.documentElement.dataset.theme = 'toxic'`) or by setting
+// localStorage 'theme' to 'toxic'. Its override file (styles/themes/toxic.css)
+// stays imported. Re-add 'toxic' here to put it back in the cycle.
+export const THEME_ORDER: Theme[] = ['light', 'dark'];
 
 export function getStoredTheme(): Theme {
   const t = localStorage.getItem('theme');
