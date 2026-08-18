@@ -20,6 +20,9 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 type PanelProps = HTMLAttributes<HTMLElement> & {
+  /** default = inline surface card (no shadow) · popover = + drop shadow ·
+   *  glass = translucent + blur (over a canvas). Positioning/padding via className. */
+  variant?: 'default' | 'popover' | 'glass';
   children: ReactNode;
 };
 
@@ -148,10 +151,14 @@ export function Segmented({
   );
 }
 
-export function Panel({ children, ...props }: PanelProps) {
+export function Panel({ variant = 'default', children, className, ...props }: PanelProps) {
   return (
-    <section className="ui-panel" {...props}>
-      <div className="ui-panel__body">{children}</div>
+    <section
+      className={className ? `ui-panel ${className}` : 'ui-panel'}
+      data-variant={variant === 'default' ? undefined : variant}
+      {...props}
+    >
+      {children}
     </section>
   );
 }

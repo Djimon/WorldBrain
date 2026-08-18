@@ -12,7 +12,7 @@ import { copyAudioAsset } from '../services/audio-asset';
 import { parseSpotifyUri } from '../services/spotify-uri';
 import { EmojiPicker } from './EmojiPicker';
 import { useEmojiPickerHost } from './EmojiPickerHost';
-import { Button } from './primitives';
+import { Button, Panel } from './primitives';
 
 const DEFAULT_CLIP_COLOR = '#3a3f45';
 
@@ -199,11 +199,11 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
             click — see the emojiPickerWarm comment above. When a host IS
             mounted, it owns the actual popover via a portal instead. */}
         {!emojiPickerHost && (
-          <div className="clip-editor__icon-popover" hidden={!iconPickerOpen}>
+          <Panel variant="popover" className="clip-editor__icon-popover" hidden={!iconPickerOpen}>
             {(iconPickerOpen || emojiPickerWarm) && (
               <EmojiPicker value={icon} onSelect={(emoji) => { setIcon(emoji); setIconPickerOpen(false); }} />
             )}
-          </div>
+          </Panel>
         )}
       </div>
 

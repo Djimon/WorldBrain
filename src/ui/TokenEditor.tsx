@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import type { MapTokenRow, StatusChip, TokenRenderStyle } from '../services/map-token-service';
 import { getIcon } from '../services/icon-set-registry';
 import { IconPicker } from './IconPicker';
-import { Button, Segmented } from './primitives';
+import { Button, Panel, Segmented } from './primitives';
 
 // #300: chip.icon may be a registry ref ("set_id:icon_key") or a legacy
 // literal glyph string (no colon -> getIcon returns undefined, falls back
@@ -118,7 +118,7 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
   const artSrc = artAssetId ? resolveAssetUrl(artAssetId) : null;
 
   return (
-    <div className="token-editor" role="dialog" aria-label={t('token.editorTitle', 'Token bearbeiten')}>
+    <Panel variant="popover" className="token-editor" role="dialog" aria-label={t('token.editorTitle', 'Token bearbeiten')}>
       <div className="token-editor__header">
         <strong>{t('token.editorTitle', 'Token bearbeiten')}</strong>
         <Button variant="ghost" size="icon" onClick={onClose} title={t('close', 'Schließen')}>✕</Button>
@@ -226,7 +226,7 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
         <Button tone="accent" size="compact" onClick={save}>{t('save', 'Speichern')}</Button>
         <Button tone="danger" variant="outline" size="compact" onClick={onDelete}>{t('token.delete', 'Token löschen')}</Button>
       </div>
-    </div>
+    </Panel>
   );
 }
 

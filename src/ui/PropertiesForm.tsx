@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Chip, ListRow } from './primitives';
+import { Chip, ListRow, Panel } from './primitives';
 
 type PropertySchema = {
   type: 'string' | 'boolean' | 'number' | 'array';
@@ -134,7 +134,7 @@ function MentionInput({ value, onChange, entities, placeholder }: MentionInputPr
         placeholder={placeholder}
       />
       {showSuggest && suggestions.length > 0 && (
-        <div className="mention-suggest">
+        <Panel variant="popover" className="mention-suggest">
           {suggestions.map((e, i) => (
             <ListRow key={e.id}
               className="mention-suggest__item"
@@ -145,7 +145,7 @@ function MentionInput({ value, onChange, entities, placeholder }: MentionInputPr
               <span className="mention-suggest__name">{e.title}</span>
             </ListRow>
           ))}
-        </div>
+        </Panel>
       )}
     </div>
   );
