@@ -1,5 +1,4 @@
-@import './styles/tokens.css';
-
+/* tokens are imported by styles/index.css (layer order); do not @import here. */
 *, *::before, *::after {
   box-sizing: border-box;
 }

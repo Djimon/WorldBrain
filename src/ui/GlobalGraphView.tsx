@@ -24,7 +24,6 @@ import { GraphSettingsPanel } from './GraphSettingsPanel';
 import type { GraphSettings } from './GraphSettingsPanel';
 import { GraphFilterPanel } from './GraphFilterPanel';
 import { EntityDetailView } from './EntityDetailView';
-import './graph.css';
 import { Button, Segmented } from './primitives';
 
 export interface GlobalGraphViewProps {

@@ -4,7 +4,6 @@ import type {
   InputHTMLAttributes,
   ReactNode,
 } from 'react';
-import './primitives.css';
 
 type ButtonTone = 'neutral' | 'accent' | 'danger';
 type ButtonVariant = 'solid' | 'outline' | 'ghost' | 'glass';
