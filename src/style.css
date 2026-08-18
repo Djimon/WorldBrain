@@ -539,26 +539,12 @@ input {
   padding: var(--space-1) 0;
 }
 
+/* Content layout only — the row chrome + states are <ListRow>; emd stacks its
+   title over the summary. */
 .emd__item {
-  display: flex;
   flex-direction: column;
-  width: 100%;
-  text-align: left;
-  padding: var(--space-2) var(--space-3);
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-left: 2px solid transparent;
-  color: var(--color-text);
-}
-
-.emd__item:hover {
-  background: var(--color-surface-alt);
-}
-
-.emd__item--active {
-  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
-  border-left-color: var(--color-accent);
+  align-items: flex-start;
+  gap: 0;
 }
 
 .emd__item-title {
@@ -814,21 +800,13 @@ input {
   gap: 2px;
 }
 
+/* Content layout only — the row chrome + hover/selected states are <ListRow>.
+   The selected look now also gains the accent tint (was bar-only). */
 .gsearch__result {
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-rows: auto auto;
   gap: 2px var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  border-left: 2px solid transparent;
-}
-
-.gsearch__result:hover,
-.gsearch__result--selected {
-  background: var(--color-surface-alt);
-  border-left-color: var(--color-accent);
 }
 
 .gsearch__result-title {

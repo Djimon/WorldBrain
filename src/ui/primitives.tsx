@@ -269,3 +269,49 @@ export function ListSurface({ children, ...props }: SurfaceProps) {
     </div>
   );
 }
+
+type ListRowProps = HTMLAttributes<HTMLElement> & {
+  /** Element to render. button (default, clickable a11y) · li (listbox option) · div (static). */
+  as?: 'button' | 'div' | 'li';
+  /** Selected state — left accent bar + accent tint. */
+  selected?: boolean;
+  /** flush = transparent list row (default) · card = bordered surface tile. */
+  variant?: 'flush' | 'card';
+  /** Hover/pointer feedback (default true; false for static rows). */
+  interactive?: boolean;
+  children: ReactNode;
+};
+
+export function ListRow({
+  as = 'button',
+  selected = false,
+  variant = 'flush',
+  interactive = true,
+  children,
+  className,
+  ...props
+}: ListRowProps) {
+  const cls = className ? `ui-list-row ${className}` : 'ui-list-row';
+  const dataVariant = variant === 'flush' ? undefined : variant;
+  const dataSelected = selected ? '' : undefined;
+  const dataInteractive = interactive ? '' : undefined;
+  if (as === 'li') {
+    return (
+      <li className={cls} data-variant={dataVariant} data-selected={dataSelected} data-interactive={dataInteractive} {...props}>
+        {children}
+      </li>
+    );
+  }
+  if (as === 'div') {
+    return (
+      <div className={cls} data-variant={dataVariant} data-selected={dataSelected} data-interactive={dataInteractive} {...props}>
+        {children}
+      </div>
+    );
+  }
+  return (
+    <button type="button" className={cls} data-variant={dataVariant} data-selected={dataSelected} data-interactive={dataInteractive} {...props}>
+      {children}
+    </button>
+  );
+}

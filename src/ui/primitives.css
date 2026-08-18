@@ -328,3 +328,47 @@
   gap: var(--space-1);
   padding: var(--space-2);
 }
+
+/* ── ListRow — a selectable row in a list (entity list, search result, token
+   row, …). Owns the row chrome + states; the caller composes the content and
+   can override `display` for its own layout (grid/column). ── */
+.ui-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  box-sizing: border-box;
+  list-style: none;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: transparent;
+  font: inherit;
+}
+.ui-list-row[data-interactive] {
+  cursor: pointer;
+}
+.ui-list-row[data-interactive]:hover {
+  background: var(--color-surface-alt);
+}
+/* Selected — left accent bar + accent tint (the canonical pin-tree-style marker). */
+.ui-list-row[data-selected] {
+  border-left-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+}
+.ui-list-row[data-selected][data-interactive]:hover {
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+/* Card variant — a bordered surface tile (e.g. backlinks). */
+.ui-list-row[data-variant='card'] {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.ui-list-row[data-variant='card'][data-interactive]:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-hover);
+}

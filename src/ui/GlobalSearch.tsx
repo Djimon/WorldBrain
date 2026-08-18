@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Chip } from './primitives';
+import { Chip, ListRow } from './primitives';
 import { stripMarkdown } from '../utils/markdown';
 import { searchEntities, getSearchFacets, rebuildSearchIndex } from '../services/search-service';
 import type { SearchResult, SearchFacets } from '../services/search-service';
@@ -110,9 +110,11 @@ export function GlobalSearch({ onNavigate, database }: Props) {
 
       <ul className="gsearch__results" role="listbox">
         {filtered.map((r, i) => (
-          <li
+          <ListRow
+            as="li"
             key={r.entityId}
-            className={`gsearch__result${i === selectedIndex ? ' gsearch__result--selected' : ''}`}
+            className="gsearch__result"
+            selected={i === selectedIndex}
             role="option"
             aria-selected={i === selectedIndex}
             onClick={() => onNavigate(r.entityId)}
@@ -120,7 +122,7 @@ export function GlobalSearch({ onNavigate, database }: Props) {
             <span className="gsearch__result-title">{r.title}</span>
             <span className="gsearch__result-type">{r.entityType}</span>
             {r.summary && <span className="gsearch__result-summary">{stripMarkdown(r.summary)}</span>}
-          </li>
+          </ListRow>
         ))}
       </ul>
     </div>

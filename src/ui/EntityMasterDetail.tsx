@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
 import { EntityDetailView } from './EntityDetailView';
-import { Button } from './primitives';
+import { Button, ListRow } from './primitives';
 import { stripMarkdown } from '../utils/markdown';
 
 type EntityListItem = { id: string; type: string; title: string; summary: string };
@@ -114,13 +114,14 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
         <ul className="emd__items">
           {entities.map((e) => (
             <li key={e.id}>
-              <button
-                className={`emd__item${selectedId === e.id ? ' emd__item--active' : ''}`}
+              <ListRow
+                className="emd__item"
+                selected={selectedId === e.id}
                 onClick={() => handleSelect(e.id)}
               >
                 <span className="emd__item-title">{e.title}</span>
                 {e.summary && <span className="emd__item-summary">{stripMarkdown(e.summary)}</span>}
-              </button>
+              </ListRow>
             </li>
           ))}
         </ul>
