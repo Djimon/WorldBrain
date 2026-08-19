@@ -2,7 +2,7 @@
 import { useTranslation } from 'react-i18next';
 import { getMap, getAssetUrl, loadGridSettings, saveGridSettings } from '../services/map-service';
 import { listLayers, updateLayer } from '../services/map-layer-service';
-import { listTokens, createToken, moveToken, updateToken, setCounter, setStatusChips, deleteToken } from '../services/map-token-service';
+import { listTokens, createToken, moveToken, updateToken, setCounters, setStatusChips, deleteToken } from '../services/map-token-service';
 import type { MapTokenRow } from '../services/map-token-service';
 import { MapToken } from './MapTokenLayer';
 import { TokenEditor, type TokenEditPatch } from './TokenEditor';
@@ -485,11 +485,11 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     setEditingToken(token);
   }
 
-  // Inline counter step on the map (#303): +1 / -1 without opening the editor.
-  function handleTokenCounterStep(token: MapTokenRow, delta: number) {
-    const next = (token.counter_value ?? 0) + delta;
-    setTokens((prev) => prev.map((t) => (t.id === token.id ? { ...t, counter_value: next } : t)));
-    setCounter(database, token.id, { counter_value: next }).then(reloadTokens).catch(console.error);
+  // Inline counter step on the map (#309): +1 / -1 per counter index.
+  function handleTokenCounterStep(token: MapTokenRow, index: number, delta: number) {
+    const next = token.counters.map((c, i) => i === index ? { ...c, value: c.value + delta } : c);
+    setTokens((prev) => prev.map((t) => (t.id === token.id ? { ...t, counters: next } : t)));
+    setCounters(database, token.id, next).then(reloadTokens).catch(console.error);
   }
 
   // Drag the corner handle of a selected token to scale it (#301). Horizontal
@@ -526,7 +526,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       art_offset_x: patch.art_offset_x,
       art_offset_y: patch.art_offset_y,
     });
-    await setCounter(database, id, { counter_label: patch.counter_label, counter_value: patch.counter_value });
+    await setCounters(database, id, patch.counters);
     await setStatusChips(database, id, patch.status_chips);
     setEditingToken(null);
     reloadTokens();
@@ -1049,7 +1049,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               onPointerUp={handleTokenPointerUp}
               onSelect={(e) => handleTokenClick(tk, e)}
               onResizeStart={(e) => handleTokenResizeStart(tk, e)}
-              onCounterStep={(d) => handleTokenCounterStep(tk, d)}
+              onCounterStep={(i, d) => handleTokenCounterStep(tk, i, d)}
             />
           ))}
 

@@ -20,7 +20,7 @@ const layers: LayerData[] = [
 function tok(overrides: Partial<TokenData>): TokenData {
   return {
     id: 't1', layer_id: 'tok_layer', label: 'Held', entity_id: null,
-    counter_label: null, counter_value: null, status_chips_json: '[]', x: 10, y: 10,
+    counters_json: '[]', status_chips_json: '[]', x: 10, y: 10,
     ...overrides,
   };
 }
@@ -46,7 +46,7 @@ describe('M15-S07 player export: layers/tokens/escaping', () => {
   });
 
   it('HTML-escapes user-supplied token strings (AP-004)', () => {
-    const tokens = [tok({ id: 'xss', label: '<script>alert(1)</script>', counter_label: '<b>HP</b>', counter_value: 5 })];
+    const tokens = [tok({ id: 'xss', label: '<script>alert(1)</script>', counters_json: JSON.stringify([{ label: '<b>HP</b>', value: 5 }]) })];
     const html = generatePlayerMapHtml({ map, markers: [], context, layers, tokens });
     expect(html).not.toContain('<script>alert(1)</script>');
     expect(html).toContain('&lt;script&gt;');

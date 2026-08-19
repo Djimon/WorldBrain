@@ -34,7 +34,7 @@ function makeToken(overrides: Partial<MapTokenRow> = {}): MapTokenRow {
     id: 'token_1', layer_id: 'lyr_1', map_id: 'map-1',
     art_asset_id: null, render_style: 'token', art_offset_x: 0, art_offset_y: 0,
     label: 'Ork', x: 10, y: 10, ring_color: '#ff0000',
-    counter_label: null, counter_value: null, status_chips: [],
+    counters: [], status_chips: [],
     session_id: null, created_at: '',
     ...overrides,
   };

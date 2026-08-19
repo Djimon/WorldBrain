@@ -55,8 +55,7 @@ export function applyMapSchema(db: MapDb): void {
       x REAL NOT NULL,
       y REAL NOT NULL,
       ring_color TEXT,
-      counter_label TEXT,
-      counter_value REAL,
+      counters_json TEXT NOT NULL DEFAULT '[]',
       status_chips_json TEXT NOT NULL DEFAULT '[]',
       session_id TEXT,
       controller TEXT NOT NULL DEFAULT 'players',
@@ -64,6 +63,18 @@ export function applyMapSchema(db: MapDb): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
+  // M15-S09 (#309): migrate single-counter to counters_json array.
+  // Safe to run on fresh DBs (column already exists) and on old DBs.
+  try {
+    db.exec(`ALTER TABLE map_tokens ADD COLUMN counters_json TEXT NOT NULL DEFAULT '[]'`);
+    // Migrate existing single-counter rows to the new format.
+    db.exec(`UPDATE map_tokens SET counters_json = json_array(json_object('label', COALESCE(counter_label,''), 'value', counter_value)) WHERE counter_value IS NOT NULL`);
+    db.exec(`ALTER TABLE map_tokens DROP COLUMN counter_label`);
+    db.exec(`ALTER TABLE map_tokens DROP COLUMN counter_value`);
+  } catch {
+    // Column already exists (fresh DB from new schema) — nothing to do.
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS map_markers (
       id TEXT PRIMARY KEY NOT NULL,

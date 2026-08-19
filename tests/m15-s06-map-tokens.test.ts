@@ -38,7 +38,7 @@ describe('M15-S06 map_tokens schema & service', () => {
       try {
         const cols = (db.prepare('PRAGMA table_info(map_tokens)').all() as Array<{ name: string }>).map((c) => c.name);
         expect(cols.sort()).toEqual(
-          ['id', 'layer_id', 'map_id', 'art_asset_id', 'render_style', 'art_offset_x', 'art_offset_y', 'scale', 'label', 'x', 'y', 'ring_color', 'counter_label', 'counter_value', 'status_chips_json', 'session_id', 'created_at'].sort(),
+          ['id', 'layer_id', 'map_id', 'art_asset_id', 'render_style', 'art_offset_x', 'art_offset_y', 'scale', 'label', 'x', 'y', 'ring_color', 'counters_json', 'status_chips_json', 'session_id', 'controller', 'owner_player_id', 'created_at'].sort(),
         );
       } finally {
         db.close();
@@ -131,17 +131,18 @@ describe('M15-S06 map_tokens schema & service', () => {
     });
   });
 
-  describe('setCounter', () => {
-    it('persists counter_label and counter_value', async () => {
+  describe('setCounters', () => {
+    it('persists multiple counters as array', async () => {
       const { db, asyncDb } = createDatabase();
-      const { createToken, setCounter, listTokens } = await getMapTokenService();
+      const { createToken, setCounters, listTokens } = await getMapTokenService();
       try {
         const { id } = await createToken(asyncDb, { map_id: 'map-1', x: 0, y: 0 });
-        await setCounter(asyncDb, id, { counter_label: 'HP', counter_value: 12 });
+        await setCounters(asyncDb, id, [{ label: 'HP', value: 12 }, { label: 'Mana', value: 5, color: '#00f' }]);
         const tokens = await listTokens(asyncDb, 'map-1');
         const token = tokens.find((t) => t.id === id);
-        expect(token?.counter_label).toBe('HP');
-        expect(token?.counter_value).toBe(12);
+        expect(token?.counters).toHaveLength(2);
+        expect(token?.counters[0]).toEqual({ label: 'HP', value: 12 });
+        expect(token?.counters[1]).toEqual({ label: 'Mana', value: 5, color: '#00f' });
       } finally {
         db.close();
       }
