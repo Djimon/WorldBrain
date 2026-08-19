@@ -69,7 +69,7 @@ export function GlobalSearch({ onNavigate, database }: Props) {
   const selectedEntityId = filtered[selectedIndex]?.entityId ?? null;
 
   return (
-    <div className="gsearch">
+    <div className="gsearch" style={selectedEntityId ? { maxWidth: '100%' } : undefined}>
       <div className="gsearch__bar">
         <input
           ref={inputRef}
@@ -100,8 +100,8 @@ export function GlobalSearch({ onNavigate, database }: Props) {
         </div>
       )}
 
-      <div className="gsearch__body">
-        <div className="gsearch__list-col">
+      <div className="u-row u-items-stretch u-gap-0" style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <div className="u-noshrink u-stack u-gap-2 gsearch__list-col" style={{ overflowY: 'auto' }}>
           {query && filtered.length === 0 && (
             <div className="gsearch__empty">Keine Ergebnisse für „{query}"</div>
           )}
@@ -133,7 +133,7 @@ export function GlobalSearch({ onNavigate, database }: Props) {
         </div>
 
         {selectedEntityId && database && (
-          <div className="gsearch__detail-col">
+          <div className="u-grow" style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: 'var(--space-4)', overflowY: 'auto' }}>
             <EntityDetailView
               entityId={selectedEntityId}
               database={database}
