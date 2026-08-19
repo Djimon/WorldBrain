@@ -2,36 +2,37 @@
 
 ## Goal
 
-Spieler verbinden sich von **eigenen Geräten im selben WLAN** mit einer vom DM gehosteten Session,
-erstellen einen Charakter auf Basis des Session-Regelwerks und sehen ausschließlich die Inhalte, die
-der DM gezielt mit ihnen (oder ihrer Gruppe) geteilt hat. Sichtbarkeit wird von binär
+Spieler treten von **eigenen Geräten** (LAN oder Internet, via WebRTC) einer vom DM gehosteten
+**Campaign** bei, erstellen einen Charakter auf Basis des Regelwerks und sehen ausschließlich die
+Inhalte, die der DM gezielt mit ihnen (oder ihrer Gruppe) geteilt hat. Sichtbarkeit wird von binär
 (`public/gm_only/player_known/hidden_until_condition`) auf **pro Spieler / pro Gruppe** verfeinert.
 
 Grundlage: Handover `docs/handover-player-identity.md` (2026-06-30).
 
-## Architektur-Stufe
+## Aktueller Stand (kanonisch — Stand 2026-08)
 
-> ⚠️ **REALITÄT 2026-08 (überschreibt die „Stufe"-Historie unten):** Gebauter Transport = **WebRTC-DataChannel**
-> (`webrtc-transport.ts`, Host-PC = Peer). **Es gibt KEINEN Rust-HTTP/WS-Server** (`src-tauri` hat keine
-> Server-Deps). Ziel (User): **Spieler verbinden sich mit dem Host des DMs, lokal testbar.** WebRTC erfüllt das
-> — lokal via **Loopback/Same-Machine-Peer** (= D26 GM-Self-Join), remote via STUN. Die „Stufe 2 = Rust-LAN-Server"-
-> Formulierung ist damit **überholt**; das Transport-Interface bleibt (Renderer redet gegen Transport, egal welcher).
-> **Konsequenz für S01:** dessen AC „Rust-Server + LAN-bind" ist obsolet — der reale offene Punkt ist „lokal
-> testbarer WebRTC-Host + automatisches Loopback-Signaling" (siehe unten), nicht ein Rust-Server.
-> **Lokales Testen braucht automatisches Signaling** (Same-Machine/Loopback ohne manuelles Copy-Paste) — die
-> manuelle Offer/Answer-UI (SignalingPanel, S12) ist nur für den Internet-Fall, nie lokal.
+> **Diese Sektion ist die Wahrheit.** Wo irgendetwas weiter unten (Decisions, Stories) damit kollidiert, **gewinnt diese Sektion**. Die Detail-Decisions darunter sind die Herleitung/Historie; überholte sind als ⛔ markiert bzw. im Archiv am Ende.
 
-**Stufe 2 — Lokaler LAN-Server (überholt, siehe Banner).** Die Tauri-App hostet einen kleinen HTTP/WebSocket-Server im
-eigenen Prozess (Rust, eingebettet). Spieler verbinden vom eigenen Handy/Laptop im selben WLAN.
+**Was wir bauen:** Ein DM hostet eine **Campaign**; Mitspieler treten von **eigenen Geräten** (LAN oder übers Internet) bei und sehen nur, was der DM mit ihnen/ihrer Gruppe geteilt hat.
 
-- **Stufe 1** (mehrere Fenster auf der GM-Maschine) ist verworfen — Geheimnis-Leak über geteilten Bildschirm nicht verhinderbar.
-- **Stufe 3** (Internet/Relay/NAT-Traversal) ist **out of scope**, aber die Transport-Schicht wird abstrahiert, damit Stufe 3 später ohne Service-Rewrite ergänzt werden kann. **Research zu Stufe 3 (Host-PC = Server, ohne eigene Infrastruktur): `planning/research/multiplayer-internet-hosting.md`** — bestätigt: Listen-Server-Modell, NAT-Traversal via STUN gratis (Anwender konfiguriert nichts), coturn-TURN nur als Minderheiten-Fallback (Cent-VPS). **EOS ist für ein Nicht-Video-Game laut ToS raus** → lizenzfreier WebRTC/STUN-Weg. LAN (Stufe 2) bleibt als Dev-Vehikel + Fallback, nicht skippen.
+1. **Transport = WebRTC-DataChannel** (`src/services/webrtc-transport.ts` hinter `session-transport.ts`). **Es gibt KEINEN HTTP/WS-Server** (kein Rust-Server, keine Server-Deps). Lokal = Loopback/Same-Machine-Peer, remote = STUN für NAT-Traversal. Kein TURN/Relay, kein gehosteter Signaling-Server.
+2. **Beitritt = Campaign-scoped Invite-Link/Code.** Der DM erzeugt in einer Campaign **einen** Einladungslink/-Code. Ein zweites Gerät klickt **„Campaign beitreten"**, fügt Link/Code ein → **ist automatisch Mitglied** (kein Approve, kein Antwort-Code). Öffentlich gemachter Link = Problem des DMs.
+3. **Mitglieder-Verwaltung** in einem **Campaign-Mitglieder-Panel** (S24, neu): Mitglieder entfernen, Link/Code invalidieren + neu generieren (wer schon drin ist, bleibt drin), Gruppen zuordnen.
+4. **Eine App, zwei Modi** (D25): globaler Top-Bar-Toggle **Bearbeiten ⟷ Spielen**. Bearbeiten = voller Autor-Workspace (Welt-Basis). Spielen = Session-Sicht mit **festem Menü-Subset** (`entities/search/maps/calendar/session`); Eintritt wählt **Campaign + Rolle (DM/Player)**. Player = read-only (S23).
+5. **GM-Self-Join** (D26): DM kann in der eigenen App als Player beitreten (loopback). Kein zweites Gerät/Build nötig.
+6. **3-Schichten-Datenmodell** (D23): **Welt** (Basis) → **Campaign** (Klammer pro Gruppe: Overrides/Events/Roster/Visibility/Weltzeit) → **Session** (ein Termin = Notiz-/Log-Layer). Roster/Invite/Visibility hängen an der **Campaign**, nicht am Termin (S20).
+7. **Sichtbarkeit** default alles `gm_only`; DM gibt gezielt pro Spieler/Gruppe frei (Decisions 5–8, S07/S09). Server- bzw. host-seitig durchgesetzt.
+8. **Player-Auslieferung = App-Modus** (derselbe Build, kein zweiter .exe). **Browser-Join verworfen/deferred** (bräuchte einen Server, den es nicht gibt).
 
-  **Konkreter Stufe-3-Plan (Reihenfolge: erst LAN/Stufe 2, dann):** **M10-S11 (#322)** WebRTC-DataChannel-Transport + STUN (Host-PC = Peer, Anwender konfiguriert nichts) und **M10-S12 (#323)** serverloses Signaling (Connection-Code-Austausch). **Bewusst NICHT in V1:** TURN/coturn-Relay (self-hosted Infra — daher scheitern ~10–20 % symmetrische NATs mit klarer Meldung) und ein gehosteter Signaling-Server (Signaling ist manuell/copy-paste). Beide sind hinter Interfaces vorgesehen, später ohne Rewrite nachrüstbar. Blocked ← #195 (Transport-Abstraktion aus S01).
+**Verworfen:** Stufe-1 (mehrere Fenster auf der GM-Maschine — Geheimnis-Leak). Eingebetteter HTTP/WS-LAN-Server (nie gebaut, durch WebRTC ersetzt). Browser-Join (siehe 8). TURN-Relay + gehosteter Signaling-Server.
+
+**Offener technischer Punkt (`needs-design`, S11/S12):** WebRTC braucht einen Signaling-Austausch, damit „Link/Code einfügen → drin" auch remote ohne manuelles Offer/Answer-Copy-Paste funktioniert. Wie dieser Austausch ohne gehosteten Server läuft (z.B. Link trägt Rendezvous-Info), ist die eigentliche offene Ingenieursfrage — gehört in die Transport-Story, nicht in die Produkt-Spec.
+
+**Research:** `planning/research/multiplayer-internet-hosting.md` (STUN gratis, coturn nur Minderheiten-Fallback, EOS per ToS raus).
 
 ## Decisions
 
-1. **Transport abstrahiert:** Eingebetteter LAN-Server (HTTP/WS) hinter einem Transport-Interface. Server-Lebenszyklus an die aktive Session gekoppelt (Start beim Session-Hosting, Stop beim Schließen). Stufe 3 = austauschbarer Transport, kein Rewrite.
+1. **Transport abstrahiert:** ⛔ **Teilweise überholt (siehe „Aktueller Stand"):** Das Transport-**Interface** gilt weiter (`session-transport.ts`). Die konkrete Ausprägung ist aber **WebRTC-DataChannel**, **kein** eingebetteter HTTP/WS-Server. Lebenszyklus an die gehostete Campaign gekoppelt.
 2. **Session als einziger Multiplayer-Anker:** Das Multi-Player-Konstrukt existiert nur innerhalb einer Session. DM erstellt die Session (→ M8-S01 #152). Session erhält GUID + Hash + generierten Einladungscode.
 3. **Spieler-Identität ist session-scoped, kein globaler Account:** Ein "Player" ist eine Mitgliedschaft (`session_id + player_id + token`). Der globale Spieler-Name bleibt Freitext (#160) — echte Identität entsteht erst beim Session-Join.
 4. **Join-Flow (⚠️ überschrieben durch D24 — Auto-Join):** ~~DM erstellt Session → Einladungscode → Spieler gibt Code ein → `pending` → DM bestätigt (`approved`) → …~~ **Neu (D24):** DM erstellt Session → **einen** Einladungscode/-Link → Spieler gibt Code ein → **sofort aktives Mitglied** (kein Approve-Gate) → Charaktererstellung (→ M9-S03 #166) → sieht freigegebene Inhalte. Einziger nachträglicher Gate: **DM-Kick**.
@@ -44,7 +45,7 @@ eigenen Prozess (Rust, eingebettet). Spieler verbinden vom eigenen Handy/Laptop 
 
 Vollständige Durchspecc-Session (grill-me). Diese Decisions verfeinern/ergänzen 1–8.
 
-- **D9 — Player-Auslieferung = Hybrid, EINE Web-UI-Codebasis.** Die Player-UI ist Web-Tech, ausgeliefert auf zwei Wegen: (a) **vom Host-Server serviert → Browser-Join** (Handy/Laptop im WLAN, kein Install); (b) **eingebettet als „Player-Modus" derselben Tauri-App** (Desktop, mit gespeichertem Dashboard). **Keine separate Player-.exe** (wäre nicht leichtgewichtig — braucht denselben View-Stack). Datenquelle immer = Host-API, nie lokale DB.
+- **D9 — Player-Auslieferung.** ⛔ **Teilweise überholt (siehe „Aktueller Stand" Pkt. 8):** Variante (a) **Browser-Join ist verworfen/deferred** (bräuchte einen Server, den es nicht gibt). Es gilt nur (b): **„Player-Modus" derselben Tauri-App** (kein zweiter .exe, kein zweiter Build). Datenquelle immer = Host über WebRTC, nie lokale DB.
 - **D10 — Player-„Projekt" = gespeicherte, wiederöffenbare Host-Referenz.** Persistierter Eintrag: Host-Label · URL/IP · Einladungscode · Token · Anzeigename · Session-Name · zuletzt-online. **Kein autoritatives lokales Weltabbild** — Inhalte werden vom Host gestreamt, online höchstens gecacht, **offline → leerer „Host offline"-Zustand**. **Online-Erkennung = einmaliger Ping beim Öffnen + Retry-Icon (KEIN Heartbeat).** Bei IP-Wechsel: URL editierbar (Code/Token bleiben). **Ein Projekt-Eintritt pro Player-Client** → indirekt genau 1 Charakter pro Spieler.
 - **D11 — Persistente Session am Projekt.** Roster (aktive Mitglieder, `status='active'` — D24), Gruppen, Einladungscode, Visibility-Overrides, Whiteboards und Session-Zeit **überleben** zwischen Spielabenden; „Hosten" = eingebetteten Server live schalten/stoppen. **Eine aktive Session pro Host** gleichzeitig. Player-Referenz reconnected zur selben Session (S10-Token, kein Neu-Join).
 - **D12 — Lokal = Single-Owner + read-only-Welt-Spieler.** Owner-Rechte/Schreib-Delegation an Spieler **erst online (Stufe 3)**. Kein git/merge lokal. Spieler schreiben nie Welt-Inhalte.
@@ -55,7 +56,7 @@ Vollständige Durchspecc-Session (grill-me). Diese Decisions verfeinern/ergänze
 - **D17 — Würfel.** Generischer **dNN-Roller** (z.B. `2d6+3`). Pro Wurf wählt Werfer/DM vorab die **Sichtbarkeit: Privat / nur DM / Alle**; Ergebnis postet in den **Kampflog**, **server-seitig** nach Sichtbarkeit geroutet (Client filtert nie). Plugin-Wurf-Shortcuts + verdeckte Würfe = später.
 - **D18 — Token-Bewegung im Multiplayer (löst #299).** **Default: jeder aktive Spieler (`status='active'`, D24) bewegt jeden Token**, Bewegung **live an alle**. Optionaler **DM-Lock** (per-Token/global) = spätere Kür (`needs-decision`). Token-Bewegung ist **rein visuell**, Regel-Einhaltung per Absprache (kein erzwungenes Grid/Reichweite).
 - **D19 — Spotlight/Whiteboard + private Notizen.** Whiteboard = **Gemeinsam (global, alle Spieler)** + **pro Spieler ein privates**, das **nur der DM bespielt** (per-Spieler-Geheimnisse; Spieler read-only). Platzierbar: **Entity-Refs + Freitext-Notizen + Bilder**. Whiteboards persistieren mit der Session (host-seitig; per-Spieler-Board geht **nur** an den Zielspieler). **Private Notizen des Spielers** = eigenes Feature, **player-seitig lokal gespeichert** (einzige echte lokale Speicherung, echt privat, geräte-gebunden).
-- **D20 — Transport + Live-Kanäle.** Eingebetteter **HTTP-Server** serviert die Player-Web-UI + Initial-Loads; **WebSocket** für bidirektionalen Live-Push. **Live gepusht:** Freigaben (S09), Token-Bewegungen (D18), Spotlight/Whiteboard (D19), Kampflog-Einträge (D17/Kampf), Session-Zeit/Kalender-Gate (D16). Eigener Charakterbogen lokal live editierbar; fremde Bögen nicht sichtbar. **Server-durchgesetzt:** Visibility (S09), Wurf-Sichtbarkeit (D17), Whiteboard-Privatheit (D19), Fog (nur aufgedeckt), Kalender-Gate (D16). **Kein Rate-Limit in V1** (Spieler read-only, DM kickt jederzeit — nichts Kritisches).
+- **D20 — Transport + Live-Kanäle.** ⛔ **Transport-Mechanik überholt (siehe „Aktueller Stand"):** Der Live-Kanal ist der **WebRTC-DataChannel** (bidirektional), **kein** HTTP-Server/WebSocket. Der Rest gilt unverändert — **Live gepusht:** Freigaben (S09), Token-Bewegungen (D18), Spotlight/Whiteboard (D19), Kampflog-Einträge (D17/Kampf), Session-Zeit/Kalender-Gate (D16). Eigener Charakterbogen live editierbar; fremde Bögen nicht sichtbar. **Host-durchgesetzt:** Visibility (S09), Wurf-Sichtbarkeit (D17), Whiteboard-Privatheit (D19), Fog (nur aufgedeckt), Kalender-Gate (D16). **Kein Rate-Limit in V1** (Spieler read-only, DM kickt jederzeit).
 - **D21 — Split-View (allgemeine App-Fähigkeit).** In-App **2-Pane-Split-View** (beliebige 2 Ansichten nebeneinander, verschiebbare Grenze) — v.a. für den DM (Map ‖ Kampflog). Cross-Cutting, eigene kleine Story. OS-Pop-out = später.
 - **D22 — Kampf-Engine = eigenes Sub-Epic.** Runden/Initiative/Aktions-Auflösung/HP-Status sind ein eigenständiges Subsystem → **`planning/epics/M10b-combat-engine.md`** (Ausgangspunkt: Grill-Q20–Q25). M10 (Multiplayer) referenziert es; der Kampflog-Reiter (D13) ist die Multiplayer-Sicht darauf. Baseline plugin-frei (HP/Schaden/Heilen/Würfe/Initiative/Runden), Plugin reichert an.
 
@@ -74,8 +75,16 @@ Vollständige Durchspecc-Session (grill-me). Diese Decisions verfeinern/ergänze
 Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die geleakte Stufe-3-Signaling-UI entsprechen **nicht** dem gewünschten Ablauf. Korrektur:
 
 - **D24 — Auto-Join, KEIN Approve-Gate (überschreibt Decision 4).** Der DM erzeugt **einen** Einladungscode/-Link. **Wer den Code benutzt, ist sofort aktives Mitglied** — kein `pending`, kein Bestätigen/Ablehnen durch den DM. Der einzige Gate ist **nachträglich**: der DM kann jederzeit **kicken** (invalidiert dessen Token), und **Code-neu-generieren** invalidiert den alten Code für *neue* Joins (bestehende Spieler behalten ihr Token → Reconnect D11). Konsequenz: `session_players.invite_status` verliert `pending`/`rejected`; ein Join legt direkt einen aktiven Eintrag an. `rejected`/Fehler nur noch bei **ungültigem Code / Server nicht erreichbar**, nicht durch DM-Entscheidung. **Wo D9–D22, S02, S05, S06 „`pending`/`approved`/`approve`" sagen, gilt D24.**
-- **D25 — Ein Programm, zwei Modi + globaler Top-Bar-Toggle.** Dieselbe .exe läuft entweder im **Edit-Mode** (Worldbuilding) oder im **Play-Mode** (Session-Cockpit). Ein **globaler, immer sichtbarer Umschalter in der Top-Bar** („Bearbeiten ⟷ Spielen") flippt den **ganzen Workspace** — kein Seitenleisten-Icon, kein pro-Session-Schalter. Der **Player-Modus ist derselbe Build** (Spieler-Einstieg der Tauri-App), kein zweiter .exe. **Browser-Join (D9-Variante a) wird auf eine spätere Stufe verschoben** — jetzt zuerst nur App-Player-Modus + GM-Self-Join (D26). D9 bleibt als End-Ziel gültig, Reihenfolge: App-Modus zuerst.
-- **D26 — GM-Self-Join.** Ein Anwender, der zugleich DM **und** Spieler ist, muss mit **derselben Host-App** als Spieler beitreten können: die App verbindet gegen den **eigenen laufenden Server (loopback)** und öffnet eine Spieler-Sicht. Ein Gerät = hosten **und** einen eigenen Charakter spielen. Kein zweites Gerät, kein zweiter Build nötig.
+- **D25 — Ganze-App-Transformation via Top-Bar-Toggle (2026-08-16 neugefasst, ersetzt die frühere „Content-Pane-Swap"-Fassung).** Ein **globaler, immer sichtbarer Umschalter in der Top-Bar** („Bearbeiten ⟷ Spielen") transformiert die **gesamte App-Shell** — nicht nur den Hauptbereich. Gilt vorerst **nur für die DM-App** (eine eigene Player-.exe existiert noch **nicht** → später; dann bootet die Player-App direkt read-only ohne Toggle).
+  - **Bearbeiten (Autor):** volles Menü (**alle** AREAS aus `WorkspaceShell`), alle Edit-Affordances sichtbar, editiert die **Welt-Basis**.
+  - **Spielen (Session):** Der **Eintritt verlangt zwei Angaben** — (1) **welche Session/Campaign** (bei mehreren Gruppen wählbar, D23) und (2) **welche Rolle: als DM oder als Player**. Danach:
+    - **Menü schrumpft auf einen FESTEN Play-Subset** (nicht konfigurierbar): **`entities` 🗂, `search` 🔍, `maps` 🗺, `calendar` 📅, `session` 🎲** (= Play-Cockpit Map/Kampflog/Spotlight). Alle anderen Bereiche (chronicle/cards/plugins/rules/audio/graph/project) sind im Spielen-Modus **nicht** im Menü.
+    - **Menü ist für DM und Player IDENTISCH** — einziger Unterschied ist die **Rolle**: **DM** behält alle **Edit-Buttons/-Affordances**; **Player** ist **read-only** (alle Create/Edit/Delete-Buttons ausgeblendet, sieht nur Freigegebenes).
+    - **DM-only-Tools (`audio` 🎧 Soundboard, `graph` 🌌) bleiben im Bearbeiten-Modus** — dorthin wechselt der DM bei Bedarf; sie sind **nicht** Teil des Play-Subsets.
+  - **Entkoppelt von D23:** Sowohl Bearbeiten als auch Spielen(DM) editieren die **Welt-Basis**. Der Toggle ist **kein** Daten-Layer-Schalter; die Override-/Promote-Ebene (D23/S21) ist ein separates Thema und nicht an den Toggle gekoppelt.
+  - **Zwei Stories:** **S22** = Mode-Shell (Toggle + Mode/Rolle/Session-Kontext + Eintritts-Auswahl + Menü-Reduktion). **S23** = read-only Player-Gating (Edit-Affordances app-weit ausblenden, liest den S22-Kontext) — cross-cutting.
+  - **Player-Modus = derselbe Build** (kein zweiter .exe). **Browser-Join (D9-Variante a) deferred** — jetzt App-Modus + GM-Self-Join (D26) zuerst; D9 bleibt End-Ziel.
+- **D26 — GM-Self-Join = „als Player beitreten" in der DM-App (Konkretisierung via D25).** Der DM wechselt auf **Spielen** und wählt beim Eintritt die Rolle **Player** (statt DM) — die App verbindet gegen den **eigenen laufenden Server (loopback)** und rendert die read-only Player-Sicht (S23-Gating aktiv). Ein Gerät = hosten **und** als Spieler mitspielen. Die DM-App braucht also **beide** Eintritts-Optionen (mit/ohne Bearbeiter-Rechte). Kein zweites Gerät, kein zweiter Build.
 - **D27 — Copy-UX für Einladungscode/-Link (Standard).** Der Code steht in einem **gesperrten (readonly) Input-Feld** mit **Copy-Button** (Klick kopiert in die Zwischenablage, sichtbares Feedback „kopiert") — **nicht** als nacktes Text-Element. Zusätzlich ein teilbarer **Einladungs-Link** (Server-URL + Code kombiniert) mit eigenem Copy-Button. Kein WebRTC-„Antwort-Code"-Rückkanal in Stufe 2 — die manuelle Offer/Answer-Signaling-UI (SignalingPanel, S12) erscheint **ausschließlich** in der Stufe-3-Sicht, **nie** in der LAN-Lobby.
 
 ### Offene Detailfragen (als `needs-decision` in den jeweiligen Stories)
@@ -85,27 +94,30 @@ Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die
 
 ## Out of Scope
 
-- ~~Stufe 3: Internet-Hosting, Relay-Server, NAT-Traversal~~ **korrigiert 2026-08:** WebRTC-DataChannel + STUN (NAT-Traversal) sind **IN scope und gebaut** (S11/S12). Weiterhin **out of scope:** TURN/coturn-Relay (self-hosted Infra) und ein **gehosteter** Signaling-Server (Signaling bleibt manuell/copy-paste bzw. lokal automatisch).
+- **TURN/coturn-Relay** (self-hosted Infra) und ein **gehosteter Signaling-Server**. (WebRTC-DataChannel + STUN sind IN scope — siehe „Aktueller Stand".)
+- **Eingebetteter HTTP/WS-Server + Browser-Join** (nie gebaut, durch WebRTC/App-Modus ersetzt).
 - Echtzeit-Kollaboration mehrerer GMs
 - Cloud-Accounts / globale Spieler-Identität über Sessions hinweg
 - Cross-Session World State (eigenes Konzept, #156)
 - Voice/Video/Chat
-- Verschlüsselter Transport über Stufe 2 hinaus (LAN-Vertrauensmodell; TLS-Härtung = spätere Stufe)
+- Zusätzliche Transport-Härtung über WebRTC/DTLS hinaus (WebRTC-DataChannel ist bereits DTLS-verschlüsselt; App-Layer-Vertrauensmodell = LAN/Freundeskreis)
 
 ## Stories
 
-### M10-S01: Lokaler Session-Server & Transport-Abstraktion
+### M10-S01: WebRTC-Transport & Host-Lebenszyklus
 
-**Ziel:** Die App hostet beim Session-Start einen lokalen HTTP/WS-Server hinter einem austauschbaren Transport-Interface.
+> **Neugefasst 2026-08 (siehe „Aktueller Stand"):** die alte AC „Rust-HTTP/WS-LAN-Server + Port-Bind" ist **obsolet** — es gibt keinen Server. Transport ist **WebRTC-DataChannel**.
+
+**Ziel:** Der DM hostet eine Campaign als **WebRTC-Peer** hinter dem austauschbaren Transport-Interface; jede eingehende Nachricht wird host-seitig validiert.
 
 **AC:**
-- Rust-seitiger, in den Tauri-Prozess eingebetteter HTTP/WebSocket-Server, start-/stoppbar via Tauri-Command
-- Server startet beim Hosting einer Session, stoppt beim Schließen — kein offener Port ohne aktive Session
-- Transport-Interface (TypeScript) kapselt Senden/Empfangen, sodass Stufe 3 (Relay) später ohne Service-Rewrite ergänzbar ist
-- Server bindet nur an LAN-Interface, zeigt dem DM die erreichbare URL/IP + Port an
-- Alle eingehenden Nachrichten werden server-seitig validiert (Schema-Check) bevor Verarbeitung — kein ungeprüftes Payload
-- Blocked by #152 (Session-Schema & Persistenz)
-- `database` prop typed as `DatabaseLike` (from `entity-service.ts`); no `unknown` or `as never` casts at call sites
+- Transport-Interface (`src/services/session-transport.ts`) kapselt Senden/Empfangen; konkrete Implementierung `webrtc-transport.ts` (DataChannel). Renderer redet nur gegen das Interface.
+- Host-Peer startet beim Hosten einer Campaign, endet beim Schließen — keine offene Verbindung ohne gehostete Campaign.
+- Alle eingehenden Nachrichten host-seitig **schema-validiert** vor Verarbeitung — kein ungeprüftes Payload.
+- Lokal testbar via Loopback/Same-Machine-Peer (D26); remote via STUN (kein TURN, kein gehosteter Signaling-Server).
+- **`needs-design`:** Signaling-Austausch, damit „Link/Code einfügen → drin" **ohne** manuelles Offer/Answer-Copy-Paste auch remote klappt (siehe „Aktueller Stand", offener Punkt). Betrifft S11/S12.
+- Blocked by #152 (Session-Schema & Persistenz).
+- `database`/Transport prop typed as `DatabaseLike`/Interface; no `unknown`/`as never`.
 
 ---
 
@@ -153,15 +165,15 @@ Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die
 
 ---
 
-### M10-S05: Player-Join-Flow (Spieler-Modus-Client) — **AUTO-JOIN (D24)**
+### M10-S05: „Campaign beitreten" (Spieler-Modus-Client) — **AUTO-JOIN (D24)**
 
-**Ziel:** Ein Spieler gibt Server-URL + Einladungscode + Anzeigenamen ein und ist **sofort drin** — kein Warten auf Bestätigung.
+**Ziel:** Ein Spieler klickt **„Campaign beitreten"**, fügt den **Einladungslink/-Code** ein (+ Anzeigename) und ist **sofort drin** — kein Server-URL-Feld, kein Warten auf Bestätigung.
 
 **AC (D24/D25/D26):**
-- Spieler-Modus-Einstieg (**derselbe Build**, D25): Eingabe Server-URL + Einladungscode + Anzeigename.
-- Nach Absenden mit **gültigem** Code: **sofort aktives Mitglied**, direkter Übergang zur Charaktererstellung (→ M10-S08). **Kein `pending`-Zustand, kein „Warte auf Bestätigung".**
-- Fehlerfall NUR bei **ungültigem Code** oder **Server nicht erreichbar** (klare Meldung) — **nie** eine DM-Ablehnung.
-- **GM-Self-Join (D26):** derselbe Einstieg akzeptiert die **loopback/eigene** Server-URL, sodass der Host als Spieler beitritt.
+- Einstieg **„Campaign beitreten"** (**derselbe Build**, D25): **ein** Feld für den **Einladungslink/-Code** (der Link trägt die Verbindungs-/Rendezvous-Info — siehe Aktueller Stand, Signaling `needs-design`; **kein separates Server-URL-Feld**) + Anzeigename.
+- Nach Einfügen eines **gültigen** Links/Codes: **sofort aktives Mitglied** der Campaign, direkter Übergang zur Charaktererstellung (→ M10-S08). **Kein `pending`, kein „Warte auf Bestätigung".**
+- Fehlerfall NUR bei **ungültigem Link/Code** oder **Host nicht erreichbar** (klare Meldung) — **nie** eine DM-Ablehnung.
+- **GM-Self-Join (D26):** derselbe Einstieg akzeptiert den **loopback/eigenen** Link, sodass der Host als Spieler der eigenen Campaign beitritt.
 - **UI-Basics:** Eingaben als `Field`, Beitreten als `Button` (`accent`), Fehler als `StatusChip` (`failure`), Form in `Panel` — aus `src/ui/primitives.tsx`, kein nacktes HTML.
 - Verbindungsabbruch wird angezeigt, automatischer Reconnect-Versuch mit gespeichertem Token (→ M10-S10, kein Neu-Join).
 - Blocked by #154 (Play-Mode Screen) — **geschlossen**; realer Gate = S01/S02.
@@ -188,26 +200,81 @@ Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die
 
 ---
 
-### M10-S22: Globaler Create↔Play-Toggle in der Top-Bar (D25)
+### M10-S22: App-Mode-Shell — Top-Bar-Toggle + Mode/Rolle/Session-Kontext + Menü-Reduktion (D25)
 
-**Ziel:** Ein **immer sichtbarer** Umschalter in der Kopfzeile flippt den **ganzen Workspace** zwischen **Bearbeiten** (Worldbuilding) und **Spielen** (Session-Cockpit). Ohne ihn ist der Play-Mode für den Nutzer nicht auffindbar (5× reklamiert).
+**Ziel:** Der Top-Bar-Toggle **transformiert die ganze App-Shell** zwischen **Bearbeiten** (voller Autor-Workspace) und **Spielen** (Session-Sicht mit reduziertem Menü). Beim Eintritt in „Spielen" wählt der DM **Session/Campaign + Rolle (DM/Player)**. (5× reklamiert, dass der Toggle fehlt — hier wird er als Shell-Mechanismus gebaut.)
 
 **WIE — mechanisch, kein Interpretationsspielraum:**
-- **Mount-Punkt (benannt):** Der Toggle wird in der **Top-Bar/Kopfzeile von `src/ui/WorkspaceShell.tsx`** gerendert — nicht in der Seitenleiste, nicht in einem Area-Icon, nicht in `PlayModeView`. Er ist in **beiden** Modi sichtbar.
-- **Zustand:** `WorkspaceShell` hält einen Modus-State `mode: 'edit' | 'play'` (Default `'edit'`). Der Toggle schaltet ihn um. Beschriftung: `t('modeEdit','Bearbeiten')` ⟷ `t('modePlay','Spielen')`, aktueller Modus visuell markiert (`aria-pressed`/`aria-selected`).
-- **Wirkung:** Bei `mode === 'play'` rendert der Haupt-Content-Bereich das **Play-Mode-Cockpit** (`PlayModeView`, role `dm`); bei `mode === 'edit'` das bestehende Worldbuilding (Entities/Karten/Kalender). Der Umschalter ersetzt den bisherigen 🎲-`'session'`-Area-Eintrag als *primären* Zugang (Area-Eintrag darf bleiben, ist aber nicht mehr der einzige Weg).
-- **Kein prop-drilling-Bruch:** `database`/`sessionId` werden wie beim bisherigen `'session'`-Case an `PlayModeView` durchgereicht.
+- **Mount-Punkt:** Toggle in der **Top-Bar/Kopfzeile von `src/ui/WorkspaceShell.tsx`** (neben Sprache/Theme, siehe Screenshot), in **beiden** Modi sichtbar. Nicht in der Seitenleiste, nicht in `PlayModeView`.
+- **Shell-Kontext (benanntes Interface, von S23 + Areas gelesen):** `WorkspaceShell` hält und stellt bereit:
+  - `mode: 'edit' | 'play'` (Default `'edit'`)
+  - `sessionRole: 'dm' | 'player' | null` (nur in `play` gesetzt)
+  - `activeSessionId: string | null` (in `play` gesetzt)
+  Bereitstellung über einen **React-Context** (z.B. `AppModeContext` in `src/ui/`), damit beliebige Komponenten (S23-Gating) `mode`/`sessionRole` lesen können, **ohne** prop-drilling. Interface-Namen im Ticket fixieren.
+- **Eintritts-Auswahl beim Klick auf „Spielen":** ein kleiner Auswahl-Schritt (Panel/Dialog) fragt **(1) Session/Campaign** (Liste; bei genau einer automatisch vorgewählt) **und (2) Rolle: „als DM" / „als Player"**. Erst danach `mode='play'`, `sessionRole`, `activeSessionId` setzen. „Als Player" = GM-Self-Join (D26, loopback).
+- **Menü-Reduktion:** Die `AREAS`-Liste in `WorkspaceShell` wird im `play`-Modus auf den **festen Play-Subset** gefiltert: **`entities`, `search`, `maps`, `calendar`, `session`** (in dieser Reihenfolge). Alle anderen Bereiche verschwinden aus der Seitenleiste. Der Subset ist **identisch** für `sessionRole` `dm` und `player`. Im `edit`-Modus bleibt die **volle** `AREAS`-Liste.
+- **`session` 🎲 im Play-Modus** = das Play-Cockpit (`PlayModeView`), mit `role={sessionRole}` und `activeSessionId`. Der Toggle ist der **primäre** Play-Zugang; das 🎲-Icon lebt jetzt im Play-Subset.
+- **Kein prop-drilling-Bruch:** `database`/`activeSessionId`/`sessionRole` fließen an `PlayModeView` wie gehabt.
 
 **AC:**
-- Toggle-Element mit `data-testid="mode-toggle"` in der `WorkspaceShell`-Kopfzeile, in beiden Modi sichtbar.
-- Klick auf „Spielen" → `PlayModeView` (role `dm`) erscheint im Hauptbereich; Klick auf „Bearbeiten" → Worldbuilding-Ansicht zurück.
-- Der aktive Modus ist visuell erkennbar (`aria-pressed`/`aria-selected` gesetzt).
+- Toggle `data-testid="mode-toggle"` in der `WorkspaceShell`-Kopfzeile, in beiden Modi sichtbar; aktiver Modus via `aria-pressed`.
+- Klick „Spielen" → Auswahl-Schritt (Session + Rolle) → danach `mode='play'`: Seitenleiste zeigt **nur** `entities/search/maps/calendar/session`, alle anderen Icons weg. Klick „Bearbeiten" → volle `AREAS` zurück, `sessionRole`/`activeSessionId` = null.
+- Rolle „als Player" setzt `sessionRole='player'` (verbindet loopback, D26); „als DM" setzt `'dm'`.
+- `AppModeContext` (o.ä.) stellt `mode`, `sessionRole`, `activeSessionId` app-weit bereit — **von S23 konsumierbar**.
 - Keine hardcodierten Strings — `useTranslation` + Inline-Default.
-- **Integrationstest durch den echten Mount (Pflicht, AGENTS.md:80):** rendert `WorkspaceShell` (nicht `PlayModeView` isoliert), klickt `mode-toggle`, erwartet echten `PlayModeView`-Inhalt (z.B. `data-testid="dm-cockpit"`), klickt zurück, erwartet Worldbuilding-Ansicht. Guard: `<PlayModeView` wird durch `WorkspaceShell` erreicht (grep zeigt Mount außerhalb der eigenen Datei/Tests).
+- **Integrationstest durch den echten Mount (Pflicht, AGENTS.md:80):** rendert `WorkspaceShell`, klickt `mode-toggle` → Auswahl (Rolle DM) → erwartet reduzierte Seitenleiste (genau die 5, keine `graph`/`audio`/`project`-Icons) + `PlayModeView`-Inhalt; klickt „Bearbeiten" → volle Seitenleiste zurück. Zweiter Fall: Rolle „Player" → `sessionRole='player'` im Kontext.
 - `database` prop typed as `DatabaseLike`; no `unknown`/`as never`.
-- **UI-Basics:** Segmented-Control aus zwei `Button`s (aktiv `accent`+`aria-pressed`, inaktiv `neutral`), in die bestehende Top-Bar eingepasst — aus `src/ui/primitives.tsx`, kein nacktes `<button>`.
+- **UI-Basics:** Toggle als Segmented-Control aus zwei `Button`s (aktiv `accent`+`aria-pressed`, inaktiv `neutral`) — aus `src/ui/primitives.tsx`; Eintritts-Auswahl als `Panel` + `Button`s + Session-Liste, kein nacktes HTML. Import/Tokens siehe #342-Ticket.
 
-**Out of scope:** Player-Modus-Einstieg (S05), Cockpit-Inhalte selbst (S14 ff.).
+**Out of scope:** Das Ausblenden der Edit-Buttons selbst (**S23**), Cockpit-Inhalte (S14 ff.), Player-Join übers Netz (S05), echte Player-.exe (deferred).
+
+---
+
+### M10-S23: Read-only Player-Gating — Edit-Affordances app-weit ausblenden (D25, cross-cutting)
+
+**Ziel:** Im Spielen-Modus mit `sessionRole === 'player'` sieht der Nutzer **nur** — **alle** Create/Edit/Delete-Buttons und -Menüs sind ausgeblendet. Der DM (`sessionRole === 'dm'`) und der Bearbeiten-Modus behalten sie. Cross-cutting über alle Play-Subset-Bereiche.
+
+**WIE — mechanisch:**
+- **Single Source of Truth:** liest den **`AppModeContext`** aus S22. Ein abgeleitetes Flag **`readOnly = (mode === 'play' && sessionRole === 'player')`** — an **einer** Stelle definiert (z.B. Hook `useReadOnly()`), nirgends dupliziert.
+- **Gating-Punkte (jede Play-Subset-Fläche):** in `entities` (Detail/Browser: „+ Neu", Bearbeiten-Stift, Löschen), `maps` (Marker/Token-Edit, außer eigener Token-Bewegung — D18/D14), `calendar` (Event anlegen/bearbeiten), `session`-Cockpit (nur eigener Charakterbogen editierbar, D14). Bei `readOnly` werden diese Affordances **nicht gerendert** (nicht nur `disabled`).
+- **Spieler-Ausnahmen (D14/D18 bleiben erlaubt):** eigener Charakterbogen editierbar, eigener Token bewegbar, Würfeln, private Notizen. Also `readOnly` gilt für **Welt-Inhalte**, nicht für die spielereigenen Aktionen.
+- **Content-Sichtbarkeit** (welche Entities/Events ein Player überhaupt sieht) läuft weiter über das Visibility-System (S07/S09) — S23 betrifft nur die **Edit-Affordances**, nicht welche Daten geladen werden.
+
+**AC:**
+- Bei `mode='play'` + `sessionRole='player'`: in `entities`/`maps`/`calendar`/`session` erscheinen **keine** „Neu"/Bearbeiten/Löschen-Buttons.
+- Bei `sessionRole='dm'` **oder** `mode='edit'`: alle Affordances wie gehabt sichtbar.
+- Spielereigene Aktionen (eigener Bogen, eigener Token, Würfeln, private Notizen) bleiben auch bei `readOnly` möglich (D14/D18).
+- **Ein** zentrales `readOnly`/`useReadOnly()` — kein dupliziertes `mode==='play' && role==='player'` verstreut.
+- **Integrationstest:** `WorkspaceShell` in `play` als `player` gerendert → Guard: kein Element mit „Neu"/Bearbeiten/Löschen in den Play-Bereichen; als `dm` → vorhanden. (Test durch den echten Shell-Mount, nicht isolierte Komponenten.)
+- Keine hardcodierten Strings; `database` `DatabaseLike`.
+
+**Blocked by S22** (braucht den `AppModeContext`).
+
+**Out of scope:** Content-Visibility (S07/S09), Netz-Transport der Rechte-Durchsetzung (server-seitig, Decision 8/S01).
+
+---
+
+### M10-S24: Campaign-Mitglieder-Panel (persistente Roster-Verwaltung)
+
+**Ziel:** Der DM verwaltet die **Mitglieder einer Campaign** persistent (auch außerhalb einer laufenden Session): Mitglieder entfernen, Einladungslink/-Code invalidieren + neu generieren, Gruppen zuordnen. („der noch nicht existiert" — User-Wunsch.)
+
+**WIE:**
+- Neues Panel im **Campaign-Kontext** (Bearbeiten-Modus), erreichbar dort, wo eine Campaign verwaltet wird — Mount-Punkt im Ticket benennen (nicht nur `render(<Panel/>)`).
+- **Roster = campaign-scoped** (S20 `campaign_id`), **nicht** termin-scoped: Mitglieder überleben einzelne Sessions (D11/D23).
+- Aktionen: **Mitglied entfernen** (setzt `kicked`, invalidiert Token — D24); **Einladungslink/-Code invalidieren + neu generieren** (wer schon drin ist, bleibt drin — D24); **Gruppen zuordnen** (→ S04).
+- **Copy-UX** (D27): Link/Code in gesperrtem `Field` + Copy-`Button`.
+- Verhältnis zu **S06** (GM-Lobby): S06 ist die **Live-Sicht** des Rosters *während* einer laufenden Session (verbundene Spieler, online/offline, Kick im Spielbetrieb). S24 ist die **persistente Admin-Sicht** derselben campaign-scoped Roster-Daten. Kein zweites Datenmodell — beide lesen `session_players`/`players` campaign-gekeyt.
+
+**AC:**
+- Panel listet alle Campaign-Mitglieder (Anzeigename, Gruppen, Status `active|kicked`).
+- Entfernen, Link/Code invalidieren+neu, Gruppen zuordnen funktionieren; bestehende Mitglieder bleiben nach Link-Invalidierung drin.
+- **UI-Basics:** Liste als `ListSurface`, Aktionen als `Button`, Status als `StatusChip`, Link/Code als readonly `Field`+Copy-`Button`, Rahmen `Panel` — aus `src/ui/primitives.tsx`.
+- **Integrationstest durch den echten Mount** (AGENTS.md:80).
+- `database` prop typed as `DatabaseLike`; no `unknown`/`as never`.
+
+**Blocked by S20** (campaign-scoped Roster/`campaign_id`).
+
+**Out of scope:** Live-Lobby im Spielbetrieb (S06), Transport/Signaling (S01/S11/S12).
 
 ---
 
@@ -274,13 +341,15 @@ Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die
 
 | Story | ID | Prio | Blocked by | Titel |
 |---|---|---|---|---|
-| M10-S01 | #195 | p0 | #152 | Lokaler Session-Server & Transport-Abstraktion |
+| M10-S01 | #195 | p0 | #152 | WebRTC-Transport & Host-Lebenszyklus (DataChannel, kein Server) |
 | M10-S02 | #196 | p0 | #152 | Session-Identität, Einladungscodes & Token-Auth |
 | M10-S03 | #197 | p0 | — | Spieler-Mitgliedschaft — Schema & Services |
 | M10-S04 | #198 | p1 | — | Spieler-Gruppen |
 | M10-S05 | #199 | p0 | S01+S02 | **Player-Client (Hybrid) + gespeichertes Player-„Projekt"** — geschärft, absorbiert Hybrid-Auslieferung (D9/D10) |
 | M10-S06 | #200 | p0 | S01+S02 | GM-Lobby: Verbundene Spieler + Kick + **Copy-Code (D27)**, **kein Approve (D24)** |
-| M10-S22 | #342 | p0 | — | **Globaler Create↔Play-Toggle in der Top-Bar (D25)** — Workspace-Modus-Umschalter |
+| M10-S22 | #342 | p0 | — | **App-Mode-Shell (D25):** Top-Bar-Toggle + Mode/Rolle/Session-Kontext + Menü-Reduktion auf Play-Subset |
+| M10-S23 | #346 | p0 | S22 | **Read-only Player-Gating (D25):** Edit-Affordances app-weit ausblenden bei Rolle Player |
+| M10-S24 | #347 | p1 | S20 | **Campaign-Mitglieder-Panel:** persistente Roster-Verwaltung (entfernen/Link neu/Gruppen) |
 | Bug | #340 | p0 | S05/S06 | **Auto-Join statt Approve-Gate (D24) + GM-Self-Join (D26)** — korrigiert closed #196/#199/#200 |
 | Bug | #341 | p1 | S06 | **Copy-Code-Feld+Button (D27) + Signaling raus aus LAN-Lobby** |
 | M10-S07 | #201 | p0 | — | Per-Spieler/Gruppen-Visibility |
@@ -302,9 +371,10 @@ Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die
 ## Implementierungs-Reihenfolge (verbindlich, rekursiv aufgelöst)
 
 **Phase 0 — Foundation (parallel baubar):**
-- **S22 #342** Globaler Create↔Play-Toggle in der Top-Bar (D25) · p0 — *reine UI-Shell, unabhängig; ohne ihn ist der Play-Mode gar nicht erreichbar → zuerst*
+- **S22 #342** App-Mode-Shell: Top-Bar-Toggle + Mode/Rolle/Session-Kontext + Menü-Reduktion (D25) · p0 — *ohne sie ist der Play-Mode gar nicht erreichbar → zuerst; liefert den `AppModeContext`*
+- **S23 #346** Read-only Player-Gating (D25) · p0 — *braucht S22-Kontext; blendet Edit-Buttons bei Rolle Player aus*
 - **S20 #337** Campaign-Klammer + `campaign_id`-Keying (Datenmodell-Basis für Roster/Overrides/Visibility, D23) · p0
-- **S01 #195** lokaler Server + Transport (HTTP serviert Player-UI + WS-Live) · p0 — *unabhängig von S20, parallel*
+- **S01 #195** WebRTC-Transport + Host-Lebenszyklus (DataChannel, kein Server) · p0 — *unabhängig von S20, parallel*
 - **S02 #196** Session-Identität, Codes, Token-Auth · p0
 
 **Phase 1 — Multiplayer-Kern (braucht S20 + S01 + S02):**
