@@ -28,3 +28,12 @@
 .u-gap-2 { gap: var(--space-2); }
 .u-gap-3 { gap: var(--space-3); }
 .u-gap-4 { gap: var(--space-4); }
+
+/* overflow */
+.u-scroll-y { overflow-y: auto; }
+
+/* flex-child sizing */
+/* Prevents a flex child that is itself a flex/scroll container from
+   overflowing its parent (same role as min-width:0 in .u-grow, but
+   for the cross-axis when the parent is a column). */
+.u-min-h-0 { min-height: 0; }

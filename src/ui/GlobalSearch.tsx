@@ -69,7 +69,7 @@ export function GlobalSearch({ onNavigate, database }: Props) {
   const selectedEntityId = filtered[selectedIndex]?.entityId ?? null;
 
   return (
-    <div className="gsearch" style={selectedEntityId ? { maxWidth: '100%' } : undefined}>
+    <div className={`gsearch${selectedEntityId ? ' gsearch--split' : ''}`}>
       <div className="gsearch__bar">
         <input
           ref={inputRef}
@@ -92,7 +92,7 @@ export function GlobalSearch({ onNavigate, database }: Props) {
               as="button"
               variant="outline"
               selected={activeTypeFilter === type}
-              onClick={() => setActiveTypeFilter(activeTypeFilter === type ? null : type)}
+              onClick={() => { setActiveTypeFilter(activeTypeFilter === type ? null : type); setSelectedIndex(-1); }}
             >
               {type} <span className="gsearch__facet-count">{count}</span>
             </Chip>
@@ -100,8 +100,8 @@ export function GlobalSearch({ onNavigate, database }: Props) {
         </div>
       )}
 
-      <div className="u-row u-items-stretch u-gap-0" style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        <div className="u-noshrink u-stack u-gap-2 gsearch__list-col" style={{ overflowY: 'auto' }}>
+      <div className="emd u-min-h-0">
+        <div className="emd__list u-scroll-y">
           {query && filtered.length === 0 && (
             <div className="gsearch__empty">Keine Ergebnisse für „{query}"</div>
           )}
@@ -112,7 +112,7 @@ export function GlobalSearch({ onNavigate, database }: Props) {
             </div>
           )}
 
-          <ul className="gsearch__results" role="listbox">
+          <ul className="gsearch__results u-grow u-scroll-y" role="listbox">
             {filtered.map((r, i) => (
               <ListRow
                 as="li"
@@ -133,7 +133,7 @@ export function GlobalSearch({ onNavigate, database }: Props) {
         </div>
 
         {selectedEntityId && database && (
-          <div className="u-grow" style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: 'var(--space-4)', overflowY: 'auto' }}>
+          <div className="emd__detail">
             <EntityDetailView
               entityId={selectedEntityId}
               database={database}
