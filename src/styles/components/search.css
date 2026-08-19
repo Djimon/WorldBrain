@@ -12,6 +12,9 @@
 /* Expands to full width when the split detail panel is visible */
 .gsearch--split { max-width: none; }
 
+/* Wider results column in search context (vs default 260px in EntityMasterDetail) */
+.gsearch .emd__list { width: 442px; }
+
 .gsearch__bar {
   position: relative;
 }
