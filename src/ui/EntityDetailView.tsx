@@ -62,10 +62,10 @@ type EntityDetailViewProps = {
   /** Called after the entity is deleted — the parent owns what happens next
    *  (close an inline panel, clear a list selection, ...). */
   onDeleted?: () => void;
-  /** Compact peek: render ONLY the overview tab (no registered extra tabs, no
-   *  tab strip). Used by the graph node-preview so it can't re-mount its own
-   *  Graph tab → infinite recursion. The caller pairs it with its own jump-to-
-   *  entity affordance (e.g. the graph's "Öffnen" button). */
+  /** Read-only compact peek: render ONLY the overview tab (no registered extra
+   *  tabs, no tab strip, no edit pencil). Used by the graph node-preview so it
+   *  can't re-mount its own Graph tab → infinite recursion. The caller pairs it
+   *  with its own jump-to-entity affordance (e.g. the graph's "Öffnen" button). */
   overviewOnly?: boolean;
 };
 
@@ -374,7 +374,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
               <Button tone="danger" variant="outline" size="compact" onClick={() => setDeletePrompt(true)}>{t('delete', 'Löschen')}</Button>
             )}
           </>
-        ) : (
+        ) : overviewOnly ? null : (
           <Button variant="ghost" size="icon" className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', 'Bearbeiten')} title={t('edit', 'Bearbeiten')}>✏️</Button>
         )}
       </div>
