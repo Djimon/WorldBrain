@@ -4,6 +4,7 @@ import { stripMarkdown } from '../utils/markdown';
 import { searchEntities, getSearchFacets, rebuildSearchIndex } from '../services/search-service';
 import type { SearchResult, SearchFacets } from '../services/search-service';
 import type { DatabaseLike } from '../services/entity-service';
+import { EntityDetailView } from './EntityDetailView';
 
 interface Props {
   onNavigate: (entityId: string) => void;
@@ -65,6 +66,7 @@ export function GlobalSearch({ onNavigate, database }: Props) {
   }
 
   const filtered = activeTypeFilter ? results.filter((r) => r.entityType === activeTypeFilter) : results;
+  const selectedEntityId = filtered[selectedIndex]?.entityId ?? null;
 
   return (
     <div className="gsearch">
@@ -98,33 +100,48 @@ export function GlobalSearch({ onNavigate, database }: Props) {
         </div>
       )}
 
-      {query && filtered.length === 0 && (
-        <div className="gsearch__empty">Keine Ergebnisse für „{query}"</div>
-      )}
+      <div className="gsearch__body">
+        <div className="gsearch__list-col">
+          {query && filtered.length === 0 && (
+            <div className="gsearch__empty">Keine Ergebnisse für „{query}"</div>
+          )}
 
-      {!query && (
-        <div className="gsearch__hint">
-          {indexing ? 'Index wird aktualisiert…' : 'Tippe um Entities, Orte, Fraktionen u.v.m. zu suchen.'}
+          {!query && (
+            <div className="gsearch__hint">
+              {indexing ? 'Index wird aktualisiert…' : 'Tippe um Entities, Orte, Fraktionen u.v.m. zu suchen.'}
+            </div>
+          )}
+
+          <ul className="gsearch__results" role="listbox">
+            {filtered.map((r, i) => (
+              <ListRow
+                as="li"
+                key={r.entityId}
+                className="gsearch__result"
+                selected={i === selectedIndex}
+                role="option"
+                aria-selected={i === selectedIndex}
+                onClick={() => setSelectedIndex(i)}
+                onDoubleClick={() => onNavigate(r.entityId)}
+              >
+                <span className="gsearch__result-title">{r.title}</span>
+                <span className="gsearch__result-type">{r.entityType}</span>
+                {r.summary && <span className="gsearch__result-summary">{stripMarkdown(r.summary)}</span>}
+              </ListRow>
+            ))}
+          </ul>
         </div>
-      )}
 
-      <ul className="gsearch__results" role="listbox">
-        {filtered.map((r, i) => (
-          <ListRow
-            as="li"
-            key={r.entityId}
-            className="gsearch__result"
-            selected={i === selectedIndex}
-            role="option"
-            aria-selected={i === selectedIndex}
-            onClick={() => onNavigate(r.entityId)}
-          >
-            <span className="gsearch__result-title">{r.title}</span>
-            <span className="gsearch__result-type">{r.entityType}</span>
-            {r.summary && <span className="gsearch__result-summary">{stripMarkdown(r.summary)}</span>}
-          </ListRow>
-        ))}
-      </ul>
+        {selectedEntityId && database && (
+          <div className="gsearch__detail-col">
+            <EntityDetailView
+              entityId={selectedEntityId}
+              database={database}
+              onNavigateToEntity={onNavigate}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
