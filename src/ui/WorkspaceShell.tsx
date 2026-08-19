@@ -32,7 +32,6 @@ import { MapsSidebarTabs } from './MapsSidebarTabs';
 import { MapFolderTree } from './MapFolderTree';
 import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
-import { PlayModeView } from './PlayModeView';
 import { ThemeToggle } from './ThemeToggle';
 import { Button } from './primitives';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
@@ -49,7 +48,6 @@ type Area =
   | 'cards'
   | 'plugins'
   | 'rules'
-  | 'session'
   | 'audio'
   | 'graph'
   | 'project';
@@ -84,7 +82,6 @@ const AREAS: { id: Area; icon: string }[] = [
   { id: 'cards',    icon: '🃏' },
   { id: 'plugins',  icon: '🔌' },
   { id: 'rules',    icon: '📖' },
-  { id: 'session',  icon: '🎲' },
   { id: 'audio',    icon: '🎧' },
   { id: 'graph',    icon: '🌌' },
   { id: 'project',  icon: '⚙' },
@@ -98,7 +95,6 @@ const CORE_ENTITY_TYPES = [
 export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snapshotsDir, onProjectClose, activePanel }: Props) {
   const { t } = useTranslation('nav');
   const database = useDatabase();
-  const [mode, setMode] = useState<'edit' | 'play'>('edit');
   const [activeArea, setActiveArea] = useState<Area>(activePanel ?? 'entities');
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | null>('Character');
@@ -768,13 +764,6 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           </div>
         );
 
-      case 'session':
-        return (
-          <div className="workspace-area">
-            <PlayModeView database={database} sessionId={projectId} role="dm" />
-          </div>
-        );
-
       case 'audio':
         return (
           <div className="workspace-area">
@@ -850,34 +839,11 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
           <span className="workspace-shell__area-name">{activeAreaLabel}</span>
           <div className="workspace-shell__header-controls">
-            <div data-testid="mode-toggle">
-              <Button
-                tone={mode === 'edit' ? 'accent' : 'neutral'}
-                aria-pressed={mode === 'edit'}
-                onClick={() => setMode('edit')}
-              >
-                {t('modeEdit', 'Bearbeiten')}
-              </Button>
-              <Button
-                tone={mode === 'play' ? 'accent' : 'neutral'}
-                aria-pressed={mode === 'play'}
-                onClick={() => setMode('play')}
-              >
-                {t('modePlay', 'Spielen')}
-              </Button>
-            </div>
             <LanguageSwitcher />
             <ThemeToggle />
           </div>
         </header>
-        {mode === 'play'
-          ? (
-            <div className="workspace-area">
-              <PlayModeView database={database} sessionId={projectId} role="dm" />
-            </div>
-          )
-          : renderArea()
-        }
+        {renderArea()}
       </div>
     </div>
   );

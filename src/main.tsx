@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import './i18n';
 import { App } from './App';
 import { AudioSoundboardWindow } from './ui/AudioSoundboardWindow';
-import { PlayerClientApp } from './ui/PlayerClientApp';
 import { initTheme } from './theme';
 
 // Apply the persisted theme before first render (no flash) and keep this window
@@ -25,17 +24,14 @@ if (rootElement === null) {
 // query param since this is a separate window/JS context with no state
 // shared with the main window's React tree.
 const isSoundboardWindow = window.location.hash === '#/audio-soundboard';
-const isPlayerWindow = window.location.hash === '#/player';
 const soundboardParams = new URLSearchParams(window.location.search);
 const soundboardDbPath = soundboardParams.get('db');
 const soundboardProjectDir = soundboardParams.get('projectDir');
 
 createRoot(rootElement).render(
   <StrictMode>
-    {isPlayerWindow
-      ? <PlayerClientApp />
-      : isSoundboardWindow
-        ? <AudioSoundboardWindow dbPath={soundboardDbPath} projectDir={soundboardProjectDir} />
-        : <App />}
+    {isSoundboardWindow
+      ? <AudioSoundboardWindow dbPath={soundboardDbPath} projectDir={soundboardProjectDir} />
+      : <App />}
   </StrictMode>,
 );
