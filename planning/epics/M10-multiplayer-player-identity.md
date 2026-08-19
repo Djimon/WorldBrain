@@ -22,7 +22,7 @@ Grundlage: Handover `docs/handover-player-identity.md` (2026-06-30).
 5. **GM-Self-Join** (D26): DM kann in der eigenen App als Player beitreten (loopback). Kein zweites Gerät/Build nötig.
 6. **3-Schichten-Datenmodell** (D23): **Welt** (Basis) → **Campaign** (Klammer pro Gruppe: Overrides/Events/Roster/Visibility/Weltzeit) → **Session** (ein Termin = Notiz-/Log-Layer). Roster/Invite/Visibility hängen an der **Campaign**, nicht am Termin (S20).
 7. **Sichtbarkeit** default alles `gm_only`; DM gibt gezielt pro Spieler/Gruppe frei (Decisions 5–8, S07/S09). Server- bzw. host-seitig durchgesetzt.
-8. **Player-Auslieferung = App-Modus** (derselbe Build, kein zweiter .exe). **Browser-Join verworfen/deferred** (bräuchte einen Server, den es nicht gibt).
+8. **Player-Auslieferung = App-Modus** (derselbe Build, kein zweiter .exe). **Browser-Join verworfen/deferred** (bräuchte einen Server, den es nicht gibt). Ein Remote-Spieler nutzt **denselben Build** (Toggle → Spielen → Rolle Player → Einladungslink). Die verfrühte `#/player`-Separate-App-Kette (PlayerClientApp/PlayerProjectDashboard/PlayerScreen) wird **entfernt** (#348) — das D10-Konzept „gespeicherte Host-Referenz" bleibt für die spätere echte Player-App erhalten.
 
 **Verworfen:** Stufe-1 (mehrere Fenster auf der GM-Maschine — Geheimnis-Leak). Eingebetteter HTTP/WS-LAN-Server (nie gebaut, durch WebRTC ersetzt). Browser-Join (siehe 8). TURN-Relay + gehosteter Signaling-Server.
 
@@ -339,58 +339,60 @@ Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die
 
 ## Story Tracking
 
+> **Rebuild-Set (frisch, nach Reset #348).** Die alten Story-Nummern (#195–#204, #322/#323, #332–#338, #299-alt) sind **CLOSED + überholt** (Alt-Modell) — **nicht mehr verwenden**. Gültig sind nur die Nummern in dieser Tabelle.
+
 | Story | ID | Prio | Blocked by | Titel |
 |---|---|---|---|---|
-| M10-S01 | #195 | p0 | #152 | WebRTC-Transport & Host-Lebenszyklus (DataChannel, kein Server) |
-| M10-S02 | #196 | p0 | #152 | Session-Identität, Einladungscodes & Token-Auth |
-| M10-S03 | #197 | p0 | — | Spieler-Mitgliedschaft — Schema & Services |
-| M10-S04 | #198 | p1 | — | Spieler-Gruppen |
-| M10-S05 | #199 | p0 | S01+S02 | **Player-Client (Hybrid) + gespeichertes Player-„Projekt"** — geschärft, absorbiert Hybrid-Auslieferung (D9/D10) |
-| M10-S06 | #200 | p0 | S01+S02 | GM-Lobby: Verbundene Spieler + Kick + **Copy-Code (D27)**, **kein Approve (D24)** |
-| M10-S22 | #342 | p0 | — | **App-Mode-Shell (D25):** Top-Bar-Toggle + Mode/Rolle/Session-Kontext + Menü-Reduktion auf Play-Subset |
-| M10-S23 | #346 | p0 | S22 | **Read-only Player-Gating (D25):** Edit-Affordances app-weit ausblenden bei Rolle Player |
-| M10-S24 | #347 | p1 | S20 | **Campaign-Mitglieder-Panel:** persistente Roster-Verwaltung (entfernen/Link neu/Gruppen) |
-| Bug | #340 | p0 | S05/S06 | **Auto-Join statt Approve-Gate (D24) + GM-Self-Join (D26)** — korrigiert closed #196/#199/#200 |
-| Bug | #341 | p1 | S06 | **Copy-Code-Feld+Button (D27) + Signaling raus aus LAN-Lobby** |
-| M10-S07 | #201 | p0 | — | Per-Spieler/Gruppen-Visibility |
-| M10-S08 | #202 | p1 | S05 | Spieler-Charaktererstellung + Bogen als Aktionsquelle (D13) |
-| M10-S09 | #203 | p0 | — | Spieler-Live-Sicht (gefilterte Inhalte) ✅ |
-| M10-S10 | #204 | p1 | — | Reconnect & Token-Persistenz ✅ |
-| M10-S14 | #332 | p1 | S05/S06 | **Play-Hauptfeld: Reiter Map/Kampflog/Spotlight + Free-Browse** (D13/D21) |
-| M10-S15 | #333 | p1 | S01/S07 | **Spotlight/Whiteboard** — gemeinsam + per-Spieler privat (D19) |
-| M10-S16 | #334 | p1 | S01 | **Würfel-Roller + per-Wurf-Sichtbarkeit** → Kampflog (D17) |
-| M10-S17 | #335 | p1 | S01 | **Session-Zeit + server-seitiges Kalender-Gate** (D16) · `needs-decision` (absolut setzen?) |
-| M10-S19 | #336 | p2 | — | **In-App Split-View** (D21) · `needs-decision` (OS-Pop-out später) |
-| M10-S11 | #322 | p2 | #195 | **Stufe 3:** Internet-Transport via WebRTC-DataChannel + STUN (ohne TURN) |
-| M10-S12 | #323 | p2 | #195 | **Stufe 3:** Serverloses Signaling — Connection-Code-Austausch (kein Hosted-Server) |
-| #299 | #299 | p1 | S01 | Token-Bewegung: **Default offen (D18)**, optionaler Lock später · `needs-decision` |
-| M10-S20 | #337 | p0 | — | **Campaign-Klammer + `campaign_id`-Keying** (Foundation, D23) |
-| M10-S21 | #338 | p1 | S20 | **Campaign-Override-Default + Promote-Schalter** (D23) · `needs-decision` |
-| Sub-Epic | — | — | M9+M10 | **Kampf-Engine** → `planning/epics/M10b-combat-engine.md` · `needs-design` (eigene Grill-Runde offen) |
+| **Reset** | **#348** | p0 | — | **Gesamte M10-Implementierung entfernen** → sauberer Neuaufbau (zuerst) |
+| M10-S20 | #349 | p0 | #152 | Campaign-Klammer + `campaign_id`-Keying (Foundation, D23) |
+| M10-S01 | #350 | p0 | #152 | WebRTC-Transport & Host-Lebenszyklus (DataChannel, kein Server) |
+| M10-S02 | #351 | p0 | S20+S01 | Campaign-Identität, Einladungscodes & Token-Auth (**Auto-Join** D24) |
+| M10-S03 | #352 | p0 | S20+S02 | Spieler-Mitgliedschaft — Schema & Services (campaign-scoped) |
+| M10-S04 | #353 | p1 | S20+S03 | Spieler-Gruppen (campaign-scoped) |
+| M10-S22 | #342 | p0 | Reset | **App-Mode-Shell (D25):** Toggle + Mode/Rolle/Session-Kontext + Menü-Reduktion |
+| M10-S23 | #346 | p0 | S22 | **Read-only Player-Gating (D25)** |
+| M10-S05 | #354 | p0 | S01+S02+S22 | **Campaign beitreten** (Spieler-Modus, Auto-Join D24) |
+| M10-S06 | #355 | p0 | S01+S02+S03+S22 | GM-Lobby — verbundene Spieler + Kick + Copy-Code (D27) |
+| M10-S24 | #347 | p1 | S20 | Campaign-Mitglieder-Panel (persistente Roster-Verwaltung) |
+| M10-S07 | #356 | p0 | S03+S04 | Per-Spieler/Gruppen-Visibility |
+| M10-S08 | #357 | p1 | S05 | Spieler-Charaktererstellung + Bogen als Aktionsquelle (D13) |
+| M10-S09 | #358 | p0 | S07+S01 | Spieler-Live-Sicht (host-gefilterte Inhalte) |
+| M10-S10 | #359 | p1 | S02+S05 | Reconnect & Token-Persistenz |
+| M10-S14 | #360 | p1 | S05+S06+S22 | Play-Cockpit: Reiter Map/Kampflog/Spotlight + Free-Browse (D13) |
+| M10-S15 | #361 | p1 | S01+S07 | Spotlight/Whiteboard — gemeinsam + per-Spieler privat (D19) |
+| M10-S16 | #362 | p1 | S01+S14 | Würfel-Roller + per-Wurf-Sichtbarkeit → Kampflog (D17) |
+| M10-S17 | #363 | p1 | S01+S20 | Session-Zeit + Kalender-Gate (D16) · `needs-decision` |
+| M10-S19 | #364 | p2 | — | In-App Split-View (D21) · `needs-decision` |
+| M10-S21 | #365 | p1 | S20 | Campaign-Override-Default + Promote-Schalter (D23) · `needs-decision` |
+| M10-Token | #366 | p1 | S01 | Token-Bewegung: Default offen (D18) · `needs-decision` |
+| M10-S11 | #367 | p2 | S01 | **Stufe 3:** WebRTC + STUN (remote) · `needs-design` |
+| M10-S12 | #368 | p2 | S01+S11 | **Stufe 3:** Serverloses Signaling (remote) · `needs-design` |
+| Sub-Epic | — | — | M9+M10 | **Kampf-Engine** → `planning/epics/M10b-combat-engine.md` · `needs-design` |
 
 ## Implementierungs-Reihenfolge (verbindlich, rekursiv aufgelöst)
 
-**Phase 0 — Foundation (parallel baubar):**
-- **S22 #342** App-Mode-Shell: Top-Bar-Toggle + Mode/Rolle/Session-Kontext + Menü-Reduktion (D25) · p0 — *ohne sie ist der Play-Mode gar nicht erreichbar → zuerst; liefert den `AppModeContext`*
-- **S23 #346** Read-only Player-Gating (D25) · p0 — *braucht S22-Kontext; blendet Edit-Buttons bei Rolle Player aus*
-- **S20 #337** Campaign-Klammer + `campaign_id`-Keying (Datenmodell-Basis für Roster/Overrides/Visibility, D23) · p0
-- **S01 #195** WebRTC-Transport + Host-Lebenszyklus (DataChannel, kein Server) · p0 — *unabhängig von S20, parallel*
-- **S02 #196** Session-Identität, Codes, Token-Auth · p0
+**Phase 0 — Reset:** **#348** gesamte M10-Implementierung entfernen. **Zuerst**, schafft die saubere Grundlage.
 
-**Phase 1 — Multiplayer-Kern (braucht S20 + S01 + S02):**
-- **S05 #199** Player-Client (Hybrid) + gespeichertes Player-Projekt
-- **S06 #200** GM-Lobby: verbundene Spieler + Kick + Copy-Code (D27), **kein Approve** (Roster/Gruppen campaign-scoped aus S20)
-- **Korrektur-Bugs (P0/P1, gegen die schon gebauten, closed Stories):** **#340** Auto-Join statt Approve-Gate (D24) + GM-Self-Join (D26) · **#341** Copy-Code-Feld+Button (D27) + Signaling raus aus LAN-Lobby. Diese bringen das gemountete Verhalten auf D24–D27.
+**Phase 1 — Foundation (parallel baubar, nach Reset):**
+- **S22 #342** App-Mode-Shell (Toggle + `AppModeContext` + Menü-Reduktion, D25) · p0 — *ohne sie ist der Play-Mode nicht erreichbar*
+- **S23 #346** Read-only Player-Gating (D25) · p0 — *braucht S22-Kontext*
+- **S20 #349** Campaign-Klammer + `campaign_id`-Keying (Datenmodell-Basis, D23) · p0
+- **S01 #350** WebRTC-Transport + Host-Lebenszyklus (DataChannel, kein Server) · p0 — *parallel zu S20*
+- **S02 #351** Campaign-Identität, Codes, Token-Auth (Auto-Join) · p0 — *braucht S20+S01*
+- **S03 #352** Spieler-Mitgliedschaft (campaign-scoped) · p0 · **S04 #353** Gruppen · p1
 
-**Phase 2 — Play:**
-- **S08 #202** Charaktererstellung (braucht S05)
-- **S14 #332** Play-Hauptfeld (Reiter Map/Kampflog/Spotlight, braucht S05/S06)
-- **S15 #333** Whiteboard · **S16 #334** Würfel · **S17 #335** Session-Zeit/Kalender-Gate · **#299** Token-Bewegung · **S19 #336** Split-View
-- **S21 #338** Campaign-Override-Default + Promote (braucht S20) — Authoring-seitig, parallel
+**Phase 2 — Multiplayer-Kern:**
+- **S05 #354** Campaign beitreten (braucht S01+S02+S22) · **S06 #355** GM-Lobby (braucht S01+S02+S03+S22)
+- **S24 #347** Campaign-Mitglieder-Panel (braucht S20) · **S07 #356** Visibility (braucht S03+S04)
 
-**Phase 3 — Später:** Stufe 3 (S11 #322 / S12 #323, braucht S01), **Kampf-Sub-Epic** (`M10b`, braucht M9-Substrat), Campaign-Log-UI (Aggregation, kein eigenes Objekt).
+**Phase 3 — Play:**
+- **S08 #357** Charaktererstellung (braucht S05) · **S09 #358** Live-Sicht (braucht S07+S01) · **S10 #359** Reconnect
+- **S14 #360** Play-Cockpit (braucht S05+S06+S22) · **S15 #361** Whiteboard · **S16 #362** Würfel · **S17 #363** Session-Zeit · **#366** Token-Bewegung · **S19 #364** Split-View
+- **S21 #365** Override-Default + Promote (braucht S20) — Authoring-seitig, parallel
 
-**Achse (kritischer Pfad):** `(S20 ∥ S01→S02) → (S05 + S06) → S08 → Play-Features`.
+**Phase 4 — Später:** Stufe 3 (**S11 #367** / **S12 #368**, braucht S01, `needs-design` Signaling), **Kampf-Sub-Epic** (`M10b`), Campaign-Log-UI (Aggregation, kein eigenes Objekt).
+
+**Achse (kritischer Pfad):** `Reset #348 → (S22 ∥ S20 ∥ S01→S02→S03) → (S05 + S06) → S08 → Play-Features`.
 
 ## Abhängigkeiten
 
