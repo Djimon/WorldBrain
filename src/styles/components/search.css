@@ -13,7 +13,7 @@
 .gsearch--split { max-width: none; }
 
 /* Wider results column in search context (vs default 260px in EntityMasterDetail) */
-.gsearch .emd__list { width: 442px; }
+.gsearch .emd__list { width: 440px; }
 
 .gsearch__bar {
   position: relative;
