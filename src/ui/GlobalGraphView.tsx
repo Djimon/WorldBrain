@@ -360,7 +360,7 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
             <Button variant="ghost" size="icon" onClick={() => setSelectedId(null)} aria-label={t('graphCloseDetail', 'Schließen')}>×</Button>
           </div>
           <div className="gv-detail__body">
-            <EntityDetailView entityId={selectedId} database={database} onNavigateToEntity={setSelectedId} />
+            <EntityDetailView entityId={selectedId} database={database} onNavigateToEntity={setSelectedId} overviewOnly />
           </div>
         </div>
       )}

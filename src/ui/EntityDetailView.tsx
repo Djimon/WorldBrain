@@ -62,9 +62,14 @@ type EntityDetailViewProps = {
   /** Called after the entity is deleted — the parent owns what happens next
    *  (close an inline panel, clear a list selection, ...). */
   onDeleted?: () => void;
+  /** Compact peek: render ONLY the overview tab (no registered extra tabs, no
+   *  tab strip). Used by the graph node-preview so it can't re-mount its own
+   *  Graph tab → infinite recursion. The caller pairs it with its own jump-to-
+   *  entity affordance (e.g. the graph's "Öffnen" button). */
+  overviewOnly?: boolean;
 };
 
-export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted }: EntityDetailViewProps) {
+export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted, overviewOnly }: EntityDetailViewProps) {
   const { t } = useTranslation('entity');
   const [activeTab, setActiveTab] = useState('overview');
   const [extraTabs] = useState<TabDefinition[]>(() => [...registeredTabs]);
@@ -340,7 +345,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
         </div>
       ),
     },
-    ...extraTabs,
+    ...(overviewOnly ? [] : extraTabs),
   ];
 
   const activeTabDef = tabs.find((t) => t.id === activeTab) ?? tabs[0];
@@ -373,13 +378,15 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
           <Button variant="ghost" size="icon" className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', 'Bearbeiten')} title={t('edit', 'Bearbeiten')}>✏️</Button>
         )}
       </div>
-      <Tabs
-        className="entity-detail__tabs"
-        label={t('entityDetailTabs', 'Detailbereiche')}
-        activeId={activeTab}
-        onSelect={setActiveTab}
-        options={tabs.map((tab) => ({ id: tab.id, label: tab.label }))}
-      />
+      {!overviewOnly && (
+        <Tabs
+          className="entity-detail__tabs"
+          label={t('entityDetailTabs', 'Detailbereiche')}
+          activeId={activeTab}
+          onSelect={setActiveTab}
+          options={tabs.map((tab) => ({ id: tab.id, label: tab.label }))}
+        />
+      )}
       <div className="entity-detail__body" role="tabpanel">
         {activeTabDef?.render({ entityId, database, onNavigate: onNavigateToEntity })}
       </div>
