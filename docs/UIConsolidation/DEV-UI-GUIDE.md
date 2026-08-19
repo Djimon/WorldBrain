@@ -6,6 +6,24 @@ Neue UI wird aus vorhandenen **Primitives + Utilities + Tokens** komponiert. Wen
 **fragen**, dann erweitern wir das Primitive/Utility zentral. Kein `background:#fff`, kein
 `.mein-neues-panel { … }` auf eigene Faust.
 
+## ⛔ Kein Inline-`style={{…}}` für Layout/Farbe (Schlupfloch — verboten)
+Das `style`-Attribut ist **kein** erlaubter Ausweg um die „keine neuen Klassen"-Regel herum. Verboten:
+`style={{ flex: 1, minHeight: 0, overflow: 'auto', maxWidth: '100%', borderLeft: '1px solid …', padding: … }}`
+und jede andere Layout-/Farb-/Größen-Angabe inline.
+
+**Warum härter als eine bespoke Klasse:** Inline-Styles schlagen `@layer` komplett — sie sind
+**un-themebar und nicht wiederverwendbar**. Ein Community-Theme kann sie nie überschreiben. Damit reißen
+sie ein *größeres* Loch ins System als eine eingelagerte Klasse.
+
+**Wenn eine Utility fehlt** (z.B. `overflow-y`, `min-height:0`, ein Divider): **nicht** inline hardcoden →
+**melden**, dann wird die Utility **zentral** in `src/styles/utilities.css` ergänzt (mit Freigabe).
+Braucht ein Widget einen echten Einzelfall-Rest (feste Breite, absolute Position, Grid-Template), kommt der
+in eine **abgesegnete** komponenten-spezifische Klasse (siehe unten) — nicht ins `style`-Attribut.
+
+> Einzige tolerierte Ausnahme: ein **wirklich dynamischer, pro-Render berechneter** Wert, der keine Klasse
+> sein *kann* (z.B. `style={{ transform: \`translate(${x}px,${y}px)\` }}` für eine Live-Position, eine
+> per-Datensatz berechnete Farbe). Statische Werte („`maxWidth:'100%'`", „`flex:1`") sind **kein** solcher Fall.
+
 ## So baust du neue UI (in dieser Reihenfolge)
 1. **Primitive nehmen** — `src/ui/primitives.tsx`:
    `<Button>` · `<Segmented>` · `<Tabs>` · `<Chip>` · `<ListRow>` · `<Panel>` · `<Field>` · `<StatusChip>` ·
