@@ -56,6 +56,9 @@ function collect() {
     const relKey = rel.split(sep).join('/');
     found[relKey] ??= {};
     for (const raw of matches) {
+      // rgb()/rgba()/hsl() that reference a token (var(--…)) are fine — the raw
+      // channels live in tokens.css, only the alpha varies at the call site.
+      if (raw.includes('var(')) continue;
       const norm = raw.toLowerCase().replace(/\s+/g, '');
       found[relKey][norm] = (found[relKey][norm] ?? 0) + 1;
     }

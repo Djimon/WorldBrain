@@ -21,6 +21,20 @@
   --color-scrim:          rgb(0 0 0 / 0.6);       /* dark label backing over maps/media */
   --color-overlay-border: rgb(255 255 255 / 0.2); /* hairline on glass panels over canvas */
 
+  /* Neutral bases for shadows/scrims — vary opacity at the call site via
+     color-mix(in srgb, var(--color-shadow) N%, transparent). */
+  --color-shadow:    #000;
+  --color-highlight: #fff;
+
+  /* Layer-type indicator hues (mode-invariant) */
+  --color-layer-image: #6ea8fe;
+  --color-layer-fog:   #b0b8c4;
+  --color-layer-token: #e0a15a;
+
+  /* One-off soft tints */
+  --color-focus-glow: rgba(47, 111, 145, 0.15); /* teal focus ring glow */
+  --color-error-soft: rgba(180, 60, 60, 0.12);  /* inline error-box backing */
+
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;

@@ -45,7 +45,7 @@
 .gv-detail {
   position: absolute; top: 56px; right: 12px; width: 360px; max-height: calc(100% - 68px);
   overflow: auto; z-index: 6; background: var(--gv-panel-bg-strong); color: var(--gv-text);
-  border-radius: 10px; border: 1px solid var(--gv-border-soft); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  border-radius: 10px; border: 1px solid var(--gv-border-soft); box-shadow: 0 8px 30px color-mix(in srgb, var(--color-shadow) 45%, transparent);
 }
 .gv-detail__bar {
   display: flex; justify-content: flex-end; gap: 6px; padding: 8px;

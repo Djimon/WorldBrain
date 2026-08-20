@@ -110,9 +110,9 @@
   letter-spacing: 0.04em;
   line-height: 1.5;
 }
-.ui-chip.layer-panel__type--image { color: #6ea8fe; }
-.ui-chip.layer-panel__type--fog { color: #b0b8c4; }
-.ui-chip.layer-panel__type--token { color: #e0a15a; }
+.ui-chip.layer-panel__type--image { color: var(--color-layer-image); }
+.ui-chip.layer-panel__type--fog { color: var(--color-layer-fog); }
+.ui-chip.layer-panel__type--token { color: var(--color-layer-token); }
 
 /* Add-layer toolbar: buttons side by side when there's room, wrapping to
    stacked full-width rows when the sidebar is narrow. */
@@ -175,7 +175,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--color-shadow) 40%, transparent);
 }
 
 .fog-tools__slider {
