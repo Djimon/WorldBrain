@@ -64,3 +64,9 @@ hardcodierte Farbe reißt ein Loch in dieses System — genau deshalb die Grundr
 
 Das ist der Sinn: Die Regel hängt nicht mehr daran, dass jeder Agent im Einzelmoment nachschaut —
 ein Rückfall landet nicht mehr still, sondern bricht den Commit.
+
+**Die Baselines sind Ratschen — sie schrumpfen nur.** Behebst du einen gegrandfatherten Fall, wird sein
+Baseline-Eintrag „unused" und ESLint **knallt**, bis du ihn entfernst: `npm run lint:prune` (schreibt
+`eslint-suppressions.json` neu). Für Farben analog: nach echtem Aufräumen `node scripts/check-hardcoded-colors.mjs --update-baseline`.
+Absichtlich **kein** `--pass-on-unpruned-suppressions` — sonst dürfte die Schuld verrotten statt zu sinken.
+Ziel ist Baseline → 0.
