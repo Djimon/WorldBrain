@@ -4,11 +4,6 @@
       "count": 1
     }
   },
-  "src/ui/MapGrid.tsx": {
-    "local/no-static-inline-style": {
-      "count": 11
-    }
-  },
   "src/ui/MapViewer.tsx": {
     "local/no-static-inline-style": {
       "count": 10

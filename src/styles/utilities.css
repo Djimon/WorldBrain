@@ -15,6 +15,7 @@
 .u-wrap    { display: flex; flex-wrap: wrap; } /* align-neutral (default stretch) */
 .u-grow    { flex: 1 1 auto; min-width: 0; }
 .u-noshrink { flex: 0 0 auto; }
+.u-flex-1  { flex: 1; } /* flex: 1 1 0% — equal distribution ignoring content */
 
 /* cross-axis / main-axis alignment modifiers */
 .u-items-start    { align-items: flex-start; }

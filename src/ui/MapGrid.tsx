@@ -106,7 +106,7 @@ export const GridLayer = memo(function GridLayer({ imgW, imgH, cellSize, type, l
 
   return (
     <canvas ref={canvasRef} width={imgW} height={imgH}
-      style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
+      className="map-grid__canvas-overlay" />
   );
 });
 
@@ -156,7 +156,7 @@ export const CellStateLayer = memo(function CellStateLayer({ imgW, imgH, cellSiz
   });
 
   return (
-    <svg style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none' }}
+    <svg className="map-grid__svg-overlay"
       width={imgW} height={imgH}>
       {shapes}
     </svg>
@@ -408,7 +408,7 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
             </div>
           </div>
 
-          <div className="grid-controls-panel__section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="grid-controls-panel__section-title u-row u-justify-between">
             <span>Zell-Zustände</span>
             <Button tone="accent" variant="outline" size="compact" onClick={() => {
               const maxId = settings.cellStates.reduce((m, s) => Math.max(m, s.id), 0);
@@ -433,20 +433,18 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
           ))}
 
           <div className="grid-controls-panel__section-title">Maßstab (1 Kästchen =)</div>
-          <div className="grid-controls-panel__row" style={{ padding: '4px 12px 8px' }}>
-            <div className="grid-controls-panel__number-input" style={{ flex: 1 }}>
+          <div className="grid-controls-panel__row grid-controls-panel__row--pad">
+            <div className="grid-controls-panel__number-input grid-controls-panel__number-input--measure u-flex-1">
               <input type="number" min={0.001} step={0.1} value={settings.measureValue}
-                onChange={(e) => set('measureValue', Number(e.target.value))}
-                style={{ width: 64 }} />
+                onChange={(e) => set('measureValue', Number(e.target.value))} />
             </div>
-            <input className="grid-state-name" value={settings.measureUnit}
+            <input className="grid-state-name grid-measure-unit" value={settings.measureUnit}
               onChange={(e) => set('measureUnit', e.target.value)}
-              placeholder="km / m / miles"
-              style={{ flex: 1, marginLeft: 6 }} />
+              placeholder="km / m / miles" />
           </div>
 
           <div className="grid-controls-panel__section-title">Lineal</div>
-          <div className="grid-controls-panel__row" style={{ padding: '4px 12px 8px', gap: 8 }}>
+          <div className="grid-controls-panel__row grid-controls-panel__row--pad u-gap-2">
             <div className="grid-controls-panel__col">
               <label>Farbe</label>
               <input type="color" value={settings.rulerColor} onChange={(e) => set('rulerColor', e.target.value)} className="grid-color-picker" />
@@ -454,7 +452,7 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
             <div className="grid-controls-panel__col">
               <label>Opacity</label>
               <input type="range" min={0} max={1} step={0.05} value={settings.rulerOpacity}
-                onChange={(e) => set('rulerOpacity', Number(e.target.value))} style={{ width: 70 }} />
+                onChange={(e) => set('rulerOpacity', Number(e.target.value))} className="grid-ruler-opacity" />
             </div>
             <div className="grid-controls-panel__col">
               <label>Dicke</label>
@@ -467,7 +465,7 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
           </div>
 
           <div className="grid-controls-panel__footer">
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{activeCellCount} Zellen markiert</span>
+            <span className="grid-controls-panel__hint">{activeCellCount} Zellen markiert</span>
             <Button tone="danger" variant="outline" size="compact" onClick={onClear}>
               {t('all')}
             </Button>
@@ -512,7 +510,7 @@ export function CellContextMenu({ x, y, cellKey, cellStates, onPick, onClose }: 
     >
       <div className="map-context-menu__title">Zell-Zustand</div>
       <button className="map-context-menu__item map-context-menu__item--off" onClick={() => onPick(cellKey, 0)}>
-        <span className="map-context-menu__dot" style={{ background: 'transparent', border: '1px solid #666' }} />
+        <span className="map-context-menu__dot map-context-menu__dot--none" />
         Leer
       </button>
       {cellStates.map((st) => (

@@ -31,6 +31,8 @@
   --color-layer-fog:   #b0b8c4;
   --color-layer-token: #e0a15a;
 
+  --color-swatch-outline: #666; /* outline for the transparent/none colour swatch */
+
   /* One-off soft tints */
   --color-focus-glow: rgba(47, 111, 145, 0.15); /* teal focus ring glow */
   --color-error-soft: rgba(180, 60, 60, 0.12);  /* inline error-box backing */
