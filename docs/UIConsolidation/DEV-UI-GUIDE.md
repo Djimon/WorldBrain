@@ -49,3 +49,18 @@ System einheitlich + theme-fähig bleibt.
 Alle Farben laufen über Tokens, die Kaskade ist über `@layer` geregelt (`src/styles/index.css`). Dadurch
 färbt **eine** Theme-Datei (nur Variablen-Overrides) die ganze App um. Jede eigenmächtige Klasse oder
 hardcodierte Farbe reißt ein Loch in dieses System — genau deshalb die Grundregel oben.
+
+## Durchsetzung (die Regeln knallen jetzt maschinell)
+`npm run lint` (und der Pre-commit-Hook) blocken **neuen** Code bei zwei Verstößen — nicht nur Doku:
+
+- **Gate 1 — hardcodierte Farbe.** `scripts/check-hardcoded-colors.mjs`: rohe `#hex`/`rgb()`/`hsl()` in
+  CSS (außer `tokens.css` + `themes/`) → **BLOCKED**. Fehlt ein Token? → in `src/styles/tokens.css`
+  anlegen und `var(--…)` nutzen. Alt-Bestand ist in `scripts/.hardcoded-color-baseline.json` gegrandfathert;
+  eine neue Farbe knallt. Baseline nur mit Freigabe erweitern: `node scripts/check-hardcoded-colors.mjs --update-baseline`.
+- **Gate 2 — statisches Inline-`style`.** ESLint-Rule `local/no-static-inline-style`: `style={{…}}` mit
+  ausschließlich statischen Werten → **error**. Dynamische Werte (Variablen, `${…}`, berechnet) gehen durch.
+  Alt-Bestand ist in `eslint-suppressions.json` gegrandfathert; neuer statischer Inline-Style knallt.
+  Echte, abgesegnete Ausnahme: `// eslint-disable-next-line local/no-static-inline-style -- <Grund + Freigabe>`.
+
+Das ist der Sinn: Die Regel hängt nicht mehr daran, dass jeder Agent im Einzelmoment nachschaut —
+ein Rückfall landet nicht mehr still, sondern bricht den Commit.

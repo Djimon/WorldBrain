@@ -1,5 +1,6 @@
 // @ts-check
 import tseslint from 'typescript-eslint';
+import noStaticInlineStyle from './eslint-rules/no-static-inline-style.js';
 
 export default tseslint.config(
   {
@@ -7,10 +8,15 @@ export default tseslint.config(
   },
   {
     files: ['src/**/*.{ts,tsx}', 'core_data/**/*.ts'],
+    plugins: {
+      local: { rules: { 'no-static-inline-style': noStaticInlineStyle } },
+    },
     extends: [
       ...tseslint.configs.recommended,
     ],
     rules: {
+      // Gate 2 (DEV-UI-GUIDE): no fully-static inline style — utilities/tokens/approved class instead.
+      'local/no-static-inline-style': 'error',
       // AP-001: database as never is forbidden — use DatabaseLike from entity-service.ts
       'no-restricted-syntax': [
         'error',
@@ -29,5 +35,11 @@ export default tseslint.config(
       'react-hooks/exhaustive-deps': 'off',
       'react-hooks/rules-of-hooks': 'off',
     },
+  },
+  {
+    // Throwaway graph spikes are experiments, not shipped UI — exempt from the
+    // inline-style gate so they don't need justification comments everywhere.
+    files: ['src/spikes/**'],
+    rules: { 'local/no-static-inline-style': 'off' },
   },
 );

@@ -6,7 +6,8 @@
   "type": "module",
   "packageManager": "npm@11.13.0",
   "scripts": {
-    "lint": "eslint src core_data",
+    "lint": "eslint src core_data --pass-on-unpruned-suppressions && npm run lint:colors",
+    "lint:colors": "node scripts/check-hardcoded-colors.mjs",
     "check": "npm run check:toolchain && npm run check:prerequisites && npm run lint && npm run test && npm run build && npm run desktop:build",
     "check:prerequisites": "node scripts/check-prerequisites.mjs",
     "check:toolchain": "node scripts/check-toolchain.mjs",

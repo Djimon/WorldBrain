@@ -1,0 +1,34 @@
+{
+  "src/styles/components/audio.css": {
+    "#fff": 1,
+    "rgba(0,0,0,0.4)": 1
+  },
+  "src/styles/components/calendar-extras.css": {
+    "rgba(0,0,0,0.45)": 1
+  },
+  "src/styles/components/maps-panels.css": {
+    "#6ea8fe": 1,
+    "#b0b8c4": 1,
+    "#e0a15a": 1,
+    "rgba(0,0,0,0.4)": 1
+  },
+  "src/styles/components/maps.css": {
+    "rgba(0,0,0,0.6)": 7,
+    "#fff": 4,
+    "rgba(0,0,0,0.7)": 1,
+    "rgba(0,0,0,0.65)": 1,
+    "rgba(0,0,0,0.8)": 5,
+    "rgba(0,0,0,0.5)": 1,
+    "rgba(0,0,0,0.4)": 1,
+    "rgba(255,255,255,0.6)": 1,
+    "rgba(0,0,0,0.75)": 1
+  },
+  "src/styles/components/shell.css": {
+    "rgba(47,111,145,0.15)": 1,
+    "rgba(180,60,60,0.12)": 1,
+    "#b43c3c": 1
+  },
+  "src/ui/graph.css": {
+    "rgba(0,0,0,0.45)": 1
+  }
+}
