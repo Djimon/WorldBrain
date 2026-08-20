@@ -68,7 +68,7 @@ const DEFAULT_FOLDER_COLOR = '#f0c674';
 // the folder's own color, or the default folder-yellow when none is set.
 function FolderIcon({ color }: { color?: string | null }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" style={{ flexShrink: 0 }}>
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" className="u-noshrink">
       <path
         d="M1.5 3.5C1.5 2.94772 1.94772 2.5 2.5 2.5H6.17157C6.43679 2.5 6.69114 2.60536 6.87868 2.79289L7.70711 3.62132C7.89464 3.80886 8.14899 3.91421 8.41421 3.91421H13.5C14.0523 3.91421 14.5 4.36193 14.5 4.91421V12C14.5 12.5523 14.0523 13 13.5 13H2.5C1.94772 13 1.5 12.5523 1.5 12V3.5Z"
         fill={color || DEFAULT_FOLDER_COLOR}
@@ -377,8 +377,8 @@ export function NestedTree({
             onChange={(e) => setNewFolderName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') createFolder(); if (e.key === 'Escape') setNewFolderInput(false); }}
           />
-          <button onClick={createFolder} style={{ fontSize: '0.75rem' }}>✓</button>
-          <button onClick={() => setNewFolderInput(false)} style={{ fontSize: '0.75rem' }}>✕</button>
+          <button onClick={createFolder} className="map-pin-tree__new-folder-btn">✓</button>
+          <button onClick={() => setNewFolderInput(false)} className="map-pin-tree__new-folder-btn">✕</button>
         </div>
       )}
 
@@ -405,8 +405,7 @@ export function NestedTree({
             key={item.id}
             role="button"
             tabIndex={0}
-            className={`map-pin-tree__item${activeItemId === item.id ? ' active' : ''}`}
-            style={{ paddingLeft: 12, cursor: 'grab', userSelect: 'none' }}
+            className={`map-pin-tree__item map-pin-tree__root-row${activeItemId === item.id ? ' active' : ''}`}
             onClick={(e) => onItemClick?.(item.id, e as unknown as React.MouseEvent)}
             onKeyDown={(e) => { if (e.key === 'Enter') onItemClick?.(item.id, e as unknown as React.MouseEvent); }}
             onPointerDown={(e) => startDrag({ kind: 'item', id: item.id }, item.label, e)}

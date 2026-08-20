@@ -1,37 +1,12 @@
 {
-  "src/ui/GraphCanvas.tsx": {
-    "local/no-static-inline-style": {
-      "count": 1
-    }
-  },
   "src/ui/MapViewer.tsx": {
     "local/no-static-inline-style": {
       "count": 10
     }
   },
-  "src/ui/NestedTree.tsx": {
-    "local/no-static-inline-style": {
-      "count": 4
-    }
-  },
-  "src/ui/PrintSheetComposer.tsx": {
-    "local/no-static-inline-style": {
-      "count": 2
-    }
-  },
-  "src/ui/SpotifyClipPlayer.tsx": {
-    "local/no-static-inline-style": {
-      "count": 1
-    }
-  },
   "src/ui/WorkspaceShell.tsx": {
     "local/no-static-inline-style": {
       "count": 12
-    }
-  },
-  "src/ui/YoutubeClipPlayer.tsx": {
-    "local/no-static-inline-style": {
-      "count": 1
     }
   }
 }

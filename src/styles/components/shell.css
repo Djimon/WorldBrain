@@ -322,3 +322,7 @@
 /* App loading + welcome status (were inline). */
 .app-loading { padding: 2rem; }
 .welcome-screen__status { color: var(--color-status-warning); }
+
+/* Print sheet composer (was inline; orphan component). */
+.print-sheet__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.print-sheet__slot { border: 1px solid var(--color-print-border); min-height: 80px; }

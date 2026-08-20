@@ -32,6 +32,7 @@
   --color-layer-token: #e0a15a;
 
   --color-swatch-outline: #666; /* outline for the transparent/none colour swatch */
+  --color-print-border:   #ccc; /* print-sheet slot outline (print-neutral grey) */
 
   /* One-off soft tints */
   --color-focus-glow: rgba(47, 111, 145, 0.15); /* teal focus ring glow */

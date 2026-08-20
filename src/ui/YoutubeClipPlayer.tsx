@@ -116,5 +116,5 @@ export function YoutubeClipPlayer({ videoUrl, targetVolume, rampSeconds, loop, p
     if (paused) player.pauseVideo(); else player.playVideo();
   }, [paused]);
 
-  return <div ref={containerRef} style={{ display: 'none' }} />;
+  return <div ref={containerRef} className="u-hidden" />;
 }

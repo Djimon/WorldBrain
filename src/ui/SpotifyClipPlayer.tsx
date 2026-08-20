@@ -81,5 +81,5 @@ export function SpotifyClipPlayer({ uri, paused }: SpotifyClipPlayerProps) {
     if (paused) controller.pause(); else controller.play();
   }, [paused]);
 
-  return <div ref={containerRef} style={{ display: 'none' }} />;
+  return <div ref={containerRef} className="u-hidden" />;
 }

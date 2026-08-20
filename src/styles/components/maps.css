@@ -1308,3 +1308,7 @@
 .grid-ruler-opacity { width: 70px; }
 .grid-controls-panel__hint { font-size: 0.75rem; color: var(--color-text-muted); }
 .map-context-menu__dot--none { background: transparent; border: 1px solid var(--color-swatch-outline); }
+
+/* NestedTree residuals (were inline). */
+.map-pin-tree__new-folder-btn { font-size: 0.75rem; }
+.map-pin-tree__root-row { padding-left: 12px; cursor: grab; user-select: none; }
