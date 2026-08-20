@@ -137,3 +137,7 @@
   width: 32px;
 }
 
+
+/* Calendar wizard / month-view residuals (were inline). */
+.cal-wizard__hint { font-size: 0.75rem; color: var(--color-text-muted); }
+.cal-month__day-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }

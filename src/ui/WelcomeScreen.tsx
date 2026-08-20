@@ -29,7 +29,7 @@ export function WelcomeScreen({ configPath = 'app-config.json', onCreateProject,
       <h1>WorldBuilderX</h1>
 
       {isStale && (
-        <p role="status" style={{ color: 'var(--color-status-warning)' }}>
+        <p role="status" className="welcome-screen__status">
           {t('staleProject')}
         </p>
       )}

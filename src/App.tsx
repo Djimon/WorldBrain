@@ -129,7 +129,7 @@ export function App() {
   }
 
   if (mode.kind === 'loading') {
-    return <div style={{ padding: '2rem' }}>Laden…</div>;
+    return <div className="app-loading">Laden…</div>;
   }
 
   if (mode.kind === 'welcome') {

@@ -37,12 +37,11 @@ export function MapEmbedBlock({ mapId, database }: Props) {
   return (
     <div className="map-embed-block">
       <h4>{map.title}</h4>
-      <div className="map-embed-block__frame" style={{ height: '300px', width: '100%' }}>
+      <div className="map-embed-block__frame">
         <img
           src={url}
           alt={map.title}
           className="map-embed-block__img"
-          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
         />
       </div>
     </div>

@@ -12,6 +12,7 @@
 .u-stack   { display: flex; flex-direction: column; }
 .u-row     { display: flex; align-items: center; }
 .u-cluster { display: flex; flex-wrap: wrap; align-items: center; }
+.u-wrap    { display: flex; flex-wrap: wrap; } /* align-neutral (default stretch) */
 .u-grow    { flex: 1 1 auto; min-width: 0; }
 .u-noshrink { flex: 0 0 auto; }
 
@@ -31,6 +32,12 @@
 
 /* overflow */
 .u-scroll-y { overflow-y: auto; }
+
+/* interaction */
+.u-clickable { cursor: pointer; }
+
+/* positioning */
+.u-relative { position: relative; }
 
 /* flex-child sizing */
 /* Prevents a flex child that is itself a flex/scroll container from

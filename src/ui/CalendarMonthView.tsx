@@ -169,7 +169,7 @@ export function CalendarMonthView({ calendar, database, onCreateEvent, onEventCl
         <span className="cal-month__spacer" />
         <h2 className="cal-month__name">{heading}</h2>
         {eras.length > 0 && (
-          <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+          <span className="cal-month__day-actions">
             {eraMode && matchingEras.length > 1 && (
               <select className="cal-form__select" aria-label="Bezugs-Ära"
                 value={refEra?.id ?? ''} onChange={(e) => setRefEraId(e.target.value)}>

@@ -318,3 +318,7 @@
   gap: var(--space-3);
 }
 
+
+/* App loading + welcome status (were inline). */
+.app-loading { padding: 2rem; }
+.welcome-screen__status { color: var(--color-status-warning); }

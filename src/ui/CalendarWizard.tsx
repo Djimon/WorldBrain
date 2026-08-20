@@ -202,7 +202,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
                 setMonths((prev) => prev.map((m, i) => ({ ...m, days: base + (i < remainder ? 1 : 0) })));
               }}
             />
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>= {months.length} Monate × ~{months.length ? Math.round(totalDays / months.length) : 0}</span>
+            <span className="cal-wizard__hint">= {months.length} Monate × ~{months.length ? Math.round(totalDays / months.length) : 0}</span>
           </div>
           <div className="cal-form__row">
             <label className="cal-form__label">Startdatum</label>
@@ -223,7 +223,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
                 <span className="cal-datefield__label">Jahr</span>
               </span>
             </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>„Die Welt beginnt an diesem Datum"</span>
+            <span className="cal-wizard__hint">„Die Welt beginnt an diesem Datum"</span>
           </div>
         </Panel>
 

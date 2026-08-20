@@ -123,7 +123,7 @@ function MentionInput({ value, onChange, entities, placeholder }: MentionInputPr
   }
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="u-relative">
       <input
         ref={inputRef}
         type="text"

@@ -1293,3 +1293,8 @@
   }
 }
 
+
+/* Map embed block (#… content block) — class names existed with no CSS; the
+   styling had leaked inline. Now backed properly. */
+.map-embed-block__frame { height: 300px; width: 100%; }
+.map-embed-block__img { width: 100%; height: 100%; object-fit: contain; display: block; }

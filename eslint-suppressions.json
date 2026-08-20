@@ -1,45 +1,5 @@
 {
-  "src/App.tsx": {
-    "local/no-static-inline-style": {
-      "count": 1
-    }
-  },
-  "src/blocks/MapEmbedBlock.tsx": {
-    "local/no-static-inline-style": {
-      "count": 2
-    }
-  },
-  "src/ui/CalendarMonthView.tsx": {
-    "local/no-static-inline-style": {
-      "count": 1
-    }
-  },
-  "src/ui/CalendarWizard.tsx": {
-    "local/no-static-inline-style": {
-      "count": 2
-    }
-  },
-  "src/ui/CardCreationFlow.tsx": {
-    "local/no-static-inline-style": {
-      "count": 2
-    }
-  },
-  "src/ui/DmScreen.tsx": {
-    "local/no-static-inline-style": {
-      "count": 1
-    }
-  },
-  "src/ui/EntityTable.tsx": {
-    "local/no-static-inline-style": {
-      "count": 1
-    }
-  },
   "src/ui/GraphCanvas.tsx": {
-    "local/no-static-inline-style": {
-      "count": 1
-    }
-  },
-  "src/ui/MapFolderTree.tsx": {
     "local/no-static-inline-style": {
       "count": 1
     }
@@ -64,17 +24,7 @@
       "count": 2
     }
   },
-  "src/ui/PropertiesForm.tsx": {
-    "local/no-static-inline-style": {
-      "count": 1
-    }
-  },
   "src/ui/SpotifyClipPlayer.tsx": {
-    "local/no-static-inline-style": {
-      "count": 1
-    }
-  },
-  "src/ui/WelcomeScreen.tsx": {
     "local/no-static-inline-style": {
       "count": 1
     }

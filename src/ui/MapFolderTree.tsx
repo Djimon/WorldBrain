@@ -138,7 +138,7 @@ export function MapFolderTree({ database, maps, selectedMapId, onSelectMap, onIm
       onFolderColorChange={handleFolderColorChange}
       persistKey="map-folder-tree"
       header={
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span className="u-row u-gap-1">
           {t('mapFolderTree.header', 'Karten')} ({maps.length})
           {onImportMap && (
             <button
