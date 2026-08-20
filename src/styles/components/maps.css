@@ -440,7 +440,18 @@
 }
 
 .token-editor__add-chip { align-self: flex-start; }
-.token-editor__counter-clear { align-self: flex-start; }
+/* Counter row: label (grows) | value | color | remove — one line, mirrors
+   .token-editor__chip-row. The type-specific widths beat the generic
+   .token-editor input{width:100%} rule via higher specificity. */
+.token-editor__counter-row {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+.token-editor__counter-row input[type="text"] { flex: 1 1 auto; min-width: 0; }
+.token-editor__counter-row input[type="number"] { flex: 0 0 56px; width: auto; }
+.token-editor__counter-row input[type="color"] { flex: 0 0 auto; }
+.token-editor__counter-row button { flex: 0 0 auto; padding: 4px 6px; }
 
 .token-editor__actions {
   display: flex;
