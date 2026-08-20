@@ -179,7 +179,7 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
       <fieldset className="token-editor__counter">
         <legend>{t('token.counters', 'Zähler')}</legend>
         {counters.map((c, i) => (
-          <div key={i} className="token-editor__counter-row">
+          <div key={i} className="token-editor__counter-row u-row u-gap-1">
             <input type="text" aria-label={t('token.counterLabel', 'Bezeichnung')} placeholder={t('token.counterLabel', 'Bezeichnung')}
               value={c.label} onChange={(e) => updateCounter(i, { label: e.target.value })} />
             <input type="number" aria-label={t('token.counterValue', 'Wert')} placeholder="0"
@@ -199,7 +199,7 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
       <fieldset className="token-editor__chips">
         <legend>{t('token.chips', 'Status-Chips')}</legend>
         {chips.map((chip, i) => (
-          <div key={i} className="token-editor__chip-row">
+          <div key={i} className="token-editor__chip-row u-row u-gap-1">
             <button type="button" className="token-editor__chip-icon-trigger"
               aria-label={t('token.chipIconPicker', 'Symbol wählen')}
               onClick={() => setOpenPickerIndex(openPickerIndex === i ? null : i)}>

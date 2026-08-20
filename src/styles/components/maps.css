@@ -400,12 +400,9 @@
 .token-editor__plain-preview { text-align: center; }
 .token-editor__plain-preview img { max-width: 100%; max-height: 140px; display: inline-block; }
 
-.token-editor__chip-row {
-  display: flex;
-  gap: var(--space-1);
-  align-items: center;
-  position: relative;
-}
+/* Flow/gap/align come from `u-row u-gap-1`; position:relative anchors the
+   icon-picker popover and stays as a component residual. */
+.token-editor__chip-row { position: relative; }
 .token-editor__chip-row input[type="text"] { flex: 1 1 auto; min-width: 0; }
 .token-editor__chip-row button { flex: 0 0 auto; padding: 4px 6px; }
 
@@ -440,14 +437,9 @@
 }
 
 .token-editor__add-chip { align-self: flex-start; }
-/* Counter row: label (grows) | value | color | remove — one line, mirrors
-   .token-editor__chip-row. The type-specific widths beat the generic
-   .token-editor input{width:100%} rule via higher specificity. */
-.token-editor__counter-row {
-  display: flex;
-  gap: var(--space-1);
-  align-items: center;
-}
+/* Counter row: label (grows) | value | color | remove. Flow/gap/align come
+   from `u-row u-gap-1` on the element; only these type-specific residuals stay
+   here — they beat the generic .token-editor input{width:100%} via specificity. */
 .token-editor__counter-row input[type="text"] { flex: 1 1 auto; min-width: 0; }
 .token-editor__counter-row input[type="number"] { flex: 0 0 56px; width: auto; }
 .token-editor__counter-row input[type="color"] { flex: 0 0 auto; }
