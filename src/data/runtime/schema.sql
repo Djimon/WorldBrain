@@ -74,5 +74,12 @@ CREATE TABLE IF NOT EXISTS session_players (
 CREATE TABLE IF NOT EXISTS player_groups (
   id TEXT PRIMARY KEY,
   campaign_id TEXT NOT NULL,
+  name TEXT NOT NULL,
   created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS group_members (
+  group_id TEXT NOT NULL,
+  player_id TEXT NOT NULL,
+  PRIMARY KEY (group_id, player_id)
 );
