@@ -29,8 +29,10 @@ in eine **abgesegnete** komponenten-spezifische Klasse (siehe unten) — nicht i
    `<Button>` · `<Segmented>` · `<Tabs>` · `<Chip>` · `<ListRow>` · `<Panel>` · `<Field>` · `<StatusChip>` ·
    `<TableSurface>`/`<ListSurface>`. Bäume → `NestedTree`.
 2. **Layout mit Utilities** — `src/styles/utilities.css`:
-   `.u-stack` · `.u-row` · `.u-cluster` · `.u-grow` · `.u-noshrink` · `.u-items-start/-end/-baseline/-stretch` ·
-   `.u-justify-between` · `.u-gap-0…4`. (z.B. `<Panel className="u-stack u-gap-3">`.)
+   Flow: `.u-stack` · `.u-row` (flex+align-center) · `.u-cluster` (wrap+center) · `.u-wrap` (wrap, align-neutral).
+   Flex-Kind: `.u-grow` · `.u-noshrink` · `.u-flex-1`. Align: `.u-items-start/-end/-baseline/-stretch` · `.u-justify-between`.
+   Abstand: `.u-gap-0…4`. Sonst: `.u-scroll-y` · `.u-min-h-0` · `.u-hidden` · `.u-relative` · `.u-clickable`.
+   (z.B. `<Panel className="u-stack u-gap-3">`.)
 3. **Farben/Abstände nur über Tokens** — `src/styles/tokens.css`:
    `var(--color-accent | -surface | -surface-alt | -border | -text | -text-muted | -on-accent | …)`,
    `var(--space-1…5)`, `var(--radius-sm/md/pill)`, `var(--shadow-panel)`. **Niemals** rohe Hex/px für Farbe.
@@ -53,20 +55,20 @@ hardcodierte Farbe reißt ein Loch in dieses System — genau deshalb die Grundr
 ## Durchsetzung (die Regeln knallen jetzt maschinell)
 `npm run lint` (und der Pre-commit-Hook) blocken **neuen** Code bei zwei Verstößen — nicht nur Doku:
 
+**Beide Gates stehen auf 0 — es gibt keine Baseline, keinen geduldeten Alt-Bestand.** Jeder Verstoß,
+alt oder neu, bricht den Commit. Nicht „später aufräumen", nicht wegdrücken.
+
 - **Gate 1 — hardcodierte Farbe.** `scripts/check-hardcoded-colors.mjs`: rohe `#hex`/`rgb()`/`hsl()` in
   CSS (außer `tokens.css` + `themes/`) → **BLOCKED**. Fehlt ein Token? → in `src/styles/tokens.css`
-  anlegen und `var(--…)` nutzen. Alt-Bestand ist in `scripts/.hardcoded-color-baseline.json` gegrandfathert;
-  eine neue Farbe knallt. Baseline nur mit Freigabe erweitern: `node scripts/check-hardcoded-colors.mjs --update-baseline`.
+  anlegen und `var(--…)` nutzen. Neutrale Schatten/Scrims: `color-mix(in srgb, var(--color-shadow) N%, transparent)`.
 - **Gate 2 — statisches Inline-`style`.** ESLint-Rule `local/no-static-inline-style`: `style={{…}}` mit
-  ausschließlich statischen Werten → **error**. Dynamische Werte (Variablen, `${…}`, berechnet) gehen durch.
-  Alt-Bestand ist in `eslint-suppressions.json` gegrandfathert; neuer statischer Inline-Style knallt.
-  Echte, abgesegnete Ausnahme: `// eslint-disable-next-line local/no-static-inline-style -- <Grund + Freigabe>`.
+  ausschließlich statischen Werten → **error**. Dynamische Werte (Variablen, `${…}`, berechnet) gehen durch —
+  das ist die einzige Ausnahme. Statik gehört in Utility/Token/Klasse.
 
 Das ist der Sinn: Die Regel hängt nicht mehr daran, dass jeder Agent im Einzelmoment nachschaut —
 ein Rückfall landet nicht mehr still, sondern bricht den Commit.
 
-**Die Baselines sind Ratschen — sie schrumpfen nur.** Behebst du einen gegrandfatherten Fall, wird sein
-Baseline-Eintrag „unused" und ESLint **knallt**, bis du ihn entfernst: `npm run lint:prune` (schreibt
-`eslint-suppressions.json` neu). Für Farben analog: nach echtem Aufräumen `node scripts/check-hardcoded-colors.mjs --update-baseline`.
-Absichtlich **kein** `--pass-on-unpruned-suppressions` — sonst dürfte die Schuld verrotten statt zu sinken.
-Ziel ist Baseline → 0.
+> **Kein Schummeln.** Keine Baseline/Suppression-Datei wiederbeleben, kein `--pass-on-unpruned-suppressions`,
+> keine flächendeckenden `eslint-disable`. Wenn ein Fall wirklich nicht anders geht, ist es genau **eine**
+> Zeile mit begründeter Freigabe: `// eslint-disable-next-line local/no-static-inline-style -- <Grund + Freigabe>`
+> — und die braucht meine Zustimmung. Der Normalfall ist: sauber lösen.
