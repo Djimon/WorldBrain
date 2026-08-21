@@ -48,18 +48,27 @@ CREATE TABLE IF NOT EXISTS campaign_notes (
   updated_at TEXT NOT NULL
 );
 
--- Roster/Invite-Tabellen: hier nur Basis-Shape mit campaign_id. Vollständige
--- Spalten (token_hash, status, group-membership, …) kommen mit S02/S03/S04.
 CREATE TABLE IF NOT EXISTS invite_codes (
   id TEXT PRIMARY KEY,
   campaign_id TEXT NOT NULL,
+  code TEXT NOT NULL,
+  status TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS players (
+  id TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS session_players (
   id TEXT PRIMARY KEY,
   campaign_id TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  player_id TEXT NOT NULL,
+  token_hash TEXT,
+  status TEXT NOT NULL,
+  joined_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS player_groups (
