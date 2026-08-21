@@ -431,7 +431,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
 
       case 'maps':
         return (
-          <div className="workspace-area" style={{ overflow: 'hidden' }}>
+          <div className="workspace-area">
             <div className="workspace-area__sidebar maps-sidebar" style={{ width: mapsSidebarCollapsed ? 32 : mapsSidebarWidth, padding: mapsSidebarCollapsed ? 'var(--space-2) 0' : undefined }}>
               {!mapsSidebarCollapsed && (
                 <Button
@@ -451,7 +451,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                 mapsTabContent={
                   <>
                     {mapImporting && (
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', padding: 'var(--space-1) var(--space-2)', background: 'var(--color-surface-alt)', borderRadius: 'var(--radius-sm)', marginBottom: 'var(--space-2)' }}>
+                      <div className="workspace-shell__info-note">
                         {t('mapImportProgress', 'Bild wird kopiert und vorbereitet…')}
                       </div>
                     )}
@@ -465,7 +465,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                       onMapsChanged={() => { void listMaps(database).then(setMaps); }}
                     />
                     {maps.length === 0 && (
-                      <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: 'var(--space-2)' }}>
+                      <p className="workspace-shell__empty-note">
                         {t('noMaps')}
                       </p>
                     )}
@@ -504,7 +504,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                 onMouseDown={handleMapsSidebarResize}
               />
             )}
-            <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+            <div className="workspace-shell__stage">
               {selectedMapId ? (
                 <MapViewer
                   key={`mv-${selectedMapId}`}
@@ -520,7 +520,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                   onPickTokenArt={handlePickTokenArt}
                 />
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)' }}>
+                <div className="workspace-shell__empty-center">
                   Karte aus der Liste wählen oder importieren
                 </div>
               )}
@@ -530,7 +530,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
 
       case 'calendar':
         return (
-          <div className="workspace-area" style={{ flexDirection: 'column', overflow: 'hidden' }}>
+          <div className="workspace-area workspace-area--column">
             {wizardCal !== null ? (
               <CalendarWizard
                 database={database}
@@ -552,25 +552,25 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                 }}
               />
             ) : (activeCalendar && !showPicker) ? (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-                <div style={{ padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <div className="workspace-shell__col">
+                <div className="workspace-shell__cal-header">
                   <strong>{activeCalendar.title}</strong>
-                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{activeCalendar.year_length_days} Tage/Jahr · {activeCalendar.months.length} Monate · {activeCalendar.week.length} Wochentage</span>
+                  <span className="workspace-shell__cal-meta">{activeCalendar.year_length_days} Tage/Jahr · {activeCalendar.months.length} Monate · {activeCalendar.week.length} Wochentage</span>
                   {deletePrompt ? (
-                    <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <span className="workspace-shell__cal-actions">
                       <span>Kalender „{activeCalendar.title}" löschen — bist du sicher?</span>
                       <Button tone="danger" variant="outline" onClick={removeActiveCalendar}>Ja, löschen</Button>
                       <Button onClick={() => setDeletePrompt(false)}>Abbrechen</Button>
                     </span>
                   ) : (
-                    <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <span className="workspace-shell__cal-actions">
                       <Button onClick={() => setShowPicker(true)}>Kalenderauswahl</Button>
                       <Button onClick={() => setWizardCal(activeCalendar)}>{t('changeCalendar')}</Button>
                       <Button tone="danger" variant="outline" onClick={() => setDeletePrompt(true)}>Löschen</Button>
                     </span>
                   )}
                 </div>
-                <div style={{ flex: 1, overflow: 'auto' }}>
+                <div className="workspace-shell__cal-body">
                   <CalendarMonthView
                     calendar={activeCalendar}
                     database={database}

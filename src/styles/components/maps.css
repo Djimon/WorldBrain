@@ -1312,3 +1312,12 @@
 /* NestedTree residuals (were inline). */
 .map-pin-tree__new-folder-btn { font-size: 0.75rem; }
 .map-pin-tree__root-row { padding-left: 12px; cursor: grab; user-select: none; }
+
+/* MapViewer residuals (were inline). */
+.map-tool-group { position: relative; }
+.map-viewer__svg-overlay { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 8; }
+.map-viewer__body { display: flex; height: 100%; overflow: hidden; }
+.map-tool-divider { border-top: 1px solid var(--color-border); margin: 3px 0; }
+.map-viewer__overlay-tr { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; z-index: 10; }
+.map-viewer__overlay-tl { position: absolute; top: 8px; left: 8px; z-index: 10; }
+.map-pin-emoji { margin-right: 6px; }

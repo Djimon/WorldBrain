@@ -326,3 +326,15 @@
 /* Print sheet composer (was inline; orphan component). */
 .print-sheet__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .print-sheet__slot { border: 1px solid var(--color-print-border); min-height: 80px; }
+
+/* WorkspaceShell residuals (calendar area etc. were heavily inline). */
+.workspace-area--column { flex-direction: column; }
+.workspace-shell__info-note { font-size: 0.75rem; color: var(--color-text-muted); padding: var(--space-1) var(--space-2); background: var(--color-surface-alt); border-radius: var(--radius-sm); margin-bottom: var(--space-2); }
+.workspace-shell__empty-note { font-size: 0.8rem; color: var(--color-text-muted); padding: var(--space-2); }
+.workspace-shell__stage { flex: 1; overflow: hidden; position: relative; }
+.workspace-shell__empty-center { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--color-text-muted); }
+.workspace-shell__col { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.workspace-shell__cal-header { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; gap: var(--space-3); }
+.workspace-shell__cal-meta { color: var(--color-text-muted); font-size: 0.875rem; }
+.workspace-shell__cal-actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); }
+.workspace-shell__cal-body { flex: 1; overflow: auto; }

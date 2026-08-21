@@ -134,7 +134,7 @@ function RulerOverlay({
   const labelW = label.length * 7 + 16;
 
   return (
-    <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible', zIndex: 8 }}>
+    <svg className="map-viewer__svg-overlay">
       <line x1={sx1} y1={sy1} x2={sx2} y2={sy2}
         stroke={rulerColor} strokeWidth={rulerWidth} strokeOpacity={rulerOpacity} strokeDasharray="6 3" />
       <circle cx={sx1} cy={sy1} r={rulerWidth + 3} fill={rulerColor} fillOpacity={rulerOpacity} />
@@ -164,7 +164,7 @@ function RadiusOverlay({
   const label = `r = ${realDist.toFixed(2)} ${measureUnit}`;
   const labelW = label.length * 7 + 16;
   return (
-    <svg style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible", zIndex: 8 }}>
+    <svg className="map-viewer__svg-overlay">
       <circle cx={cx} cy={cy} r={r}
         fill={rulerColor} fillOpacity={rulerOpacity * 0.3} stroke={rulerColor} strokeWidth={rulerWidth} strokeOpacity={rulerOpacity} strokeDasharray="6 3" />
       <circle cx={cx} cy={cy} r={rulerWidth + 3} fill={rulerColor} fillOpacity={rulerOpacity} />
@@ -757,14 +757,14 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   if (!imgSrc) return <div className="map-empty">Kein Kartenbild — Karte importieren um zu beginnen.</div>;
 
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+    <div className="map-viewer__body">
       {/* Left toolbar */}
       <div className="map-toolbar">
         <div className="map-toolbar__group">
           <Button size="icon" aria-pressed={mode === 'navigate'} onClick={() => setMode('navigate')} title={t('all')}>🗺</Button>
           {/* Pin tool group — flyout with the pin-icon grid (reuses .pin-icon-picker
               from "Pin bearbeiten"), pre-selects the icon for the next placed pin. */}
-          <div className="map-tool-group" style={{ position: 'relative' }} ref={pinGroupRef}>
+          <div className="map-tool-group" ref={pinGroupRef}>
             <Button
               size="icon"
               aria-pressed={mode === 'pin'}
@@ -790,7 +790,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           </div>
           <Button size="icon" aria-pressed={mode === 'token'} onClick={() => setMode('token')} title={t('token.place', 'Token setzen')}>🧙</Button>
           {/* Grid paint tool group — flyout with cell states */}
-          <div className="map-tool-group" style={{ position: 'relative' }} ref={gridGroupRef}>
+          <div className="map-tool-group" ref={gridGroupRef}>
             {(() => {
               const activeState = gridSettings.cellStates.find((s) => s.id === activeCellStateId) ?? gridSettings.cellStates[0];
               return (
@@ -823,7 +823,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                   <span className="map-tool-flyout__icon">🧹</span>
                   <span className="map-tool-flyout__label">Radiergummi</span>
                 </button>
-                <div style={{ borderTop: '1px solid var(--color-border)', margin: '3px 0' }} />
+                <div className="map-tool-divider" />
                 {gridSettings.cellStates.map((st) => (
                   <button key={st.id}
                     className={`map-tool-flyout__item${activeCellStateId === st.id ? ' active' : ''}`}
@@ -839,7 +839,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             )}
           </div>
           {/* Measure tool group — PS-style flyout */}
-          <div className="map-tool-group" style={{ position: 'relative' }} ref={measureGroupRef}>
+          <div className="map-tool-group" ref={measureGroupRef}>
             <Button
               size="icon"
               aria-pressed={mode === 'measure' || mode === 'radius'}
@@ -895,7 +895,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         onClick={handleMapClick}
       >
         {/* Zoom controls — top right overlay */}
-        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4, zIndex: 10 }}>
+        <div className="map-viewer__overlay-tr">
           <Button size="icon" onClick={() => setScale((s) => Math.min(10, s * 1.25))} title="Zoom +">＋</Button>
           <Button size="icon" onClick={() => setScale((s) => Math.max(0.1, s * 0.8))} title="Zoom −">-</Button>
           <Button size="icon" onClick={resetView} title="Reset">⌂</Button>
@@ -904,7 +904,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         {/* Fog paint toolbar — only while the selected fog layer still exists
             (guards against the layer being deleted mid-paint). */}
         {editFogLayerId && fogLayers.some((l) => l.id === editFogLayerId) && (
-          <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10 }}>
+          <div className="map-viewer__overlay-tl">
             <FogTools
               brushSize={fogBrush} feather={fogFeather} mode={fogMode} shape={fogShape}
               onBrushSizeChange={setFogBrush} onFeatherChange={setFogFeather}
@@ -1186,7 +1186,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                 const linked = entities.find((e) => e.id === m.entity_id);
                 return (
                   <>
-                    <span style={{ marginRight: 6 }}>{getPinEmoji(m.style_json)}</span>
+                    <span className="map-pin-emoji">{getPinEmoji(m.style_json)}</span>
                     <span className="map-pin-tree__label">{m.label_text || '(kein Name)'}</span>
                     {linked && <span className="map-pin-tree__sub">{linked.title}</span>}
                   </>
