@@ -96,12 +96,13 @@ function insertCampaignOverride(database: DatabaseSync, entityId: string, patch:
     .prepare(
       [
         'INSERT INTO campaign_entity_overrides',
-        '(id, entity_id, patch_json, created_at, updated_at)',
-        'VALUES (?, ?, ?, ?, ?)',
+        '(id, campaign_id, entity_id, patch_json, created_at, updated_at)',
+        'VALUES (?, ?, ?, ?, ?, ?)',
       ].join(' '),
     )
     .run(
       `override-${entityId}`,
+      'test-campaign',
       entityId,
       JSON.stringify(patch),
       '2026-06-23T01:00:00.000Z',

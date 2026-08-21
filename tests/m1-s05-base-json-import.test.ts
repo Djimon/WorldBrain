@@ -155,11 +155,11 @@ describe('M1-S05 base JSON import pipeline', () => {
         .prepare(
           [
             'INSERT INTO campaign_notes',
-            '(id, entity_id, note_text, created_at, updated_at)',
-            'VALUES (?, ?, ?, ?, ?)',
+            '(id, campaign_id, entity_id, note_text, created_at, updated_at)',
+            'VALUES (?, ?, ?, ?, ?, ?)',
           ].join(' '),
         )
-        .run('note-1', 'character-ada', 'Met during session three.', '2026-06-23T00:00:00.000Z', '2026-06-23T00:00:00.000Z');
+        .run('note-1', 'test-campaign', 'character-ada', 'Met during session three.', '2026-06-23T00:00:00.000Z', '2026-06-23T00:00:00.000Z');
       database
         .prepare(
           [
@@ -355,8 +355,8 @@ describe('issue #18: malformed JSON files produce structured errors', () => {
     try {
       await importBaseJsonProject({ database, projectRoot });
       database
-        .prepare('INSERT INTO campaign_notes (id, entity_id, note_text, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
-        .run('note-1', 'character-ada', 'Session note.', '2026-06-23T00:00:00.000Z', '2026-06-23T00:00:00.000Z');
+        .prepare('INSERT INTO campaign_notes (id, campaign_id, entity_id, note_text, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+        .run('note-1', 'test-campaign', 'character-ada', 'Session note.', '2026-06-23T00:00:00.000Z', '2026-06-23T00:00:00.000Z');
 
       await writeRaw(
         join(projectRoot, 'entities', 'Character', 'character-broken.json'),
