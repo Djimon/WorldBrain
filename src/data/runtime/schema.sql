@@ -83,3 +83,16 @@ CREATE TABLE IF NOT EXISTS group_members (
   player_id TEXT NOT NULL,
   PRIMARY KEY (group_id, player_id)
 );
+
+-- M10-S07 (#356): Per-Spieler/Gruppen-Visibility (Decisions 5–7).
+-- scope='player' → player_id gesetzt; scope='group' → group_id gesetzt.
+CREATE TABLE IF NOT EXISTS session_visibility_overrides (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  scope TEXT NOT NULL,
+  player_id TEXT,
+  group_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

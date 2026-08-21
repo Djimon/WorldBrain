@@ -1,13 +1,15 @@
 import { evaluate } from './condition-engine';
 import type { DatabaseLike } from './entity-service';
 
+// M10-S07: campaign_id ergänzt (D23 — Roster/Overrides sind campaign-scoped,
+// nicht termin-scoped). Additiv zu den bisherigen 4 Scopes (Decisions 5–7).
 export interface VisibilityContext {
   audience?: 'gm' | 'player';
   vars?: Record<string, unknown>;
   globals?: Record<string, unknown>;
   flags?: Record<string, unknown>;
   knownEntities?: Set<string>;
-  session_id?: string;
+  campaign_id?: string;
   player_id?: string;
   group_ids?: string[];
 }
@@ -59,56 +61,71 @@ interface OverrideRow {
   group_id: string | null;
 }
 
-/**
- * Session-scoped visibility: a target is visible to a player if an override
- * grants it directly (player_id) or via one of the player's groups
- * (group_id). Default without any override is gm_only (EPIC-016 M10-S07).
- */
-export async function resolveSessionVisibility(args: {
-  database: DatabaseLike;
-  sessionId: string;
+export interface ResolveSessionVisibilityParams {
+  campaignId: string;
   targetType: string;
   targetId: string;
-  context: VisibilityContext;
-}): Promise<SessionVisibilityResult> {
-  const rows = await args.database.select<OverrideRow>(
-    'SELECT player_id, group_id FROM session_visibility_overrides WHERE session_id = ? AND target_type = ? AND target_id = ?',
-    [args.sessionId, args.targetType, args.targetId],
+  playerId: string;
+  groupIds: string[];
+}
+
+/**
+ * Campaign-scoped visibility (M10-S07, D23): ein Ziel ist für einen Spieler
+ * sichtbar, wenn ein Override ihn direkt (player_id) oder über eine seiner
+ * Gruppen (group_id) freigibt. Default ohne Override = `gm_only` (Decision 5).
+ * Additiv zu den 4 bisherigen Scopes.
+ */
+export async function resolveSessionVisibility(
+  database: DatabaseLike,
+  params: ResolveSessionVisibilityParams,
+): Promise<SessionVisibilityResult> {
+  const rows = await database.select<OverrideRow>(
+    'SELECT player_id, group_id FROM session_visibility_overrides WHERE campaign_id = ? AND target_type = ? AND target_id = ?',
+    [params.campaignId, params.targetType, params.targetId],
   );
-  const groupIds = new Set(args.context.group_ids ?? []);
+  const groupIds = new Set(params.groupIds);
   const granted = rows.some(
     (row) =>
-      (row.player_id != null && row.player_id === args.context.player_id) ||
+      (row.player_id != null && row.player_id === params.playerId) ||
       (row.group_id != null && groupIds.has(row.group_id)),
   );
   return granted ? 'visible' : 'gm_only';
 }
 
-export async function setVisibilityOverride(args: {
-  database: DatabaseLike;
-  sessionId: string;
+export interface SetVisibilityOverrideParams {
+  campaignId: string;
   targetType: string;
   targetId: string;
   scope: 'player' | 'group';
   playerId?: string;
   groupId?: string;
-}): Promise<void> {
-  await args.database.execute(
-    'INSERT INTO session_visibility_overrides (session_id, target_type, target_id, scope, player_id, group_id) VALUES (?, ?, ?, ?, ?, ?)',
-    [args.sessionId, args.targetType, args.targetId, args.scope, args.playerId ?? null, args.groupId ?? null],
+}
+
+export async function setVisibilityOverride(
+  database: DatabaseLike,
+  params: SetVisibilityOverrideParams,
+): Promise<void> {
+  const id = `svo_${crypto.randomUUID()}`;
+  await database.execute(
+    'INSERT INTO session_visibility_overrides (id, campaign_id, target_type, target_id, scope, player_id, group_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [id, params.campaignId, params.targetType, params.targetId, params.scope, params.playerId ?? null, params.groupId ?? null],
   );
 }
 
-export async function clearVisibilityOverride(args: {
-  database: DatabaseLike;
-  sessionId: string;
+export interface ClearVisibilityOverrideParams {
+  campaignId: string;
   targetType: string;
   targetId: string;
   playerId?: string;
   groupId?: string;
-}): Promise<void> {
-  await args.database.execute(
-    'DELETE FROM session_visibility_overrides WHERE session_id = ? AND target_type = ? AND target_id = ? AND (player_id = ? OR group_id = ?)',
-    [args.sessionId, args.targetType, args.targetId, args.playerId ?? null, args.groupId ?? null],
+}
+
+export async function clearVisibilityOverride(
+  database: DatabaseLike,
+  params: ClearVisibilityOverrideParams,
+): Promise<void> {
+  await database.execute(
+    'DELETE FROM session_visibility_overrides WHERE campaign_id = ? AND target_type = ? AND target_id = ? AND (player_id = ? OR group_id = ?)',
+    [params.campaignId, params.targetType, params.targetId, params.playerId ?? null, params.groupId ?? null],
   );
 }
