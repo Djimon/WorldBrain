@@ -21,8 +21,18 @@ CREATE TABLE IF NOT EXISTS base_entities (
   updated_at TEXT NOT NULL
 );
 
+-- M10-S20 (#349): Campaign-Klammer (D23). Eine Welt → mehrere Campaigns.
+CREATE TABLE IF NOT EXISTS campaigns (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  world_time_start TEXT,
+  created_at TEXT NOT NULL
+);
+
+-- Overrides sind campaign-scoped (D23 — nicht mehr welt-global).
 CREATE TABLE IF NOT EXISTS campaign_entity_overrides (
   id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL,
   entity_id TEXT NOT NULL,
   patch_json TEXT NOT NULL,
   created_at TEXT NOT NULL,
@@ -31,8 +41,29 @@ CREATE TABLE IF NOT EXISTS campaign_entity_overrides (
 
 CREATE TABLE IF NOT EXISTS campaign_notes (
   id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL,
   entity_id TEXT NOT NULL,
   note_text TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
+);
+
+-- Roster/Invite-Tabellen: hier nur Basis-Shape mit campaign_id. Vollständige
+-- Spalten (token_hash, status, group-membership, …) kommen mit S02/S03/S04.
+CREATE TABLE IF NOT EXISTS invite_codes (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS session_players (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS player_groups (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL,
+  created_at TEXT NOT NULL
 );
