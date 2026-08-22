@@ -29,7 +29,7 @@ function makeToken(overrides: Partial<MapTokenRow> = {}): MapTokenRow {
     id: 'token_1', layer_id: 'lyr_1', map_id: 'map-1',
     art_asset_id: null, render_style: 'token', art_offset_x: 0, art_offset_y: 0,
     label: 'Grünhaut', x: 100, y: 120, ring_color: '#ff0000',
-    counter_label: null, counter_value: null, status_chips: [],
+    counters: [], status_chips: [],
     session_id: null, created_at: '',
     ...overrides,
   };
@@ -54,10 +54,10 @@ describe('M15-S07 (component): MapToken render', () => {
     expect(screen.getByText(/^Token$/)).toBeInTheDocument();
   });
 
-  it('renders a counter badge only when counter_value is set', () => {
+  it('renders a counter badge only when counters array is non-empty', () => {
     const { rerender } = render(<MapToken {...baseProps()} />);
     expect(document.querySelector('.map-token__counter')).not.toBeInTheDocument();
-    rerender(<MapToken {...baseProps({ token: makeToken({ counter_label: 'HP', counter_value: 12 }) })} />);
+    rerender(<MapToken {...baseProps({ token: makeToken({ counters: [{ label: 'HP', value: 12 }] }) })} />);
     const badge = document.querySelector('.map-token__counter') as HTMLElement;
     expect(badge).toBeInTheDocument();
     expect(badge.textContent).toContain('12');
@@ -236,28 +236,28 @@ describe('#300 TokenEditor: chip icon field uses IconPicker, not free text', () 
   });
 });
 
-describe('#303 counter badge + stepper: positioning, visibility, ±1, no clamp', () => {
+describe('#309 counter badge + stepper: multi-counter, ±1, no clamp', () => {
   function baseProps(overrides: Partial<ComponentProps<typeof MapToken>> = {}) {
-    return { token: makeToken({ counter_label: 'HP', counter_value: 10 }), ...overrides };
+    return { token: makeToken({ counters: [{ label: 'HP', value: 10 }] }), ...overrides };
   }
 
-  describe('no counter set => no badge and no stepper', () => {
-    it('renders neither badge nor stepper when counter_value is null', () => {
-      render(<MapToken {...baseProps({ token: makeToken({ counter_value: null }) })} />);
+  describe('no counters set => no badge and no stepper', () => {
+    it('renders neither badge nor stepper when counters is empty', () => {
+      render(<MapToken {...baseProps({ token: makeToken({ counters: [] }) })} />);
       expect(document.querySelector('.map-token__counter')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /^erhöhen$/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /^verringern$/i })).not.toBeInTheDocument();
     });
   });
 
-  describe('stepper visibility: hidden by default, shown on hover or selection (D-B)', () => {
+  describe('stepper visibility: hidden by default, shown on hover or selection', () => {
     it('the stepper is not in the rendered output without hover or selection', () => {
       render(<MapToken {...baseProps()} />);
       expect(screen.queryByRole('button', { name: /^erhöhen$/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /^verringern$/i })).not.toBeInTheDocument();
     });
 
-    it('hovering the counter reveals the stepper', () => {
+    it('hovering a counter badge reveals that badge stepper', () => {
       render(<MapToken {...baseProps()} />);
       fireEvent.mouseEnter(document.querySelector('.map-token__counter') as HTMLElement);
       expect(screen.getByRole('button', { name: /^erhöhen$/i })).toBeInTheDocument();
@@ -270,9 +270,18 @@ describe('#303 counter badge + stepper: positioning, visibility, ±1, no clamp',
     });
   });
 
-  describe('positioning: chips (top arc) and counter badge (bottom-right) never share an anchor', () => {
-    it.each(['token', 'plain'] as const)('render_style=%s: chips and counter badge use different position classes', (renderStyle) => {
-      render(<MapToken {...baseProps({ token: makeToken({ render_style: renderStyle, status_chips: [{ icon: '☠' }, { icon: '💤' }], counter_value: 5 }) })} />);
+  describe('multiple counters render as stacked badges', () => {
+    it('two counters render two .map-token__counter badges', () => {
+      render(<MapToken {...baseProps({ token: makeToken({ counters: [
+        { label: 'HP', value: 10 }, { label: 'Mana', value: 5 },
+      ] }) })} />);
+      expect(document.querySelectorAll('.map-token__counter')).toHaveLength(2);
+    });
+  });
+
+  describe('positioning: chips (top arc) and counter badges never share an anchor', () => {
+    it.each(['token', 'plain'] as const)('render_style=%s: chips and counter badges use different containers', (renderStyle) => {
+      render(<MapToken {...baseProps({ token: makeToken({ render_style: renderStyle, status_chips: [{ icon: '☠' }, { icon: '💤' }], counters: [{ label: 'HP', value: 5 }] }) })} />);
       const chips = document.querySelector('.map-token__chips') as HTMLElement;
       const badge = document.querySelector('.map-token__counter') as HTMLElement;
       expect(chips).toBeInTheDocument();
@@ -281,14 +290,14 @@ describe('#303 counter badge + stepper: positioning, visibility, ±1, no clamp',
     });
   });
 
-  describe('counter_label appears in tooltip and, on hover/selection, next to the badge', () => {
-    it('the badge has a title (tooltip) with the counter_label', () => {
+  describe('counter label appears in tooltip and on hover next to the badge', () => {
+    it('the badge has a title (tooltip) with the counter label', () => {
       render(<MapToken {...baseProps()} />);
       const badge = document.querySelector('.map-token__counter') as HTMLElement;
       expect(badge.title).toBe('HP');
     });
 
-    it('hovering the counter shows the counter_label as visible text next to the badge', () => {
+    it('hovering the counter shows the label as visible text', () => {
       render(<MapToken {...baseProps()} />);
       fireEvent.mouseEnter(document.querySelector('.map-token__counter') as HTMLElement);
       expect(screen.getByText(/^HP$/)).toBeInTheDocument();
@@ -301,7 +310,7 @@ describe('#303 counter badge + stepper: positioning, visibility, ±1, no clamp',
 const LAYERS = [
   { id: 'img1', map_id: 'map-1', layer_type: 'image', name: 'Base', asset_id: 'base.png', mask_data: null, opacity: 1, z_order: 0, visible: 1, player_visible: 1, offset_x: 0, offset_y: 0, created_at: '' },
 ];
-const TOKENS: MapTokenRow[] = [makeToken({ id: 'token_1', label: 'Ork', x: 50, y: 60 })];
+const TOKENS: MapTokenRow[] = [makeToken({ id: 'token_1', label: 'Ork', x: 50, y: 60, counters: [] })];
 
 vi.mock('../src/services/map-layer-service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/services/map-layer-service')>();
@@ -315,7 +324,7 @@ vi.mock('../src/services/map-token-service', async (importOriginal) => {
     createToken: vi.fn(async () => ({ id: 'token_new' })),
     moveToken: vi.fn(async () => {}),
     updateToken: vi.fn(async () => {}),
-    setCounter: vi.fn(async () => {}),
+    setCounters: vi.fn(async () => {}),
     setStatusChips: vi.fn(async () => {}),
     deleteToken: vi.fn(async () => {}),
   };
@@ -370,10 +379,10 @@ describe('M15-S07 (integration): tokens in MapViewer', () => {
     await waitFor(() => expect(moveToken).toHaveBeenCalledWith(mockDb, 'token_1', expect.any(Number), expect.any(Number)));
   });
 
-  // #303: up/down stepper persists via setCounter, without opening the TokenEditor.
-  it('clicking the up-stepper (on hover) calls setCounter with value+1', async () => {
-    const { listTokens, setCounter } = await import('../src/services/map-token-service');
-    (listTokens as ReturnType<typeof vi.fn>).mockResolvedValueOnce([makeToken({ id: 'token_1', counter_label: 'HP', counter_value: 10 })]);
+  // #309: up/down stepper persists via setCounters, without opening the TokenEditor.
+  it('clicking the up-stepper (on hover) calls setCounters with value+1', async () => {
+    const { listTokens, setCounters } = await import('../src/services/map-token-service');
+    (listTokens as ReturnType<typeof vi.fn>).mockResolvedValueOnce([makeToken({ id: 'token_1', counters: [{ label: 'HP', value: 10 }] })]);
     render(<MapViewer mapId="map-1" database={mockDb as never} />);
     const tok = await waitFor(() => {
       const el = document.querySelector('[data-token-id="token_1"]') as HTMLElement | null;
@@ -382,12 +391,12 @@ describe('M15-S07 (integration): tokens in MapViewer', () => {
     });
     fireEvent.mouseEnter(tok.querySelector('.map-token__counter') as HTMLElement);
     fireEvent.click(within(tok).getByRole('button', { name: /^erhöhen$/i }));
-    await waitFor(() => expect(setCounter).toHaveBeenCalledWith(mockDb, 'token_1', { counter_value: 11 }));
+    await waitFor(() => expect(setCounters).toHaveBeenCalledWith(mockDb, 'token_1', [{ label: 'HP', value: 11 }]));
   });
 
   it('clicking the down-stepper allows going negative (no clamp)', async () => {
-    const { listTokens, setCounter } = await import('../src/services/map-token-service');
-    (listTokens as ReturnType<typeof vi.fn>).mockResolvedValueOnce([makeToken({ id: 'token_1', counter_label: 'HP', counter_value: 0 })]);
+    const { listTokens, setCounters } = await import('../src/services/map-token-service');
+    (listTokens as ReturnType<typeof vi.fn>).mockResolvedValueOnce([makeToken({ id: 'token_1', counters: [{ label: 'HP', value: 0 }] })]);
     render(<MapViewer mapId="map-1" database={mockDb as never} />);
     const tok = await waitFor(() => {
       const el = document.querySelector('[data-token-id="token_1"]') as HTMLElement | null;
@@ -396,7 +405,7 @@ describe('M15-S07 (integration): tokens in MapViewer', () => {
     });
     fireEvent.mouseEnter(tok.querySelector('.map-token__counter') as HTMLElement);
     fireEvent.click(within(tok).getByRole('button', { name: /^verringern$/i }));
-    await waitFor(() => expect(setCounter).toHaveBeenCalledWith(mockDb, 'token_1', { counter_value: -1 }));
+    await waitFor(() => expect(setCounters).toHaveBeenCalledWith(mockDb, 'token_1', [{ label: 'HP', value: -1 }]));
   });
 
   it('clicking a token opens a rendered editor (not a prompt)', async () => {

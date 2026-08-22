@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { addLogEntry } from '../services/session-log-service';
 import type { DatabaseLike } from '../services/entity-service';
+import { Button } from './primitives';
 
 interface Entity {
   id: string;
@@ -61,9 +62,9 @@ export function EntitySessionNotes({ database, entity, sessionId, onApplyToWorld
               onBlur={handleNoteBlur}
             />
           </label>
-          <button className="btn" onClick={handleApplyToWorld}>
+          <Button onClick={handleApplyToWorld}>
             {t('entityNotes.applyToWorld', 'In Welt übernehmen')}
-          </button>
+          </Button>
         </div>
       )}
     </div>

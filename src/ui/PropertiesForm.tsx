@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Chip, ListRow, Panel } from './primitives';
 
 type PropertySchema = {
   type: 'string' | 'boolean' | 'number' | 'array';
@@ -42,10 +43,10 @@ export function MentionText({ text, onNavigate }: { text: string; onNavigate?: (
     <span>
       {parts.map((p, i) =>
         p.type === 'mention' ? (
-          <span key={i} className="mention-chip" onClick={() => p.id && onNavigate?.(p.id)}
+          <Chip key={i} tone="accent" variant="filled" interactive onClick={() => p.id && onNavigate?.(p.id)}
             title={`→ ${p.value}`}>
             @{p.value}
-          </span>
+          </Chip>
         ) : (
           <span key={i}>{p.value}</span>
         ),
@@ -122,7 +123,7 @@ function MentionInput({ value, onChange, entities, placeholder }: MentionInputPr
   }
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="u-relative">
       <input
         ref={inputRef}
         type="text"
@@ -133,17 +134,18 @@ function MentionInput({ value, onChange, entities, placeholder }: MentionInputPr
         placeholder={placeholder}
       />
       {showSuggest && suggestions.length > 0 && (
-        <div className="mention-suggest">
+        <Panel variant="popover" className="mention-suggest">
           {suggestions.map((e, i) => (
-            <button key={e.id}
-              className={`mention-suggest__item${i === highlightIdx ? ' active' : ''}`}
+            <ListRow key={e.id}
+              className="mention-suggest__item"
+              selected={i === highlightIdx}
               onMouseDown={(ev) => { ev.preventDefault(); insertMention(e); }}
             >
               <span className="mention-suggest__type">{e.type}</span>
               <span className="mention-suggest__name">{e.title}</span>
-            </button>
+            </ListRow>
           ))}
-        </div>
+        </Panel>
       )}
     </div>
   );
@@ -179,10 +181,10 @@ function TagField({ fieldKey, label, required, items, onChange }: TagFieldProps)
       <label data-required={required ? 'true' : undefined}>{label}</label>
       <div className="tag-field__chips">
         {items.map((item, i) => (
-          <span key={i} className="tag-field__chip">
+          <Chip key={i} className="tag-field__chip">
             {item}
             <button type="button" aria-label={`Remove ${item}`} onClick={() => handleRemove(i)}>×</button>
-          </span>
+          </Chip>
         ))}
       </div>
       <input type="text" aria-label={`Add ${label}`} placeholder="Enter → hinzufügen"
@@ -204,7 +206,7 @@ export function PropertiesForm({ schema, values, onChange, entities = [] }: Prop
   const { t } = useTranslation('entity');
   void t; // used for i18n readiness
   return (
-    <div>
+    <div className="props-form">
       {Object.entries(schema).map(([key, fieldSchema]) => {
         const label = fieldSchema.title ?? key;
         const value = values[key];

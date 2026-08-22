@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
+import { Chip, ListRow } from './primitives';
 import { stripMarkdown } from '../utils/markdown';
 import { searchEntities, getSearchFacets, rebuildSearchIndex } from '../services/search-service';
 import type { SearchResult, SearchFacets } from '../services/search-service';
 import type { DatabaseLike } from '../services/entity-service';
+import { EntityDetailView } from './EntityDetailView';
 
 interface Props {
   onNavigate: (entityId: string) => void;
@@ -64,9 +66,10 @@ export function GlobalSearch({ onNavigate, database }: Props) {
   }
 
   const filtered = activeTypeFilter ? results.filter((r) => r.entityType === activeTypeFilter) : results;
+  const selectedEntityId = filtered[selectedIndex]?.entityId ?? null;
 
   return (
-    <div className="gsearch">
+    <div className={`gsearch${selectedEntityId ? ' gsearch--split' : ''}`}>
       <div className="gsearch__bar">
         <input
           ref={inputRef}
@@ -84,42 +87,61 @@ export function GlobalSearch({ onNavigate, database }: Props) {
       {facets && Object.keys(facets.entityTypes).length > 0 && (
         <div className="gsearch__facets">
           {Object.entries(facets.entityTypes).map(([type, count]) => (
-            <button
+            <Chip
               key={type}
-              className={`gsearch__facet${activeTypeFilter === type ? ' gsearch__facet--active' : ''}`}
-              onClick={() => setActiveTypeFilter(activeTypeFilter === type ? null : type)}
+              as="button"
+              variant="outline"
+              selected={activeTypeFilter === type}
+              onClick={() => { setActiveTypeFilter(activeTypeFilter === type ? null : type); setSelectedIndex(-1); }}
             >
               {type} <span className="gsearch__facet-count">{count}</span>
-            </button>
+            </Chip>
           ))}
         </div>
       )}
 
-      {query && filtered.length === 0 && (
-        <div className="gsearch__empty">Keine Ergebnisse für „{query}"</div>
-      )}
+      <div className="emd u-min-h-0">
+        <div className="emd__list u-scroll-y">
+          {query && filtered.length === 0 && (
+            <div className="gsearch__empty">Keine Ergebnisse für „{query}"</div>
+          )}
 
-      {!query && (
-        <div className="gsearch__hint">
-          {indexing ? 'Index wird aktualisiert…' : 'Tippe um Entities, Orte, Fraktionen u.v.m. zu suchen.'}
+          {!query && (
+            <div className="gsearch__hint">
+              {indexing ? 'Index wird aktualisiert…' : 'Tippe um Entities, Orte, Fraktionen u.v.m. zu suchen.'}
+            </div>
+          )}
+
+          <ul className="gsearch__results u-grow u-scroll-y" role="listbox">
+            {filtered.map((r, i) => (
+              <ListRow
+                as="li"
+                key={r.entityId}
+                className="gsearch__result"
+                selected={i === selectedIndex}
+                role="option"
+                aria-selected={i === selectedIndex}
+                onClick={() => setSelectedIndex(i)}
+                onDoubleClick={() => onNavigate(r.entityId)}
+              >
+                <span className="gsearch__result-title">{r.title}</span>
+                <span className="gsearch__result-type">{r.entityType}</span>
+                {r.summary && <span className="gsearch__result-summary">{stripMarkdown(r.summary)}</span>}
+              </ListRow>
+            ))}
+          </ul>
         </div>
-      )}
 
-      <ul className="gsearch__results" role="listbox">
-        {filtered.map((r, i) => (
-          <li
-            key={r.entityId}
-            className={`gsearch__result${i === selectedIndex ? ' gsearch__result--selected' : ''}`}
-            role="option"
-            aria-selected={i === selectedIndex}
-            onClick={() => onNavigate(r.entityId)}
-          >
-            <span className="gsearch__result-title">{r.title}</span>
-            <span className="gsearch__result-type">{r.entityType}</span>
-            {r.summary && <span className="gsearch__result-summary">{stripMarkdown(r.summary)}</span>}
-          </li>
-        ))}
-      </ul>
+        {selectedEntityId && database && (
+          <div className="emd__detail">
+            <EntityDetailView
+              entityId={selectedEntityId}
+              database={database}
+              onNavigateToEntity={onNavigate}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

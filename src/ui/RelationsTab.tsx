@@ -5,6 +5,7 @@ import { getEffectiveEntity } from '../services/entity-service';
 import { getRelations, addRelation, deactivateRelation, reactivateRelation, RelationRow } from '../services/relation-service';
 import { getRelationTypeDefinition, getAllRelationTypes } from '../data/relation-type-registry';
 import { EntityPicker } from './EntityPicker';
+import { Button, Chip, ListRow, Panel } from './primitives';
 
 interface Props {
   entityId: string;
@@ -88,14 +89,14 @@ export function RelationsTab({ entityId, database }: Props) {
           const otherId = getOtherEntityId(rel, entityId);
           const visibility = JSON.parse(rel.visibility_json ?? '"public"');
           return (
-            <div key={rel.id} className="relations-tab__row">
+            <ListRow as="div" interactive={false} key={rel.id} className="relations-tab__row">
               <span>{label} → <EntityTitle entityId={otherId} database={db} /></span>
-              {visibility === 'gm_only' && <span className="relations-tab__badge">GM only</span>}
+              {visibility === 'gm_only' && <Chip tone="accent" className="relations-tab__badge">GM only</Chip>}
               {rel.notes && <span className="relations-tab__notes">({rel.notes})</span>}
-              <button className="btn" onClick={() => void handleDeactivate(rel.id)} aria-label="Deactivate">
+              <Button onClick={() => void handleDeactivate(rel.id)} aria-label="Deactivate">
                 Deactivate
-              </button>
-            </div>
+              </Button>
+            </ListRow>
           );
         })}
         {active.length === 0 && <span className="relations-tab__empty">{t('relations.none', 'Keine Relationen')}</span>}
@@ -108,22 +109,22 @@ export function RelationsTab({ entityId, database }: Props) {
             const label = getLabel(rel, entityId);
             const otherId = getOtherEntityId(rel, entityId);
             return (
-              <div key={rel.id} className="relations-tab__row relations-tab__row--inactive">
+              <ListRow as="div" interactive={false} key={rel.id} className="relations-tab__row relations-tab__row--inactive">
                 <span>{label} → <EntityTitle entityId={otherId} database={db} /></span>
                 {rel.notes && <span className="relations-tab__notes">({rel.notes})</span>}
-                <button className="btn" onClick={() => void handleReactivate(rel.id)} aria-label="Reactivate">
+                <Button onClick={() => void handleReactivate(rel.id)} aria-label="Reactivate">
                   Reactivate
-                </button>
-              </div>
+                </Button>
+              </ListRow>
             );
           })}
         </section>
       )}
 
       <div className="relations-tab__add">
-        <button className="btn" onClick={() => setShowAddForm((v) => !v)}>Add relation</button>
+        <Button onClick={() => setShowAddForm((v) => !v)}>Add relation</Button>
         {showAddForm && (
-          <div className="relations-tab__add-form">
+          <Panel className="relations-tab__add-form u-stack u-gap-2">
             <select
               aria-label="Relation type"
               value={newRelationType}
@@ -153,7 +154,7 @@ export function RelationsTab({ entityId, database }: Props) {
             ) : (
               <span className="relations-tab__hint">Bitte zuerst einen Relation-Typ wählen.</span>
             )}
-          </div>
+          </Panel>
         )}
       </div>
     </div>

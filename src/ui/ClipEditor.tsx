@@ -12,6 +12,7 @@ import { copyAudioAsset } from '../services/audio-asset';
 import { parseSpotifyUri } from '../services/spotify-uri';
 import { EmojiPicker } from './EmojiPicker';
 import { useEmojiPickerHost } from './EmojiPickerHost';
+import { Button, Panel } from './primitives';
 
 const DEFAULT_CLIP_COLOR = '#3a3f45';
 
@@ -124,12 +125,12 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
       <div className="clip-editor" role="dialog" aria-label={t('audioClipConfirmDeleteTitle', 'Clip löschen?')}>
         <p>{t('audioClipConfirmDeleteBody', 'Der Clip wird gelöscht.')}</p>
         <div className="clip-editor__actions">
-          <button type="button" className="btn btn--primary" onClick={() => void handleConfirmDelete()}>
+          <Button tone="accent" onClick={() => void handleConfirmDelete()}>
             {t('audioClipConfirmDeleteAction', 'Löschen')}
-          </button>
-          <button type="button" className="btn" onClick={() => setConfirmDelete(false)}>
+          </Button>
+          <Button onClick={() => setConfirmDelete(false)}>
             {t('audioSceneCancel', 'Abbrechen')}
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -148,9 +149,9 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
 
       {sourceType === 'file' ? (
         <div className="clip-editor__source-file">
-          <button type="button" className="btn" onClick={() => void handlePickFile()}>
+          <Button onClick={() => void handlePickFile()}>
             {t('audioClipPickFile', 'Datei wählen…')}
-          </button>
+          </Button>
           {sourceRef && <span className="clip-editor__source-path">{sourceRef}</span>}
         </div>
       ) : sourceType === 'link' ? (
@@ -198,11 +199,11 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
             click — see the emojiPickerWarm comment above. When a host IS
             mounted, it owns the actual popover via a portal instead. */}
         {!emojiPickerHost && (
-          <div className="clip-editor__icon-popover" hidden={!iconPickerOpen}>
+          <Panel variant="popover" className="clip-editor__icon-popover" hidden={!iconPickerOpen}>
             {(iconPickerOpen || emojiPickerWarm) && (
               <EmojiPicker value={icon} onSelect={(emoji) => { setIcon(emoji); setIconPickerOpen(false); }} />
             )}
-          </div>
+          </Panel>
         )}
       </div>
 
@@ -225,16 +226,16 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
       )}
 
       <div className="clip-editor__actions">
-        <button type="button" className="btn btn--primary" disabled={!sourceRef.trim()} onClick={() => void handleSave()}>
+        <Button tone="accent" disabled={!sourceRef.trim()} onClick={() => void handleSave()}>
           {t('audioClipSave', 'Speichern')}
-        </button>
-        <button type="button" className="btn" onClick={onClose}>
+        </Button>
+        <Button onClick={onClose}>
           {t('audioSceneCancel', 'Abbrechen')}
-        </button>
+        </Button>
         {presetId !== null && (
-          <button type="button" className="btn" onClick={() => setConfirmDelete(true)}>
+          <Button onClick={() => setConfirmDelete(true)}>
             {t('audioClipDelete', 'Löschen')}
-          </button>
+          </Button>
         )}
       </div>
     </div>

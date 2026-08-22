@@ -1,50 +1,29 @@
-import { invoke } from '@tauri-apps/api/core';
+// M10-S01 (#350): Transport-Interface (rebuild).
+// Renderer redet ausschließlich gegen dieses Interface — die konkrete
+// Implementierung ist WebRTC-DataChannel (webrtc-transport.ts). Es gibt
+// KEINEN HTTP/WS-Server (D-Aktueller-Stand Pkt. 1).
 
-const DEFAULT_PORT = 9010;
-
-export interface ServerInfo {
-  url: string;
-  port: number;
-}
-
-export interface ClientMessage {
+export interface TransportMessage {
   type: string;
   payload: Record<string, unknown>;
 }
 
 export interface SessionTransport {
-  send(playerId: string, message: ClientMessage): Promise<void>;
-  broadcast(message: ClientMessage): Promise<void>;
-  onMessage(handler: (playerId: string, message: ClientMessage) => void): void;
-  disconnect(playerId: string): Promise<void>;
+  /** Öffnet die Peer-Verbindung (Host: DataChannel bereitstellen). */
+  connect(): Promise<void>;
+  /** Schließt die Peer-Verbindung — an den Campaign-Lebenszyklus gekoppelt. */
+  close(): Promise<void>;
+  /** Sendet eine bereits schema-konforme Nachricht. */
+  send(msg: TransportMessage): Promise<void>;
+  /** Registriert einen Empfänger für host-seitig validierte Eingaben. */
+  onMessage(cb: (msg: TransportMessage) => void): void;
 }
 
-export async function startSessionServer(port: number = DEFAULT_PORT): Promise<ServerInfo> {
-  return invoke<ServerInfo>('start_session_server', { port });
-}
-
-export async function stopSessionServer(): Promise<void> {
-  return invoke('stop_session_server');
-}
-
-export function createSessionTransport(): SessionTransport {
-  return {
-    async send(playerId, message) {
-      await invoke('send_to_player', { playerId, message });
-    },
-    async broadcast(message) {
-      await invoke('broadcast_to_players', { message });
-    },
-    onMessage(_handler) {
-      // Tauri event listener wired in a later story (S09/S18)
-    },
-    async disconnect(playerId) {
-      await invoke('disconnect_player', { playerId });
-    },
-  };
-}
-
-export function validateIncomingMessage(raw: unknown): ClientMessage {
+/**
+ * Host-seitige Schema-Validierung eingehender Nachrichten (AC).
+ * Ungültige Payloads → Throw; der Aufrufer verwirft die Nachricht.
+ */
+export function validateIncomingMessage(raw: unknown): TransportMessage {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
     throw new Error('Invalid message: must be a non-null object');
   }
@@ -59,5 +38,5 @@ export function validateIncomingMessage(raw: unknown): ClientMessage {
   if (obj.payload === null || typeof obj.payload !== 'object' || Array.isArray(obj.payload)) {
     throw new Error('Invalid message: payload must be a non-null object');
   }
-  return obj as unknown as ClientMessage;
+  return obj as unknown as TransportMessage;
 }

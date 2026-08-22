@@ -22,8 +22,8 @@ Provide map import and annotation tools that link maps back to lore without beco
 
 - Mapmaking / drawing editor.
 - Dynamic lighting.
-- Token combat engine / initiative tracker.
-- Full VTT behavior (Foundry/Roll20).
+- ~~Token combat engine / initiative tracker.~~ **AUFGEHOBEN (Produktentscheidung 2026-08): VTT/Kampf ist gewollt** → M10 (Multiplayer) + `M10b-combat-engine.md`. Diese Exklusion galt nur für M5; sie blockiert M10/M10b NICHT. *(Diese Map-Story selbst baut die Kampf-Engine nicht — sie liegt in M10b.)*
+- ~~Full VTT behavior (Foundry/Roll20).~~ **AUFGEHOBEN (2026-08)** — siehe oben; das Produkt wird bewusst Worldbuilding-Tool **+** VTT.
 - MBTiles, GeoJSON, Tiled JSON in V1 (roadmap/import later).
 - Map versioning beyond session-level snapshots.
 

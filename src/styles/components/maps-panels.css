@@ -1,0 +1,231 @@
+/* ── Maps layer panel (in the left sidebar, under the map list, #294) ──────── */
+.maps-sidebar {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  /* MapFolderTree/.map-pin-tree bring their own chrome (border, background,
+     internal padding), matching the Pin panel's borderless-fill look — the
+     generic .workspace-area__sidebar padding would double-box it and stop it
+     from using the full available height. */
+  padding: 0;
+}
+
+/* Import button pinned above the tabs — outside the scroll box, never scrolls. */
+.maps-sidebar__import {
+  flex: 0 0 auto;
+  width: 100%;
+  margin-bottom: var(--space-2);
+}
+
+/* Splitter to resize the maps sidebar (mirrors the pin-tree resize handle). */
+.maps-sidebar__resize-handle {
+  flex: 0 0 auto;
+  width: 5px;
+  align-self: stretch;
+  cursor: col-resize;
+  background: transparent;
+}
+.maps-sidebar__resize-handle:hover { background: var(--color-accent); opacity: 0.4; }
+
+/* Maps sidebar tabs (#297): Karten / Ebenen */
+.maps-sidebar-tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Flex row holding the <Tabs fill> strip + the trailing collapse button; the
+   1px underline lives here (continuous under both), so the nested .ui-tabs
+   drops its own border to avoid doubling it. */
+.maps-sidebar-tabs__list {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-2);
+}
+.maps-sidebar-tabs__list .ui-tabs {
+  border-bottom: none;
+}
+
+.maps-sidebar-tabs__panel {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.maps-layer-section {
+  /* Separation is now provided by the tab strip above; no top border needed. */
+  margin-top: 0;
+}
+
+.maps-layer-section__title {
+  margin: var(--space-2) 0 0;
+}
+
+/* Root cause fix: `.workspace-area__sidebar ul li button { width:100% }` (the
+   maps-list button style) leaks onto the layer-panel buttons because the panel
+   also lives in a ul>li>button inside the sidebar. That forced the collapse
+   arrow to full width, pushing the type label + indicator onto the next line.
+   Higher-specificity override makes the arrow content-sized so the header flows
+   inline: [arrow] [type] [indicator]. */
+/* Header row: [arrow] [name grows, left] [indicator] [type chip, right]. */
+.layer-panel__row-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.layer-panel__row-header .layer-panel__collapse {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0 2px;
+  text-align: center;
+}
+.layer-panel__name-display {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.layer-panel__hidden-indicator { flex: 0 0 auto; }
+
+/* Type pill — colored text + matching border, right side, non-shrinking. */
+/* A colored-outline <Chip> — the pill base is .ui-chip; these override it to a
+   currentColor border + per-type hue + tiny uppercase. Prefixed with .ui-chip
+   so the hue reliably wins over the base chip color. */
+.ui-chip.layer-panel__type {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border-color: currentColor;
+  background: transparent;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+}
+.ui-chip.layer-panel__type--image { color: var(--color-layer-image); }
+.ui-chip.layer-panel__type--fog { color: var(--color-layer-fog); }
+.ui-chip.layer-panel__type--token { color: var(--color-layer-token); }
+
+/* Add-layer toolbar: buttons side by side when there's room, wrapping to
+   stacked full-width rows when the sidebar is narrow. */
+.layer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  min-width: 0;
+}
+
+/* More breathing room + a separator between the add-buttons and the layer list. */
+.layer-panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.layer-panel .layer-panel__list { gap: var(--space-2); }
+.layer-panel__row { padding: 3px 4px; border-radius: var(--radius-sm); }
+.layer-panel__row-header { line-height: 1.6; }
+.layer-panel__row.editing { background: var(--color-surface-alt, transparent); }
+/* Layout only — the add-layer buttons are <Button variant="outline" tone="accent"
+   size="compact">; they stretch to fill and wrap when the sidebar is narrow. */
+.layer-panel__toolbar .ui-button {
+  flex: 1 1 auto;
+  min-width: 110px;
+  white-space: nowrap;
+}
+
+/* Name input at the top of an expanded row's controls. */
+.layer-panel__name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+.layer-panel__name-field input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+.layer-panel__name-field input:focus { border-color: var(--color-accent); outline: none; }
+
+/* ── Fog paint toolbar (#276) ─────────────────────────────────────────────── */
+.fog-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--color-shadow) 40%, transparent);
+}
+
+.fog-tools__slider {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.fog-tools__value {
+  min-width: 34px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+/* Folder delete confirmation */
+.map-folder-tree__confirm-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 0.85rem;
+}
+.map-folder-tree__confirm-text { margin: 0; font-size: 0.8rem; color: var(--color-text-muted); }
+.map-folder-tree__confirm-actions { display: flex; gap: var(--space-2); }
+.map-folder-tree__confirm-yes,
+.map-folder-tree__confirm-no {
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.map-folder-tree__confirm-yes {
+  background: var(--color-status-failure);
+  border-color: var(--color-status-failure);
+  color: var(--color-on-accent);
+}
+.map-folder-tree__confirm-no {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.map-folder-tree__confirm-no:hover { border-color: var(--color-accent); }
+
+.map-folder-tree__map-title {
+  flex: 1;
+  cursor: pointer;
+}
+

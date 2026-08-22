@@ -45,7 +45,7 @@ export function CardCreationFlow({ database, onComplete }: Props) {
       <div>
         <label>Choose an entity</label>
         {entities.map((e) => (
-          <div key={e.id} onClick={() => handleEntityClick(e)} style={{ cursor: 'pointer' }}>
+          <div key={e.id} onClick={() => handleEntityClick(e)} className="u-clickable">
             {e.title}
           </div>
         ))}
@@ -57,7 +57,7 @@ export function CardCreationFlow({ database, onComplete }: Props) {
     <div>
       <div>Choose card style for {selectedEntity?.title}</div>
       {filteredTemplates.map((t) => (
-        <div key={t.id} onClick={() => void handleTemplateClick(t.id)} style={{ cursor: 'pointer' }}>
+        <div key={t.id} onClick={() => void handleTemplateClick(t.id)} className="u-clickable">
           {t.label}
         </div>
       ))}

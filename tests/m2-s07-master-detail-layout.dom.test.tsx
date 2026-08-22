@@ -3,13 +3,23 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type { DatabaseLike } from '../src/services/entity-service';
 import { EntityMasterDetail } from '../src/ui/EntityMasterDetail';
+
+// Stub database — service module is mocked, so the value is never used.
+const stubDb: DatabaseLike = {
+  execute: () => Promise.resolve(),
+  select: () => Promise.resolve([]),
+};
 
 const characterAda = {
   id: 'character-ada',
   type: 'Character',
   title: 'Ada Thorn',
   summary: 'Archivist.',
+  properties: {} as Record<string, unknown>,
+  aliases: [] as string[],
+  visibility: 'public',
 };
 
 const characterBram = {
@@ -17,6 +27,9 @@ const characterBram = {
   type: 'Character',
   title: 'Bram Holt',
   summary: 'Innkeeper.',
+  properties: {} as Record<string, unknown>,
+  aliases: [] as string[],
+  visibility: 'public',
 };
 
 const locationKeep = {
@@ -24,6 +37,9 @@ const locationKeep = {
   type: 'Location',
   title: 'The Keep',
   summary: 'Crumbling fortress.',
+  properties: {} as Record<string, unknown>,
+  aliases: [] as string[],
+  visibility: 'public',
 };
 
 vi.mock('../src/services/entity-service', () => ({
@@ -45,7 +61,7 @@ vi.mock('../src/services/entity-service', () => ({
 describe('M2-S07 master-detail entity layout', () => {
   describe('entity list', () => {
     it('renders list items with title, entity-type badge, and summary snippet', async () => {
-      render(<EntityMasterDetail initialType="Character" />);
+      render(<EntityMasterDetail initialType="Character" database={stubDb} />);
 
       await waitFor(() => {
         expect(screen.getByText('Ada Thorn')).toBeInTheDocument();
@@ -55,14 +71,14 @@ describe('M2-S07 master-detail entity layout', () => {
     });
 
     it('does not show entities of other types when a type filter is active', async () => {
-      render(<EntityMasterDetail initialType="Character" />);
+      render(<EntityMasterDetail initialType="Character" database={stubDb} />);
 
       await waitFor(() => screen.getByText('Ada Thorn'));
       expect(screen.queryByText('The Keep')).not.toBeInTheDocument();
     });
 
     it('shows all entity types when no type filter is set', async () => {
-      render(<EntityMasterDetail initialType={null} />);
+      render(<EntityMasterDetail initialType={null} database={stubDb} />);
 
       await waitFor(() => {
         expect(screen.getByText('Ada Thorn')).toBeInTheDocument();
@@ -73,7 +89,7 @@ describe('M2-S07 master-detail entity layout', () => {
 
   describe('selection', () => {
     it('opens the entity detail view on the right when a list entry is clicked', async () => {
-      render(<EntityMasterDetail initialType="Character" />);
+      render(<EntityMasterDetail initialType="Character" database={stubDb} />);
 
       await waitFor(() => screen.getByText('Ada Thorn'));
       fireEvent.click(screen.getByText('Ada Thorn'));
@@ -83,7 +99,7 @@ describe('M2-S07 master-detail entity layout', () => {
     });
 
     it('updates displayed detail when a different list entry is clicked', async () => {
-      render(<EntityMasterDetail initialType="Character" />);
+      render(<EntityMasterDetail initialType="Character" database={stubDb} />);
 
       await waitFor(() => screen.getByText('Ada Thorn'));
       fireEvent.click(screen.getByText('Ada Thorn'));
@@ -96,7 +112,7 @@ describe('M2-S07 master-detail entity layout', () => {
 
   describe('layout structure', () => {
     it('renders a two-column layout: list on left, detail on right', async () => {
-      render(<EntityMasterDetail initialType="Character" />);
+      render(<EntityMasterDetail initialType="Character" database={stubDb} />);
 
       await waitFor(() => {
         const list = screen.getByRole('list');
@@ -105,14 +121,14 @@ describe('M2-S07 master-detail entity layout', () => {
     });
 
     it('is a reusable primitive — accepts any entity type without hard-coding', () => {
-      expect(() => render(<EntityMasterDetail initialType="Location" />)).not.toThrow();
+      expect(() => render(<EntityMasterDetail initialType="Location" database={stubDb} />)).not.toThrow();
     });
   });
 
   describe('routing', () => {
     it('calls onEntitySelect callback with entityId when an entity is selected', async () => {
       const onSelect = vi.fn();
-      render(<EntityMasterDetail initialType="Character" onEntitySelect={onSelect} />);
+      render(<EntityMasterDetail initialType="Character" onEntitySelect={onSelect} database={stubDb} />);
 
       await waitFor(() => screen.getByText('Ada Thorn'));
       fireEvent.click(screen.getByText('Ada Thorn'));
@@ -121,9 +137,9 @@ describe('M2-S07 master-detail entity layout', () => {
     });
 
     it('renders with a pre-selected entity when selectedEntityId prop is provided', async () => {
-      render(<EntityMasterDetail initialType="Character" selectedEntityId="character-bram" />);
+      render(<EntityMasterDetail initialType="Character" selectedEntityId="character-bram" database={stubDb} />);
 
-      await waitFor(() => expect(screen.getByText('Innkeeper.')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getAllByText('Innkeeper.').length).toBeGreaterThan(0));
     });
   });
 });

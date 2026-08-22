@@ -8,8 +8,6 @@ import { listViews } from '../services/saved-views-service';
 import type { SavedViewRow } from '../services/saved-views-service';
 import { importRules } from '../services/rule-import-service';
 import { detectMysteryBreakers, analyzeRoleCoverage, detectQuestBlockers } from '../services/rule-evaluations';
-import { listVars } from '../services/session-variable-service';
-import type { VarRow } from '../services/session-variable-service';
 import { EntityMasterDetail } from './EntityMasterDetail';
 import { EntityDetailView } from './EntityDetailView';
 import { GlobalSearch } from './GlobalSearch';
@@ -25,12 +23,6 @@ import { CardCreationFlow } from './CardCreationFlow';
 import { PrintSheetComposer } from './PrintSheetComposer';
 import { PluginManager } from './PluginManager';
 import { DmScreen, DmScreenSelector } from './DmScreen';
-import { CaptureInbox } from './CaptureInbox';
-import { EncounterCounters } from './EncounterCounters';
-import { ConditionBuilder } from './ConditionBuilder';
-import type { VarDef } from './ConditionBuilder';
-import { PlayerScreen } from './PlayerScreen';
-import { SessionClock } from './SessionClock';
 import { SnapshotManager } from './SnapshotManager';
 import { UpdateNotification } from './UpdateNotification';
 import { MapViewer } from './MapViewer';
@@ -41,6 +33,7 @@ import { MapFolderTree } from './MapFolderTree';
 import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
+import { Button } from './primitives';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
 
@@ -55,7 +48,6 @@ type Area =
   | 'cards'
   | 'plugins'
   | 'rules'
-  | 'session'
   | 'audio'
   | 'graph'
   | 'project';
@@ -73,11 +65,12 @@ interface CalendarRow {
 }
 
 interface Props {
-  projectId: string;
+  projectId?: string;
   projectTitle?: string;
-  projectDir: string;
-  snapshotsDir: string;
-  onProjectClose: () => void;
+  projectDir?: string;
+  snapshotsDir?: string;
+  onProjectClose?: () => void;
+  activePanel?: Area;
 }
 
 const AREAS: { id: Area; icon: string }[] = [
@@ -89,7 +82,6 @@ const AREAS: { id: Area; icon: string }[] = [
   { id: 'cards',    icon: '🃏' },
   { id: 'plugins',  icon: '🔌' },
   { id: 'rules',    icon: '📖' },
-  { id: 'session',  icon: '🎲' },
   { id: 'audio',    icon: '🎧' },
   { id: 'graph',    icon: '🌌' },
   { id: 'project',  icon: '⚙' },
@@ -100,10 +92,10 @@ const CORE_ENTITY_TYPES = [
   'Quest', 'Event', 'Scene', 'Rule', 'Resource', 'Culture', 'Lore',
 ];
 
-export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsDir, onProjectClose }: Props) {
+export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snapshotsDir, onProjectClose, activePanel }: Props) {
   const { t } = useTranslation('nav');
   const database = useDatabase();
-  const [activeArea, setActiveArea] = useState<Area>('entities');
+  const [activeArea, setActiveArea] = useState<Area>(activePanel ?? 'entities');
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | null>('Character');
   const [selectedScreenId, setSelectedScreenId] = useState<string | null>(null);
@@ -141,7 +133,6 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
   // Image layer currently in move mode (shared: LayerPanel selects, MapViewer drags).
   const [movingLayerId, setMovingLayerId] = useState<string | null>(null);
   const [savedViews, setSavedViews] = useState<SavedViewRow[]>([]);
-  const [sessionVarsRaw, setSessionVarsRaw] = useState<VarRow[]>([]);
   // Detached audio-soundboard window (EPIC-024/D1) — one instance at a time;
   // the launcher button is disabled while it's open, re-enabled once closed.
   const [soundboardOpen, setSoundboardOpen] = useState(false);
@@ -164,9 +155,6 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     listViews(database).then(setSavedViews).catch(console.error);
   }, [database]);
 
-  useEffect(() => {
-    listVars(database, projectId).then(setSessionVarsRaw).catch(console.error);
-  }, [database, projectId]);
 
   // The OS window can outlive a WorkspaceShell remount (e.g. project switch) —
   // check for it on mount so the launcher button reflects reality.
@@ -201,9 +189,10 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     // The soundboard is a separate window/JS context with no state shared
     // with this React tree — the db path travels as a query param so it can
     // open its own connection to the SAME SQLite DB (EPIC-024/D1).
-    const dbPath = await join(projectDir, 'world.db');
+    const dir = projectDir ?? '';
+    const dbPath = await join(dir, 'world.db');
     const win = new WebviewWindow(SOUNDBOARD_WINDOW_LABEL, {
-      url: `index.html?db=${encodeURIComponent(dbPath)}&projectDir=${encodeURIComponent(projectDir)}#/audio-soundboard`,
+      url: `index.html?db=${encodeURIComponent(dbPath)}&projectDir=${encodeURIComponent(dir)}#/audio-soundboard`,
       title: t('audioSoundboardWindowTitle', 'Audio-Soundboard'),
       backgroundColor: isDark ? '#15181b' : '#f2f3f5',
       // Board rows (8 clip buttons + mixer cluster) need more room than
@@ -311,7 +300,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     setMapImporting(true);
     try {
       const title = selected.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? 'Karte';
-      const result = await importMapImage(database, { srcPath: selected, title, projectDir });
+      const result = await importMapImage(database, { srcPath: selected, title, projectDir: projectDir ?? '' });
       const updatedMaps = await listMaps(database);
       setMaps(updatedMaps);
       setSelectedMapId(result.id);
@@ -326,7 +315,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     const selected = await open({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
     if (typeof selected !== 'string') return;
     const name = selected.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? 'Bild-Layer';
-    await importImageLayer(database, { map_id: selectedMapId, srcPath: selected, projectDir, name });
+    await importImageLayer(database, { map_id: selectedMapId, srcPath: selected, projectDir: projectDir ?? '', name });
     setLayerReloadKey((n) => n + 1);
   }
 
@@ -351,7 +340,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     const selected = await open({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
     if (typeof selected !== 'string') return null;
     const { copyMapAsset } = await import('../services/map-asset');
-    return copyMapAsset(selected, projectDir, `token-${crypto.randomUUID()}`);
+    return copyMapAsset(selected, projectDir ?? '', `token-${crypto.randomUUID()}`);
   }
 
   async function handleAddFogLayer() {
@@ -391,14 +380,6 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
     reader.readAsText(file);
   }
 
-  const VALID_TYPES = new Set(['boolean', 'number', 'string', 'enum']);
-  const sessionVars: VarDef[] = sessionVarsRaw
-    .filter((v) => VALID_TYPES.has(v.type))
-    .map((v) => ({
-      id: v.id,
-      label: v.label,
-      type: v.type as VarDef['type'],
-    }));
 
   function renderArea() {
     switch (activeArea) {
@@ -450,16 +431,18 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
 
       case 'maps':
         return (
-          <div className="workspace-area" style={{ overflow: 'hidden' }}>
+          <div className="workspace-area">
             <div className="workspace-area__sidebar maps-sidebar" style={{ width: mapsSidebarCollapsed ? 32 : mapsSidebarWidth, padding: mapsSidebarCollapsed ? 'var(--space-2) 0' : undefined }}>
               {!mapsSidebarCollapsed && (
-                <button
-                  className="emd__create-btn maps-sidebar__import"
+                <Button
+                  tone="accent"
+                  variant="outline"
+                  className="maps-sidebar__import"
                   onClick={() => void handleMapImport()}
                   disabled={mapImporting}
                 >
                   {mapImporting ? t('mapImporting', '⏳ Importiere…') : t('importMap', '+ Karte importieren')}
-                </button>
+                </Button>
               )}
               <MapsSidebarTabs
                 selectedMapId={selectedMapId}
@@ -468,7 +451,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 mapsTabContent={
                   <>
                     {mapImporting && (
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', padding: 'var(--space-1) var(--space-2)', background: 'var(--color-surface-alt)', borderRadius: 'var(--radius-sm)', marginBottom: 'var(--space-2)' }}>
+                      <div className="workspace-shell__info-note">
                         {t('mapImportProgress', 'Bild wird kopiert und vorbereitet…')}
                       </div>
                     )}
@@ -482,7 +465,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                       onMapsChanged={() => { void listMaps(database).then(setMaps); }}
                     />
                     {maps.length === 0 && (
-                      <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: 'var(--space-2)' }}>
+                      <p className="workspace-shell__empty-note">
                         {t('noMaps')}
                       </p>
                     )}
@@ -521,7 +504,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 onMouseDown={handleMapsSidebarResize}
               />
             )}
-            <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+            <div className="workspace-shell__stage">
               {selectedMapId ? (
                 <MapViewer
                   key={`mv-${selectedMapId}`}
@@ -537,7 +520,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                   onPickTokenArt={handlePickTokenArt}
                 />
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)' }}>
+                <div className="workspace-shell__empty-center">
                   Karte aus der Liste wählen oder importieren
                 </div>
               )}
@@ -547,7 +530,7 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
 
       case 'calendar':
         return (
-          <div className="workspace-area" style={{ flexDirection: 'column', overflow: 'hidden' }}>
+          <div className="workspace-area workspace-area--column">
             {wizardCal !== null ? (
               <CalendarWizard
                 database={database}
@@ -569,25 +552,25 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                 }}
               />
             ) : (activeCalendar && !showPicker) ? (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-                <div style={{ padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <div className="workspace-shell__col">
+                <div className="workspace-shell__cal-header">
                   <strong>{activeCalendar.title}</strong>
-                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{activeCalendar.year_length_days} Tage/Jahr · {activeCalendar.months.length} Monate · {activeCalendar.week.length} Wochentage</span>
+                  <span className="workspace-shell__cal-meta">{activeCalendar.year_length_days} Tage/Jahr · {activeCalendar.months.length} Monate · {activeCalendar.week.length} Wochentage</span>
                   {deletePrompt ? (
-                    <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <span className="workspace-shell__cal-actions">
                       <span>Kalender „{activeCalendar.title}" löschen — bist du sicher?</span>
-                      <button className="btn" style={{ color: 'var(--color-status-failure)' }} onClick={removeActiveCalendar}>Ja, löschen</button>
-                      <button className="btn" onClick={() => setDeletePrompt(false)}>Abbrechen</button>
+                      <Button tone="danger" variant="outline" onClick={removeActiveCalendar}>Ja, löschen</Button>
+                      <Button onClick={() => setDeletePrompt(false)}>Abbrechen</Button>
                     </span>
                   ) : (
-                    <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                      <button className="btn" onClick={() => setShowPicker(true)}>Kalenderauswahl</button>
-                      <button className="btn" onClick={() => setWizardCal(activeCalendar)}>{t('changeCalendar')}</button>
-                      <button className="btn" style={{ color: 'var(--color-status-failure)' }} onClick={() => setDeletePrompt(true)}>Löschen</button>
+                    <span className="workspace-shell__cal-actions">
+                      <Button onClick={() => setShowPicker(true)}>Kalenderauswahl</Button>
+                      <Button onClick={() => setWizardCal(activeCalendar)}>{t('changeCalendar')}</Button>
+                      <Button tone="danger" variant="outline" onClick={() => setDeletePrompt(true)}>Löschen</Button>
                     </span>
                   )}
                 </div>
-                <div style={{ flex: 1, overflow: 'auto' }}>
+                <div className="workspace-shell__cal-body">
                   <CalendarMonthView
                     calendar={activeCalendar}
                     database={database}
@@ -627,8 +610,8 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                               .catch(console.error);
                           }}
                         />
-                        <button
-                          className="btn btn--primary"
+                        <Button
+                          tone="accent"
                           disabled={!calendarNewTitle.trim()}
                           onClick={() => {
                             createEventEntity(database, { title: calendarNewTitle.trim(), start_day: calendarNewDay, event_kind: 'single' })
@@ -641,8 +624,8 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                           }}
                         >
                           Erstellen
-                        </button>
-                        <button className="btn" onClick={() => setCalendarNewDay(null)}>Abbrechen</button>
+                        </Button>
+                        <Button onClick={() => setCalendarNewDay(null)}>Abbrechen</Button>
                       </div>
                     </div>
                   )}
@@ -650,15 +633,14 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                     <div className="cal-inline-event-editor">
                       <div className="cal-inline-event-editor__header">
                         <span>Event bearbeiten</span>
-                        <button
-                          className="btn"
+                        <Button
                           onClick={() => {
                             setCalendarEditingEventId(null);
                             setCalendarRefreshToken((n) => n + 1);
                           }}
                         >
                           Schließen
-                        </button>
+                        </Button>
                       </div>
                       <EntityDetailView
                         entityId={calendarEditingEventId}
@@ -695,12 +677,12 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
                       ? <option value="">Noch keine Kalender</option>
                       : calendarList.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                   </select>
-                  <button className="btn btn--primary" disabled={!startSelId} onClick={() => activateCalendar(startSelId)}>Aktivieren</button>
-                  <button className="btn" disabled={!startSelId} onClick={() => editCalendarById(startSelId)}>Bearbeiten</button>
+                  <Button tone="accent" disabled={!startSelId} onClick={() => activateCalendar(startSelId)}>Aktivieren</Button>
+                  <Button disabled={!startSelId} onClick={() => editCalendarById(startSelId)}>Bearbeiten</Button>
                 </div>
-                <button className="btn cal-start__new" onClick={() => setWizardCal('new')}>+ Neuen Kalender erstellen</button>
+                <Button className="cal-start__new" onClick={() => setWizardCal('new')}>+ Neuen Kalender erstellen</Button>
                 {activeCalendar && (
-                  <button className="btn cal-start__new" onClick={() => setShowPicker(false)}>← Zurück zur Ansicht</button>
+                  <Button className="cal-start__new" onClick={() => setShowPicker(false)}>← Zurück zur Ansicht</Button>
                 )}
               </div>
             )}
@@ -782,41 +764,18 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
           </div>
         );
 
-      case 'session':
-        return (
-          <div className="workspace-area">
-            <CaptureInbox sessionId={projectId} database={database} />
-            <EncounterCounters sessionId={projectId} database={database} />
-            {/* #185: ConditionBuilder with session variables from DB */}
-            <ConditionBuilder variables={sessionVars} onChange={() => {}} />
-            {/* #185: PlayerScreen in GM mode */}
-            <PlayerScreen context={{ audience: 'gm' }} database={database} />
-            {/* #185: SessionClock — only rendered once a calendar is configured */}
-            {activeCalendar ? (
-              <SessionClock
-                sessionId={projectId}
-                calendar={activeCalendar}
-                worldTimeStart={0}
-                database={database}
-              />
-            ) : (
-              <p>{t('noCalendar')}</p>
-            )}
-          </div>
-        );
-
       case 'audio':
         return (
           <div className="workspace-area">
             <div className="workspace-area__main">
               <h2>{t('audio')}</h2>
-              <button
-                className="btn btn--primary"
+              <Button
+                tone="accent"
                 onClick={() => void handleOpenSoundboard()}
                 disabled={soundboardOpen}
               >
                 {soundboardOpen ? t('audioSoundboardRunning', 'Audio-Player läuft bereits') : t('audioSoundboardStart', 'Audio-Player starten')}
-              </button>
+              </Button>
             </div>
           </div>
         );
@@ -835,14 +794,14 @@ export function WorkspaceShell({ projectId, projectTitle, projectDir, snapshotsD
             {/* #183: no window.location.reload() — close project and reopen via welcome screen */}
             <SnapshotManager
               projectId={projectId}
-              projectDir={projectDir}
-              snapshotsDir={snapshotsDir}
-              onRestored={onProjectClose}
+              projectDir={projectDir ?? ''}
+              snapshotsDir={snapshotsDir ?? ''}
+              onRestored={onProjectClose ?? (() => {})}
             />
             <hr />
             <UpdateNotification />
             <hr />
-            <button onClick={onProjectClose}>Projekt schließen</button>
+            <button onClick={() => onProjectClose?.()}>Projekt schließen</button>
           </div>
         );
     }

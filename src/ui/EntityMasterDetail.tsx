@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
 import { EntityDetailView } from './EntityDetailView';
+import { Button, ListRow } from './primitives';
 import { stripMarkdown } from '../utils/markdown';
 
 type EntityListItem = { id: string; type: string; title: string; summary: string };
@@ -72,13 +73,15 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
       <div className="emd__list">
         <div className="emd__list-header">
           <span className="emd__list-count">{entities.length} {typeName}</span>
-          <button
-            className="emd__create-btn"
+          <Button
+            tone="accent"
+            variant="outline"
+            size="compact"
             onClick={() => setCreating(true)}
             title={t('new')}
           >
             {t('new')}
-          </button>
+          </Button>
         </div>
 
         {creating && (
@@ -94,30 +97,31 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
                 if (e.key === 'Escape') { setCreating(false); setNewTitle(''); }
               }}
             />
-            <button className="emd__create-confirm" onClick={() => void handleCreate()}>{t('create')}</button>
-            <button className="emd__create-cancel" onClick={() => { setCreating(false); setNewTitle(''); }}>✕</button>
+            <Button tone="accent" size="compact" onClick={() => void handleCreate()}>{t('create')}</Button>
+            <Button variant="ghost" size="compact" onClick={() => { setCreating(false); setNewTitle(''); }}>✕</Button>
           </div>
         )}
 
         {entities.length === 0 && !creating && (
           <div className="emd__empty">
             <p>{t('noneFound', { type: typeName })}</p>
-            <button className="btn btn--primary" onClick={() => setCreating(true)}>
+            <Button tone="accent" onClick={() => setCreating(true)}>
               {t('createFirst', { type: typeName })}
-            </button>
+            </Button>
           </div>
         )}
 
         <ul className="emd__items">
           {entities.map((e) => (
             <li key={e.id}>
-              <button
-                className={`emd__item${selectedId === e.id ? ' emd__item--active' : ''}`}
+              <ListRow
+                className="u-stack u-items-start u-gap-0"
+                selected={selectedId === e.id}
                 onClick={() => handleSelect(e.id)}
               >
                 <span className="emd__item-title">{e.title}</span>
                 {e.summary && <span className="emd__item-summary">{stripMarkdown(e.summary)}</span>}
-              </button>
+              </ListRow>
             </li>
           ))}
         </ul>

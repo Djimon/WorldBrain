@@ -122,8 +122,8 @@ describe('M2-S01 entity UI model and service adapter', () => {
       insertEntityType(db);
       insertBaseEntity(db);
       db.prepare(
-        'INSERT INTO campaign_entity_overrides (entity_id, patch_json, created_at, updated_at) VALUES (?, ?, ?, ?)',
-      ).run('character-ada', JSON.stringify({ title: 'Lady Thorn' }), '2026-06-23T00:00:00.000Z', '2026-06-23T00:00:00.000Z');
+        'INSERT INTO campaign_entity_overrides (campaign_id, entity_id, patch_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      ).run('test-campaign', 'character-ada', JSON.stringify({ title: 'Lady Thorn' }), '2026-06-23T00:00:00.000Z', '2026-06-23T00:00:00.000Z');
       const { getEffectiveEntity } = await getEntityService();
 
       const result = await getEffectiveEntity({ database: asyncDb, entityId: 'character-ada' });

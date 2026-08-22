@@ -16,6 +16,7 @@ import { formatCalendarDate } from '../../core_data/calendar-schema';
 import { loadActiveCalendar } from '../services/calendar-service';
 import { getRelations } from '../services/relation-service';
 import type { RelationRow } from '../services/relation-service';
+import { Button, Chip, Tabs } from './primitives';
 
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
@@ -61,9 +62,14 @@ type EntityDetailViewProps = {
   /** Called after the entity is deleted — the parent owns what happens next
    *  (close an inline panel, clear a list selection, ...). */
   onDeleted?: () => void;
+  /** Read-only compact peek: render ONLY the overview tab (no registered extra
+   *  tabs, no tab strip, no edit pencil). Used by the graph node-preview so it
+   *  can't re-mount its own Graph tab → infinite recursion. The caller pairs it
+   *  with its own jump-to-entity affordance (e.g. the graph's "Öffnen" button). */
+  overviewOnly?: boolean;
 };
 
-export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted }: EntityDetailViewProps) {
+export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted, overviewOnly }: EntityDetailViewProps) {
   const { t } = useTranslation('entity');
   const [activeTab, setActiveTab] = useState('overview');
   const [extraTabs] = useState<TabDefinition[]>(() => [...registeredTabs]);
@@ -229,14 +235,12 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
           ) : Object.keys(schema.properties).length > 0 && (
             <div className="entity-detail__field">
               <label className="entity-detail__field-label">{t('field.properties')}</label>
-              <div className="entity-detail__props-form">
-                <PropertiesForm
-                  schema={schema.properties}
-                  values={editProps}
-                  onChange={(patch) => setEditProps((prev) => ({ ...prev, ...patch }))}
-                  entities={allEntities}
-                />
-              </div>
+              <PropertiesForm
+                schema={schema.properties}
+                values={editProps}
+                onChange={(patch) => setEditProps((prev) => ({ ...prev, ...patch }))}
+                entities={allEntities}
+              />
             </div>
           )}
         </div>
@@ -341,7 +345,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
         </div>
       ),
     },
-    ...extraTabs,
+    ...(overviewOnly ? [] : extraTabs),
   ];
 
   const activeTabDef = tabs.find((t) => t.id === activeTab) ?? tabs[0];
@@ -355,38 +359,34 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
         ) : (
           <div className="entity-detail__name">{entity.title}</div>
         )}
-        <div className="entity-detail__type-badge">{entity.type}</div>
+        <Chip tone="accent" className="entity-detail__type-badge">{entity.type}</Chip>
         {editing ? (
           <>
-            <button className="btn btn--primary" style={{ fontSize: '0.8rem', padding: '3px 10px' }}
-              onClick={() => void commitEdit()}>{t('save')}</button>
-            <button className="btn" style={{ fontSize: '0.8rem', padding: '3px 10px' }}
-              onClick={() => setEditing(false)}>{t('cancel')}</button>
+            <Button tone="accent" size="compact" onClick={() => void commitEdit()}>{t('save')}</Button>
+            <Button size="compact" onClick={() => setEditing(false)}>{t('cancel')}</Button>
             {deletePrompt ? (
               <span className="entity-detail__delete-confirm">
                 <span>{t('deleteConfirm', 'Wirklich löschen?')}</span>
-                <button className="btn" style={{ color: 'var(--color-status-failure)' }}
-                  onClick={() => void handleDelete()}>{t('deleteConfirmYes', 'Ja, löschen')}</button>
-                <button className="btn" onClick={() => setDeletePrompt(false)}>{t('cancel')}</button>
+                <Button tone="danger" variant="outline" size="compact" onClick={() => void handleDelete()}>{t('deleteConfirmYes', 'Ja, löschen')}</Button>
+                <Button size="compact" onClick={() => setDeletePrompt(false)}>{t('cancel')}</Button>
               </span>
             ) : (
-              <button className="btn" style={{ fontSize: '0.8rem', padding: '3px 10px', color: 'var(--color-status-failure)' }}
-                onClick={() => setDeletePrompt(true)}>{t('delete', 'Löschen')}</button>
+              <Button tone="danger" variant="outline" size="compact" onClick={() => setDeletePrompt(true)}>{t('delete', 'Löschen')}</Button>
             )}
           </>
-        ) : (
-          <button className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', 'Bearbeiten')} title={t('edit', 'Bearbeiten')}>✏️</button>
+        ) : overviewOnly ? null : (
+          <Button variant="ghost" size="icon" className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', 'Bearbeiten')} title={t('edit', 'Bearbeiten')}>✏️</Button>
         )}
       </div>
-      <div className="entity-detail__tabs" role="tablist">
-        {tabs.map((tab) => (
-          <button key={tab.id} role="tab" aria-selected={activeTab === tab.id}
-            className={`entity-detail__tab${activeTab === tab.id ? ' active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {!overviewOnly && (
+        <Tabs
+          className="entity-detail__tabs"
+          label={t('entityDetailTabs', 'Detailbereiche')}
+          activeId={activeTab}
+          onSelect={setActiveTab}
+          options={tabs.map((tab) => ({ id: tab.id, label: tab.label }))}
+        />
+      )}
       <div className="entity-detail__body" role="tabpanel">
         {activeTabDef?.render({ entityId, database, onNavigate: onNavigateToEntity })}
       </div>

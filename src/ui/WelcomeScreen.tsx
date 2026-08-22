@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { readAppConfig } from '../services/app-config-service';
 import type { AppConfig, ProjectEntry } from '../services/app-config-service';
+import { Button } from './primitives';
 
 interface WelcomeScreenProps {
   configPath?: string;
@@ -28,14 +29,14 @@ export function WelcomeScreen({ configPath = 'app-config.json', onCreateProject,
       <h1>WorldBuilderX</h1>
 
       {isStale && (
-        <p role="status" style={{ color: 'var(--color-status-warning)' }}>
+        <p role="status" className="welcome-screen__status">
           {t('staleProject')}
         </p>
       )}
 
       <div className="welcome-screen__actions">
-        <button className="btn btn--primary" onClick={onCreateProject}>{t('createNewProject')}</button>
-        <button className="btn" onClick={onImportZip}>{t('importZip')}</button>
+        <Button tone="accent" onClick={onCreateProject}>{t('createNewProject')}</Button>
+        <Button onClick={onImportZip}>{t('importZip')}</Button>
       </div>
 
       {projects.length > 0 && (

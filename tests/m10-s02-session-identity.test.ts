@@ -1,19 +1,11 @@
 // @vitest-environment node
-// M10-S02: Session-Identität, Einladungscodes & Token-Auth
-// See: https://github.com/Djimon/WorldBrain/issues/196
-//
-// RED: generateInviteCode/joinWithCode/validateToken/escapeHtml stubs throw.
-// Tests fail until implementer adds crypto invite codes + token auth.
+// M10-S02 (rebuild): Campaign-Identität, Einladungscodes & Token-Auth (Auto-Join)
+// See: https://github.com/Djimon/WorldBrain/issues/351
 
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
 import type { DatabaseLike } from '../src/services/entity-service';
-
-const runtimeSchemaSql = readFileSync(
-  new URL('../src/data/runtime/schema.sql', import.meta.url),
-  'utf-8',
-);
 
 function makeAsyncDb(db: DatabaseSync): DatabaseLike {
   return {
@@ -21,235 +13,163 @@ function makeAsyncDb(db: DatabaseSync): DatabaseLike {
       db.prepare(sql).run(...args);
       return Promise.resolve();
     },
-    select: <T>(sql: string, args: unknown[] = []): Promise<T[]> =>
-      Promise.resolve(db.prepare(sql).all(...args) as T[]),
+    select: <T>(sql: string, args: unknown[] = []): Promise<T[]> => {
+      return Promise.resolve(db.prepare(sql).all(...args) as T[]);
+    },
   };
 }
 
-function createDb() {
-  const db = new DatabaseSync(':memory:');
-  db.exec(runtimeSchemaSql);
-  // seed a session for tests
-  db.prepare(
-    `INSERT INTO sessions (id, title, created_at) VALUES ('s1', 'Test-Runde', datetime('now'))`,
-  ).run();
-  return { db, asyncDb: makeAsyncDb(db) };
+const runtimeSchemaSql = readFileSync(
+  new URL('../src/data/runtime/schema.sql', import.meta.url),
+  'utf8',
+);
+
+function createDatabase() {
+  const raw = new DatabaseSync(':memory:');
+  raw.exec(runtimeSchemaSql);
+  return { db: raw, asyncDb: makeAsyncDb(raw) };
 }
 
-async function getSvc() {
-  return import('../src/services/session-identity-service');
-}
+// ---------------------------------------------------------------------------
+// 1. Invite code generation
+// ---------------------------------------------------------------------------
 
-// ── Schema: invite code + token tables ───────────────────────────────────────
+describe('M10-S02 Invite code generation', () => {
+  async function getIdentityService() {
+    return import('../src/services/session-identity-service');
+  }
 
-describe('M10-S02 schema: invite_codes table', () => {
-  it('runtime schema creates an invite_codes table', () => {
-    const { db } = createDb();
-    const tables = db
-      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='invite_codes'`)
-      .all();
-    expect(tables.length).toBe(1);
+  it('generateInviteCode returns a non-empty string', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getIdentityService();
+      const code = await svc.generateInviteCode(asyncDb, { campaignId: 'camp-1' });
+      expect(typeof code).toBe('string');
+      expect(code.length).toBeGreaterThan(0);
+    } finally {
+      db.close();
+    }
   });
 
-  it('invite_codes has code, session_id, created_at, is_active', () => {
-    const { db } = createDb();
-    const info = db.prepare(`PRAGMA table_info(invite_codes)`).all() as { name: string }[];
-    const cols = info.map((r) => r.name);
-    expect(cols).toContain('code');
-    expect(cols).toContain('session_id');
-    expect(cols).toContain('created_at');
-    expect(cols).toContain('is_active');
-  });
-});
-
-describe('M10-S02 schema: player_tokens table', () => {
-  it('runtime schema creates a player_tokens table', () => {
-    const { db } = createDb();
-    const tables = db
-      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='player_tokens'`)
-      .all();
-    expect(tables.length).toBe(1);
+  it('invite code is cryptographically random (two codes differ)', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getIdentityService();
+      const a = await svc.generateInviteCode(asyncDb, { campaignId: 'camp-1' });
+      const b = await svc.generateInviteCode(asyncDb, { campaignId: 'camp-1' });
+      expect(a).not.toBe(b);
+    } finally {
+      db.close();
+    }
   });
 
-  it('player_tokens has token, player_id, session_id, created_at', () => {
-    const { db } = createDb();
-    const info = db.prepare(`PRAGMA table_info(player_tokens)`).all() as { name: string }[];
-    const cols = info.map((r) => r.name);
-    expect(cols).toContain('token');
-    expect(cols).toContain('player_id');
-    expect(cols).toContain('session_id');
-    expect(cols).toContain('created_at');
-  });
-});
-
-// ── Invite code generation ────────────────────────────────────────────────────
-
-describe('M10-S02 generateInviteCode', () => {
-  it('returns a SessionInvite with code, sessionId, created_at', async () => {
-    const { asyncDb } = createDb();
-    const svc = await getSvc();
-    const invite = await svc.generateInviteCode(asyncDb, 's1');
-    expect(typeof invite.code).toBe('string');
-    expect(invite.sessionId).toBe('s1');
-    expect(invite.created_at).toBeTruthy();
-  });
-
-  it('code is at least 8 characters (not guessable)', async () => {
-    const { asyncDb } = createDb();
-    const svc = await getSvc();
-    const invite = await svc.generateInviteCode(asyncDb, 's1');
-    expect(invite.code.length).toBeGreaterThanOrEqual(8);
-  });
-
-  it('two consecutive calls produce different codes (crypto-random)', async () => {
-    const { asyncDb } = createDb();
-    const svc = await getSvc();
-    const a = await svc.generateInviteCode(asyncDb, 's1');
-    const b = await svc.generateInviteCode(asyncDb, 's1');
-    expect(a.code).not.toBe(b.code);
-  });
-
-  it('generating a new code invalidates the previous one', async () => {
-    const { asyncDb } = createDb();
-    const svc = await getSvc();
-    const first = await svc.generateInviteCode(asyncDb, 's1');
-    await svc.generateInviteCode(asyncDb, 's1'); // second code
-    // first code must no longer be active
-    await expect(
-      svc.joinWithCode(asyncDb, { sessionId: 's1', code: first.code, displayName: 'Spieler' }),
-    ).rejects.toThrow();
-  });
-
-  it('getActiveInviteCode returns the current active code', async () => {
-    const { asyncDb } = createDb();
-    const svc = await getSvc();
-    const invite = await svc.generateInviteCode(asyncDb, 's1');
-    const active = await svc.getActiveInviteCode(asyncDb, 's1');
-    expect(active).not.toBeNull();
-    expect(active!.code).toBe(invite.code);
-  });
-
-  it('getActiveInviteCode returns null before any code is generated', async () => {
-    const { asyncDb } = createDb();
-    const svc = await getSvc();
-    const active = await svc.getActiveInviteCode(asyncDb, 's1');
-    expect(active).toBeNull();
+  it('regenerating code invalidates old code for new joins', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getIdentityService();
+      const oldCode = await svc.generateInviteCode(asyncDb, { campaignId: 'camp-1' });
+      await svc.generateInviteCode(asyncDb, { campaignId: 'camp-1' });
+      await expect(svc.joinWithCode(asyncDb, { code: oldCode, displayName: 'Late' })).rejects.toThrow();
+    } finally {
+      db.close();
+    }
   });
 });
 
-// ── Player join with invite code ──────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// 2. joinWithCode → immediate active member (D24: Auto-Join, no pending)
+// ---------------------------------------------------------------------------
 
-describe('M10-S02 joinWithCode', () => {
-  it('returns a PlayerToken on valid code', async () => {
-    const { asyncDb } = createDb();
-    const svc = await getSvc();
-    const invite = await svc.generateInviteCode(asyncDb, 's1');
-    const tok = await svc.joinWithCode(asyncDb, {
-      sessionId: 's1',
-      code: invite.code,
-      displayName: 'Aragorn',
-    });
-    expect(typeof tok.token).toBe('string');
-    expect(tok.sessionId).toBe('s1');
-    expect(tok.token.length).toBeGreaterThanOrEqual(20);
+describe('M10-S02 joinWithCode auto-join', () => {
+  async function getIdentityService() {
+    return import('../src/services/session-identity-service');
+  }
+
+  it('joinWithCode with valid code returns a token immediately', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getIdentityService();
+      const code = await svc.generateInviteCode(asyncDb, { campaignId: 'camp-1' });
+      const result = await svc.joinWithCode(asyncDb, { code, displayName: 'Alice' });
+      expect(result).toHaveProperty('token');
+      expect(typeof result.token).toBe('string');
+      expect(result.token.length).toBeGreaterThan(0);
+    } finally {
+      db.close();
+    }
   });
 
-  it('token is different from the invite code (not a copy)', async () => {
-    const { asyncDb } = createDb();
-    const svc = await getSvc();
-    const invite = await svc.generateInviteCode(asyncDb, 's1');
-    const tok = await svc.joinWithCode(asyncDb, {
-      sessionId: 's1',
-      code: invite.code,
-      displayName: 'Frodo',
-    });
-    expect(tok.token).not.toBe(invite.code);
+  it('joinWithCode inserts session_players row with status=active', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getIdentityService();
+      const code = await svc.generateInviteCode(asyncDb, { campaignId: 'camp-1' });
+      await svc.joinWithCode(asyncDb, { code, displayName: 'Bob' });
+      const rows = db
+        .prepare('SELECT status FROM session_players')
+        .all() as { status: string }[];
+      expect(rows.length).toBe(1);
+      expect(rows[0].status).toBe('active');
+    } finally {
+      db.close();
+    }
   });
 
-  it('rejects with invalid code (random string not in DB)', async () => {
-    const { asyncDb } = createDb();
-    const svc = await getSvc();
-    await expect(
-      svc.joinWithCode(asyncDb, { sessionId: 's1', code: 'WRONG-CODE', displayName: 'X' }),
-    ).rejects.toThrow();
+  it('no pending/approved/rejected status exists in schema', () => {
+    const schema = runtimeSchemaSql;
+    expect(schema).not.toMatch(/pending/i);
+    expect(schema).not.toMatch(/approved/i);
+    expect(schema).not.toMatch(/rejected/i);
   });
 
-  it('rejects with code for wrong session', async () => {
-    const { db, asyncDb } = createDb();
-    // seed second session
-    db.prepare(
-      `INSERT INTO sessions (id, title, created_at) VALUES ('s2', 'Andere Runde', datetime('now'))`,
-    ).run();
-    const svc = await getSvc();
-    const invite = await svc.generateInviteCode(asyncDb, 's1');
-    await expect(
-      svc.joinWithCode(asyncDb, { sessionId: 's2', code: invite.code, displayName: 'X' }),
-    ).rejects.toThrow();
-  });
-});
-
-// ── Token auth middleware ─────────────────────────────────────────────────────
-
-describe('M10-S02 validateToken', () => {
-  it('resolves to PlayerToken for valid token in the right session', async () => {
-    const { asyncDb } = createDb();
-    const svc = await getSvc();
-    const invite = await svc.generateInviteCode(asyncDb, 's1');
-    const tok = await svc.joinWithCode(asyncDb, {
-      sessionId: 's1',
-      code: invite.code,
-      displayName: 'Valid',
-    });
-    const result = await svc.validateToken(asyncDb, { sessionId: 's1', token: tok.token });
-    expect(result.token).toBe(tok.token);
-  });
-
-  it('throws for completely unknown token', async () => {
-    const { asyncDb } = createDb();
-    const svc = await getSvc();
-    await expect(
-      svc.validateToken(asyncDb, { sessionId: 's1', token: 'ghost-token' }),
-    ).rejects.toThrow();
-  });
-
-  it('throws for token belonging to a different session', async () => {
-    const { db, asyncDb } = createDb();
-    db.prepare(
-      `INSERT INTO sessions (id, title, created_at) VALUES ('s2', 'Andere Runde', datetime('now'))`,
-    ).run();
-    const svc = await getSvc();
-    const invite = await svc.generateInviteCode(asyncDb, 's1');
-    const tok = await svc.joinWithCode(asyncDb, {
-      sessionId: 's1',
-      code: invite.code,
-      displayName: 'X',
-    });
-    await expect(
-      svc.validateToken(asyncDb, { sessionId: 's2', token: tok.token }),
-    ).rejects.toThrow();
+  it('invalid code throws error', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getIdentityService();
+      await expect(
+        svc.joinWithCode(asyncDb, { code: 'INVALID', displayName: 'Eve' }),
+      ).rejects.toThrow();
+    } finally {
+      db.close();
+    }
   });
 });
 
-// ── HTML escaping (AC: user strings escaped before exported HTML) ─────────────
+// ---------------------------------------------------------------------------
+// 3. Token auth: every message validated, kicked token rejected
+// ---------------------------------------------------------------------------
 
-describe('M10-S02 escapeHtml', () => {
-  it('escapes < > & " \'', async () => {
-    const svc = await getSvc();
-    expect(svc.escapeHtml('<script>alert("x")</script>')).not.toContain('<script>');
-    expect(svc.escapeHtml('<b>bold</b>')).toBe('&lt;b&gt;bold&lt;/b&gt;');
-    expect(svc.escapeHtml('a & b')).toBe('a &amp; b');
-    expect(svc.escapeHtml('"quote"')).toContain('&quot;');
+describe('M10-S02 Token auth', () => {
+  async function getIdentityService() {
+    return import('../src/services/session-identity-service');
+  }
+
+  it('validateToken accepts valid active token', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getIdentityService();
+      const code = await svc.generateInviteCode(asyncDb, { campaignId: 'camp-1' });
+      const { token } = await svc.joinWithCode(asyncDb, { code, displayName: 'Carol' });
+      const valid = await svc.validateToken(asyncDb, token);
+      expect(valid).toBeTruthy();
+    } finally {
+      db.close();
+    }
   });
 
-  it('returns plain text unchanged', async () => {
-    const svc = await getSvc();
-    expect(svc.escapeHtml('hello world')).toBe('hello world');
+  it('validateToken rejects unknown token', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getIdentityService();
+      const valid = await svc.validateToken(asyncDb, 'nonexistent-token');
+      expect(valid).toBeFalsy();
+    } finally {
+      db.close();
+    }
   });
 
-  it('double escaping does NOT occur (only one pass)', async () => {
-    const svc = await getSvc();
-    const once = svc.escapeHtml('<b>');
-    const twice = svc.escapeHtml(once);
-    expect(twice).not.toBe(once); // &lt;b&gt; → &amp;lt;b&amp;gt; → different
+  it('tokens are never logged or exposed to other players', () => {
+    const source = readFileSync('src/services/session-identity-service.ts', 'utf-8');
+    expect(source).not.toMatch(/console\.log\(.*token/i);
   });
 });

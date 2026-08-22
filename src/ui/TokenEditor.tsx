@@ -6,9 +6,10 @@
 // map-token-service.
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { MapTokenRow, StatusChip, TokenRenderStyle } from '../services/map-token-service';
+import type { Counter, MapTokenRow, StatusChip, TokenRenderStyle } from '../services/map-token-service';
 import { getIcon } from '../services/icon-set-registry';
 import { IconPicker } from './IconPicker';
+import { Button, Panel, Segmented } from './primitives';
 
 // #300: chip.icon may be a registry ref ("set_id:icon_key") or a legacy
 // literal glyph string (no colon -> getIcon returns undefined, falls back
@@ -28,8 +29,7 @@ export interface TokenEditPatch {
   render_style: TokenRenderStyle;
   art_offset_x: number;
   art_offset_y: number;
-  counter_label: string | null;
-  counter_value: number | null;
+  counters: Counter[];
   status_chips: StatusChip[];
 }
 
@@ -48,6 +48,7 @@ function clampPct(v: number): number {
 }
 
 const MAX_STATUS_CHIPS = 12;
+const MAX_COUNTERS = 5;
 
 export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelete, onClose }: TokenEditorProps) {
   const { t } = useTranslation('map');
@@ -57,8 +58,7 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
   const [renderStyle, setRenderStyle] = useState<TokenRenderStyle>(token.render_style);
   const [offX, setOffX] = useState(token.art_offset_x);
   const [offY, setOffY] = useState(token.art_offset_y);
-  const [counterLabel, setCounterLabel] = useState(token.counter_label ?? '');
-  const [counterValue, setCounterValue] = useState(token.counter_value != null ? String(token.counter_value) : '');
+  const [counters, setCounters] = useState<Counter[]>(token.counters);
   const [chips, setChips] = useState<StatusChip[]>(token.status_chips);
   const [openPickerIndex, setOpenPickerIndex] = useState<number | null>(null);
 
@@ -87,6 +87,14 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
   }
   function onCropUp() { dragStart.current = null; }
 
+  function addCounter() {
+    setCounters((prev) => (prev.length >= MAX_COUNTERS ? prev : [...prev, { label: '', value: 0 }]));
+  }
+  function removeCounter(i: number) { setCounters((prev) => prev.filter((_, idx) => idx !== i)); }
+  function updateCounter(i: number, patch: Partial<Counter>) {
+    setCounters((prev) => prev.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
+  }
+
   function updateChip(i: number, patch: Partial<StatusChip>) {
     setChips((prev) => prev.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
   }
@@ -108,8 +116,7 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
       render_style: renderStyle,
       art_offset_x: offX,
       art_offset_y: offY,
-      counter_label: counterLabel || null,
-      counter_value: counterValue.trim() === '' ? null : Number(counterValue),
+      counters: counters.filter((c) => c.label.trim() !== '' || c.value !== 0),
       status_chips: cleanChips,
     });
   }
@@ -117,10 +124,10 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
   const artSrc = artAssetId ? resolveAssetUrl(artAssetId) : null;
 
   return (
-    <div className="token-editor" role="dialog" aria-label={t('token.editorTitle', 'Token bearbeiten')}>
+    <Panel variant="popover" className="token-editor u-stack u-gap-2" role="dialog" aria-label={t('token.editorTitle', 'Token bearbeiten')}>
       <div className="token-editor__header">
         <strong>{t('token.editorTitle', 'Token bearbeiten')}</strong>
-        <button type="button" className="token-editor__close" onClick={onClose} title={t('close', 'Schließen')}>✕</button>
+        <Button variant="ghost" size="icon" onClick={onClose} title={t('close', 'Schließen')}>✕</Button>
       </div>
 
       <label className="token-editor__field">
@@ -130,19 +137,19 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
 
       <fieldset className="token-editor__art">
         <legend>{t('token.art', 'Bild')}</legend>
-        <div className="token-editor__mode">
-          <button type="button" className={`token-editor__mode-btn${renderStyle === 'token' ? ' active' : ''}`}
-            aria-pressed={renderStyle === 'token'} onClick={() => setRenderStyle('token')}>
-            {t('token.modeToken', 'Token (Kreis)')}
-          </button>
-          <button type="button" className={`token-editor__mode-btn${renderStyle === 'plain' ? ' active' : ''}`}
-            aria-pressed={renderStyle === 'plain'} onClick={() => setRenderStyle('plain')}>
-            {t('token.modePlain', 'Plain (ganzes Bild)')}
-          </button>
-        </div>
-        <button type="button" className="token-editor__upload" onClick={() => void pickArt()}>
+        <Segmented
+          label={t('token.mode', 'Darstellung')}
+          size="compact"
+          value={renderStyle}
+          onChange={(id) => setRenderStyle(id as TokenRenderStyle)}
+          options={[
+            { id: 'token', label: t('token.modeToken', 'Token (Kreis)') },
+            { id: 'plain', label: t('token.modePlain', 'Plain (ganzes Bild)') },
+          ]}
+        />
+        <Button size="compact" className="token-editor__upload" onClick={() => void pickArt()}>
           {artAssetId ? t('token.replaceArt', 'Bild ersetzen') : t('token.uploadArt', 'Bild hochladen')}
-        </button>
+        </Button>
 
         {artSrc && renderStyle === 'token' && (
           <div
@@ -170,23 +177,29 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
       </label>
 
       <fieldset className="token-editor__counter">
-        <legend>{t('token.counter', 'Zähler')}</legend>
-        <input type="text" aria-label={t('token.counterLabel', 'Zähler-Bezeichnung')} placeholder={t('token.counterLabel', 'Zähler-Bezeichnung')}
-          value={counterLabel} onChange={(e) => setCounterLabel(e.target.value)} />
-        <input type="number" aria-label={t('token.counterValue', 'Zähler-Wert')} placeholder="0"
-          value={counterValue} onChange={(e) => setCounterValue(e.target.value)} />
-        {(counterLabel || counterValue) && (
-          <button type="button" className="token-editor__counter-clear"
-            onClick={() => { setCounterLabel(''); setCounterValue(''); }}>
-            {t('token.clearCounter', 'Zähler entfernen')}
-          </button>
-        )}
+        <legend>{t('token.counters', 'Zähler')}</legend>
+        {counters.map((c, i) => (
+          <div key={i} className="token-editor__row u-row u-gap-1">
+            <input type="number" aria-label={t('token.counterValue', 'Wert')} placeholder="0"
+              value={c.value} onChange={(e) => updateCounter(i, { value: Number(e.target.value) })} />
+            <input type="text" aria-label={t('token.counterLabel', 'Bezeichnung')} placeholder={t('token.counterLabel', 'Bezeichnung')}
+              value={c.label} onChange={(e) => updateCounter(i, { label: e.target.value })} />
+            <input type="color" aria-label={t('token.counterColor', 'Farbe')}
+              value={c.color || '#6ea8fe'} onChange={(e) => updateCounter(i, { color: e.target.value })} />
+            <Button variant="ghost" size="compact" onClick={() => removeCounter(i)} title={t('token.removeCounter', 'Zähler entfernen')}>✕</Button>
+          </div>
+        ))}
+        <Button size="compact" className="token-editor__add-counter" onClick={addCounter}
+          disabled={counters.length >= MAX_COUNTERS}
+          title={counters.length >= MAX_COUNTERS ? t('token.countersMaxed', 'Maximal 5 Zähler') : undefined}>
+          {t('token.addCounter', '+ Zähler')}
+        </Button>
       </fieldset>
 
       <fieldset className="token-editor__chips">
         <legend>{t('token.chips', 'Status-Chips')}</legend>
         {chips.map((chip, i) => (
-          <div key={i} className="token-editor__chip-row">
+          <div key={i} className="token-editor__row token-editor__chip-row u-row u-gap-1">
             <button type="button" className="token-editor__chip-icon-trigger"
               aria-label={t('token.chipIconPicker', 'Symbol wählen')}
               onClick={() => setOpenPickerIndex(openPickerIndex === i ? null : i)}>
@@ -211,21 +224,21 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
               value={chip.text ?? ''} onChange={(e) => updateChip(i, { text: e.target.value })} />
             <input type="color" aria-label={t('token.chipColor', 'Chip-Farbe')}
               value={chip.color || '#ffffff'} onChange={(e) => updateChip(i, { color: e.target.value })} />
-            <button type="button" onClick={() => removeChip(i)} title={t('token.removeChip', 'Chip entfernen')}>✕</button>
+            <Button variant="ghost" size="compact" onClick={() => removeChip(i)} title={t('token.removeChip', 'Chip entfernen')}>✕</Button>
           </div>
         ))}
-        <button type="button" className="token-editor__add-chip" onClick={addChip}
+        <Button size="compact" className="token-editor__add-chip" onClick={addChip}
           disabled={chips.length >= MAX_STATUS_CHIPS}
           title={chips.length >= MAX_STATUS_CHIPS ? t('token.chipsMaxed', 'Maximal 12 Chips (voller Kreis)') : undefined}>
           {t('token.addChip', '+ Chip')}
-        </button>
+        </Button>
       </fieldset>
 
       <div className="token-editor__actions">
-        <button type="button" className="token-editor__save" onClick={save}>{t('save', 'Speichern')}</button>
-        <button type="button" className="token-editor__delete" onClick={onDelete}>{t('token.delete', 'Token löschen')}</button>
+        <Button tone="accent" size="compact" onClick={save}>{t('save', 'Speichern')}</Button>
+        <Button tone="danger" variant="outline" size="compact" onClick={onDelete}>{t('token.delete', 'Token löschen')}</Button>
       </div>
-    </div>
+    </Panel>
   );
 }
 

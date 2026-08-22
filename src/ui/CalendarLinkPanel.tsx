@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { DatabaseLike } from '../services/entity-service';
 import { anchorForEquivalence, convertDate } from '../../core_data/calendar-schema';
 import { updateCalendarAnchor } from '../services/calendar-service';
+import { Button, Panel } from './primitives';
 
 export interface CalShape {
   id: string;
@@ -59,7 +60,7 @@ export function CalendarLinkPanel({ database, active, calendars, loadCalendar, o
   if (others.length === 0) return null;
 
   return (
-    <section className="cal-section cal-link">
+    <Panel className="cal-section cal-link u-stack u-gap-3">
       <button className="cal-link__toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
         {open ? '▾' : '▸'} Kalender verknüpfen
       </button>
@@ -73,7 +74,7 @@ export function CalendarLinkPanel({ database, active, calendars, loadCalendar, o
               {others.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
             <LabeledDate value={bDate} onChange={setBDate} />
-            <button className="btn btn--primary" onClick={link} disabled={!target}>Verknüpfen</button>
+            <Button tone="accent" onClick={link} disabled={!target}>Verknüpfen</Button>
           </div>
           {target && (
             <div className="cal-link__preview">
@@ -84,7 +85,7 @@ export function CalendarLinkPanel({ database, active, calendars, loadCalendar, o
           {status && <div className="cal-link__status">{status}</div>}
         </>
       )}
-    </section>
+    </Panel>
   );
 }
 

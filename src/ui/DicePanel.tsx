@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from './primitives';
 
 interface DicePanelProps {
   preloadedExpression?: string;
@@ -59,13 +60,12 @@ export function DicePanel({ preloadedExpression }: DicePanelProps) {
     <div className="dice-panel">
       <div className="dice-panel__buttons">
         {DICE_SIDES.map((sides) => (
-          <button
+          <Button
             key={sides}
-            className="btn dice-panel__die"
             onClick={() => setExpression(`1d${sides}`)}
           >
             {`${diePrefix}${sides}`}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -76,9 +76,9 @@ export function DicePanel({ preloadedExpression }: DicePanelProps) {
           value={expression}
           onChange={(e) => setExpression(e.target.value)}
         />
-        <button className="btn btn--primary" onClick={handleRoll}>
+        <Button tone="accent" onClick={handleRoll}>
           {t('dice.roll', 'Würfeln')}
-        </button>
+        </Button>
       </div>
 
       <ul className="dice-panel__history" aria-label={t('dice.history', 'Verlauf')}>

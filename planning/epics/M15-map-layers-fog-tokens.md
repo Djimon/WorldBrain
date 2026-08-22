@@ -22,7 +22,7 @@ chips. Maps become organizable in a nested folder tree.
 ## Out Of Scope
 
 - Dynamic lighting / line-of-sight (fog is manual paint only — no automated vision).
-- Initiative / turn order / combat automation (tokens carry a counter + status chips, no engine).
+- ~~Initiative / turn order / combat automation~~ **NUR FÜR M15 out-of-scope. Produktentscheidung 2026-08: Kampf/VTT ist gewollt** → eigenes Sub-Epic `M10b-combat-engine.md` (Initiative/Runden/HP/Würfel). M15-Tokens tragen weiterhin nur Counter + Status-Chips (keine Engine hier); die Engine lebt in M10b.
 - Token auto-binding to character-sheet fields (counter is token-local/ad-hoc in V1).
 - Cross-session token position history (position is one session-scoped value, not a timeline).
 - Rendering-engine swap (see **Rendering Reality** — we build on the existing Canvas/img MapViewer).

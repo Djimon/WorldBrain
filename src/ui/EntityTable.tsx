@@ -121,7 +121,7 @@ export function EntityTable({ entityType, propertiesSchema = {}, database }: Pro
         <thead>
           <tr>
             {shownCols.map((col) => (
-              <th key={col} onClick={() => handleSort(col)} style={{ cursor: 'pointer' }}>
+              <th key={col} onClick={() => handleSort(col)} className="u-clickable">
                 {propertiesSchema[col]?.title ?? col.charAt(0).toUpperCase() + col.slice(1)}
                 {sort?.key === col ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}
               </th>

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClipButton } from './ClipButton';
 import type { AudioChannelRow, AudioPresetRow, ChannelMixerPatch } from '../services/audio-service';
+import { Button, Chip, Panel } from './primitives';
 
 const MAX_CLIP_SLOTS = 8;
 
@@ -91,13 +92,13 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
       <div className="channel-row__name-block">
         <div className="channel-row__name">{channel.name || t('audioChannelUnnamed', 'Kanal')}</div>
         <div className="channel-row__chips">
-          <span className="channel-row__chip">
+          <Chip variant="outline" size="sm">
             {channel.mode === 'add' ? t('audioModeAdd', 'Hinzufügen') : t('audioModeReplace', 'Ersetzen')}
-          </span>
-          <span className="channel-row__chip">
+          </Chip>
+          <Chip variant="outline" size="sm">
             {channel.transition_type === 'fade' ? <FadeIcon /> : <CutIcon />}
             {channel.transition_type === 'fade' ? t('audioTransitionFade', 'Überblenden') : t('audioTransitionCut', 'Schnitt')}
-          </span>
+          </Chip>
         </div>
       </div>
 
@@ -114,16 +115,16 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
       </div>
 
       <div className="channel-row__mixer">
-        <button
-          type="button"
-          className="channel-row__mixer-toggle"
-          aria-expanded={mixerExpanded}
+        <Button
+          size="icon"
+          className="u-noshrink"
+          aria-pressed={mixerExpanded}
           aria-label={t('audioMixerToggle', 'Balance & EQ')}
           title={t('audioMixerToggle', 'Balance & EQ')}
           onClick={() => setMixerExpanded((v) => !v)}
         >
           🎚
-        </button>
+        </Button>
 
         <label className="channel-row__volume">
           {t('audioVolume', 'Lautstärke')}
@@ -132,31 +133,31 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
           <span className="channel-row__db">{dbFromLinear(channel.volume)}</span>
         </label>
 
-        <button
-          type="button"
-          className="channel-row__mute"
+        <Button
+          size="icon"
+          className="u-noshrink"
           aria-pressed={!!channel.muted}
           aria-label={t('audioMute', 'Stumm')}
           title={t('audioMute', 'Stumm')}
           onClick={() => onMixerChange({ muted: !channel.muted })}
         >
           {channel.muted ? '🔇' : '🔊'}
-        </button>
+        </Button>
 
-        <button
-          type="button"
-          className="channel-row__settings-btn"
+        <Button
+          size="icon"
+          className="u-noshrink"
           aria-label={t('audioChannelSettings', 'Kanaleinstellungen')}
           title={t('audioChannelSettings', 'Kanaleinstellungen')}
-          aria-expanded={settingsOpen}
+          aria-pressed={settingsOpen}
           onClick={() => setSettingsOpen((v) => !v)}
         >
           ⚙
-        </button>
+        </Button>
       </div>
 
       {mixerExpanded && (
-        <div className="channel-row__settings-popover" role="group" aria-label={t('audioMixerToggle', 'Balance & EQ')}>
+        <Panel className="channel-row__settings-popover u-cluster u-items-end u-gap-3" role="group" aria-label={t('audioMixerToggle', 'Balance & EQ')}>
           <label className="channel-row__balance" title={eqDisabledTitle}>
             {t('audioBalance', 'Balance')}
             <input
@@ -181,14 +182,14 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
             <input type="range" min={-12} max={12} step={0.5} value={channel.eq_high} disabled={hasActiveLinkClip}
               onChange={(e) => onMixerChange({ eq_high: Number(e.target.value) })} />
           </label>
-          <button type="button" className="btn" onClick={() => setMixerExpanded(false)}>
+          <Button onClick={() => setMixerExpanded(false)}>
             {t('audioSettingsClose', 'Schließen')}
-          </button>
-        </div>
+          </Button>
+        </Panel>
       )}
 
       {settingsOpen && (
-        <div className="channel-row__settings-popover" role="dialog" aria-label={t('audioChannelSettings', 'Kanaleinstellungen')}>
+        <Panel className="channel-row__settings-popover u-cluster u-items-end u-gap-3" role="dialog" aria-label={t('audioChannelSettings', 'Kanaleinstellungen')}>
           <label>
             {t('audioChannelName', 'Kanalname')}
             <input
@@ -216,10 +217,10 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
             <input type="number" min={0} step={0.1} value={channel.transition_seconds}
               onChange={(e) => onMixerChange({ transition_seconds: Number(e.target.value) })} />
           </label>
-          <button type="button" className="btn" onClick={() => setSettingsOpen(false)}>
+          <Button onClick={() => setSettingsOpen(false)}>
             {t('audioSettingsClose', 'Schließen')}
-          </button>
-        </div>
+          </Button>
+        </Panel>
       )}
     </div>
   );

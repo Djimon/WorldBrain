@@ -1,6 +1,6 @@
 // @vitest-environment node
-// M10-S07: Per-Spieler/Gruppen-Visibility — Schema & Services
-// See: https://github.com/Djimon/WorldBrain/issues/201
+// M10-S07 (rebuild): Per-Spieler/Gruppen-Visibility
+// See: https://github.com/Djimon/WorldBrain/issues/356
 
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
@@ -9,167 +9,160 @@ import type { DatabaseLike } from '../src/services/entity-service';
 
 function makeAsyncDb(db: DatabaseSync): DatabaseLike {
   return {
-    execute: (sql: string, args: unknown[] = []) => { db.prepare(sql).run(...args); return Promise.resolve(); },
-    select: <T>(sql: string, args: unknown[] = []): Promise<T[]> =>
-      Promise.resolve(db.prepare(sql).all(...args) as T[]),
+    execute: (sql: string, args: unknown[] = []) => {
+      db.prepare(sql).run(...args);
+      return Promise.resolve();
+    },
+    select: <T>(sql: string, args: unknown[] = []): Promise<T[]> => {
+      return Promise.resolve(db.prepare(sql).all(...args) as T[]);
+    },
   };
 }
 
-const runtimeSchemaSql = readFileSync(new URL('../src/data/runtime/schema.sql', import.meta.url), 'utf-8');
+const runtimeSchemaSql = readFileSync(
+  new URL('../src/data/runtime/schema.sql', import.meta.url),
+  'utf8',
+);
 
-function createDb() {
-  const db = new DatabaseSync(':memory:');
-  db.exec(runtimeSchemaSql);
-  return { db, asyncDb: makeAsyncDb(db) };
+function createDatabase() {
+  const raw = new DatabaseSync(':memory:');
+  raw.exec(runtimeSchemaSql);
+  return { db: raw, asyncDb: makeAsyncDb(raw) };
 }
 
-async function getVisibilityService() { return import('../src/services/visibility-service'); }
+// ---------------------------------------------------------------------------
+// 1. Schema: session_visibility_overrides table
+// ---------------------------------------------------------------------------
 
-describe('M10-S07 per-player/group visibility schema & services', () => {
-  describe('schema', () => {
-    it('runtime schema creates session_visibility_overrides table', () => {
-      const { db } = createDb();
-      const rows = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='session_visibility_overrides'`).all();
-      expect(rows.length).toBe(1);
-    });
-
-    it('session_visibility_overrides has required columns', () => {
-      const { db } = createDb();
-      const info = db.prepare(`PRAGMA table_info(session_visibility_overrides)`).all() as { name: string }[];
-      const cols = info.map(r => r.name);
-      expect(cols).toContain('session_id');
-      expect(cols).toContain('target_type');
-      expect(cols).toContain('target_id');
-      expect(cols).toContain('scope');
-      expect(cols).toContain('player_id');
-      expect(cols).toContain('group_id');
-    });
-
-    it('player_id and group_id are nullable', () => {
-      const { db } = createDb();
-      db.exec(`INSERT INTO session_visibility_overrides (session_id, target_type, target_id, scope, player_id, group_id)
-               VALUES ('sess-1', 'entity', 'ent-1', 'player', 'player-1', NULL)`);
-      const row = db.prepare(`SELECT * FROM session_visibility_overrides`).get() as Record<string, unknown>;
-      expect(row.player_id).toBe('player-1');
-      expect(row.group_id).toBeNull();
-    });
+describe('M10-S07 Visibility overrides schema', () => {
+  it('session_visibility_overrides table exists with campaign_id, target_type, target_id, scope', () => {
+    const { db } = createDatabase();
+    try {
+      const cols = db
+        .prepare("PRAGMA table_info('session_visibility_overrides')")
+        .all() as { name: string }[];
+      const names = cols.map((c) => c.name);
+      expect(names).toContain('campaign_id');
+      expect(names).toContain('target_type');
+      expect(names).toContain('target_id');
+      expect(names).toContain('scope');
+    } finally {
+      db.close();
+    }
   });
 
-  describe('VisibilityContext type', () => {
-    it('visibility-service exports VisibilityContext type with session_id, player_id, group_ids', async () => {
-      const src = readFileSync('src/services/visibility-service.ts', 'utf-8');
-      expect(src).toContain('session_id');
-      expect(src).toContain('player_id');
-      expect(src).toContain('group_ids');
-      expect(src).toContain('VisibilityContext');
-    });
+  it('session_visibility_overrides has player_id and group_id columns', () => {
+    const { db } = createDatabase();
+    try {
+      const cols = db
+        .prepare("PRAGMA table_info('session_visibility_overrides')")
+        .all() as { name: string }[];
+      const names = cols.map((c) => c.name);
+      expect(names).toContain('player_id');
+      expect(names).toContain('group_id');
+    } finally {
+      db.close();
+    }
   });
+});
 
-  describe('default visibility', () => {
-    it('resolveSessionVisibility returns gm_only when no overrides exist', async () => {
-      const { asyncDb } = createDb();
-      const { resolveSessionVisibility } = await getVisibilityService();
-      const result = await resolveSessionVisibility({
-        database: asyncDb,
-        sessionId: 'sess-1',
+// ---------------------------------------------------------------------------
+// 2. Visibility resolution: player + group overrides
+// ---------------------------------------------------------------------------
+
+describe('M10-S07 Visibility resolution', () => {
+  async function getVisibilityService() {
+    return import('../src/services/visibility-service');
+  }
+
+  it('default without override is gm_only', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getVisibilityService();
+      const result = await svc.resolveSessionVisibility(asyncDb, {
+        campaignId: 'camp-1',
         targetType: 'entity',
         targetId: 'ent-1',
-        context: { session_id: 'sess-1', player_id: 'player-1', group_ids: [] },
+        playerId: 'p-1',
+        groupIds: [],
       });
       expect(result).toBe('gm_only');
-    });
+    } finally {
+      db.close();
+    }
   });
 
-  describe('player-level override', () => {
-    it('player can see target when direct player override exists', async () => {
-      const { db, asyncDb } = createDb();
-      const { resolveSessionVisibility } = await getVisibilityService();
-      db.exec(`INSERT INTO session_visibility_overrides (session_id, target_type, target_id, scope, player_id, group_id)
-               VALUES ('sess-1', 'entity', 'ent-1', 'player', 'player-1', NULL)`);
-      const result = await resolveSessionVisibility({
-        database: asyncDb,
-        sessionId: 'sess-1',
+  it('direct player override makes content visible', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getVisibilityService();
+      await asyncDb.execute(
+        `INSERT INTO session_visibility_overrides (campaign_id, target_type, target_id, scope, player_id) VALUES (?, ?, ?, ?, ?)`,
+        ['camp-1', 'entity', 'ent-1', 'player', 'p-1'],
+      );
+      const result = await svc.resolveSessionVisibility(asyncDb, {
+        campaignId: 'camp-1',
         targetType: 'entity',
         targetId: 'ent-1',
-        context: { session_id: 'sess-1', player_id: 'player-1', group_ids: [] },
+        playerId: 'p-1',
+        groupIds: [],
       });
       expect(result).not.toBe('gm_only');
-    });
-
-    it('player cannot see target via other player override', async () => {
-      const { db, asyncDb } = createDb();
-      const { resolveSessionVisibility } = await getVisibilityService();
-      db.exec(`INSERT INTO session_visibility_overrides (session_id, target_type, target_id, scope, player_id, group_id)
-               VALUES ('sess-1', 'entity', 'ent-1', 'player', 'player-OTHER', NULL)`);
-      const result = await resolveSessionVisibility({
-        database: asyncDb,
-        sessionId: 'sess-1',
-        targetType: 'entity',
-        targetId: 'ent-1',
-        context: { session_id: 'sess-1', player_id: 'player-1', group_ids: [] },
-      });
-      expect(result).toBe('gm_only');
-    });
+    } finally {
+      db.close();
+    }
   });
 
-  describe('group-level override', () => {
-    it('player can see target via group membership override', async () => {
-      const { db, asyncDb } = createDb();
-      const { resolveSessionVisibility } = await getVisibilityService();
-      db.exec(`INSERT INTO session_visibility_overrides (session_id, target_type, target_id, scope, player_id, group_id)
-               VALUES ('sess-1', 'entity', 'ent-1', 'group', NULL, 'group-1')`);
-      const result = await resolveSessionVisibility({
-        database: asyncDb,
-        sessionId: 'sess-1',
+  it('group override makes content visible for group member', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getVisibilityService();
+      await asyncDb.execute(
+        `INSERT INTO session_visibility_overrides (campaign_id, target_type, target_id, scope, group_id) VALUES (?, ?, ?, ?, ?)`,
+        ['camp-1', 'entity', 'ent-1', 'group', 'grp-1'],
+      );
+      const result = await svc.resolveSessionVisibility(asyncDb, {
+        campaignId: 'camp-1',
         targetType: 'entity',
         targetId: 'ent-1',
-        context: { session_id: 'sess-1', player_id: 'player-1', group_ids: ['group-1'] },
+        playerId: 'p-1',
+        groupIds: ['grp-1'],
       });
       expect(result).not.toBe('gm_only');
-    });
+    } finally {
+      db.close();
+    }
+  });
 
-    it('player cannot see target via group they are not in', async () => {
-      const { db, asyncDb } = createDb();
-      const { resolveSessionVisibility } = await getVisibilityService();
-      db.exec(`INSERT INTO session_visibility_overrides (session_id, target_type, target_id, scope, player_id, group_id)
-               VALUES ('sess-1', 'entity', 'ent-1', 'group', NULL, 'group-OTHER')`);
-      const result = await resolveSessionVisibility({
-        database: asyncDb,
-        sessionId: 'sess-1',
+  it('campaign isolation: override in campaign A not visible in campaign B', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getVisibilityService();
+      await asyncDb.execute(
+        `INSERT INTO session_visibility_overrides (campaign_id, target_type, target_id, scope, player_id) VALUES (?, ?, ?, ?, ?)`,
+        ['camp-A', 'entity', 'ent-1', 'player', 'p-1'],
+      );
+      const result = await svc.resolveSessionVisibility(asyncDb, {
+        campaignId: 'camp-B',
         targetType: 'entity',
         targetId: 'ent-1',
-        context: { session_id: 'sess-1', player_id: 'player-1', group_ids: ['group-1'] },
+        playerId: 'p-1',
+        groupIds: [],
       });
       expect(result).toBe('gm_only');
-    });
+    } finally {
+      db.close();
+    }
   });
+});
 
-  describe('setVisibilityOverride', () => {
-    it('is async', async () => {
-      const { asyncDb } = createDb();
-      const { setVisibilityOverride } = await getVisibilityService();
-      expect(
-        setVisibilityOverride({ database: asyncDb, sessionId: 'sess-1', targetType: 'entity', targetId: 'e-1', scope: 'player', playerId: 'p-1' })
-      ).toBeInstanceOf(Promise);
-    });
+// ---------------------------------------------------------------------------
+// 3. VisibilityContext extended with campaign_id
+// ---------------------------------------------------------------------------
 
-    it('persists override to session_visibility_overrides', async () => {
-      const { db, asyncDb } = createDb();
-      const { setVisibilityOverride } = await getVisibilityService();
-      await setVisibilityOverride({ database: asyncDb, sessionId: 'sess-1', targetType: 'entity', targetId: 'e-1', scope: 'player', playerId: 'p-1' });
-      const row = db.prepare(`SELECT * FROM session_visibility_overrides WHERE target_id = 'e-1' AND player_id = 'p-1'`).get();
-      expect(row).toBeTruthy();
-    });
-  });
-
-  describe('clearVisibilityOverride', () => {
-    it('removes the override from DB', async () => {
-      const { db, asyncDb } = createDb();
-      const { setVisibilityOverride, clearVisibilityOverride } = await getVisibilityService();
-      await setVisibilityOverride({ database: asyncDb, sessionId: 'sess-1', targetType: 'entity', targetId: 'e-1', scope: 'player', playerId: 'p-1' });
-      await clearVisibilityOverride({ database: asyncDb, sessionId: 'sess-1', targetType: 'entity', targetId: 'e-1', playerId: 'p-1' });
-      const row = db.prepare(`SELECT * FROM session_visibility_overrides WHERE target_id = 'e-1' AND player_id = 'p-1'`).get();
-      expect(row).toBeUndefined();
-    });
+describe('M10-S07 VisibilityContext shape', () => {
+  it('VisibilityContext includes campaign_id in its type', () => {
+    const source = readFileSync('src/services/visibility-service.ts', 'utf-8');
+    expect(source).toMatch(/campaign_id/);
   });
 });

@@ -10,7 +10,7 @@
 // token on paper, and simply grow/shrink with it. Only the token's own
 // `scale` (#301, the resize handle) changes its size.
 import { useState } from 'react';
-import type { MapTokenRow } from '../services/map-token-service';
+import type { Counter, MapTokenRow } from '../services/map-token-service';
 import { getIcon } from '../services/icon-set-registry';
 
 // #300: chip.icon may be a registry ref ("set_id:icon_key") or a legacy
@@ -48,7 +48,7 @@ export interface MapTokenProps {
   /** Mouse-down on the resize handle (only shown when selected) -> MapViewer scales. */
   onResizeStart?: (e: React.MouseEvent<HTMLDivElement>) => void;
   /** Inline counter step (+1 / -1) directly on the map, without the editor. */
-  onCounterStep?: (delta: number) => void;
+  onCounterStep?: (index: number, delta: number) => void;
 }
 
 const DEFAULT_RING = 'var(--color-accent, #6ea8fe)';
@@ -57,16 +57,40 @@ export function tokenName(token: MapTokenRow): string {
   return token.label || 'Token';
 }
 
+function CounterBadge({ counter, index, selected, onCounterStep }: {
+  counter: Counter; index: number; selected: boolean;
+  onCounterStep?: (index: number, delta: number) => void;
+}) {
+  const [hover, setHover] = useState(false);
+  const showStepper = hover || selected;
+  const swallow = (e: React.SyntheticEvent) => e.stopPropagation();
+  const bg = counter.color || 'var(--color-accent, #6ea8fe)';
+  return (
+    <div className="map-token__counter" title={counter.label || undefined}
+      style={{ background: bg }}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      {showStepper && counter.label && (
+        <span className="map-token__counter-label">{counter.label}</span>
+      )}
+      <span className="map-token__counter-val">{counter.value}</span>
+      {showStepper && (
+        <div className="map-token__counter-steps">
+          <button type="button" className="map-token__counter-btn" aria-label="Erhöhen"
+            onPointerDown={swallow} onMouseDown={swallow}
+            onClick={(e) => { e.stopPropagation(); onCounterStep?.(index, 1); }}>+</button>
+          <button type="button" className="map-token__counter-btn" aria-label="Verringern"
+            onPointerDown={swallow} onMouseDown={swallow}
+            onClick={(e) => { e.stopPropagation(); onCounterStep?.(index, -1); }}>−</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function MapToken({
   token, selected = false, dragging = false, resolveAssetUrl,
   onPointerDown, onPointerMove, onPointerUp, onSelect, onResizeStart, onCounterStep,
 }: MapTokenProps) {
-  // Stepper + full label reveal only when hovering the counter itself (not the
-  // whole token), or when the token is selected.
-  const [counterHover, setCounterHover] = useState(false);
-  const showStepper = counterHover || selected;
-  // Stop drag/pan/select from firing when using an inline control (stepper/handle).
-  const swallow = (e: React.SyntheticEvent) => e.stopPropagation();
   const name = tokenName(token);
   const initial = name.trim().charAt(0).toUpperCase() || '?';
   const ring = token.ring_color || DEFAULT_RING;
@@ -146,23 +170,11 @@ export function MapToken({
 
       <div className="map-token__footer">
         <span className="map-token__name">{name}</span>
-        {token.counter_value != null && (
-          <div className="map-token__counter" title={token.counter_label || undefined}
-          onMouseEnter={() => setCounterHover(true)} onMouseLeave={() => setCounterHover(false)}>
-            {showStepper && token.counter_label && (
-              <span className="map-token__counter-label">{token.counter_label}</span>
-            )}
-            <span className="map-token__counter-val">{token.counter_value}</span>
-            {showStepper && (
-              <div className="map-token__counter-steps">
-                <button type="button" className="map-token__counter-btn" aria-label="Erhöhen"
-                  onPointerDown={swallow} onMouseDown={swallow}
-                  onClick={(e) => { e.stopPropagation(); onCounterStep?.(1); }}>+</button>
-                <button type="button" className="map-token__counter-btn" aria-label="Verringern"
-                  onPointerDown={swallow} onMouseDown={swallow}
-                  onClick={(e) => { e.stopPropagation(); onCounterStep?.(-1); }}>−</button>
-              </div>
-            )}
+        {token.counters.length > 0 && (
+          <div className="map-token__counters">
+            {token.counters.map((c, i) => (
+              <CounterBadge key={i} counter={c} index={i} selected={selected} onCounterStep={onCounterStep} />
+            ))}
           </div>
         )}
       </div>

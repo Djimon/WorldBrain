@@ -1,70 +1,69 @@
+// M10-S20 (#349): Campaign-Klammer + campaign_id-Keying (D23).
+// Eine Welt → mehrere Campaigns. Roster/Overrides/Visibility hängen an der
+// Campaign, nicht am Termin.
 import type { DatabaseLike } from './entity-service';
 
 export interface Campaign {
   id: string;
   title: string;
+  world_time_start: string | null;
   created_at: string;
 }
 
-export interface CampaignOverride {
-  id: string;
-  campaign_id: string;
-  entity_id: string;
-  patch_json: string;
-  created_at: string;
-  updated_at: string;
+export interface CreateCampaignParams {
+  title: string;
+  world_time_start?: string;
 }
 
-export async function createCampaign(
-  db: DatabaseLike,
-  params: { title: string },
-): Promise<Campaign> {
-  const id = crypto.randomUUID();
-  const now = new Date().toISOString();
+export async function createCampaign(db: DatabaseLike, params: CreateCampaignParams): Promise<Campaign> {
+  const id = `campaign_${crypto.randomUUID()}`;
+  const created_at = new Date().toISOString();
+  const world_time_start = params.world_time_start ?? null;
   await db.execute(
-    `INSERT INTO campaigns (id, title, created_at) VALUES (?, ?, ?)`,
-    [id, params.title, now],
+    'INSERT INTO campaigns (id, title, world_time_start, created_at) VALUES (?, ?, ?, ?)',
+    [id, params.title, world_time_start, created_at],
   );
-  return { id, title: params.title, created_at: now };
+  return { id, title: params.title, world_time_start, created_at };
 }
 
 export async function listCampaigns(db: DatabaseLike): Promise<Campaign[]> {
-  return db.select<Campaign>(`SELECT id, title, created_at FROM campaigns ORDER BY created_at ASC`);
+  return db.select<Campaign>('SELECT id, title, world_time_start, created_at FROM campaigns ORDER BY created_at');
 }
 
 export async function getCampaign(db: DatabaseLike, id: string): Promise<Campaign | null> {
   const rows = await db.select<Campaign>(
-    `SELECT id, title, created_at FROM campaigns WHERE id = ?`,
+    'SELECT id, title, world_time_start, created_at FROM campaigns WHERE id = ?',
     [id],
   );
   return rows[0] ?? null;
 }
 
 export async function deleteCampaign(db: DatabaseLike, id: string): Promise<void> {
-  await db.execute(`DELETE FROM campaigns WHERE id = ?`, [id]);
+  await db.execute('DELETE FROM campaigns WHERE id = ?', [id]);
 }
 
-export async function upsertCampaignOverride(
-  db: DatabaseLike,
-  params: { campaignId: string; entityId: string; patchJson: string },
-): Promise<void> {
-  const now = new Date().toISOString();
-  const id = crypto.randomUUID();
-  await db.execute(
-    `INSERT INTO campaign_entity_overrides (id, campaign_id, entity_id, patch_json, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT (campaign_id, entity_id) DO UPDATE SET patch_json = excluded.patch_json, updated_at = excluded.updated_at`,
-    [id, params.campaignId, params.entityId, params.patchJson, now, now],
+export interface UpsertOverrideParams {
+  campaignId: string;
+  entityId: string;
+  patchJson: string;
+}
+
+export async function upsertCampaignOverride(db: DatabaseLike, params: UpsertOverrideParams): Promise<void> {
+  const existing = await db.select<{ id: string }>(
+    'SELECT id FROM campaign_entity_overrides WHERE campaign_id = ? AND entity_id = ?',
+    [params.campaignId, params.entityId],
   );
-}
-
-export async function getCampaignOverrides(
-  db: DatabaseLike,
-  campaignId: string,
-): Promise<CampaignOverride[]> {
-  return db.select<CampaignOverride>(
-    `SELECT id, campaign_id, entity_id, patch_json, created_at, updated_at
-     FROM campaign_entity_overrides WHERE campaign_id = ?`,
-    [campaignId],
+  const now = new Date().toISOString();
+  if (existing[0]) {
+    await db.execute(
+      'UPDATE campaign_entity_overrides SET patch_json = ?, updated_at = ? WHERE id = ?',
+      [params.patchJson, now, existing[0].id],
+    );
+    return;
+  }
+  const id = `override_${crypto.randomUUID()}`;
+  await db.execute(
+    'INSERT INTO campaign_entity_overrides (id, campaign_id, entity_id, patch_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+    [id, params.campaignId, params.entityId, params.patchJson, now, now],
   );
 }

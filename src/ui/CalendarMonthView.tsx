@@ -5,6 +5,7 @@ import type { DatabaseLike } from '../services/entity-service';
 import { dateToCounter, erasForRange, eraRelativeYear, eraUnit } from '../../core_data/calendar-schema';
 import { listEras } from '../services/era-service';
 import type { EraRow } from '../services/era-service';
+import { Segmented } from './primitives';
 
 interface MonthDef { name: string; days: number }
 interface Calendar {
@@ -168,19 +169,23 @@ export function CalendarMonthView({ calendar, database, onCreateEvent, onEventCl
         <span className="cal-month__spacer" />
         <h2 className="cal-month__name">{heading}</h2>
         {eras.length > 0 && (
-          <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+          <span className="cal-month__day-actions">
             {eraMode && matchingEras.length > 1 && (
               <select className="cal-form__select" aria-label="Bezugs-Ära"
                 value={refEra?.id ?? ''} onChange={(e) => setRefEraId(e.target.value)}>
                 {matchingEras.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
             )}
-            <span className="cal-yearmode">
-              <button className={`cal-yearmode__btn${!eraMode ? ' active' : ''}`} aria-pressed={!eraMode}
-                onClick={() => setEraMode(false)}>Global</button>
-              <button className={`cal-yearmode__btn${eraMode ? ' active' : ''}`} aria-pressed={eraMode}
-                onClick={() => setEraMode(true)}>Ära</button>
-            </span>
+            <Segmented
+              label="Jahresmodus"
+              size="compact"
+              value={eraMode ? 'era' : 'global'}
+              onChange={(id) => setEraMode(id === 'era')}
+              options={[
+                { id: 'global', label: 'Global' },
+                { id: 'era', label: 'Ära' },
+              ]}
+            />
           </span>
         )}
       </div>

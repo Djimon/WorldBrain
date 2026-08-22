@@ -1,7 +1,6 @@
-// M10-S03: Spieler-Mitgliedschaft — Schema & Services (EPIC-016)
-// Player identity is global (players table); membership is per session
-// (session_players table) with an invite lifecycle: pending → approved →
-// (kicked) or rejected. A player's token belongs to exactly one session row.
+// M10-S03 (#352): Spieler-Mitgliedschaft — Schema & Services (campaign-scoped).
+// D24 Auto-Join: kein `pending`/`approve`/`reject`. Jeder Beitritt landet
+// direkt als `active`. Kick invalidiert das Token.
 import type { DatabaseLike } from './entity-service';
 
 export interface Player {
@@ -11,63 +10,67 @@ export interface Player {
 }
 
 export interface SessionPlayer {
-  session_id: string;
+  id: string;
+  campaign_id: string;
   player_id: string;
-  token_hash: string;
-  invite_status: string;
-  joined_at: string | null;
+  token_hash: string | null;
+  status: 'active' | 'kicked';
+  joined_at: string;
 }
 
-export async function createPlayer(params: { database: DatabaseLike; displayName: string }): Promise<Player> {
+export interface CreatePlayerParams {
+  displayName: string;
+}
+
+export interface JoinWithCodeParams {
+  campaignId: string;
+  playerId: string;
+  tokenHash: string;
+}
+
+export interface KickParams {
+  campaignId: string;
+  playerId: string;
+}
+
+export async function createPlayer(db: DatabaseLike, params: CreatePlayerParams): Promise<Player> {
   const id = `player_${crypto.randomUUID()}`;
   const created_at = new Date().toISOString();
-  await params.database.execute(
+  await db.execute(
     'INSERT INTO players (id, display_name, created_at) VALUES (?, ?, ?)',
     [id, params.displayName, created_at],
   );
   return { id, display_name: params.displayName, created_at };
 }
 
-export async function requestJoin(params: {
-  database: DatabaseLike;
-  sessionId: string;
-  playerId: string;
-  tokenHash: string;
-}): Promise<void> {
-  await params.database.execute(
-    'INSERT INTO session_players (session_id, player_id, token_hash, invite_status, joined_at) VALUES (?, ?, ?, ?, ?)',
-    [params.sessionId, params.playerId, params.tokenHash, 'pending', null],
+/**
+ * Low-level insert: legt einen `session_players`-Eintrag mit `status='active'`
+ * an. Der komplette Auto-Join-Flow (Code → Player + Token) lebt in
+ * `session-identity-service.joinWithCode`, das diese Funktion darunter nutzt.
+ */
+export async function joinWithCode(db: DatabaseLike, params: JoinWithCodeParams): Promise<void> {
+  const id = `sp_${crypto.randomUUID()}`;
+  const now = new Date().toISOString();
+  await db.execute(
+    "INSERT INTO session_players (id, campaign_id, player_id, token_hash, status, joined_at) VALUES (?, ?, ?, ?, 'active', ?)",
+    [id, params.campaignId, params.playerId, params.tokenHash, now],
   );
 }
 
-async function setInviteStatus(
-  database: DatabaseLike,
-  sessionId: string,
-  playerId: string,
-  status: string,
-  joinedAt: string | null,
-): Promise<void> {
-  await database.execute(
-    'UPDATE session_players SET invite_status = ?, joined_at = COALESCE(?, joined_at) WHERE session_id = ? AND player_id = ?',
-    [status, joinedAt, sessionId, playerId],
+/**
+ * Kick: setzt `status='kicked'` und leert den `token_hash` — der bisherige
+ * Token wird damit für validateToken() unbrauchbar (D24).
+ */
+export async function kick(db: DatabaseLike, params: KickParams): Promise<void> {
+  await db.execute(
+    "UPDATE session_players SET status = 'kicked', token_hash = NULL WHERE campaign_id = ? AND player_id = ?",
+    [params.campaignId, params.playerId],
   );
 }
 
-export async function approve(params: { database: DatabaseLike; sessionId: string; playerId: string }): Promise<void> {
-  await setInviteStatus(params.database, params.sessionId, params.playerId, 'approved', new Date().toISOString());
-}
-
-export async function reject(params: { database: DatabaseLike; sessionId: string; playerId: string }): Promise<void> {
-  await setInviteStatus(params.database, params.sessionId, params.playerId, 'rejected', null);
-}
-
-export async function kick(params: { database: DatabaseLike; sessionId: string; playerId: string }): Promise<void> {
-  await setInviteStatus(params.database, params.sessionId, params.playerId, 'kicked', null);
-}
-
-export async function listSessionPlayers(params: { database: DatabaseLike; sessionId: string }): Promise<SessionPlayer[]> {
-  return params.database.select<SessionPlayer>(
-    "SELECT session_id, player_id, token_hash, invite_status, joined_at FROM session_players WHERE session_id = ? AND invite_status = 'approved'",
-    [params.sessionId],
+export async function listCampaignPlayers(db: DatabaseLike, campaignId: string): Promise<SessionPlayer[]> {
+  return db.select<SessionPlayer>(
+    'SELECT id, campaign_id, player_id, token_hash, status, joined_at FROM session_players WHERE campaign_id = ?',
+    [campaignId],
   );
 }

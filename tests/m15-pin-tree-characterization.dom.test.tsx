@@ -83,7 +83,7 @@ vi.mock('../src/services/map-token-service', () => ({
   createToken: vi.fn(async () => ({ id: 'token-1' })),
   moveToken: vi.fn(async () => undefined),
   updateToken: vi.fn(async () => undefined),
-  setCounter: vi.fn(async () => undefined),
+  setCounters: vi.fn(async () => undefined),
   setStatusChips: vi.fn(async () => undefined),
   deleteToken: vi.fn(async () => undefined),
 }));

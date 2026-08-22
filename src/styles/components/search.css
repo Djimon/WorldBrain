@@ -1,0 +1,99 @@
+/* ── Global Search ───────────────────────────────────── */
+
+.gsearch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 640px;
+  padding: var(--space-4);
+  width: 100%;
+}
+
+/* Expands to full width when the split detail panel is visible */
+.gsearch--split { max-width: none; }
+
+/* Wider results column in search context (vs default 260px in EntityMasterDetail) */
+.gsearch .emd__list { width: 440px; }
+
+.gsearch__bar {
+  position: relative;
+}
+
+.gsearch__input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.gsearch__input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.gsearch__facets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* The facet pill is <Chip as="button" variant="outline">; only the count needs styling. */
+.gsearch__facet-count {
+  opacity: 0.7;
+}
+
+.gsearch__hint,
+.gsearch__empty {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  padding: var(--space-2) 0;
+}
+
+.gsearch__results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Content layout only — the row chrome + hover/selected states are <ListRow>.
+   The selected look now also gains the accent tint (was bar-only). */
+.gsearch__result {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: var(--space-1) var(--space-2);
+}
+
+.gsearch__result-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text);
+  grid-column: 1;
+}
+
+.gsearch__result-type {
+  font-size: 0.75rem;
+  color: var(--color-accent);
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+}
+
+.gsearch__result-summary {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  grid-column: 1 / -1;
+  grid-row: 2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+

@@ -1,6 +1,6 @@
 // @vitest-environment node
-// M10-S03: Spieler-Mitgliedschaft — Schema & Services
-// See: https://github.com/Djimon/WorldBrain/issues/197
+// M10-S03 (rebuild): Spieler-Mitgliedschaft — Schema & Services (campaign-scoped)
+// See: https://github.com/Djimon/WorldBrain/issues/352
 
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
@@ -9,161 +9,188 @@ import type { DatabaseLike } from '../src/services/entity-service';
 
 function makeAsyncDb(db: DatabaseSync): DatabaseLike {
   return {
-    execute: (sql: string, args: unknown[] = []) => { db.prepare(sql).run(...args); return Promise.resolve(); },
-    select: <T>(sql: string, args: unknown[] = []): Promise<T[]> =>
-      Promise.resolve(db.prepare(sql).all(...args) as T[]),
+    execute: (sql: string, args: unknown[] = []) => {
+      db.prepare(sql).run(...args);
+      return Promise.resolve();
+    },
+    select: <T>(sql: string, args: unknown[] = []): Promise<T[]> => {
+      return Promise.resolve(db.prepare(sql).all(...args) as T[]);
+    },
   };
 }
 
-const runtimeSchemaSql = readFileSync(new URL('../src/data/runtime/schema.sql', import.meta.url), 'utf-8');
+const runtimeSchemaSql = readFileSync(
+  new URL('../src/data/runtime/schema.sql', import.meta.url),
+  'utf8',
+);
 
-function createDb() {
-  const db = new DatabaseSync(':memory:');
-  db.exec(runtimeSchemaSql);
-  return { db, asyncDb: makeAsyncDb(db) };
+function createDatabase() {
+  const raw = new DatabaseSync(':memory:');
+  raw.exec(runtimeSchemaSql);
+  return { db: raw, asyncDb: makeAsyncDb(raw) };
 }
 
-async function getService() { return import('../src/services/player-membership-service'); }
+// ---------------------------------------------------------------------------
+// 1. Schema: players + session_players tables
+// ---------------------------------------------------------------------------
 
-describe('M10-S03 player membership schema & services', () => {
-  describe('schema', () => {
-    it('runtime schema creates a players table', () => {
-      const { db } = createDb();
-      const tables = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='players'`).all();
-      expect(tables.length).toBe(1);
-    });
-
-    it('players table has id, display_name, created_at columns', () => {
-      const { db } = createDb();
-      const info = db.prepare(`PRAGMA table_info(players)`).all() as { name: string }[];
-      const cols = info.map(r => r.name);
-      expect(cols).toContain('id');
-      expect(cols).toContain('display_name');
-      expect(cols).toContain('created_at');
-    });
-
-    it('runtime schema creates a session_players table', () => {
-      const { db } = createDb();
-      const tables = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='session_players'`).all();
-      expect(tables.length).toBe(1);
-    });
-
-    it('session_players table has session_id, player_id, token_hash, invite_status, joined_at', () => {
-      const { db } = createDb();
-      const info = db.prepare(`PRAGMA table_info(session_players)`).all() as { name: string }[];
-      const cols = info.map(r => r.name);
-      expect(cols).toContain('session_id');
-      expect(cols).toContain('player_id');
-      expect(cols).toContain('token_hash');
-      expect(cols).toContain('invite_status');
-      expect(cols).toContain('joined_at');
-    });
+describe('M10-S03 Player membership schema', () => {
+  it('players table has id, display_name, created_at', () => {
+    const { db } = createDatabase();
+    try {
+      const cols = db
+        .prepare("PRAGMA table_info('players')")
+        .all() as { name: string }[];
+      const names = cols.map((c) => c.name);
+      expect(names).toContain('id');
+      expect(names).toContain('display_name');
+      expect(names).toContain('created_at');
+    } finally {
+      db.close();
+    }
   });
 
-  describe('createPlayer', () => {
-    it('is async', async () => {
-      const { asyncDb } = createDb();
-      const { createPlayer } = await getService();
-      expect(createPlayer({ database: asyncDb, displayName: 'Alice' })).toBeInstanceOf(Promise);
-    });
-
-    it('returns a player with id and display_name', async () => {
-      const { asyncDb } = createDb();
-      const { createPlayer } = await getService();
-      const player = await createPlayer({ database: asyncDb, displayName: 'Alice' });
-      expect(player.id).toBeTruthy();
-      expect(player.display_name).toBe('Alice');
-    });
-
-    it('persists player to DB', async () => {
-      const { db, asyncDb } = createDb();
-      const { createPlayer } = await getService();
-      const player = await createPlayer({ database: asyncDb, displayName: 'Bob' });
-      const row = db.prepare('SELECT * FROM players WHERE id = ?').get(player.id);
-      expect(row).toBeTruthy();
-    });
+  it('session_players has campaign_id, player_id, token_hash, status, joined_at', () => {
+    const { db } = createDatabase();
+    try {
+      const cols = db
+        .prepare("PRAGMA table_info('session_players')")
+        .all() as { name: string }[];
+      const names = cols.map((c) => c.name);
+      expect(names).toContain('campaign_id');
+      expect(names).toContain('player_id');
+      expect(names).toContain('token_hash');
+      expect(names).toContain('status');
+      expect(names).toContain('joined_at');
+    } finally {
+      db.close();
+    }
   });
 
-  describe('requestJoin', () => {
-    it('creates a session_players row with invite_status = pending', async () => {
-      const { db, asyncDb } = createDb();
-      const { createPlayer, requestJoin } = await getService();
-      const player = await createPlayer({ database: asyncDb, displayName: 'Alice' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: player.id, tokenHash: 'hash-abc' });
-      const row = db.prepare(`SELECT invite_status FROM session_players WHERE player_id = ?`).get(player.id) as { invite_status: string } | undefined;
-      expect(row?.invite_status).toBe('pending');
-    });
+  it('session_players.status does not allow pending or rejected', () => {
+    const schema = runtimeSchemaSql;
+    const spBlock = schema.match(/CREATE TABLE.*session_players[\s\S]*?;/i)?.[0] ?? '';
+    expect(spBlock).not.toMatch(/pending/i);
+    expect(spBlock).not.toMatch(/rejected/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2. Service: player-membership-service.ts
+// ---------------------------------------------------------------------------
+
+describe('M10-S03 Player membership service', () => {
+  async function getMembershipService() {
+    return import('../src/services/player-membership-service');
+  }
+
+  it('createPlayer returns a player with id and display_name', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getMembershipService();
+      const p = await svc.createPlayer(asyncDb, { displayName: 'Alice' });
+      expect(p).toHaveProperty('id');
+      expect(p.display_name).toBe('Alice');
+    } finally {
+      db.close();
+    }
   });
 
-  describe('approve / reject / kick', () => {
-    it('approve sets invite_status to approved', async () => {
-      const { db, asyncDb } = createDb();
-      const { createPlayer, requestJoin, approve } = await getService();
-      const player = await createPlayer({ database: asyncDb, displayName: 'Alice' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: player.id, tokenHash: 'h' });
-      await approve({ database: asyncDb, sessionId: 'sess-1', playerId: player.id });
-      const row = db.prepare(`SELECT invite_status FROM session_players WHERE player_id = ?`).get(player.id) as { invite_status: string };
-      expect(row.invite_status).toBe('approved');
-    });
-
-    it('reject sets invite_status to rejected', async () => {
-      const { db, asyncDb } = createDb();
-      const { createPlayer, requestJoin, reject } = await getService();
-      const player = await createPlayer({ database: asyncDb, displayName: 'Alice' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: player.id, tokenHash: 'h' });
-      await reject({ database: asyncDb, sessionId: 'sess-1', playerId: player.id });
-      const row = db.prepare(`SELECT invite_status FROM session_players WHERE player_id = ?`).get(player.id) as { invite_status: string };
-      expect(row.invite_status).toBe('rejected');
-    });
-
-    it('kick sets invite_status to kicked', async () => {
-      const { db, asyncDb } = createDb();
-      const { createPlayer, requestJoin, approve, kick } = await getService();
-      const player = await createPlayer({ database: asyncDb, displayName: 'Alice' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: player.id, tokenHash: 'h' });
-      await approve({ database: asyncDb, sessionId: 'sess-1', playerId: player.id });
-      await kick({ database: asyncDb, sessionId: 'sess-1', playerId: player.id });
-      const row = db.prepare(`SELECT invite_status FROM session_players WHERE player_id = ?`).get(player.id) as { invite_status: string };
-      expect(row.invite_status).toBe('kicked');
-    });
-  });
-
-  describe('listSessionPlayers', () => {
-    it('returns only approved players by default', async () => {
-      const { asyncDb } = createDb();
-      const { createPlayer, requestJoin, approve, listSessionPlayers } = await getService();
-      const p1 = await createPlayer({ database: asyncDb, displayName: 'Alice' });
-      const p2 = await createPlayer({ database: asyncDb, displayName: 'Bob' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: p1.id, tokenHash: 'h1' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: p2.id, tokenHash: 'h2' });
-      await approve({ database: asyncDb, sessionId: 'sess-1', playerId: p1.id });
-      const list = await listSessionPlayers({ database: asyncDb, sessionId: 'sess-1' });
-      expect(list.map(p => p.player_id)).toContain(p1.id);
-      expect(list.map(p => p.player_id)).not.toContain(p2.id);
-    });
-
-    it('returns empty array when no approved players', async () => {
-      const { asyncDb } = createDb();
-      const { listSessionPlayers } = await getService();
-      const list = await listSessionPlayers({ database: asyncDb, sessionId: 'sess-empty' });
-      expect(list).toEqual([]);
-    });
-
-    it('one player token belongs to exactly one session', async () => {
-      const { db, asyncDb } = createDb();
-      const { createPlayer, requestJoin } = await getService();
-      const player = await createPlayer({ database: asyncDb, displayName: 'Alice' });
-      await requestJoin({ database: asyncDb, sessionId: 'sess-1', playerId: player.id, tokenHash: 'unique-hash' });
-      const rows = db.prepare(`SELECT * FROM session_players WHERE player_id = ?`).all(player.id);
+  it('joinWithCode creates active session_players row', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getMembershipService();
+      await svc.joinWithCode(asyncDb, {
+        campaignId: 'camp-1',
+        playerId: 'p-1',
+        tokenHash: 'hash-abc',
+      });
+      const rows = db
+        .prepare('SELECT status FROM session_players WHERE campaign_id = ?')
+        .all('camp-1') as { status: string }[];
       expect(rows.length).toBe(1);
-    });
+      expect(rows[0].status).toBe('active');
+    } finally {
+      db.close();
+    }
   });
 
-  describe('type safety', () => {
-    it('player-membership-service.ts does not cast database as never or unknown', () => {
-      const src = readFileSync('src/services/player-membership-service.ts', 'utf-8');
-      expect(src).not.toContain('as never');
-      expect(src).not.toContain('as unknown');
-    });
+  it('kick sets status to kicked', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getMembershipService();
+      await svc.joinWithCode(asyncDb, {
+        campaignId: 'camp-1',
+        playerId: 'p-1',
+        tokenHash: 'hash-abc',
+      });
+      await svc.kick(asyncDb, { campaignId: 'camp-1', playerId: 'p-1' });
+      const rows = db
+        .prepare('SELECT status FROM session_players WHERE campaign_id = ? AND player_id = ?')
+        .all('camp-1', 'p-1') as { status: string }[];
+      expect(rows[0].status).toBe('kicked');
+    } finally {
+      db.close();
+    }
+  });
+
+  it('kicked player token is invalidated (token_hash cleared)', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getMembershipService();
+      await svc.joinWithCode(asyncDb, {
+        campaignId: 'camp-1',
+        playerId: 'p-1',
+        tokenHash: 'hash-abc',
+      });
+      await svc.kick(asyncDb, { campaignId: 'camp-1', playerId: 'p-1' });
+      const rows = db
+        .prepare('SELECT token_hash FROM session_players WHERE campaign_id = ? AND player_id = ?')
+        .all('camp-1', 'p-1') as { token_hash: string | null }[];
+      expect(rows[0].token_hash).toBeFalsy();
+    } finally {
+      db.close();
+    }
+  });
+
+  it('listCampaignPlayers returns only players from that campaign', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getMembershipService();
+      await svc.joinWithCode(asyncDb, {
+        campaignId: 'camp-A',
+        playerId: 'p-1',
+        tokenHash: 'h1',
+      });
+      await svc.joinWithCode(asyncDb, {
+        campaignId: 'camp-B',
+        playerId: 'p-2',
+        tokenHash: 'h2',
+      });
+      const playersA = await svc.listCampaignPlayers(asyncDb, 'camp-A');
+      expect(playersA.length).toBe(1);
+    } finally {
+      db.close();
+    }
+  });
+
+  it('multiple players per campaign', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getMembershipService();
+      await svc.joinWithCode(asyncDb, { campaignId: 'camp-1', playerId: 'p-1', tokenHash: 'h1' });
+      await svc.joinWithCode(asyncDb, { campaignId: 'camp-1', playerId: 'p-2', tokenHash: 'h2' });
+      const players = await svc.listCampaignPlayers(asyncDb, 'camp-1');
+      expect(players.length).toBe(2);
+    } finally {
+      db.close();
+    }
+  });
+
+  it('service does not export requestJoin, approve, or reject', async () => {
+    const svc = await getMembershipService();
+    expect(svc).not.toHaveProperty('requestJoin');
+    expect(svc).not.toHaveProperty('approve');
+    expect(svc).not.toHaveProperty('reject');
   });
 });

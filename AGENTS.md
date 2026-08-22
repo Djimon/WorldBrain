@@ -32,6 +32,7 @@ Within `status: ready` issues, implement in this order:
 - **P0** — Security (XSS, injection) or architecture violation or dead handler never wired → first, no exceptions
 - **P1** — Broken feature, recurring anti-pattern → after all P0s clear
 - **P2** — Performance, missing convenience → last
+- **p3** - Nice-to-have
 
 After bugs: proceed to new Stories in milestone order.
 
@@ -76,9 +77,13 @@ Mandatory before AC:
 - Read `ANTI_PATTERNS.md` — copy relevant constraints verbatim into AC
 - Propagate Epic Decisions into every affected Story AC verbatim (not "see Decisions")
 - Output-producing Stories: add AC "All user-supplied strings HTML-escaped; no raw template injection"
-- UI-component Stories: name the container/mount point in the AC — a component nobody mounts is a dead deliverable
+- UI-component Stories: name the container/mount point in the AC **and** require an integration test that reaches the component through that real mount / user path — not only an isolated `render(<Component/>)`. A component nobody mounts is a dead deliverable. Recurring failure — do not skip: #262, #274, #294, #339.
+- UI-component Stories: spec the **UI/UX basics** in the AC — layout/structure, every visual state (active/hover/disabled/feedback), and **build from the design-system primitives in `src/ui/primitives.tsx`** (`Button`, `Panel`, `Field`, `Tabs`, `StatusChip`, `TableSurface`, `ListSurface`). Raw unstyled `<button>`/`<div>`/`<input>`/`<span>` in a delivered UI is a spec failure, not "polish for later". UI/UX sprints are **additive** live-polish on top of a properly-specced UI — they do **not** relieve any Story of a sensible UI spec. Basics belong in the Story; fine-tuning belongs in the sprint.
+- Brand-new UI (no existing screen to adapt): the Requirement Agent is weak at inventing visual layout — **ask the user for a sketch / wireframe / reference template before speccing**, and turn that into the Story's UI spec. Adapting an existing screen: name it and say "1:1 wie X". Never invent a novel layout unasked.
 
 Output: Epic summary · Story list · AC per Story · Open decisions · Blockers. No implementation.
+
+Mindset: The TDD agent and implementer are pure executors: strong at coding, weak at thinking ahead. Write every issue to be foolproof — spell out all Dos and Don'ts, and hard-wire any cross-issue dependencies. Each agent only ever sees its single issue in isolation, so it's on you to keep the whole project coherent through clearly written issues and explicit connection points.
 
 ### 2. TDD Agent
 
@@ -109,6 +114,9 @@ Read order — mandatory, in sequence:
 4. `ANTI_PATTERNS.md` (any listed pattern is a blocker)
 
 AC in the Issue overrides test assumptions when they conflict — tests describe behavior, the Issue describes intent. Do not edit tests. Tests wrong → stop and report.
+
+if you have to build **new UI or edit old**: strictly follow: `docs/UIConsolidation/DEV-UI-GUIDE.md`
+**A UI component isn't done until it's mounted and reachable.** A passing isolated test (`render(<X/>)`) is NOT "done" — Before marking a UI story done, verify a real path renders it: grep that `<Component` appears outside its own file and tests, and that a route/menu/parent actually reaches it in the running app. 
 
 **Diagnose from structure, not speculation:** Lifecycle/event/render problems → read the actual component hierarchy first. No diagnosis before the relevant file is open.
 
@@ -166,6 +174,8 @@ Plugin ids and directory names: `snake_case` with underscores (`dnd5e_srd`), nev
 ## UI/UX Sprint Mode
 
 A separate, lightweight mode for polishing user-feeling — **not** the Epic Workflow.
+
+**Additive, never a substitute.** This mode exists on top of properly-specced UI Stories — it is for live fine-tuning (feel, spacing nuance, micro-interactions), **not** for supplying UI/UX basics a Story should have specified (layout, structure, styled elements from `src/ui/primitives.tsx`, visual states). A Requirement Agent must never defer basic UI specification to "a later UI/UX sprint". Fine-tuning here; basics in the Story.
 
 - One agent is **reviewer and implementer at once**. Tight loops: user tests live, says "X fehlt" / "Icon ändern" → implement immediately, no ceremony.
 - **Scope: UI/UX only.** Never touch the base (services, schema, data model, engines). Only presentation and interaction.

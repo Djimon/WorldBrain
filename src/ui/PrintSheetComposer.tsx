@@ -51,9 +51,9 @@ export function PrintSheetComposer({ database, initialCards = [] }: Props) {
   return (
     <div>
       <div data-testid="sheet-preview">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
+        <div className="print-sheet__grid">
           {slots.map((cardId, i) => (
-            <div key={i} data-slot={i} style={{ border: '1px solid #ccc', minHeight: '80px' }}>
+            <div key={i} data-slot={i} className="print-sheet__slot">
               {cardId ?? ''}
               {cutMarks && <span data-cut-mark="true" />}
             </div>

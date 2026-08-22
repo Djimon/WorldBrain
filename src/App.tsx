@@ -12,7 +12,7 @@ import { WelcomeScreen } from './ui/WelcomeScreen';
 import { NewProjectDialog } from './ui/NewProjectDialog';
 import { ZipImportDialog } from './ui/ZipImportDialog';
 import { WorkspaceShell } from './ui/WorkspaceShell';
-import './style.css';
+import './styles/index.css';
 import './tab-wiring';
 
 const APP_CONFIG_FILENAME = 'app-config.json';
@@ -129,7 +129,7 @@ export function App() {
   }
 
   if (mode.kind === 'loading') {
-    return <div style={{ padding: '2rem' }}>Laden…</div>;
+    return <div className="app-loading">Laden…</div>;
   }
 
   if (mode.kind === 'welcome') {

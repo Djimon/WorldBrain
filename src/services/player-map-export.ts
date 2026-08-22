@@ -41,8 +41,7 @@ export interface TokenData {
   layer_id: string;
   label: string | null;
   entity_id: string | null;
-  counter_label: string | null;
-  counter_value: number | null;
+  counters_json: string;
   status_chips_json: string;
   x: number;
   y: number;
@@ -59,12 +58,13 @@ export interface GenerateParams {
 }
 
 interface ChipLike { icon: string; color?: string; text?: string }
+interface CounterLike { label: string; value: number; color?: string }
 
 // AP-006 exception: JSON.parse of DB *_json -> safe fallback [].
-function parseChips(json: string): ChipLike[] {
+function parseJsonArray<T>(json: string): T[] {
   try {
     const parsed = JSON.parse(json);
-    return Array.isArray(parsed) ? (parsed as ChipLike[]) : [];
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
   } catch {
     return [];
   }
@@ -113,13 +113,13 @@ export function generatePlayerMapHtml({ map, markers = [], context, layers = [],
   ).join('\n');
 
   const tokenListHtml = exportedTokens.map(tk => {
-    const chips = parseChips(tk.status_chips_json)
+    const chips = parseJsonArray<ChipLike>(tk.status_chips_json)
       .map(c => `<span class="token-chip" title="${escapeHtml(c.text ?? c.icon)}">${escapeHtml(c.icon)}</span>`)
       .join('');
-    const counter = tk.counter_value != null
-      ? `<span class="token-counter" title="${escapeHtml(tk.counter_label ?? '')}">${escapeHtml(String(tk.counter_value))}</span>`
-      : '';
-    return `<li data-token-id="${escapeHtml(tk.id)}" data-x="${tk.x}" data-y="${tk.y}"><span class="token-name">${escapeHtml(tokenName(tk))}</span>${counter}${chips}</li>`;
+    const counters = parseJsonArray<CounterLike>(tk.counters_json)
+      .map(c => `<span class="token-counter" title="${escapeHtml(c.label)}">${escapeHtml(String(c.value))}</span>`)
+      .join('');
+    return `<li data-token-id="${escapeHtml(tk.id)}" data-x="${tk.x}" data-y="${tk.y}"><span class="token-name">${escapeHtml(tokenName(tk))}</span>${counters}${chips}</li>`;
   }).join('\n');
 
   const tokensJson = escJson(exportedTokens.map(tk => ({
@@ -127,9 +127,8 @@ export function generatePlayerMapHtml({ map, markers = [], context, layers = [],
     name: tokenName(tk),
     x: tk.x,
     y: tk.y,
-    counter_label: tk.counter_label,
-    counter_value: tk.counter_value,
-    status_chips: parseChips(tk.status_chips_json),
+    counters: parseJsonArray<CounterLike>(tk.counters_json),
+    status_chips: parseJsonArray<ChipLike>(tk.status_chips_json),
   })));
 
   const layersJson = escJson(exportedLayers.map(l => ({

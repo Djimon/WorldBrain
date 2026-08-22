@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { listLayers, updateLayer, deleteLayer, reorderLayers, type MapLayerRow } from '../services/map-layer-service';
+import { Button, Chip } from './primitives';
 
 export interface LayerPanelProps {
   database: DatabaseLike;
@@ -114,8 +115,8 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, ed
   return (
     <div className="layer-panel">
       <div className="layer-panel__toolbar">
-        <button type="button" onClick={() => onAddImageLayer?.()}>{t('layerPanel.addImage', '+ Map Layer')}</button>
-        <button type="button" onClick={() => onAddFogLayer?.()}>{t('layerPanel.addFog', '+ Fog Layer')}</button>
+        <Button tone="accent" variant="outline" size="compact" onClick={() => onAddImageLayer?.()}>{t('layerPanel.addImage', '+ Map Layer')}</Button>
+        <Button tone="accent" variant="outline" size="compact" onClick={() => onAddFogLayer?.()}>{t('layerPanel.addFog', '+ Fog Layer')}</Button>
       </div>
       <ul className="layer-panel__list">
         {sorted.map((layer) => (
@@ -134,9 +135,9 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, ed
               {!layer.visible && (
                 <span className="layer-panel__hidden-indicator" title={t('layerPanel.hiddenIndicator', 'Ausgeblendet')}>🚫</span>
               )}
-              <span className={`layer-panel__type layer-panel__type--${layer.layer_type}`}>
+              <Chip className={`layer-panel__type layer-panel__type--${layer.layer_type}`}>
                 {layerTypeLabel[layer.layer_type] ?? layer.layer_type}
-              </span>
+              </Chip>
             </div>
             {isExpanded(layer.id) && (
               <div className="layer-panel__controls">
@@ -162,42 +163,40 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, ed
                     onChange={(e) => handleOpacityChange(layer, Number(e.target.value))}
                   />
                 </label>
-                <button type="button" onClick={() => handleToggleVisible(layer)}>
+                <Button size="compact" onClick={() => handleToggleVisible(layer)}>
                   {layer.visible ? t('layerPanel.hide', 'Ausblenden') : t('layerPanel.show', 'Einblenden')}
-                </button>
-                <button type="button" onClick={() => handleTogglePlayerVisible(layer)}>
+                </Button>
+                <Button size="compact" onClick={() => handleTogglePlayerVisible(layer)}>
                   {t('layerPanel.playerVisible', 'Spielersichtbar')}
-                </button>
+                </Button>
                 {layer.layer_type === 'fog' && onEditFogLayer && (
-                  <button
-                    type="button"
-                    className={editingFogLayerId === layer.id ? 'active' : ''}
+                  <Button
+                    size="compact"
                     aria-pressed={editingFogLayerId === layer.id}
                     onClick={() => onEditFogLayer(layer.id)}
                   >
                     {editingFogLayerId === layer.id ? t('layerPanel.fogEditing', 'Malen beenden') : t('layerPanel.fogEdit', 'Bemalen')}
-                  </button>
+                  </Button>
                 )}
                 {layer.layer_type === 'image' && onMoveLayer && (
-                  <button
-                    type="button"
-                    className={movingLayerId === layer.id ? 'active' : ''}
+                  <Button
+                    size="compact"
                     aria-pressed={movingLayerId === layer.id}
                     onClick={() => onMoveLayer(layer.id)}
                   >
                     {movingLayerId === layer.id ? t('layerPanel.moveDone', 'Verschieben beenden') : t('layerPanel.move', 'Verschieben')}
-                  </button>
+                  </Button>
                 )}
-                <button type="button" onClick={() => handleMove(layer.id, -1)}>{t('layerPanel.moveUp', 'Nach oben')}</button>
-                <button type="button" onClick={() => handleMove(layer.id, 1)}>{t('layerPanel.moveDown', 'Nach unten')}</button>
+                <Button size="compact" onClick={() => handleMove(layer.id, -1)}>{t('layerPanel.moveUp', 'Nach oben')}</Button>
+                <Button size="compact" onClick={() => handleMove(layer.id, 1)}>{t('layerPanel.moveDown', 'Nach unten')}</Button>
                 {deleteConfirmId === layer.id ? (
                   <span className="layer-panel__delete-confirm">
                     {t('layerPanel.confirmDelete', 'Layer wirklich löschen?')}
-                    <button type="button" onClick={() => commitDelete(layer.id)}>{t('layerPanel.confirmYes', 'Ja, löschen')}</button>
-                    <button type="button" onClick={() => setDeleteConfirmId(null)}>{t('layerPanel.confirmNo', 'Abbrechen')}</button>
+                    <Button tone="danger" size="compact" onClick={() => commitDelete(layer.id)}>{t('layerPanel.confirmYes', 'Ja, löschen')}</Button>
+                    <Button size="compact" onClick={() => setDeleteConfirmId(null)}>{t('layerPanel.confirmNo', 'Abbrechen')}</Button>
                   </span>
                 ) : (
-                  <button type="button" onClick={() => setDeleteConfirmId(layer.id)}>{t('layerPanel.delete', 'Löschen')}</button>
+                  <Button tone="danger" variant="outline" size="compact" onClick={() => setDeleteConfirmId(layer.id)}>{t('layerPanel.delete', 'Löschen')}</Button>
                 )}
               </div>
             )}

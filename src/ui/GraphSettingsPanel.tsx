@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { EdgeForm } from './GraphCanvas';
+import { Button } from './primitives';
 
 export interface GraphSettings {
   // galaxy = 3D force layout (default); ring = flat 2D disc (S05 #290). The
@@ -94,12 +95,14 @@ export function GraphSettingsPanel({ value, onChange, theme }: GraphSettingsPane
         </div>
       )}
 
-      <button
+      <Button
+        variant="glass"
+        shape="circle"
         className="gv-gear"
         onClick={() => setOpen((o) => !o)}
         aria-label={t('graphSettings', 'Graph-Einstellungen')}
         aria-expanded={open}
-      >⚙</button>
+      >⚙</Button>
     </div>
   );
 }

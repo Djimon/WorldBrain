@@ -2,7 +2,7 @@
 import { useTranslation } from 'react-i18next';
 import { getMap, getAssetUrl, loadGridSettings, saveGridSettings } from '../services/map-service';
 import { listLayers, updateLayer } from '../services/map-layer-service';
-import { listTokens, createToken, moveToken, updateToken, setCounter, setStatusChips, deleteToken } from '../services/map-token-service';
+import { listTokens, createToken, moveToken, updateToken, setCounters, setStatusChips, deleteToken } from '../services/map-token-service';
 import type { MapTokenRow } from '../services/map-token-service';
 import { MapToken } from './MapTokenLayer';
 import { TokenEditor, type TokenEditPatch } from './TokenEditor';
@@ -22,6 +22,7 @@ import { listVars } from '../services/session-variable-service';
 import type { VarRow } from '../services/session-variable-service';
 import { ConditionBuilder } from './ConditionBuilder';
 import type { VarDef } from './ConditionBuilder';
+import { Button, ListRow, Tabs } from './primitives';
 
 const VISIBILITY_OPTIONS: { key: string; label: string }[] = [
   { key: 'public', label: 'Öffentlich' },
@@ -79,6 +80,28 @@ const PIN_ICONS = [
 
 type PinIconKey = typeof PIN_ICONS[number]['key'];
 
+// Shared 15-icon grid used both in the pin-tool flyout and the pin editor
+// (was duplicated inline in both). Selection = accent outline + tint, not a
+// solid fill, so it stays a bespoke grid cell rather than <Button>.
+function PinIconGrid({ value, onSelect }: { value: PinIconKey; onSelect: (key: PinIconKey) => void }) {
+  return (
+    <div className="pin-icon-picker">
+      {PIN_ICONS.map((ic) => (
+        <button
+          key={ic.key}
+          type="button"
+          title={ic.label}
+          aria-pressed={value === ic.key}
+          className={`pin-icon-btn${value === ic.key ? ' active' : ''}`}
+          onClick={() => onSelect(ic.key)}
+        >
+          {ic.emoji}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function getPinEmoji(styleJson: string): string {
   try {
     const s = JSON.parse(styleJson) as { icon?: string };
@@ -111,7 +134,7 @@ function RulerOverlay({
   const labelW = label.length * 7 + 16;
 
   return (
-    <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible', zIndex: 8 }}>
+    <svg className="map-viewer__svg-overlay">
       <line x1={sx1} y1={sy1} x2={sx2} y2={sy2}
         stroke={rulerColor} strokeWidth={rulerWidth} strokeOpacity={rulerOpacity} strokeDasharray="6 3" />
       <circle cx={sx1} cy={sy1} r={rulerWidth + 3} fill={rulerColor} fillOpacity={rulerOpacity} />
@@ -141,7 +164,7 @@ function RadiusOverlay({
   const label = `r = ${realDist.toFixed(2)} ${measureUnit}`;
   const labelW = label.length * 7 + 16;
   return (
-    <svg style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible", zIndex: 8 }}>
+    <svg className="map-viewer__svg-overlay">
       <circle cx={cx} cy={cy} r={r}
         fill={rulerColor} fillOpacity={rulerOpacity * 0.3} stroke={rulerColor} strokeWidth={rulerWidth} strokeOpacity={rulerOpacity} strokeDasharray="6 3" />
       <circle cx={cx} cy={cy} r={rulerWidth + 3} fill={rulerColor} fillOpacity={rulerOpacity} />
@@ -202,7 +225,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [activeCellStateId, setActiveCellStateId] = useState(1);
   const [gridFlyout, setGridFlyout] = useState(false);
   const [gridFlyoutPos, setGridFlyoutPos] = useState<{ top: number; left: number } | null>(null);
-  const gridBtnRef = useRef<HTMLButtonElement>(null);
+  const gridGroupRef = useRef<HTMLDivElement>(null);
+  const [pinFlyout, setPinFlyout] = useState(false);
+  const [pinFlyoutPos, setPinFlyoutPos] = useState<{ top: number; left: number } | null>(null);
+  // Icon the NEXT placed pin gets — picked from the pin-tool flyout (same
+  // grid as "Pin bearbeiten"); persists across placements.
+  const [newPinIcon, setNewPinIcon] = useState<PinIconKey>('pin');
+  const pinGroupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!measureFlyout) return;
@@ -218,6 +247,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     return () => document.removeEventListener('mousedown', close);
   }, [gridFlyout]);
 
+  useEffect(() => {
+    if (!pinFlyout) return;
+    const close = () => setPinFlyout(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [pinFlyout]);
+
   const dragStart = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
   const layerDrag = useRef<{ mx: number; my: number; ox: number; oy: number; last: { x: number; y: number } } | null>(null);
   const tokenDrag = useRef<{ id: string; moved: boolean; dx: number; dy: number } | null>(null);
@@ -225,7 +261,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const tokenScaleDrag = useRef<{ id: string; startScale: number; startX: number; last: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const measureBtnRef = useRef<HTMLButtonElement>(null);
+  const measureGroupRef = useRef<HTMLDivElement>(null);
   const [flyoutPos, setFlyoutPos] = useState<{ top: number; left: number } | null>(null);
   const pinResizeStartX = useRef<number | null>(null);
   const pinResizeStartW = useRef<number>(220);
@@ -449,11 +485,11 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     setEditingToken(token);
   }
 
-  // Inline counter step on the map (#303): +1 / -1 without opening the editor.
-  function handleTokenCounterStep(token: MapTokenRow, delta: number) {
-    const next = (token.counter_value ?? 0) + delta;
-    setTokens((prev) => prev.map((t) => (t.id === token.id ? { ...t, counter_value: next } : t)));
-    setCounter(database, token.id, { counter_value: next }).then(reloadTokens).catch(console.error);
+  // Inline counter step on the map (#309): +1 / -1 per counter index.
+  function handleTokenCounterStep(token: MapTokenRow, index: number, delta: number) {
+    const next = token.counters.map((c, i) => i === index ? { ...c, value: c.value + delta } : c);
+    setTokens((prev) => prev.map((t) => (t.id === token.id ? { ...t, counters: next } : t)));
+    setCounters(database, token.id, next).then(reloadTokens).catch(console.error);
   }
 
   // Drag the corner handle of a selected token to scale it (#301). Horizontal
@@ -490,7 +526,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       art_offset_x: patch.art_offset_x,
       art_offset_y: patch.art_offset_y,
     });
-    await setCounter(database, id, { counter_label: patch.counter_label, counter_value: patch.counter_value });
+    await setCounters(database, id, patch.counters);
     await setStatusChips(database, id, patch.status_chips);
     setEditingToken(null);
     reloadTokens();
@@ -537,7 +573,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         map_id: mapId, entity_id: null, kind: 'pin',
         geometry_json: JSON.stringify({ x: Math.round(pos.x), y: Math.round(pos.y), notes: '' }),
         label_text: 'Neuer Pin', elevation_value: null, elevation_unit: null,
-        visibility_json: '"public"', style_json: '{}', group_name: '',
+        visibility_json: '"public"', style_json: JSON.stringify({ icon: newPinIcon }), group_name: '',
       });
       setMode('navigate');
       reloadMarkers();
@@ -721,25 +757,50 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   if (!imgSrc) return <div className="map-empty">Kein Kartenbild — Karte importieren um zu beginnen.</div>;
 
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+    <div className="map-viewer__body">
       {/* Left toolbar */}
       <div className="map-toolbar">
         <div className="map-toolbar__group">
-          <button className={`map-tool-btn${mode === 'navigate' ? ' active' : ''}`} onClick={() => setMode('navigate')} title={t('all')}>🗺</button>
-          <button className={`map-tool-btn${mode === 'pin' ? ' active' : ''}`} onClick={() => setMode('pin')} title="Pin setzen">📍</button>
-          <button className={`map-tool-btn${mode === 'token' ? ' active' : ''}`} onClick={() => setMode('token')} title={t('token.place', 'Token setzen')}>🧙</button>
+          <Button size="icon" aria-pressed={mode === 'navigate'} onClick={() => setMode('navigate')} title={t('all')}>🗺</Button>
+          {/* Pin tool group — flyout with the pin-icon grid (reuses .pin-icon-picker
+              from "Pin bearbeiten"), pre-selects the icon for the next placed pin. */}
+          <div className="map-tool-group" ref={pinGroupRef}>
+            <Button
+              size="icon"
+              aria-pressed={mode === 'pin'}
+              title="Pin setzen"
+              onClick={() => {
+                setMode((m) => (m === 'pin' ? 'navigate' : 'pin'));
+                const rect = pinGroupRef.current?.getBoundingClientRect();
+                if (rect) setPinFlyoutPos({ top: rect.top, left: rect.right + 4 });
+                setPinFlyout((v) => !v);
+              }}
+            >
+              {PIN_ICONS.find((i) => i.key === newPinIcon)?.emoji ?? '📍'}
+              <span className="map-tool-group__arrow">▸</span>
+            </Button>
+            {pinFlyout && pinFlyoutPos && (
+              <div className="map-tool-flyout" style={{ top: pinFlyoutPos.top, left: pinFlyoutPos.left }} onMouseDown={(e) => e.stopPropagation()}>
+                <PinIconGrid
+                  value={newPinIcon}
+                  onSelect={(k) => { setNewPinIcon(k); setMode('pin'); setPinFlyout(false); }}
+                />
+              </div>
+            )}
+          </div>
+          <Button size="icon" aria-pressed={mode === 'token'} onClick={() => setMode('token')} title={t('token.place', 'Token setzen')}>🧙</Button>
           {/* Grid paint tool group — flyout with cell states */}
-          <div className="map-tool-group" style={{ position: 'relative' }}>
+          <div className="map-tool-group" ref={gridGroupRef}>
             {(() => {
               const activeState = gridSettings.cellStates.find((s) => s.id === activeCellStateId) ?? gridSettings.cellStates[0];
               return (
-                <button
-                  ref={gridBtnRef}
-                  className={`map-tool-btn${mode === 'grid' ? ' active' : ''}`}
+                <Button
+                  size="icon"
+                  aria-pressed={mode === 'grid'}
                   title="Grid malen"
                   onClick={() => {
                     setMode((m) => m === 'grid' ? 'navigate' : 'grid');
-                    const rect = gridBtnRef.current?.getBoundingClientRect();
+                    const rect = gridGroupRef.current?.getBoundingClientRect();
                     if (rect) setGridFlyoutPos({ top: rect.top, left: rect.right + 4 });
                     setGridFlyout((v) => !v);
                   }}
@@ -750,7 +811,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                       ? <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 2, background: activeState.color, border: '1px solid rgba(255,255,255,0.3)', verticalAlign: 'middle' }} />
                       : '⬜'}
                   <span className="map-tool-group__arrow">▸</span>
-                </button>
+                </Button>
               );
             })()}
             {gridFlyout && gridFlyoutPos && (
@@ -762,7 +823,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                   <span className="map-tool-flyout__icon">🧹</span>
                   <span className="map-tool-flyout__label">Radiergummi</span>
                 </button>
-                <div style={{ borderTop: '1px solid var(--color-border)', margin: '3px 0' }} />
+                <div className="map-tool-divider" />
                 {gridSettings.cellStates.map((st) => (
                   <button key={st.id}
                     className={`map-tool-flyout__item${activeCellStateId === st.id ? ' active' : ''}`}
@@ -778,20 +839,20 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             )}
           </div>
           {/* Measure tool group — PS-style flyout */}
-          <div className="map-tool-group" style={{ position: 'relative' }}>
-            <button
-              ref={measureBtnRef}
-              className={`map-tool-btn${(mode === 'measure' || mode === 'radius') ? ' active' : ''}`}
+          <div className="map-tool-group" ref={measureGroupRef}>
+            <Button
+              size="icon"
+              aria-pressed={mode === 'measure' || mode === 'radius'}
               title="Messwerkzeuge"
               onClick={() => {
-                const rect = measureBtnRef.current?.getBoundingClientRect();
+                const rect = measureGroupRef.current?.getBoundingClientRect();
                 if (rect) setFlyoutPos({ top: rect.top, left: rect.right + 4 });
                 setMeasureFlyout((v) => !v);
               }}
             >
               {lastMeasureTool === 'measure' ? '📏' : '⭕'}
               <span className="map-tool-group__arrow">▸</span>
-            </button>
+            </Button>
             {measureFlyout && flyoutPos && (
               <div className="map-tool-flyout" style={{ top: flyoutPos.top, left: flyoutPos.left }} onMouseDown={(e) => e.stopPropagation()}>
                 {([
@@ -834,16 +895,16 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         onClick={handleMapClick}
       >
         {/* Zoom controls — top right overlay */}
-        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4, zIndex: 10 }}>
-          <button className="map-tool-btn" onClick={() => setScale((s) => Math.min(10, s * 1.25))} title="Zoom +">＋</button>
-          <button className="map-tool-btn" onClick={() => setScale((s) => Math.max(0.1, s * 0.8))} title="Zoom −">-</button>
-          <button className="map-tool-btn" onClick={resetView} title="Reset">⌂</button>
+        <div className="map-viewer__overlay-tr">
+          <Button size="icon" onClick={() => setScale((s) => Math.min(10, s * 1.25))} title="Zoom +">＋</Button>
+          <Button size="icon" onClick={() => setScale((s) => Math.max(0.1, s * 0.8))} title="Zoom −">-</Button>
+          <Button size="icon" onClick={resetView} title="Reset">⌂</Button>
         </div>
 
         {/* Fog paint toolbar — only while the selected fog layer still exists
             (guards against the layer being deleted mid-paint). */}
         {editFogLayerId && fogLayers.some((l) => l.id === editFogLayerId) && (
-          <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10 }}>
+          <div className="map-viewer__overlay-tl">
             <FogTools
               brushSize={fogBrush} feather={fogFeather} mode={fogMode} shape={fogShape}
               onBrushSizeChange={setFogBrush} onFeatherChange={setFogFeather}
@@ -988,7 +1049,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               onPointerUp={handleTokenPointerUp}
               onSelect={(e) => handleTokenClick(tk, e)}
               onResizeStart={(e) => handleTokenResizeStart(tk, e)}
-              onCounterStep={(d) => handleTokenCounterStep(tk, d)}
+              onCounterStep={(i, d) => handleTokenCounterStep(tk, i, d)}
             />
           ))}
 
@@ -1004,7 +1065,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               <span className="map-pin__icon">
                 {mode === 'move-pin'
                   ? getPinEmoji(markers.find((m) => m.id === movingPinId)?.style_json ?? '{}')
-                  : '📍'}
+                  : (PIN_ICONS.find((i) => i.key === newPinIcon)?.emoji ?? '📍')}
               </span>
             </div>
           )}
@@ -1060,13 +1121,17 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           </div>
         ) : (
         <>
-        <div className="maps-sidebar-tabs__list" role="tablist">
-          <button type="button" role="tab" aria-selected={rightTab === 'pins'}
-            className={`maps-sidebar-tabs__tab${rightTab === 'pins' ? ' maps-sidebar-tabs__tab--active' : ''}`}
-            onClick={() => setRightTab('pins')}>{t('mapSideTabs.pins', 'Pins')}</button>
-          <button type="button" role="tab" aria-selected={rightTab === 'tokens'}
-            className={`maps-sidebar-tabs__tab${rightTab === 'tokens' ? ' maps-sidebar-tabs__tab--active' : ''}`}
-            onClick={() => setRightTab('tokens')}>{t('mapSideTabs.tokens', 'Token')}</button>
+        <div className="maps-sidebar-tabs__list">
+          <Tabs
+            fill
+            label={t('mapSideTabs.label', 'Pins und Token')}
+            activeId={rightTab}
+            onSelect={(id) => setRightTab(id as 'pins' | 'tokens')}
+            options={[
+              { id: 'pins', label: t('mapSideTabs.pins', 'Pins') },
+              { id: 'tokens', label: t('mapSideTabs.tokens', 'Token') },
+            ]}
+          />
           <button type="button" className="map-side-collapse-btn" title={t('collapse', 'Einklappen')}
             onClick={() => setPinTreeCollapsed(true)}>◀</button>
         </div>
@@ -1076,7 +1141,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               <div className="map-token-list__empty">{t('mapSideTabs.noTokens', 'Keine Tokens. Token-Werkzeug + Klick auf die Karte.')}</div>
             )}
             {tokens.map((tk) => (
-              <div key={tk.id} className={`map-token-list__row${selectedTokenId === tk.id ? ' active' : ''}`}>
+              <ListRow as="div" interactive={false} key={tk.id} selected={selectedTokenId === tk.id} className="map-token-list__row">
                 <span
                   className={`map-token-list__swatch map-token-list__swatch--${tk.render_style}`}
                   style={tk.render_style === 'token' ? { background: tk.ring_color || 'var(--color-accent)' } : undefined}
@@ -1092,7 +1157,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                     setSelectedTokenId((cur) => (cur === tk.id ? null : cur));
                     deleteToken(database, tk.id).then(reloadTokens).catch(console.error);
                   }}>✕</button>
-              </div>
+              </ListRow>
             ))}
           </div>
         ) : confirmDeleteFolderPath ? (
@@ -1121,7 +1186,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                 const linked = entities.find((e) => e.id === m.entity_id);
                 return (
                   <>
-                    <span style={{ marginRight: 6 }}>{getPinEmoji(m.style_json)}</span>
+                    <span className="map-pin-emoji">{getPinEmoji(m.style_json)}</span>
                     <span className="map-pin-tree__label">{m.label_text || '(kein Name)'}</span>
                     {linked && <span className="map-pin-tree__sub">{linked.title}</span>}
                   </>
@@ -1165,16 +1230,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             <button onClick={() => setEditingPin(null)}>✕</button>
           </div>
           <div className="map-pin-editor__body">
-            <div className="pin-icon-picker">
-              {PIN_ICONS.map((ic) => (
-                <button key={ic.key}
-                  className={`pin-icon-btn${editIcon === ic.key ? ' active' : ''}`}
-                  title={ic.label}
-                  onClick={() => setEditIcon(ic.key)}>
-                  {ic.emoji}
-                </button>
-              ))}
-            </div>
+            <PinIconGrid value={editIcon} onSelect={setEditIcon} />
             <label className="map-pin-editor__label">Name</label>
             <input className="map-pin-editor__name-input" value={editLabel} onChange={(e) => setEditLabel(e.target.value)} />
             <label className="map-pin-editor__label">Notizen</label>
@@ -1234,13 +1290,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                   </select>
                 </div>
               ) : (
-                <button className="pin-entity-add-btn" onClick={() => setShowEntityPicker(true)}>+ Entity verlinken</button>
+                <Button tone="accent" variant="outline" size="compact" onClick={() => setShowEntityPicker(true)}>+ Entity verlinken</Button>
               )}
             </div>
           </div>
           <div className="map-pin-editor__footer">
-            <button className="btn btn--primary" onClick={() => void savePin()}>Speichern</button>
-            <button className="btn" style={{ color: 'var(--color-status-failure)' }} onClick={() => void deletePin(editingPin.id)}>Löschen</button>
+            <Button tone="accent" onClick={() => void savePin()}>Speichern</Button>
+            <Button tone="danger" variant="outline" onClick={() => void deletePin(editingPin.id)}>Löschen</Button>
           </div>
         </div>
       )}

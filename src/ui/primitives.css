@@ -1,6 +1,7 @@
 .ui-button {
   min-height: 36px;
   display: inline-flex;
+  align-items: center;
   justify-content: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
@@ -9,29 +10,163 @@
   color: var(--color-text);
   background: var(--color-surface);
   font: inherit;
-  font-weight: 650;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
 }
 
+.ui-button:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-alt);
+}
+
+/* ── Solid tones (default variant) ── */
 .ui-button[data-tone='accent'] {
   border-color: var(--color-accent-strong);
-  color: var(--color-surface);
+  color: var(--color-on-accent);
   background: var(--color-accent);
+}
+.ui-button[data-tone='accent']:hover {
+  border-color: var(--color-accent-strong);
+  background: var(--color-accent-strong);
+}
+
+.ui-button[data-tone='danger'] {
+  border-color: var(--color-status-failure);
+  color: var(--color-on-accent);
+  background: var(--color-status-failure);
+}
+.ui-button[data-tone='danger']:hover {
+  filter: brightness(1.08);
+}
+
+/* ── Outline variant (transparent fill, colored edge; fills on hover) ── */
+.ui-button[data-variant='outline'] {
+  background: transparent;
+}
+.ui-button[data-variant='outline'][data-tone='neutral']:hover {
+  background: var(--color-surface-alt);
+}
+.ui-button[data-variant='outline'][data-tone='accent'] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.ui-button[data-variant='outline'][data-tone='accent']:hover {
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+}
+.ui-button[data-variant='outline'][data-tone='danger'] {
+  border-color: var(--color-status-failure);
+  color: var(--color-status-failure);
+}
+.ui-button[data-variant='outline'][data-tone='danger']:hover {
+  color: var(--color-on-accent);
+  background: var(--color-status-failure);
+}
+
+/* ── Ghost variant (no border, no fill; subtle hover) ── */
+.ui-button[data-variant='ghost'] {
+  border-color: transparent;
+  background: transparent;
+}
+.ui-button[data-variant='ghost'][data-tone='neutral'] { color: var(--color-text-muted); }
+.ui-button[data-variant='ghost'][data-tone='accent'] { color: var(--color-accent); }
+.ui-button[data-variant='ghost'][data-tone='danger'] { color: var(--color-status-failure); }
+.ui-button[data-variant='ghost']:hover {
+  border-color: transparent;
+  background: var(--color-surface-hover);
+}
+
+/* ── Glass variant (translucent surface + blur, for controls over a canvas) ── */
+.ui-button[data-variant='glass'] {
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  backdrop-filter: blur(4px);
+}
+.ui-button[data-variant='glass']:hover {
+  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
+}
+
+/* ── Pressed / active toggle state (aria-pressed; wins over tone & variant) ── */
+.ui-button[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+}
+.ui-button[aria-pressed='true']:hover {
+  border-color: var(--color-accent-strong);
+  background: var(--color-accent-strong);
+}
+
+/* ── Sizes & shape ── */
+.ui-button[data-size='compact'] {
+  min-height: 28px;
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.8rem;
+}
+
+.ui-button[data-size='icon'] {
+  min-height: 32px;
+  width: 32px;
+  padding: 0;
+}
+
+.ui-button[data-shape='circle'] {
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: var(--radius-pill);
 }
 
 .ui-button:disabled {
   color: var(--color-text-muted);
   background: var(--color-surface-alt);
+  border-color: var(--color-border);
+  cursor: default;
+  pointer-events: none;
+}
+
+.ui-segmented {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.ui-segmented[data-orientation='vertical'] {
+  flex-direction: column;
+}
+
+/* ── Glass variant — translucent framed pill with borderless (joined-look)
+   buttons, for a Segmented sitting over a canvas (e.g. the graph layout
+   toggle). The frame carries the surface; the buttons are transparent until
+   pressed, when they get the accent fill. ── */
+.ui-segmented[data-variant='glass'] {
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  backdrop-filter: blur(4px);
+}
+.ui-segmented[data-variant='glass'] .ui-button {
+  border-color: transparent;
+  background: transparent;
+}
+.ui-segmented[data-variant='glass'] .ui-button:not([aria-pressed='true']):hover {
+  background: var(--color-surface-hover);
+}
+.ui-segmented[data-variant='glass'] .ui-button[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .ui-panel {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
-  box-shadow: var(--shadow-panel);
-}
-
-.ui-panel__body {
   padding: var(--space-4);
+}
+.ui-panel[data-variant='popover'] {
+  box-shadow: var(--shadow-panel);
 }
 
 .ui-tabs {
@@ -55,6 +190,20 @@
   color: var(--color-text);
 }
 
+.ui-tabs__tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* fill = equal-width tabs stretched across the strip (the tablist itself grows
+   too, so it can share a row with a trailing action e.g. a collapse button). */
+.ui-tabs[data-fill] {
+  flex: 1;
+}
+.ui-tabs[data-fill] .ui-tabs__tab {
+  flex: 1 1 auto;
+}
+
 .ui-field {
   display: grid;
   gap: var(--space-1);
@@ -74,6 +223,11 @@
   color: var(--color-text);
   background: var(--color-surface);
   font: inherit;
+}
+/* App-wide field standard: border-only focus (accent border, no ring). */
+.ui-field__control:focus {
+  border-color: var(--color-accent);
+  outline: none;
 }
 
 .ui-field__hint {
@@ -105,6 +259,49 @@
   color: var(--color-status-failure);
 }
 
+/* ── Chip — a pill label/tag/mention (distinct from the tone-semantic
+   StatusChip). soft = surface-active fill; filled = accent-tinted. ── */
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 1px var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  background: var(--color-surface-active);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.ui-chip[data-tone='accent'] {
+  color: var(--color-accent);
+}
+.ui-chip[data-variant='filled'] {
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+.ui-chip[data-variant='outline'] {
+  border-color: var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+}
+.ui-chip[data-size='sm'] {
+  font-size: 0.65rem;
+}
+.ui-chip[data-interactive] {
+  cursor: pointer;
+}
+.ui-chip[data-interactive]:not([data-selected]):hover {
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+/* Toggle-selected (facet) — wins over tone/variant, so it goes last. */
+.ui-chip[data-selected] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
 .ui-table-surface,
 .ui-list-surface {
   overflow: auto;
@@ -129,4 +326,48 @@
   display: grid;
   gap: var(--space-1);
   padding: var(--space-2);
+}
+
+/* ── ListRow — a selectable row in a list (entity list, search result, token
+   row, …). Owns the row chrome + states; the caller composes the content and
+   can override `display` for its own layout (grid/column). ── */
+.ui-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  box-sizing: border-box;
+  list-style: none;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: transparent;
+  font: inherit;
+}
+.ui-list-row[data-interactive] {
+  cursor: pointer;
+}
+.ui-list-row[data-interactive]:hover {
+  background: var(--color-surface-alt);
+}
+/* Selected — left accent bar + accent tint (the canonical pin-tree-style marker). */
+.ui-list-row[data-selected] {
+  border-left-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+}
+.ui-list-row[data-selected][data-interactive]:hover {
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+/* Card variant — a bordered surface tile (e.g. backlinks). */
+.ui-list-row[data-variant='card'] {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.ui-list-row[data-variant='card'][data-interactive]:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-hover);
 }

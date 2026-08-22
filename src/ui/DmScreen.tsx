@@ -131,7 +131,7 @@ export function DmScreen({ screenId, database }: DmScreenProps) {
   return (
     <div>
       <h2>{screen?.title ?? 'DM Screen'}</h2>
-      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+      <div className="u-wrap u-gap-4">
         {panels.map((panel) => (
           <div key={panel.id} data-panel={panel.id}>
             <h3>{panel.title}</h3>

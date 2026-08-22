@@ -14,6 +14,7 @@ import type { SpotifyTierEngine } from '../services/spotify-tier-engine';
 import { ChannelRow } from './ChannelRow';
 import { YoutubeChannelPlayers } from './YoutubeChannelPlayers';
 import { SpotifyChannelPlayers } from './SpotifyChannelPlayers';
+import { Button } from './primitives';
 
 export interface SoundboardBoardProps {
   database: DatabaseLike;
@@ -234,9 +235,9 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
           <SpotifyChannelPlayers channelId={channel.id} engine={spotifyEngine} />
         </div>
       ))}
-      <button type="button" className="btn soundboard-board__add-channel" onClick={() => void handleAddChannel()}>
+      <Button className="soundboard-board__add-channel" onClick={() => void handleAddChannel()}>
         {t('audioAddChannel', '+ Kanal hinzufügen')}
-      </button>
+      </Button>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ListRow } from './primitives';
 import { stripMarkdown } from '../utils/markdown';
 import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
@@ -67,9 +68,11 @@ export function EntityPicker({ onSelect, typeFilter = null, database }: Props) {
       />
       <ul className="entity-picker__list" role="listbox">
         {filtered.map((entity, i) => (
-          <li
+          <ListRow
+            as="li"
             key={entity.id}
-            className={`entity-picker__item${i === activeIndex ? ' active' : ''}`}
+            className="u-items-baseline entity-picker__item"
+            selected={i === activeIndex}
             role="option"
             aria-selected={i === activeIndex}
             onClick={() => onSelect(entity.id)}
@@ -79,7 +82,7 @@ export function EntityPicker({ onSelect, typeFilter = null, database }: Props) {
             {entity.summary && (
               <span className="entity-picker__item-summary">{stripMarkdown(entity.summary)}</span>
             )}
-          </li>
+          </ListRow>
         ))}
       </ul>
     </div>

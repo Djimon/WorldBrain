@@ -1,0 +1,25 @@
+/* Central style entry — establishes the cascade-layer order once, then pulls in
+   every stylesheet assigned to its layer. Import ONLY this from the app root.
+   Layer order (low → high priority): tokens < primitives < components < utilities,
+   so utilities reliably win over component/primitive rules for the same property. */
+@layer tokens, primitives, components, utilities;
+
+@import './tokens.css' layer(tokens);
+@import './themes/toxic.css' layer(tokens);
+@import '../ui/primitives.css' layer(primitives);
+
+/* components — order matters within the layer: it must match the original
+   single-file source order 1:1 so the cascade stays byte-identical. */
+@import '../ui/graph.css' layer(components);
+@import './base.css' layer(components);
+@import './components/shell.css' layer(components);
+@import './components/entities.css' layer(components);
+@import './components/search.css' layer(components);
+@import './components/calendar.css' layer(components);
+@import './components/maps.css' layer(components);
+@import './components/calendar-extras.css' layer(components);
+@import './components/maps-panels.css' layer(components);
+@import './components/audio.css' layer(components);
+@import './components/pickers.css' layer(components);
+
+@import './utilities.css' layer(utilities);

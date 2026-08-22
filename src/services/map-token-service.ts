@@ -11,6 +11,12 @@ export interface StatusChip {
   text?: string;
 }
 
+export interface Counter {
+  label: string;
+  value: number;
+  color?: string;
+}
+
 // #298: a token is a map-local design element (NO entity/lore link). Its art
 // comes from an uploaded image. render_style 'token' = image in a round mask +
 // frame (crop pannable via art_offset percent); 'plain' = full artwork.
@@ -29,8 +35,7 @@ export interface MapTokenRow {
   x: number;
   y: number;
   ring_color: string | null;
-  counter_label: string | null;
-  counter_value: number | null;
+  counters: Counter[];
   status_chips: StatusChip[];
   session_id: string | null;
   created_at: string;
@@ -58,16 +63,17 @@ export interface UpdateTokenPatch {
   scale?: number;
 }
 
-// Raw DB row (status_chips_json string) before decoding into MapTokenRow.
-interface MapTokenDbRow extends Omit<MapTokenRow, 'status_chips'> {
+// Raw DB row before JSON decoding into MapTokenRow.
+interface MapTokenDbRow extends Omit<MapTokenRow, 'counters' | 'status_chips'> {
+  counters_json: string;
   status_chips_json: string;
 }
 
 // AP-006 exception: JSON.parse of DB *_json → safe fallback [] on malformed data.
-function parseChips(json: string): StatusChip[] {
+function parseJsonArray<T>(json: string): T[] {
   try {
     const parsed = JSON.parse(json);
-    return Array.isArray(parsed) ? (parsed as StatusChip[]) : [];
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
   } catch {
     return [];
   }
@@ -104,7 +110,11 @@ export async function listTokens(db: DatabaseLike, mapId: string, sessionId?: st
   const rows = sessionId === undefined
     ? await db.select<MapTokenDbRow>('SELECT * FROM map_tokens WHERE map_id = ? AND session_id IS NULL', [mapId])
     : await db.select<MapTokenDbRow>('SELECT * FROM map_tokens WHERE map_id = ? AND (session_id IS NULL OR session_id = ?)', [mapId, sessionId]);
-  return rows.map(({ status_chips_json, ...rest }) => ({ ...rest, status_chips: parseChips(status_chips_json) }));
+  return rows.map(({ counters_json, status_chips_json, ...rest }) => ({
+    ...rest,
+    counters: parseJsonArray<Counter>(counters_json),
+    status_chips: parseJsonArray<StatusChip>(status_chips_json),
+  }));
 }
 
 /** Moves a token to new x/y coordinates (in place, no position history). */
@@ -112,19 +122,9 @@ export async function moveToken(db: DatabaseLike, id: string, x: number, y: numb
   await db.execute('UPDATE map_tokens SET x = ?, y = ? WHERE id = ?', [x, y, id]);
 }
 
-/** Sets the token's one counter (label and/or value). */
-export async function setCounter(
-  db: DatabaseLike,
-  id: string,
-  counter: { counter_label?: string | null; counter_value?: number | null },
-): Promise<void> {
-  const fields: string[] = [];
-  const args: unknown[] = [];
-  if (counter.counter_label !== undefined) { fields.push('counter_label = ?'); args.push(counter.counter_label); }
-  if (counter.counter_value !== undefined) { fields.push('counter_value = ?'); args.push(counter.counter_value); }
-  if (fields.length === 0) return;
-  args.push(id);
-  await db.execute(`UPDATE map_tokens SET ${fields.join(', ')} WHERE id = ?`, args);
+/** Replaces all counters for a token. */
+export async function setCounters(db: DatabaseLike, id: string, counters: Counter[]): Promise<void> {
+  await db.execute('UPDATE map_tokens SET counters_json = ? WHERE id = ?', [JSON.stringify(counters), id]);
 }
 
 /** Sets the token's status chips (replaces the full array). */

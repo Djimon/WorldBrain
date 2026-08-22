@@ -1,6 +1,6 @@
 // @vitest-environment node
-// M10-S04: Spieler-Gruppen — Schema & Services
-// See: https://github.com/Djimon/WorldBrain/issues/198
+// M10-S04 (rebuild): Spieler-Gruppen (campaign-scoped)
+// See: https://github.com/Djimon/WorldBrain/issues/353
 
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
@@ -9,165 +9,170 @@ import type { DatabaseLike } from '../src/services/entity-service';
 
 function makeAsyncDb(db: DatabaseSync): DatabaseLike {
   return {
-    execute: (sql: string, args: unknown[] = []) => { db.prepare(sql).run(...args); return Promise.resolve(); },
-    select: <T>(sql: string, args: unknown[] = []): Promise<T[]> =>
-      Promise.resolve(db.prepare(sql).all(...args) as T[]),
+    execute: (sql: string, args: unknown[] = []) => {
+      db.prepare(sql).run(...args);
+      return Promise.resolve();
+    },
+    select: <T>(sql: string, args: unknown[] = []): Promise<T[]> => {
+      return Promise.resolve(db.prepare(sql).all(...args) as T[]);
+    },
   };
 }
 
-const runtimeSchemaSql = readFileSync(new URL('../src/data/runtime/schema.sql', import.meta.url), 'utf-8');
+const runtimeSchemaSql = readFileSync(
+  new URL('../src/data/runtime/schema.sql', import.meta.url),
+  'utf8',
+);
 
-function createDb() {
-  const db = new DatabaseSync(':memory:');
-  db.exec(runtimeSchemaSql);
-  return { db, asyncDb: makeAsyncDb(db) };
+function createDatabase() {
+  const raw = new DatabaseSync(':memory:');
+  raw.exec(runtimeSchemaSql);
+  return { db: raw, asyncDb: makeAsyncDb(raw) };
 }
 
-async function getService() { return import('../src/services/player-groups-service'); }
+// ---------------------------------------------------------------------------
+// 1. Schema: player_groups + group_members
+// ---------------------------------------------------------------------------
 
-describe('M10-S04 player groups schema & services', () => {
-  describe('schema', () => {
-    it('runtime schema creates player_groups table', () => {
-      const { db } = createDb();
-      const rows = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='player_groups'`).all();
-      expect(rows.length).toBe(1);
-    });
-
-    it('player_groups has id, session_id, name columns', () => {
-      const { db } = createDb();
-      const info = db.prepare(`PRAGMA table_info(player_groups)`).all() as { name: string }[];
-      const cols = info.map(r => r.name);
-      expect(cols).toContain('id');
-      expect(cols).toContain('session_id');
-      expect(cols).toContain('name');
-    });
-
-    it('runtime schema creates player_group_members table', () => {
-      const { db } = createDb();
-      const rows = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='player_group_members'`).all();
-      expect(rows.length).toBe(1);
-    });
-
-    it('player_group_members has group_id, player_id columns', () => {
-      const { db } = createDb();
-      const info = db.prepare(`PRAGMA table_info(player_group_members)`).all() as { name: string }[];
-      const cols = info.map(r => r.name);
-      expect(cols).toContain('group_id');
-      expect(cols).toContain('player_id');
-    });
+describe('M10-S04 Player groups schema', () => {
+  it('player_groups has id, campaign_id, name', () => {
+    const { db } = createDatabase();
+    try {
+      const cols = db
+        .prepare("PRAGMA table_info('player_groups')")
+        .all() as { name: string }[];
+      const names = cols.map((c) => c.name);
+      expect(names).toContain('id');
+      expect(names).toContain('campaign_id');
+      expect(names).toContain('name');
+    } finally {
+      db.close();
+    }
   });
 
-  describe('createGroup', () => {
-    it('is async', async () => {
-      const { asyncDb } = createDb();
-      const { createGroup } = await getService();
-      expect(createGroup({ database: asyncDb, sessionId: 'sess-1', name: 'Party A' })).toBeInstanceOf(Promise);
-    });
-
-    it('returns group with id, session_id, name', async () => {
-      const { asyncDb } = createDb();
-      const { createGroup } = await getService();
-      const group = await createGroup({ database: asyncDb, sessionId: 'sess-1', name: 'Party A' });
-      expect(group.id).toBeTruthy();
-      expect(group.session_id).toBe('sess-1');
-      expect(group.name).toBe('Party A');
-    });
-
-    it('persists group to player_groups table', async () => {
-      const { db, asyncDb } = createDb();
-      const { createGroup } = await getService();
-      const group = await createGroup({ database: asyncDb, sessionId: 'sess-1', name: 'Party A' });
-      const row = db.prepare('SELECT * FROM player_groups WHERE id = ?').get(group.id);
-      expect(row).toBeTruthy();
-    });
-
-    it('groups are scoped to their session', async () => {
-      const { db, asyncDb } = createDb();
-      const { createGroup } = await getService();
-      await createGroup({ database: asyncDb, sessionId: 'sess-1', name: 'Group X' });
-      await createGroup({ database: asyncDb, sessionId: 'sess-2', name: 'Group Y' });
-      const rows = db.prepare(`SELECT * FROM player_groups WHERE session_id = 'sess-1'`).all();
-      expect(rows.length).toBe(1);
-    });
+  it('player_groups does NOT have session_id (replaced by campaign_id)', () => {
+    const { db } = createDatabase();
+    try {
+      const cols = db
+        .prepare("PRAGMA table_info('player_groups')")
+        .all() as { name: string }[];
+      const names = cols.map((c) => c.name);
+      expect(names).not.toContain('session_id');
+    } finally {
+      db.close();
+    }
   });
 
-  describe('renameGroup', () => {
-    it('updates the group name in DB', async () => {
-      const { db, asyncDb } = createDb();
-      const { createGroup, renameGroup } = await getService();
-      const group = await createGroup({ database: asyncDb, sessionId: 'sess-1', name: 'Old Name' });
-      await renameGroup({ database: asyncDb, groupId: group.id, name: 'New Name' });
-      const row = db.prepare('SELECT name FROM player_groups WHERE id = ?').get(group.id) as { name: string };
-      expect(row.name).toBe('New Name');
-    });
+  it('group_members table has group_id, player_id', () => {
+    const { db } = createDatabase();
+    try {
+      const cols = db
+        .prepare("PRAGMA table_info('group_members')")
+        .all() as { name: string }[];
+      const names = cols.map((c) => c.name);
+      expect(names).toContain('group_id');
+      expect(names).toContain('player_id');
+    } finally {
+      db.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2. Service: Group CRUD (campaign-scoped)
+// ---------------------------------------------------------------------------
+
+describe('M10-S04 Player groups service', () => {
+  async function getGroupsService() {
+    return import('../src/services/player-groups-service');
+  }
+
+  it('createGroup with campaign_id returns a group', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getGroupsService();
+      const g = await svc.createGroup({
+        database: asyncDb,
+        campaignId: 'camp-1',
+        name: 'Party A',
+      });
+      expect(g).toHaveProperty('id');
+      expect(g.campaign_id).toBe('camp-1');
+      expect(g.name).toBe('Party A');
+    } finally {
+      db.close();
+    }
   });
 
-  describe('deleteGroup', () => {
-    it('removes the group from DB', async () => {
-      const { db, asyncDb } = createDb();
-      const { createGroup, deleteGroup } = await getService();
-      const group = await createGroup({ database: asyncDb, sessionId: 'sess-1', name: 'Doomed Group' });
-      await deleteGroup({ database: asyncDb, groupId: group.id });
-      const row = db.prepare('SELECT * FROM player_groups WHERE id = ?').get(group.id);
-      expect(row).toBeUndefined();
-    });
+  it('renameGroup updates the name', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getGroupsService();
+      const g = await svc.createGroup({ database: asyncDb, campaignId: 'camp-1', name: 'Old' });
+      await svc.renameGroup({ database: asyncDb, groupId: g.id, name: 'New' });
+      const rows = db
+        .prepare('SELECT name FROM player_groups WHERE id = ?')
+        .all(g.id) as { name: string }[];
+      expect(rows[0].name).toBe('New');
+    } finally {
+      db.close();
+    }
   });
 
-  describe('addMember / removeMember', () => {
-    it('addMember creates a player_group_members row', async () => {
-      const { db, asyncDb } = createDb();
-      const { createGroup, addMember } = await getService();
-      const group = await createGroup({ database: asyncDb, sessionId: 'sess-1', name: 'A' });
-      await addMember({ database: asyncDb, groupId: group.id, playerId: 'player-1' });
-      const row = db.prepare(`SELECT * FROM player_group_members WHERE group_id = ? AND player_id = ?`).get(group.id, 'player-1');
-      expect(row).toBeTruthy();
-    });
+  it('deleteGroup removes group and memberships', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getGroupsService();
+      const g = await svc.createGroup({ database: asyncDb, campaignId: 'camp-1', name: 'Gone' });
+      await svc.addMember({ database: asyncDb, groupId: g.id, playerId: 'p-1' });
+      await svc.deleteGroup({ database: asyncDb, groupId: g.id });
+      const groups = db.prepare('SELECT * FROM player_groups WHERE id = ?').all(g.id);
+      const members = db.prepare('SELECT * FROM group_members WHERE group_id = ?').all(g.id);
+      expect(groups.length).toBe(0);
+      expect(members.length).toBe(0);
+    } finally {
+      db.close();
+    }
+  });
 
-    it('removeMember deletes the player_group_members row', async () => {
-      const { db, asyncDb } = createDb();
-      const { createGroup, addMember, removeMember } = await getService();
-      const group = await createGroup({ database: asyncDb, sessionId: 'sess-1', name: 'A' });
-      await addMember({ database: asyncDb, groupId: group.id, playerId: 'player-1' });
-      await removeMember({ database: asyncDb, groupId: group.id, playerId: 'player-1' });
-      const row = db.prepare(`SELECT * FROM player_group_members WHERE group_id = ? AND player_id = ?`).get(group.id, 'player-1');
-      expect(row).toBeUndefined();
-    });
-
-    it('a player can be in multiple groups', async () => {
-      const { db, asyncDb } = createDb();
-      const { createGroup, addMember } = await getService();
-      const g1 = await createGroup({ database: asyncDb, sessionId: 'sess-1', name: 'G1' });
-      const g2 = await createGroup({ database: asyncDb, sessionId: 'sess-1', name: 'G2' });
-      await addMember({ database: asyncDb, groupId: g1.id, playerId: 'player-1' });
-      await addMember({ database: asyncDb, groupId: g2.id, playerId: 'player-1' });
-      const rows = db.prepare(`SELECT * FROM player_group_members WHERE player_id = 'player-1'`).all();
+  it('a player can belong to multiple groups', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getGroupsService();
+      const g1 = await svc.createGroup({ database: asyncDb, campaignId: 'camp-1', name: 'A' });
+      const g2 = await svc.createGroup({ database: asyncDb, campaignId: 'camp-1', name: 'B' });
+      await svc.addMember({ database: asyncDb, groupId: g1.id, playerId: 'p-1' });
+      await svc.addMember({ database: asyncDb, groupId: g2.id, playerId: 'p-1' });
+      const rows = db
+        .prepare('SELECT * FROM group_members WHERE player_id = ?')
+        .all('p-1');
       expect(rows.length).toBe(2);
-    });
+    } finally {
+      db.close();
+    }
   });
+});
 
-  describe('listGroups', () => {
-    it('returns only groups for the given session', async () => {
-      const { asyncDb } = createDb();
-      const { createGroup, listGroups } = await getService();
-      await createGroup({ database: asyncDb, sessionId: 'sess-1', name: 'Alpha' });
-      await createGroup({ database: asyncDb, sessionId: 'sess-1', name: 'Beta' });
-      await createGroup({ database: asyncDb, sessionId: 'sess-2', name: 'Other' });
-      const groups = await listGroups({ database: asyncDb, sessionId: 'sess-1' });
-      expect(groups.length).toBe(2);
-      expect(groups.every(g => g.session_id === 'sess-1')).toBe(true);
-    });
+// ---------------------------------------------------------------------------
+// 3. Campaign isolation: groups from campaign A not visible in campaign B
+// ---------------------------------------------------------------------------
 
-    it('returns empty array when session has no groups', async () => {
-      const { asyncDb } = createDb();
-      const { listGroups } = await getService();
-      expect(await listGroups({ database: asyncDb, sessionId: 'sess-empty' })).toEqual([]);
-    });
-  });
+describe('M10-S04 Campaign isolation', () => {
+  async function getGroupsService() {
+    return import('../src/services/player-groups-service');
+  }
 
-  describe('type safety', () => {
-    it('player-groups-service.ts does not cast database as never or unknown', () => {
-      const src = readFileSync('src/services/player-groups-service.ts', 'utf-8');
-      expect(src).not.toContain('as never');
-    });
+  it('listGroups returns only groups for the requested campaign', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      const svc = await getGroupsService();
+      await svc.createGroup({ database: asyncDb, campaignId: 'camp-A', name: 'Alpha' });
+      await svc.createGroup({ database: asyncDb, campaignId: 'camp-B', name: 'Beta' });
+      const groupsA = await svc.listGroups({ database: asyncDb, campaignId: 'camp-A' });
+      expect(groupsA.length).toBe(1);
+      expect(groupsA[0].name).toBe('Alpha');
+    } finally {
+      db.close();
+    }
   });
 });

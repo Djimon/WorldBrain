@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createProject } from '../services/project-service';
+import { Button, Panel } from './primitives';
 
 interface NewProjectDialogProps {
   onCreated: (projectId: string) => void;
@@ -27,7 +28,7 @@ export function NewProjectDialog({ onCreated, onCancel, baseDir }: NewProjectDia
 
   return (
     <div className="new-project">
-      <div className="new-project__card">
+      <Panel className="new-project__card u-stack u-gap-4">
         <h2>{t('createNewProject')}</h2>
 
         {error && <div className="new-project__error" role="alert">{error}</div>}
@@ -53,10 +54,10 @@ export function NewProjectDialog({ onCreated, onCancel, baseDir }: NewProjectDia
         </label>
 
         <div className="new-project__actions">
-          <button className="btn" onClick={onCancel}>{tc('cancel')}</button>
-          <button className="btn btn--primary" onClick={handleSubmit}>{tc('create')}</button>
+          <Button onClick={onCancel}>{tc('cancel')}</Button>
+          <Button tone="accent" onClick={handleSubmit}>{tc('create')}</Button>
         </div>
-      </div>
+      </Panel>
     </div>
   );
 }

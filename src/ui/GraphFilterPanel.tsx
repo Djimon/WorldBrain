@@ -6,6 +6,7 @@
 // Styling: graph.css (.gv-*), scoped under .graph-view.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from './primitives';
 
 export interface GraphFilterPanelProps {
   types: string[];            // all relation_type values present (dynamic)
@@ -25,8 +26,8 @@ export function GraphFilterPanel({ types, hidden, onToggle, onSetAll }: GraphFil
         <div className="gv-filter-pane" role="group" aria-label={t('graphFilter', 'Filter')}>
           <div className="gv-filter-pane__head">
             <strong className="gv-filter-pane__title">{t('graphFilterRelationTypes', 'Relationstypen')}</strong>
-            <button className="gv-mini-btn" onClick={() => onSetAll([])}>{t('graphFilterAll', 'Alle')}</button>
-            <button className="gv-mini-btn" onClick={() => onSetAll([...types])}>{t('graphFilterNone', 'Keine')}</button>
+            <Button variant="ghost" size="compact" onClick={() => onSetAll([])}>{t('graphFilterAll', 'Alle')}</Button>
+            <Button variant="ghost" size="compact" onClick={() => onSetAll([...types])}>{t('graphFilterNone', 'Keine')}</Button>
             {types.length === 0 && <span className="gv-muted">{t('graphFilterEmpty', 'Keine Relationstypen im Graph')}</span>}
           </div>
           <div className="gv-filter-pane__list">
@@ -40,13 +41,15 @@ export function GraphFilterPanel({ types, hidden, onToggle, onSetAll }: GraphFil
         </div>
       )}
 
-      <button
-        className={`gv-fab gv-fab--filter${active ? ' gv-fab--active' : ''}`}
+      <Button
+        variant="glass"
+        shape="circle"
+        className={`gv-fab--filter${active ? ' gv-fab--active' : ''}`}
         onClick={() => setOpen((o) => !o)}
         aria-label={t('graphFilter', 'Filter')}
         aria-expanded={open}
         title={t('graphFilter', 'Filter')}
-      >⧩</button>
+      >⧩</Button>
     </>
   );
 }
