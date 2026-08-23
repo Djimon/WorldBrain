@@ -5,6 +5,7 @@ import { listEntitiesByType } from '../services/entity-service';
 import { EntityDetailView } from './EntityDetailView';
 import { Button, ListRow } from './primitives';
 import { stripMarkdown } from '../utils/markdown';
+import { useReadOnly } from './useReadOnly';
 
 type EntityListItem = { id: string; type: string; title: string; summary: string };
 
@@ -31,6 +32,7 @@ async function createEntity(db: DatabaseLike, type: string, title: string): Prom
 
 export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySelect, onNavigateToEntity, database }: Props) {
   const { t } = useTranslation('entity');
+  const readOnly = useReadOnly(); // M10-S23: Player-Modus blendet Create-Affordances aus.
   const [selectedId, setSelectedId] = useState<string | null>(selectedEntityId ?? null);
   const [entities, setEntities] = useState<EntityListItem[]>([]);
   const [creating, setCreating] = useState(false);
@@ -73,18 +75,20 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
       <div className="emd__list">
         <div className="emd__list-header">
           <span className="emd__list-count">{entities.length} {typeName}</span>
-          <Button
-            tone="accent"
-            variant="outline"
-            size="compact"
-            onClick={() => setCreating(true)}
-            title={t('new')}
-          >
-            {t('new')}
-          </Button>
+          {!readOnly && (
+            <Button
+              tone="accent"
+              variant="outline"
+              size="compact"
+              onClick={() => setCreating(true)}
+              title={t('new')}
+            >
+              {t('new')}
+            </Button>
+          )}
         </div>
 
-        {creating && (
+        {creating && !readOnly && (
           <div className="emd__create-form">
             <input
               autoFocus
@@ -105,9 +109,11 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
         {entities.length === 0 && !creating && (
           <div className="emd__empty">
             <p>{t('noneFound', { type: typeName })}</p>
-            <Button tone="accent" onClick={() => setCreating(true)}>
-              {t('createFirst', { type: typeName })}
-            </Button>
+            {!readOnly && (
+              <Button tone="accent" onClick={() => setCreating(true)}>
+                {t('createFirst', { type: typeName })}
+              </Button>
+            )}
           </div>
         )}
 

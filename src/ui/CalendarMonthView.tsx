@@ -6,6 +6,7 @@ import { dateToCounter, erasForRange, eraRelativeYear, eraUnit } from '../../cor
 import { listEras } from '../services/era-service';
 import type { EraRow } from '../services/era-service';
 import { Segmented } from './primitives';
+import { useReadOnly } from './useReadOnly';
 
 interface MonthDef { name: string; days: number }
 interface Calendar {
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export function CalendarMonthView({ calendar, database, onCreateEvent, onEventClick, refreshToken }: Props) {
+  const readOnly = useReadOnly(); // M10-S23: Player-Modus deaktiviert Event-Create-Click.
   const months = calendar.months.length > 0 ? calendar.months : [{ name: 'Month 1', days: calendar.year_length_days }];
   const startYear = calendar.start_year ?? 1;
   const startMonthIdx = (calendar.start_month ?? 1) - 1;
@@ -204,7 +206,7 @@ export function CalendarMonthView({ calendar, database, onCreateEvent, onEventCl
                 role="gridcell"
                 className="cal-grid__day"
                 data-day={counterDay}
-                onClick={() => onCreateEvent?.(counterDay)}
+                onClick={() => { if (!readOnly) onCreateEvent?.(counterDay); }}
               >
                 <span className="cal-grid__day-num">{day}</span>
                 {dayEvents.map(e => (
