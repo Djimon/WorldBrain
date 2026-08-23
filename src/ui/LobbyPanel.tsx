@@ -53,9 +53,14 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
       setInviteCode(next);
       onInviteCodeChanged?.(next);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('lobby.regenError', 'Code konnte nicht neu erzeugt werden.'));
+      const raw = e instanceof Error ? e.message : String(e);
+      setError(`${t('lobby.regenError', 'Code konnte nicht neu erzeugt werden.')} — ${raw}`);
     }
   }
+
+  // Roster-Anzeige: nur aktive. Gekickte bleiben in der DB (Token-Sperre für
+  // Reconnect-Schutz), tauchen aber nicht mehr in "Verbundene Spieler" auf.
+  const activePlayers = players.filter((p) => p.status === 'active');
 
   async function handleCopy() {
     if (inviteCode === '') return;
@@ -100,25 +105,21 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
       <div className="lobby-panel__roster u-stack u-gap-2">
         <h3>{t('lobby.rosterTitle', 'Verbundene Spieler')}</h3>
         <ListSurface>
-          {players.length === 0 && (
+          {activePlayers.length === 0 && (
             <li className="lobby-panel__empty">{t('lobby.rosterEmpty', 'Noch niemand beigetreten.')}</li>
           )}
-          {players.map((p) => (
+          {activePlayers.map((p) => (
             <li key={p.id} className="lobby-panel__player u-row u-gap-2">
               <span className="lobby-panel__player-id">{p.player_id}</span>
-              <StatusChip tone={p.status === 'active' ? 'success' : 'muted'}>
-                {p.status === 'active' ? t('lobby.online', 'online') : t('lobby.offline', 'offline')}
-              </StatusChip>
-              {p.status === 'active' && (
-                <Button
-                  tone="danger"
-                  variant="outline"
-                  size="compact"
-                  onClick={() => void handleKick(p.player_id)}
-                >
-                  {t('lobby.kick', 'Kick')}
-                </Button>
-              )}
+              <StatusChip tone="success">{t('lobby.online', 'online')}</StatusChip>
+              <Button
+                tone="danger"
+                variant="outline"
+                size="compact"
+                onClick={() => void handleKick(p.player_id)}
+              >
+                {t('lobby.kick', 'Kick')}
+              </Button>
             </li>
           ))}
         </ListSurface>
