@@ -1,0 +1,68 @@
+// M10-S09 (#358): Spieler-Live-Sicht — host-seitige Content-Filterung (D15/D20,
+// Decision 8). Der Client filtert NIE selbst; jede ID läuft hier durch
+// resolveSessionVisibility (S07) — nur was 'visible' zurückgibt verlässt den
+// Host. Nicht-freigegebene IDs (default gm_only) tauchen im Ergebnis nicht auf.
+//
+// Live-Push: wird von der Consumer-Schicht (Play-Cockpit S14, Whiteboard S15,
+// Kalender-Gate S17) über den WebRTC-Transport (S01) getrieben; dieser Service
+// stellt die Filter-Primitive bereit. Der DM triggert eine Freigabe via
+// visibility-service.setVisibilityOverride — die Push-Seite hört auf DB-Änderung
+// bzw. wird von der Feature-Story aufgerufen (kein globales Event-Bus hier).
+import type { DatabaseLike } from './entity-service';
+import { resolveSessionVisibility } from './visibility-service';
+
+export interface PlayerFilterContext {
+  campaign_id: string;
+  player_id: string;
+  group_ids: string[];
+}
+
+export interface FilterIdsParams {
+  database: DatabaseLike;
+  campaignId: string;
+  targetType: string;
+  ids: string[];
+  context: PlayerFilterContext;
+}
+
+/**
+ * Kern-Primitive: reduziert die IDs auf die für den Spieler freigegebenen.
+ * Nicht-freigegebene (default gm_only) fallen raus — sie verlassen den Host
+ * nie in Richtung Client.
+ */
+export async function filterIdsForPlayer(params: FilterIdsParams): Promise<string[]> {
+  const results = await Promise.all(
+    params.ids.map(async (id) => {
+      const result = await resolveSessionVisibility(params.database, {
+        campaignId: params.campaignId,
+        targetType: params.targetType,
+        targetId: id,
+        playerId: params.context.player_id,
+        groupIds: params.context.group_ids,
+      });
+      return result === 'visible' ? id : null;
+    }),
+  );
+  return results.filter((id): id is string => id !== null);
+}
+
+// Convenience-Wrapper pro Content-Kategorie aus D15 — gleiche Semantik, andere
+// targetType-Konstante. Ergänzt bei Bedarf pro Feature (S15 Whiteboard, S17
+// Kalender-Events, etc.); die Content-Kategorien 'authoring' / 'graph' /
+// 'soundboard' sind explizit AUS — DM-only, nie im Player-View.
+
+export async function filterEntitiesForPlayer(params: Omit<FilterIdsParams, 'targetType'>): Promise<string[]> {
+  return filterIdsForPlayer({ ...params, targetType: 'entity' });
+}
+
+export async function filterImagesForPlayer(params: Omit<FilterIdsParams, 'targetType'>): Promise<string[]> {
+  return filterIdsForPlayer({ ...params, targetType: 'image' });
+}
+
+export async function filterMarkersForPlayer(params: Omit<FilterIdsParams, 'targetType'>): Promise<string[]> {
+  return filterIdsForPlayer({ ...params, targetType: 'marker' });
+}
+
+export async function filterHandoutsForPlayer(params: Omit<FilterIdsParams, 'targetType'>): Promise<string[]> {
+  return filterIdsForPlayer({ ...params, targetType: 'handout' });
+}
