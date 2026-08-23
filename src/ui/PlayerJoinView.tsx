@@ -3,11 +3,18 @@
 // Rendezvous-Info selbst (Signaling-Details in S11/S12). Gültiger Code
 // → sofort aktives Mitglied via session-identity-service, dann Übergang
 // zur Charaktererstellung (S08 baut die Weiterleitung aus).
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
-import { joinWithCode } from '../services/session-identity-service';
+import { joinWithCode, validateToken } from '../services/session-identity-service';
 import { Button, Field, Panel, StatusChip } from './primitives';
+
+// M10-S05: Token + Displayname bleiben pro Browser-Client in localStorage
+// stehen. Beim nächsten Mount reconnecten wir ohne neuen Join, sofern
+// validateToken() den Token noch als aktiv (nicht gekickt) erkennt.
+// (Volle Persistenz-Story S10.)
+const TOKEN_KEY = 'wbrain.session-token';
+const NAME_KEY = 'wbrain.session-name';
 
 export interface PlayerJoinViewProps {
   database: DatabaseLike;
@@ -21,6 +28,27 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [joinedName, setJoinedName] = useState<string | null>(null);
+
+  // Reconnect-Check beim Mount: existiert ein gültiger Token → Success-Screen
+  // ohne neuen Join. Verhindert dass mehrfaches Öffnen der Play-Sicht
+  // weitere Player-Rows anlegt.
+  useEffect(() => {
+    const stored = typeof window !== 'undefined' ? window.localStorage.getItem(TOKEN_KEY) : null;
+    if (stored === null || stored === '') return;
+    let cancelled = false;
+    void validateToken(database, stored).then((ok) => {
+      if (cancelled) return;
+      if (ok) {
+        setJoinedName(window.localStorage.getItem(NAME_KEY) ?? '');
+      } else {
+        // Token invalidiert (kicked / DB weg) — Slate clearen.
+        window.localStorage.removeItem(TOKEN_KEY);
+        window.localStorage.removeItem(NAME_KEY);
+      }
+    }).catch(() => { /* fail-open: normales Formular anzeigen */ });
+    return () => { cancelled = true; };
+  }, [database]);
 
   const canSubmit = code.trim() !== '' && displayName.trim() !== '' && !busy;
 
@@ -28,18 +56,36 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
     setError(null);
     setBusy(true);
     try {
+      const name = displayName.trim();
       const result = await joinWithCode(database, {
         code: code.trim(),
-        displayName: displayName.trim(),
+        displayName: name,
       });
-      onJoined?.({ ...result, displayName: displayName.trim() });
-    } catch {
+      window.localStorage.setItem(TOKEN_KEY, result.token);
+      window.localStorage.setItem(NAME_KEY, name);
+      setJoinedName(name);
+      onJoined?.({ ...result, displayName: name });
+    } catch (e) {
       // AC: Fehler NUR bei ungültigem Code / Host nicht erreichbar — nie
-      // DM-Ablehnung. Keine Unterscheidung nach Ursache im UI (D24).
-      setError(t('join.errorInvalid', 'Ungültiger Einladungscode oder Host nicht erreichbar.'));
+      // DM-Ablehnung. Realer Fehler-Text hilft beim Live-Debug.
+      const raw = e instanceof Error ? e.message : String(e);
+      setError(`${t('join.errorInvalid', 'Ungültiger Einladungscode oder Host nicht erreichbar.')} — ${raw}`);
     } finally {
       setBusy(false);
     }
+  }
+
+  if (joinedName !== null) {
+    return (
+      <Panel className="player-join-view u-stack u-gap-3" role="status"
+        aria-label={t('join.joinedTitle', 'Beigetreten')}>
+        <h2>{t('join.joinedTitle', 'Beigetreten')}</h2>
+        <StatusChip tone="success">
+          {t('join.joinedMsg', 'Willkommen, {{name}}! Du bist der Campaign beigetreten.', { name: joinedName })}
+        </StatusChip>
+        <p>{t('join.nextStep', 'Nächster Schritt: Charaktererstellung (folgt in S08).')}</p>
+      </Panel>
+    );
   }
 
   return (

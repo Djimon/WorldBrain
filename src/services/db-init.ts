@@ -103,6 +103,13 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN art_offset_x REAL NOT NULL DEFAULT 0`).catch(() => {});
   await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN art_offset_y REAL NOT NULL DEFAULT 0`).catch(() => {});
   await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN scale REAL NOT NULL DEFAULT 1`).catch(() => {});
+  // M15-S09 (#309): Single-counter → counters_json. Alle 4 Statements
+  // idempotent — .catch(() => {}) fängt „duplicate column", „no such
+  // column" beide Richtungen (fresh DB / alte DB).
+  await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN counters_json TEXT NOT NULL DEFAULT '[]'`).catch(() => {});
+  await adapter.execute(`UPDATE map_tokens SET counters_json = json_array(json_object('label', COALESCE(counter_label,''), 'value', counter_value)) WHERE counter_value IS NOT NULL`).catch(() => {});
+  await adapter.execute(`ALTER TABLE map_tokens DROP COLUMN counter_label`).catch(() => {});
+  await adapter.execute(`ALTER TABLE map_tokens DROP COLUMN counter_value`).catch(() => {});
   applySavedViewsSchema(db as unknown as Parameters<typeof applySavedViewsSchema>[0]);
   await applySearchSchema(adapter);
   applySessionSchema(db as unknown as Parameters<typeof applySessionSchema>[0]);
