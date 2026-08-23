@@ -15,6 +15,7 @@ import { Button, Field, Panel, StatusChip } from './primitives';
 // (Volle Persistenz-Story S10.)
 const TOKEN_KEY = 'wbrain.session-token';
 const NAME_KEY = 'wbrain.session-name';
+const PLAYER_ID_KEY = 'wbrain.session-player-id';
 
 export interface PlayerJoinViewProps {
   database: DatabaseLike;
@@ -40,11 +41,16 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
     void validateToken(database, stored).then((ok) => {
       if (cancelled) return;
       if (ok) {
-        setJoinedName(window.localStorage.getItem(NAME_KEY) ?? '');
+        const name = window.localStorage.getItem(NAME_KEY) ?? '';
+        const pid = window.localStorage.getItem(PLAYER_ID_KEY) ?? '';
+        setJoinedName(name);
+        // Parent (WorkspaceShell) auf Sheet-Sicht schalten.
+        if (pid !== '') onJoined?.({ token: stored, playerId: pid, displayName: name });
       } else {
         // Token invalidiert (kicked / DB weg) — Slate clearen.
         window.localStorage.removeItem(TOKEN_KEY);
         window.localStorage.removeItem(NAME_KEY);
+        window.localStorage.removeItem(PLAYER_ID_KEY);
       }
     }).catch(() => { /* fail-open: normales Formular anzeigen */ });
     return () => { cancelled = true; };
@@ -63,6 +69,7 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
       });
       window.localStorage.setItem(TOKEN_KEY, result.token);
       window.localStorage.setItem(NAME_KEY, name);
+      window.localStorage.setItem(PLAYER_ID_KEY, result.playerId);
       setJoinedName(name);
       onJoined?.({ ...result, displayName: name });
     } catch (e) {

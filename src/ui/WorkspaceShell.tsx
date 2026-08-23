@@ -37,6 +37,7 @@ import { Button, Panel } from './primitives';
 import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext';
 import { PlayModeView } from './PlayModeView';
 import { PlayerJoinView } from './PlayerJoinView';
+import { PlayerCharacterSheet } from './PlayerCharacterSheet';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
 
@@ -109,6 +110,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   const [sessionRole, setSessionRole] = useState<SessionRole>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [showRoleSelect, setShowRoleSelect] = useState(false);
+  // M10-S05/S08: Nach dem Player-Join steht Token+playerId+displayName fest;
+  // die Play-Sicht schaltet dann auf PlayerCharacterSheet.
+  const [playerContext, setPlayerContext] = useState<{ playerId: string; displayName: string } | null>(null);
   const [activeArea, setActiveArea] = useState<Area>(activePanel ?? 'entities');
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | null>('Character');
@@ -921,10 +925,22 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           ) : inPlayCockpit ? (
             sessionRole === 'dm' ? (
               <PlayModeView role={sessionRole} activeSessionId={activeSessionId} />
+            ) : playerContext !== null && activeSessionId !== null ? (
+              // M10-S08: Nach dem Join steht der Player-Charakterbogen; der
+              // Sheet ist Aktionsquelle (D13/D14), Kampflog-Post läuft später
+              // durch S14 (Play-Cockpit) → S16 (Würfel).
+              <PlayerCharacterSheet
+                database={database}
+                campaignId={activeSessionId}
+                playerId={playerContext.playerId}
+                displayName={playerContext.displayName}
+              />
             ) : (
-              // M10-S05: Player-Rolle startet mit dem Beitritts-Flow. Nach
-              // erfolgreichem Join übernimmt die Player-Live-Sicht (S09/S23).
-              <PlayerJoinView database={database} />
+              // M10-S05: Player-Rolle startet mit dem Beitritts-Flow.
+              <PlayerJoinView
+                database={database}
+                onJoined={({ playerId, displayName }) => setPlayerContext({ playerId, displayName })}
+              />
             )
           ) : (
             renderArea()
