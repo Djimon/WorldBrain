@@ -484,7 +484,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     if (suppressTokenClick.current) { suppressTokenClick.current = false; return; }
     if (mode !== 'navigate') return;
     setSelectedTokenId(token.id);
-    setEditingToken(token);
+    // M10-S23 / D14: Player kein Token-Editor; Selektion + Drag (D18) bleibt.
+    if (!readOnly) setEditingToken(token);
   }
 
   // Inline counter step on the map (#309): +1 / -1 per counter index.
@@ -611,6 +612,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     e.stopPropagation();
     if (mode === 'grid') return;
     if (mode === 'move-pin') return; // move-pin handled by map click
+    if (readOnly) return; // M10-S23: Player sieht Pin-Details später als Peek (S09), kein Editor.
     const geo = parsePinGeometry(m.geometry_json);
     setEditingPin(m);
     setEditLabel(m.label_text ?? '');
@@ -793,6 +795,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
           </div>
           <Button size="icon" aria-pressed={mode === 'token'} onClick={() => setMode('token')} title={t('token.place', 'Token setzen')}>🧙</Button>
           </>)}
+          {!readOnly && (<>
           {/* Grid paint tool group — flyout with cell states */}
           <div className="map-tool-group" ref={gridGroupRef}>
             {(() => {
@@ -842,7 +845,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               </div>
             )}
           </div>
-          {/* Measure tool group — PS-style flyout */}
+          </>)}
+          {/* Measure tool group — auch für Player OK (nur Anzeige, kein Welt-State) */}
           <div className="map-tool-group" ref={measureGroupRef}>
             <Button
               size="icon"
@@ -875,17 +879,19 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             )}
           </div>
         </div>
-        <div className="map-toolbar__group">
-          <GridControlsPanel
-            settings={gridSettings}
-            onChange={updateGridSettings}
-            activeCellCount={cells.size}
-            sessionId={sessionId}
-            mapId={mapId}
-            database={database}
-            onClear={() => { void clearAllCells(database, sessionId, mapId).then(() => setCells(new Map())); }}
-          />
-        </div>
+        {!readOnly && (
+          <div className="map-toolbar__group">
+            <GridControlsPanel
+              settings={gridSettings}
+              onChange={updateGridSettings}
+              activeCellCount={cells.size}
+              sessionId={sessionId}
+              mapId={mapId}
+              database={database}
+              onClear={() => { void clearAllCells(database, sessionId, mapId).then(() => setCells(new Map())); }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Map canvas */}

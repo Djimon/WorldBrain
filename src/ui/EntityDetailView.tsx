@@ -17,6 +17,7 @@ import { loadActiveCalendar } from '../services/calendar-service';
 import { getRelations } from '../services/relation-service';
 import type { RelationRow } from '../services/relation-service';
 import { Button, Chip, Tabs } from './primitives';
+import { useReadOnly } from './useReadOnly';
 
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
@@ -71,6 +72,7 @@ type EntityDetailViewProps = {
 
 export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted, overviewOnly }: EntityDetailViewProps) {
   const { t } = useTranslation('entity');
+  const readOnly = useReadOnly(); // M10-S23: Player-Modus blendet Edit/Delete aus.
   const [activeTab, setActiveTab] = useState('overview');
   const [extraTabs] = useState<TabDefinition[]>(() => [...registeredTabs]);
   const [result, setResult] = useState<EffectiveResult | null>(null);
@@ -131,11 +133,11 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
   // the same entity (e.g. after commitEdit's own load() call).
   const autoEditAppliedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (startInEditMode && result?.found && autoEditAppliedFor.current !== entityId) {
+    if (startInEditMode && !readOnly && result?.found && autoEditAppliedFor.current !== entityId) {
       autoEditAppliedFor.current = entityId;
       startEdit();
     }
-  }, [result, startInEditMode, entityId]);
+  }, [result, startInEditMode, entityId, readOnly]);
 
   // #292 follow-up: participants/locations shown directly in the Event
   // overview (not only behind the separate Relations tab) — "who/where" is
@@ -374,7 +376,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
               <Button tone="danger" variant="outline" size="compact" onClick={() => setDeletePrompt(true)}>{t('delete', 'Löschen')}</Button>
             )}
           </>
-        ) : overviewOnly ? null : (
+        ) : overviewOnly || readOnly ? null : (
           <Button variant="ghost" size="icon" className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', 'Bearbeiten')} title={t('edit', 'Bearbeiten')}>✏️</Button>
         )}
       </div>

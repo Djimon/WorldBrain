@@ -115,6 +115,8 @@ Read order — mandatory, in sequence:
 
 AC in the Issue overrides test assumptions when they conflict — tests describe behavior, the Issue describes intent. Do not edit tests. Tests wrong → stop and report.
 
+**Nordstern ist der AC, nicht der Test.** Tests sind Werkzeug zur Verifikation, keine Scope-Definition. Wenn der Test dünn ist (nur Source-Grep, nur Guards, nur ein Happy-Path) und der AC verlangt mehr — dann implementiere den vollen AC. „Test grün ⇒ fertig" ist explizit falsch, wenn Test-Coverage < AC-Coverage. Vor jedem `PATCH_VERIFIED` prüfen: erfüllt der Code jede AC-Zeile, oder nur die getesteten? Ungetestete AC-Punkte gehören ins Ticket-Comment beim Schließen — nicht stillschweigend ausgelassen.
+
 if you have to build **new UI or edit old**: strictly follow: `docs/UIConsolidation/DEV-UI-GUIDE.md`
 **A UI component isn't done until it's mounted and reachable.** A passing isolated test (`render(<X/>)`) is NOT "done" — Before marking a UI story done, verify a real path renders it: grep that `<Component` appears outside its own file and tests, and that a route/menu/parent actually reaches it in the running app. 
 

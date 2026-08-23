@@ -214,7 +214,7 @@ export function CalendarMonthView({ calendar, database, onCreateEvent, onEventCl
                     key={e.id}
                     className="cal-grid__event"
                     title={e.title}
-                    onClick={(ev) => { ev.stopPropagation(); onEventClick?.(e.id); }}
+                    onClick={(ev) => { ev.stopPropagation(); if (!readOnly) onEventClick?.(e.id); }}
                   >
                     {e.title}
                   </div>
