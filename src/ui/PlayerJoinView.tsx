@@ -6,16 +6,19 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
-import { joinWithCode, validateToken } from '../services/session-identity-service';
+import { joinWithCode } from '../services/session-identity-service';
+import {
+  clearStoredToken,
+  listStoredTokens,
+  persistToken,
+  reconnect as reconnectSession,
+} from '../services/reconnect-service';
 import { Button, Field, Panel, StatusChip } from './primitives';
 
-// M10-S05: Token + Displayname bleiben pro Browser-Client in localStorage
-// stehen. Beim nächsten Mount reconnecten wir ohne neuen Join, sofern
-// validateToken() den Token noch als aktiv (nicht gekickt) erkennt.
-// (Volle Persistenz-Story S10.)
-const TOKEN_KEY = 'wbrain.session-token';
-const NAME_KEY = 'wbrain.session-name';
-const PLAYER_ID_KEY = 'wbrain.session-player-id';
+// M10-S05/S10: Token-Persistenz + Reconnect leben in reconnect-service.
+// Wir speichern den zuletzt aktiven Token für diesen Client und stellen ihn
+// beim Mount wieder her, sofern reconnect() ihn (server- oder client-seitig)
+// noch akzeptiert. Gekickte Tokens werden verworfen.
 
 export interface PlayerJoinViewProps {
   database: DatabaseLike;
@@ -31,28 +34,27 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
   const [busy, setBusy] = useState(false);
   const [joinedName, setJoinedName] = useState<string | null>(null);
 
-  // Reconnect-Check beim Mount: existiert ein gültiger Token → Success-Screen
-  // ohne neuen Join. Verhindert dass mehrfaches Öffnen der Play-Sicht
-  // weitere Player-Rows anlegt.
+  // Reconnect-Check beim Mount (D10/D11): existiert ein persistierter Token →
+  // reconnect versuchen; Erfolg → Success-Screen ohne Neu-Join. Verhindert,
+  // dass mehrfaches Öffnen der Play-Sicht weitere Player-Rows anlegt.
   useEffect(() => {
-    const stored = typeof window !== 'undefined' ? window.localStorage.getItem(TOKEN_KEY) : null;
-    if (stored === null || stored === '') return;
     let cancelled = false;
-    void validateToken(database, stored).then((ok) => {
+    (async () => {
+      const stored = (await listStoredTokens())[0];
+      if (!stored || cancelled) return;
+      const result = await reconnectSession({ token: stored.token, database });
       if (cancelled) return;
-      if (ok) {
-        const name = window.localStorage.getItem(NAME_KEY) ?? '';
-        const pid = window.localStorage.getItem(PLAYER_ID_KEY) ?? '';
-        setJoinedName(name);
-        // Parent (WorkspaceShell) auf Sheet-Sicht schalten.
-        if (pid !== '') onJoined?.({ token: stored, playerId: pid, displayName: name });
+      if (result.success) {
+        setJoinedName(stored.displayName);
+        onJoined?.({
+          token: stored.token,
+          playerId: stored.playerId ?? '',
+          displayName: stored.displayName,
+        });
       } else {
-        // Token invalidiert (kicked / DB weg) — Slate clearen.
-        window.localStorage.removeItem(TOKEN_KEY);
-        window.localStorage.removeItem(NAME_KEY);
-        window.localStorage.removeItem(PLAYER_ID_KEY);
+        await clearStoredToken(stored.token);
       }
-    }).catch(() => { /* fail-open: normales Formular anzeigen */ });
+    })().catch(() => { /* fail-open: normales Formular anzeigen */ });
     return () => { cancelled = true; };
   }, [database]);
 
@@ -67,9 +69,14 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
         code: code.trim(),
         displayName: name,
       });
-      window.localStorage.setItem(TOKEN_KEY, result.token);
-      window.localStorage.setItem(NAME_KEY, name);
-      window.localStorage.setItem(PLAYER_ID_KEY, result.playerId);
+      await persistToken({
+        hostLabel: '', // D10-Slot; wird gesetzt wenn Host-Label bekannt ist.
+        code: code.trim(),
+        token: result.token,
+        displayName: name,
+        campaignName: '',
+        playerId: result.playerId,
+      });
       setJoinedName(name);
       onJoined?.({ ...result, displayName: name });
     } catch (e) {
