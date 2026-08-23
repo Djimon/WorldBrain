@@ -36,6 +36,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { Button, Panel } from './primitives';
 import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext';
 import { PlayModeView } from './PlayModeView';
+import { PlayerJoinView } from './PlayerJoinView';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
 
@@ -921,11 +922,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             sessionRole === 'dm' ? (
               <PlayModeView role={sessionRole} activeSessionId={activeSessionId} />
             ) : (
-              // Player-Cockpit übernimmt S23 (Read-only-Sicht). Bis dahin
-              // Platzhalter — kein PlayModeView (das ist die DM-Sicht).
-              <div className="workspace-area workspace-shell__player-cockpit-placeholder">
-                <p>{t('playerCockpitPlaceholder', 'Player-Sicht (S23 Read-only Gating)')}</p>
-              </div>
+              // M10-S05: Player-Rolle startet mit dem Beitritts-Flow. Nach
+              // erfolgreichem Join übernimmt die Player-Live-Sicht (S09/S23).
+              <PlayerJoinView database={database} />
             )
           ) : (
             renderArea()
