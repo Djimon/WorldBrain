@@ -33,7 +33,9 @@ import { MapFolderTree } from './MapFolderTree';
 import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
-import { Button } from './primitives';
+import { Button, Panel } from './primitives';
+import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext';
+import { PlayModeView } from './PlayModeView';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
 
@@ -44,6 +46,7 @@ type Area =
   | 'search'
   | 'maps'
   | 'calendar'
+  | 'session'
   | 'chronicle'
   | 'cards'
   | 'plugins'
@@ -78,6 +81,7 @@ const AREAS: { id: Area; icon: string }[] = [
   { id: 'search',   icon: '🔍' },
   { id: 'maps',     icon: '🗺' },
   { id: 'calendar', icon: '📅' },
+  { id: 'session',  icon: '🎲' },
   { id: 'chronicle',icon: '📜' },
   { id: 'cards',    icon: '🃏' },
   { id: 'plugins',  icon: '🔌' },
@@ -87,6 +91,9 @@ const AREAS: { id: Area; icon: string }[] = [
   { id: 'project',  icon: '⚙' },
 ];
 
+// M10-S22 (#342 / D25): fester Play-Subset — kein Konfig-Punkt.
+const PLAY_AREAS: Area[] = ['entities', 'search', 'maps', 'calendar', 'session'];
+
 const CORE_ENTITY_TYPES = [
   'Character', 'Location', 'Faction', 'Item',
   'Quest', 'Event', 'Scene', 'Rule', 'Resource', 'Culture', 'Lore',
@@ -95,6 +102,12 @@ const CORE_ENTITY_TYPES = [
 export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snapshotsDir, onProjectClose, activePanel }: Props) {
   const { t } = useTranslation('nav');
   const database = useDatabase();
+  // M10-S22 (D25): App-Mode-Shell. `edit` = voller Autor-Workspace, `play` =
+  // Session-Sicht mit festem Play-Subset (Menü-Reduktion) + gewählter Rolle.
+  const [mode, setMode] = useState<AppMode>('edit');
+  const [sessionRole, setSessionRole] = useState<SessionRole>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [showRoleSelect, setShowRoleSelect] = useState(false);
   const [activeArea, setActiveArea] = useState<Area>(activePanel ?? 'entities');
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | null>('Character');
@@ -528,6 +541,17 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           </div>
         );
 
+      case 'session':
+        // M10-S22: session-Icon ist Teil des Play-Subset (D25). Im edit-Modus
+        // ist es normalerweise nicht sichtbar, nur wenn activePanel='session'
+        // gesetzt wurde — dann Hinweis, dass der Play-Modus per Toggle
+        // erreicht wird.
+        return (
+          <div className="workspace-area">
+            <p>{t('sessionAreaEditHint', 'Play-Cockpit über den „Spielen"-Toggle in der Kopfzeile öffnen.')}</p>
+          </div>
+        );
+
       case 'calendar':
         return (
           <div className="workspace-area workspace-area--column">
@@ -808,43 +832,106 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   }
 
   const activeAreaLabel = t(activeArea);
+  const visibleAreas = mode === 'play' ? AREAS.filter((a) => PLAY_AREAS.includes(a.id)) : AREAS;
+
+  // M10-S22 (D25): Klick auf mode-toggle.
+  // edit → Role-Auswahl öffnen (mode wird erst nach Rolle+Session gesetzt).
+  // play → sofort zurück nach edit, Rolle/Session zurücksetzen.
+  function handleModeToggle() {
+    if (mode === 'edit') {
+      setShowRoleSelect(true);
+    } else {
+      setMode('edit');
+      setSessionRole(null);
+      setActiveSessionId(null);
+      setShowRoleSelect(false);
+    }
+  }
+  function pickRole(role: 'dm' | 'player') {
+    setMode('play');
+    setSessionRole(role);
+    setActiveSessionId(projectId || null);
+    setShowRoleSelect(false);
+    setActiveArea('session');
+  }
+
+  const modeContextValue = { mode, sessionRole, activeSessionId };
+  const inPlayCockpit = mode === 'play' && activeArea === 'session';
 
   return (
-    <div className="workspace-shell">
-      <nav className="workspace-shell__sidebar" aria-label="Workspace navigation">
-        {AREAS.map(({ id, icon }) => (
+    <AppModeContext.Provider value={modeContextValue}>
+      <div className="workspace-shell">
+        <nav className="workspace-shell__sidebar" aria-label="Workspace navigation">
+          {visibleAreas.map(({ id, icon }) => (
+            <button
+              key={id}
+              data-area={id}
+              aria-label={t(id)}
+              aria-pressed={activeArea === id}
+              onClick={() => setActiveArea(id)}
+              title={t(id)}
+            >
+              {icon}
+            </button>
+          ))}
+          <div className="workspace-shell__sidebar-spacer" />
           <button
-            key={id}
-            data-area={id}
-            aria-label={t(id)}
-            aria-pressed={activeArea === id}
-            onClick={() => setActiveArea(id)}
-            title={t(id)}
+            className="workspace-shell__close-btn"
+            aria-label={t('closeProject')}
+            title={t('closeProject')}
+            onClick={onProjectClose}
           >
-            {icon}
+            ✕
           </button>
-        ))}
-        <div className="workspace-shell__sidebar-spacer" />
-        <button
-          className="workspace-shell__close-btn"
-          aria-label={t('closeProject')}
-          title={t('closeProject')}
-          onClick={onProjectClose}
-        >
-          ✕
-        </button>
-      </nav>
-      <div className="workspace-shell__content">
-        <header className="workspace-shell__header">
-          <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
-          <span className="workspace-shell__area-name">{activeAreaLabel}</span>
-          <div className="workspace-shell__header-controls">
-            <LanguageSwitcher />
-            <ThemeToggle />
-          </div>
-        </header>
-        {renderArea()}
+        </nav>
+        <div className="workspace-shell__content">
+          <header className="workspace-shell__header">
+            <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
+            <span className="workspace-shell__area-name">{activeAreaLabel}</span>
+            <div className="workspace-shell__header-controls">
+              <button
+                data-testid="mode-toggle"
+                aria-pressed={mode === 'play'}
+                onClick={handleModeToggle}
+                title={mode === 'edit' ? t('modeToggleToPlay', 'Spielen') : t('modeToggleToEdit', 'Bearbeiten')}
+              >
+                {mode === 'edit' ? t('modeEdit', 'Bearbeiten') : t('modePlay', 'Spielen')}
+              </button>
+              <LanguageSwitcher />
+              <ThemeToggle />
+            </div>
+          </header>
+          {showRoleSelect ? (
+            <Panel className="workspace-area workspace-shell__role-select" role="dialog"
+              aria-label={t('modeRolePickTitle', 'Rolle wählen')}>
+              <p>{t('modeRolePickPrompt', 'Als welche Rolle beitreten?')}</p>
+              <div className="workspace-shell__role-buttons">
+                <Button tone="accent" onClick={() => pickRole('dm')}>
+                  {t('modeRoleDm', 'Als DM')}
+                </Button>
+                <Button onClick={() => pickRole('player')}>
+                  {t('modeRolePlayer', 'Als Player')}
+                </Button>
+                <Button variant="outline" onClick={() => setShowRoleSelect(false)}>
+                  {t('cancel', 'Abbrechen')}
+                </Button>
+              </div>
+            </Panel>
+          ) : inPlayCockpit ? (
+            sessionRole === 'dm' ? (
+              <PlayModeView role={sessionRole} activeSessionId={activeSessionId} />
+            ) : (
+              // Player-Cockpit übernimmt S23 (Read-only-Sicht). Bis dahin
+              // Platzhalter — kein PlayModeView (das ist die DM-Sicht).
+              <div className="workspace-area workspace-shell__player-cockpit-placeholder">
+                <p>{t('playerCockpitPlaceholder', 'Player-Sicht (S23 Read-only Gating)')}</p>
+              </div>
+            )
+          ) : (
+            renderArea()
+          )}
+        </div>
       </div>
-    </div>
+    </AppModeContext.Provider>
   );
 }
