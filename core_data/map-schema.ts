@@ -63,17 +63,24 @@ export function applyMapSchema(db: MapDb): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
-  // M15-S09 (#309): migrate single-counter to counters_json array.
-  // Safe to run on fresh DBs (column already exists) and on old DBs.
-  try {
-    db.exec(`ALTER TABLE map_tokens ADD COLUMN counters_json TEXT NOT NULL DEFAULT '[]'`);
-    // Migrate existing single-counter rows to the new format.
-    db.exec(`UPDATE map_tokens SET counters_json = json_array(json_object('label', COALESCE(counter_label,''), 'value', counter_value)) WHERE counter_value IS NOT NULL`);
-    db.exec(`ALTER TABLE map_tokens DROP COLUMN counter_label`);
-    db.exec(`ALTER TABLE map_tokens DROP COLUMN counter_value`);
-  } catch {
-    // Column already exists (fresh DB from new schema) — nothing to do.
-  }
+  // M15-S09 (#309): idempotente Migration von single-counter zu counters_json.
+  // Adapter.exec() ist async → per-Statement Promise-rejections schlucken
+  // (fresh DB hat counters_json bereits, alte DB hat noch counter_label/-value).
+  // Sync-DatabaseSync wirft synchron — hier reicht der optional-chained catch.
+  const safeExec = (sql: string) => {
+    try {
+      const r = db.exec(sql) as unknown;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const p = r as any;
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch {
+      /* fresh DB: column existiert schon / alte Column existiert nicht mehr */
+    }
+  };
+  safeExec(`ALTER TABLE map_tokens ADD COLUMN counters_json TEXT NOT NULL DEFAULT '[]'`);
+  safeExec(`UPDATE map_tokens SET counters_json = json_array(json_object('label', COALESCE(counter_label,''), 'value', counter_value)) WHERE counter_value IS NOT NULL`);
+  safeExec(`ALTER TABLE map_tokens DROP COLUMN counter_label`);
+  safeExec(`ALTER TABLE map_tokens DROP COLUMN counter_value`);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS map_markers (

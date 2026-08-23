@@ -5,6 +5,7 @@ import { applyCalendarSchema } from '../../core_data/calendar-schema';
 import { applyCardSchema } from '../../core_data/card-schema';
 import { applyHandoutSchema } from '../../core_data/handout-schema';
 import { applyMapSchema } from '../../core_data/map-schema';
+import { applyMultiplayerSchema } from '../../core_data/multiplayer-schema';
 import { applyRelationsSchema } from '../../core_data/relations-schema';
 import { applyRuleSchema } from '../../core_data/rule-schema';
 import { applySavedViewsSchema } from '../../core_data/saved-views-schema';
@@ -41,14 +42,21 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   await adapter.execute(`ALTER TABLE base_entities ADD COLUMN body_json TEXT NOT NULL DEFAULT '{"format":"portable_blocks_v1","blocks":[]}'`).catch(() => {});
   await adapter.execute(`ALTER TABLE base_entities ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'`).catch(() => {});
 
+  // M10-S20 (D23): campaign-scoped overrides. Fresh shape ist campaign_id NOT
+  // NULL + updated_at; auf alten DBs ziehen die ALTERs die Spalten nach (die
+  // Alt-Rows kriegen '' als campaign_id → Dev-DB wegwerfbar, Epic D23).
   await adapter.execute(`
     CREATE TABLE IF NOT EXISTS campaign_entity_overrides (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL DEFAULT '',
       entity_id TEXT NOT NULL,
       patch_json TEXT NOT NULL DEFAULT '{}',
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
+  await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN campaign_id TEXT NOT NULL DEFAULT ''`).catch(() => {});
+  await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))`).catch(() => {});
 
   await adapter.execute(`ALTER TABLE maps ADD COLUMN grid_json TEXT`).catch(() => {});
 
@@ -108,6 +116,9 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   ).catch(() => {});
   applyRuleSchema(adapter);
   applyAudioSchema(db as unknown as Parameters<typeof applyAudioSchema>[0]);
+  // M10 Rebuild: campaigns/players/session_players/player_groups/group_members/
+  // invite_codes/session_visibility_overrides/campaign_notes.
+  applyMultiplayerSchema(db as unknown as Parameters<typeof applyMultiplayerSchema>[0]);
 
   // Drain all fire-and-forget schema exec() calls before returning.
   await adapter.flush();
