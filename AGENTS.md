@@ -115,7 +115,7 @@ Read order — mandatory, in sequence:
 
 AC in the Issue overrides test assumptions when they conflict — tests describe behavior, the Issue describes intent. Do not edit tests. Tests wrong → stop and report.
 
-**Nordstern ist der AC, nicht der Test.** Tests sind Werkzeug zur Verifikation, keine Scope-Definition. Wenn der Test dünn ist (nur Source-Grep, nur Guards, nur ein Happy-Path) und der AC verlangt mehr — dann implementiere den vollen AC. „Test grün ⇒ fertig" ist explizit falsch, wenn Test-Coverage < AC-Coverage. Vor jedem `PATCH_VERIFIED` prüfen: erfüllt der Code jede AC-Zeile, oder nur die getesteten? Ungetestete AC-Punkte gehören ins Ticket-Comment beim Schließen — nicht stillschweigend ausgelassen.
+**The North Star is the AC, not the test.** Tests are tools for verification, not scope definitions. If the test is limited (only source grep, only guards, only a happy path) and the AC requires more—then implement the full AC. “Test green ⇒ done” is explicitly wrong if test coverage < AC coverage. Before every `PATCH_VERIFIED`, check: does the code satisfy every AC line, or only the tested ones? Untested AC items belong in the ticket comment when closing the ticket—they should not be tacitly omitted.
 
 if you have to build **new UI or edit old**: strictly follow: `docs/UIConsolidation/DEV-UI-GUIDE.md`
 **A UI component isn't done until it's mounted and reachable.** A passing isolated test (`render(<X/>)`) is NOT "done" — Before marking a UI story done, verify a real path renders it: grep that `<Component` appears outside its own file and tests, and that a route/menu/parent actually reaches it in the running app. 
@@ -128,7 +128,13 @@ if you have to build **new UI or edit old**: strictly follow: `docs/UIConsolidat
 
 ### 4. Review Agent
 
-Review against: Story AC · architecture · `ANTI_PATTERNS.md` (any instance = automatic Severe) · scope creep · hidden assumptions. Findings first, severity-ordered, with file/line refs.
+Review against: Story AC · architecture · `ANTI_PATTERNS.md` (any instance = automatic Severe) · scope creep · hidden assumptions. UI changes **also** against `docs/UIConsolidation/DEV-UI-GUIDE.md`. Findings first, severity-ordered, with file/line refs.
+
+**AC coverage ≠ test coverage:** test-green is not "done" — mirror of the Implementation North Star. Verify every AC line is met, not only the tested ones. Required-but-untested AC gaps are findings, not silent omissions.
+
+**UI mount/reachability:** each delivered UI component must be reached through a real path — grep that `<Component` appears outside its own file/tests and that a route/menu/parent actually mounts it. Built-but-unmounted = automatic Severe (P0 dead-wiring), never "polish later". Recurring — do not skip: #262, #274, #294, #339.
+
+**UI-Guide conformance:** the two `npm run lint` gates catch raw colors + static inline styles *mechanically*. The reviewer catches what they can't: a bespoke class where a primitive/utility already exists, an inline style that is only pseudo-dynamic, a new component-CSS file that should have been token/utility. Reuse over rebuild is the point.
 
 **Epic-vs-code deviation:** Check `git log` first — UX-sprint decisions often live only in the commit message, never reaching the Epic. Intentional → record it in the Epic instead of filing a finding. Unclear → ask, don't guess.
 
