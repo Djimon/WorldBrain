@@ -35,9 +35,9 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 import { Button, Panel } from './primitives';
 import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext';
+import { listCampaigns, createCampaign, type Campaign } from '../services/campaign-service';
 import { PlayModeView } from './PlayModeView';
 import { PlayerJoinView } from './PlayerJoinView';
-import { PlayerCharacterSheet } from './PlayerCharacterSheet';
 import { CampaignRosterPanel } from './CampaignRosterPanel';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
@@ -116,6 +116,11 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // M10-S05/S08: Nach dem Player-Join steht Token+playerId+displayName fest;
   // die Play-Sicht schaltet dann auf PlayerCharacterSheet.
   const [playerContext, setPlayerContext] = useState<{ playerId: string; displayName: string } | null>(null);
+  // M10-S22 (Follow-up): echte Campaign-Auswahl beim Play-Eintritt statt
+  // projectId-Hack. Campaigns werden beim Öffnen des Auswahl-Panels geladen.
+  const [availableCampaigns, setAvailableCampaigns] = useState<Campaign[]>([]);
+  const [selectedCampaignForPlay, setSelectedCampaignForPlay] = useState<string>('');
+  const [newCampaignTitle, setNewCampaignTitle] = useState('');
   const [activeArea, setActiveArea] = useState<Area>(activePanel ?? 'entities');
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | null>('Character');
@@ -856,6 +861,11 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   function handleModeToggle() {
     if (mode === 'edit') {
       setShowRoleSelect(true);
+      // Campaign-Auswahl vorbereiten: aktuelle Campaigns laden.
+      void listCampaigns(database).then((cs) => {
+        setAvailableCampaigns(cs);
+        if (cs.length === 1) setSelectedCampaignForPlay(cs[0].id);
+      });
     } else {
       setMode('edit');
       setSessionRole(null);
@@ -863,12 +873,32 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       setShowRoleSelect(false);
     }
   }
-  function pickRole(role: 'dm' | 'player') {
+  async function pickRole(role: 'dm' | 'player') {
+    let campaignId = selectedCampaignForPlay;
+    if (campaignId === '') {
+      // Kein Campaign gewählt: DM darf automatisch eine anlegen (verhindert
+      // Sackgasse in einem leeren Projekt); Player braucht Auswahl.
+      if (role === 'dm') {
+        const c = await createCampaign(database, { title: t('modeCampaignDefault', 'Default Campaign') });
+        campaignId = c.id;
+        setAvailableCampaigns((prev) => [...prev, c]);
+      } else {
+        return;
+      }
+    }
     setMode('play');
     setSessionRole(role);
-    setActiveSessionId(projectId || null);
+    setActiveSessionId(campaignId);
+    setSelectedCampaignForPlay(campaignId);
     setShowRoleSelect(false);
     setActiveArea('session');
+  }
+  async function createAndPickCampaign() {
+    if (newCampaignTitle.trim() === '') return;
+    const c = await createCampaign(database, { title: newCampaignTitle.trim() });
+    setAvailableCampaigns((prev) => [...prev, c]);
+    setSelectedCampaignForPlay(c.id);
+    setNewCampaignTitle('');
   }
 
   const modeContextValue = { mode, sessionRole, activeSessionId };
@@ -905,14 +935,15 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
             <span className="workspace-shell__area-name">{activeAreaLabel}</span>
             <div className="workspace-shell__header-controls">
-              <button
+              <Button
                 data-testid="mode-toggle"
                 aria-pressed={mode === 'play'}
+                tone={mode === 'play' ? 'accent' : 'neutral'}
                 onClick={handleModeToggle}
                 title={mode === 'edit' ? t('modeToggleToPlay', 'Spielen') : t('modeToggleToEdit', 'Bearbeiten')}
               >
                 {mode === 'edit' ? t('modeEdit', 'Bearbeiten') : t('modePlay', 'Spielen')}
-              </button>
+              </Button>
               <LanguageSwitcher />
               <ThemeToggle />
             </div>
@@ -920,12 +951,47 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           {showRoleSelect ? (
             <Panel className="workspace-area workspace-shell__role-select" role="dialog"
               aria-label={t('modeRolePickTitle', 'Rolle wählen')}>
-              <p>{t('modeRolePickPrompt', 'Als welche Rolle beitreten?')}</p>
+              <p>{t('modeRolePickPrompt', 'Campaign und Rolle wählen:')}</p>
+              <div className="workspace-shell__role-campaign u-stack u-gap-2">
+                <label className="u-row u-gap-2">
+                  <span>{t('modeCampaign', 'Campaign')}:</span>
+                  <select
+                    aria-label={t('modeCampaign', 'Campaign')}
+                    value={selectedCampaignForPlay}
+                    onChange={(e) => setSelectedCampaignForPlay(e.target.value)}
+                  >
+                    <option value="">{t('modeCampaignNone', '— wählen —')}</option>
+                    {availableCampaigns.map((c) => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                </label>
+                {availableCampaigns.length === 0 && (
+                  <div className="u-row u-gap-2">
+                    <input
+                      type="text"
+                      aria-label={t('modeCampaignNew', 'Neue Campaign')}
+                      placeholder={t('modeCampaignNewPh', 'Titel für neue Campaign')}
+                      value={newCampaignTitle}
+                      onChange={(e) => setNewCampaignTitle(e.target.value)}
+                    />
+                    <Button
+                      onClick={() => void createAndPickCampaign()}
+                      disabled={newCampaignTitle.trim() === ''}
+                    >
+                      {t('modeCampaignCreate', 'Anlegen')}
+                    </Button>
+                  </div>
+                )}
+              </div>
               <div className="workspace-shell__role-buttons">
-                <Button tone="accent" onClick={() => pickRole('dm')}>
+                <Button tone="accent" onClick={() => void pickRole('dm')}>
                   {t('modeRoleDm', 'Als DM')}
                 </Button>
-                <Button onClick={() => pickRole('player')}>
+                <Button
+                  disabled={selectedCampaignForPlay === ''}
+                  onClick={() => void pickRole('player')}
+                >
                   {t('modeRolePlayer', 'Als Player')}
                 </Button>
                 <Button variant="outline" onClick={() => setShowRoleSelect(false)}>
@@ -937,14 +1003,13 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             sessionRole === 'dm' ? (
               <PlayModeView role={sessionRole} activeSessionId={activeSessionId} />
             ) : playerContext !== null && activeSessionId !== null ? (
-              // M10-S08: Nach dem Join steht der Player-Charakterbogen; der
-              // Sheet ist Aktionsquelle (D13/D14), Kampflog-Post läuft später
-              // durch S14 (Play-Cockpit) → S16 (Würfel).
-              <PlayerCharacterSheet
-                database={database}
-                campaignId={activeSessionId}
+              // M10-S14: Nach dem Join sieht der Player das volle Cockpit
+              // (Map/Kampflog/Spotlight/Free-Browse + Bogen), gefiltert durch
+              // S09 (host-seitige Content-Filter).
+              <PlayModeView
+                role={sessionRole}
+                activeSessionId={activeSessionId}
                 playerId={playerContext.playerId}
-                displayName={playerContext.displayName}
               />
             ) : (
               // M10-S05: Player-Rolle startet mit dem Beitritts-Flow.

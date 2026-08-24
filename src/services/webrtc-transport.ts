@@ -8,6 +8,8 @@
 
 import { validateIncomingMessage } from './session-transport';
 import type { SessionTransport, TransportMessage } from './session-transport';
+import type { DatabaseLike } from './entity-service';
+import { validateToken } from './session-identity-service';
 
 const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -22,6 +24,14 @@ export interface WebRtcTransportOptions {
    */
   campaignId: string;
   iceServers?: RTCIceServer[];
+  /**
+   * S02 Decision 8: pro Nachricht wird das Token validiert (nicht nur beim
+   * Handshake). Der Host setzt hier einen Callback, der true zurückgibt wenn
+   * das Token noch zu einem aktiven (nicht gekickten) Mitglied gehört.
+   * Nicht gesetzt (Client-Seite) → keine Auth-Prüfung; die Server-Seite
+   * hört auf.
+   */
+  authenticate?: (token: string) => Promise<boolean> | boolean;
 }
 
 export class WebRtcTransport implements SessionTransport {
@@ -65,6 +75,19 @@ export class WebRtcTransport implements SessionTransport {
     this.handler = cb;
   }
 
+  /**
+   * Convenience: baut einen Host-Transport, dessen Authenticator direkt an
+   * validateToken(db) hängt. So verdrahtet die App die per-Nachricht-Auth
+   * (S02 Decision 8) mit einer Zeile beim Aufsetzen des Servers.
+   */
+  static host(campaignId: string, database: DatabaseLike, iceServers?: RTCIceServer[]): WebRtcTransport {
+    return new WebRtcTransport({
+      campaignId,
+      iceServers,
+      authenticate: (tok) => validateToken(database, tok),
+    });
+  }
+
   private wireChannel(ch: RTCDataChannel): void {
     ch.onmessage = (ev: MessageEvent) => {
       // Jede eingehende Nachricht wird VOR der Verarbeitung schema-validiert
@@ -73,6 +96,17 @@ export class WebRtcTransport implements SessionTransport {
       try {
         parsed = validateIncomingMessage(JSON.parse(ev.data as string) as unknown);
       } catch {
+        return;
+      }
+      // S02 Decision 8: pro Nachricht Token-Validierung. Wenn ein Authenticator
+      // gesetzt ist (Host-Seite), erst nach OK an den Handler weitergeben.
+      const auth = this.options.authenticate;
+      if (auth) {
+        void Promise.resolve(auth(parsed.token)).then((ok) => {
+          if (ok) this.handler?.(parsed);
+          /* not ok → Nachricht verworfen; kein Kanal-Feedback (Client soll
+             nicht wissen, ob Token existiert oder gekickt ist) */
+        }).catch(() => { /* fail-closed: verwerfen */ });
         return;
       }
       this.handler?.(parsed);

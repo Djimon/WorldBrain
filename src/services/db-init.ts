@@ -113,6 +113,8 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   applySavedViewsSchema(db as unknown as Parameters<typeof applySavedViewsSchema>[0]);
   await applySearchSchema(adapter);
   applySessionSchema(db as unknown as Parameters<typeof applySessionSchema>[0]);
+  // M10-S20 (D23): Termin → Campaign-Bindung. Idempotent für alte DBs.
+  await adapter.execute(`ALTER TABLE sessions ADD COLUMN campaign_id TEXT`).catch(() => {});
   await applyRelationsSchema(adapter);
   // One-time (idempotent) cleanup: relations left dangling by deletes that
   // predate deleteEntity's cascade (or any other path that removed an entity

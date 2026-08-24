@@ -84,6 +84,18 @@ CREATE TABLE IF NOT EXISTS group_members (
   PRIMARY KEY (group_id, player_id)
 );
 
+-- M10-S16 (#362): Kampflog (D17). Sichtbarkeit routing-relevant: 'private'
+-- (nur Werfer), 'dm_only' (Werfer + DM), 'all' (alle Mitglieder).
+CREATE TABLE IF NOT EXISTS combat_log (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL,
+  actor_display TEXT NOT NULL,
+  actor_player_id TEXT,
+  text TEXT NOT NULL,
+  visibility TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- M10-S15 (#361): Spotlight/Whiteboard (D19). type='shared' → gemeinsam
 -- (target_player_id NULL), type='private' → nur für target_player_id sichtbar.
 CREATE TABLE IF NOT EXISTS whiteboards (

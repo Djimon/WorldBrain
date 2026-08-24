@@ -9,6 +9,8 @@ import { generateInviteCode } from '../services/session-identity-service';
 import type { SessionPlayer } from '../services/player-membership-service';
 import { Button, Field, ListSurface, Panel, StatusChip } from './primitives';
 
+interface PlayerRow { id: string; display_name: string }
+
 export interface LobbyPanelProps {
   database: DatabaseLike;
   campaignId: string;
@@ -21,6 +23,7 @@ export interface LobbyPanelProps {
 export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInviteCodeChanged }: LobbyPanelProps) {
   const { t } = useTranslation('multiplayer');
   const [players, setPlayers] = useState<SessionPlayer[]>([]);
+  const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
   const [inviteCode, setInviteCode] = useState(currentInviteCode);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +32,20 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
     try {
       const rows = await listCampaignPlayers(database, campaignId);
       setPlayers(rows);
+      // Anzeigename statt UUID: display_name aus der players-Tabelle nachladen.
+      if (rows.length > 0) {
+        const ids = rows.map((r) => r.player_id);
+        const placeholders = ids.map(() => '?').join(',');
+        const names = await database.select<PlayerRow>(
+          `SELECT id, display_name FROM players WHERE id IN (${placeholders})`,
+          ids,
+        );
+        const map: Record<string, string> = {};
+        for (const n of names) map[n.id] = n.display_name;
+        setPlayerNames(map);
+      } else {
+        setPlayerNames({});
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t('lobby.loadError', 'Roster konnte nicht geladen werden.'));
     }
@@ -62,15 +79,29 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
   // Reconnect-Schutz), tauchen aber nicht mehr in "Verbundene Spieler" auf.
   const activePlayers = players.filter((p) => p.status === 'active');
 
-  async function handleCopy() {
-    if (inviteCode === '') return;
+  // Teilbarer Einladungs-Link (D27): trägt Code + Campaign — der Client kann
+  // ihn per Paste direkt in den Beitrittsflow einwerfen (S05 akzeptiert
+  // Link ODER nackten Code).
+  const inviteLink = inviteCode !== ''
+    ? `wbrain://join?code=${encodeURIComponent(inviteCode)}&campaign=${encodeURIComponent(campaignId)}`
+    : '';
+
+  async function copyToClipboard(text: string) {
+    if (text === '') return;
     try {
-      await navigator.clipboard.writeText(inviteCode);
+      await navigator.clipboard.writeText(text);
       setCopyFeedback(t('lobby.copied', 'kopiert'));
       window.setTimeout(() => setCopyFeedback(null), 1500);
     } catch {
       setError(t('lobby.copyError', 'Kopieren fehlgeschlagen.'));
     }
+  }
+
+  async function handleCopy() {
+    await copyToClipboard(inviteCode);
+  }
+  async function handleCopyLink() {
+    await copyToClipboard(inviteLink);
   }
 
   return (
@@ -87,14 +118,23 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
         />
         <div className="u-row u-gap-2">
           <Button tone="accent" onClick={() => void handleCopy()} disabled={inviteCode === ''}>
-            {t('lobby.copy', 'Kopieren')}
+            {t('lobby.copy', 'Code kopieren')}
           </Button>
           <Button onClick={() => void handleRegenerate()}>
             {t('lobby.regenerate', 'Neuen Code erzeugen')}
           </Button>
-          {copyFeedback !== null && (
-            <StatusChip tone="success">{copyFeedback}</StatusChip>
-          )}
+        </div>
+        <Field
+          label={t('lobby.inviteLinkLabel', 'Einladungslink')}
+          value={inviteLink}
+          readOnly
+          onChange={() => { /* readonly */ }}
+        />
+        <div className="u-row u-gap-2">
+          <Button onClick={() => void handleCopyLink()} disabled={inviteLink === ''}>
+            {t('lobby.copyLink', 'Link kopieren')}
+          </Button>
+          {copyFeedback !== null && <StatusChip tone="success">{copyFeedback}</StatusChip>}
         </div>
       </div>
 
@@ -110,7 +150,7 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
           )}
           {activePlayers.map((p) => (
             <li key={p.id} className="lobby-panel__player u-row u-gap-2">
-              <span className="lobby-panel__player-id">{p.player_id}</span>
+              <span className="lobby-panel__player-name">{playerNames[p.player_id] ?? p.player_id}</span>
               <StatusChip tone="success">{t('lobby.online', 'online')}</StatusChip>
               <Button
                 tone="danger"

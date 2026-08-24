@@ -6,6 +6,7 @@ export function applySessionSchema(db: Db): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
+      campaign_id TEXT,
       title TEXT NOT NULL,
       world_time_start INTEGER DEFAULT 0,
       notes TEXT,

@@ -10,6 +10,9 @@ import { useDatabase } from '../services/DatabaseContext';
 import { listEntitiesByType } from '../services/entity-service';
 import { filterEntitiesForPlayer } from '../services/player-content-filter-service';
 import { LobbyPanel } from './LobbyPanel';
+import { PlayerCharacterSheet } from './PlayerCharacterSheet';
+import { DiceRollerWidget } from './DiceRollerWidget';
+import { listEntries, type CombatLogEntry } from '../services/combat-log-service';
 import { Panel, Tabs } from './primitives';
 import type { SessionRole } from './AppModeContext';
 
@@ -22,7 +25,7 @@ export interface PlayModeViewProps {
   playerGroupIds?: string[];
 }
 
-type CockpitTab = 'map' | 'combatlog' | 'spotlight' | 'browse';
+type CockpitTab = 'map' | 'combatlog' | 'spotlight' | 'browse' | 'sheet';
 
 interface EntityRef { id: string; title: string; type: string }
 
@@ -31,7 +34,21 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
   const database = useDatabase();
   const [activeTab, setActiveTab] = useState<CockpitTab>('map');
   const [browseItems, setBrowseItems] = useState<EntityRef[]>([]);
+  const [logEntries, setLogEntries] = useState<CombatLogEntry[]>([]);
+  const [logTick, setLogTick] = useState(0);
   const campaignId = activeSessionId ?? '';
+
+  // Kampflog laden — role-basiertes host-seitiges Filtern (D17).
+  useEffect(() => {
+    if (activeTab !== 'combatlog' || campaignId === '') return;
+    let cancelled = false;
+    void listEntries(database, {
+      campaignId,
+      role: role === 'player' ? 'player' : 'dm',
+      playerId,
+    }).then((es) => { if (!cancelled) setLogEntries(es); }).catch(console.error);
+    return () => { cancelled = true; };
+  }, [database, activeTab, campaignId, role, playerId, logTick]);
 
   // Free-Browse (D15): der Player sieht Entities nur wenn host-seitig
   // freigegeben (S09-Filter); der DM sieht alles.
@@ -56,11 +73,16 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
     return () => { cancelled = true; };
   }, [database, role, campaignId, playerId, playerGroupIds.join(',')]);
 
+  // Player bekommt zusätzlich den „Bogen"-Reiter (S08-Charaktersheet als
+  // Aktionsquelle, D13/D14). DM sieht den nicht (fremde Bögen unsichtbar, D20).
   const tabOptions = [
     { id: 'map', label: t('cockpit.tabMap', 'Map') },
     { id: 'combatlog', label: t('cockpit.tabCombatLog', 'Kampflog') },
     { id: 'spotlight', label: t('cockpit.tabSpotlight', 'Spotlight') },
     { id: 'browse', label: t('cockpit.tabBrowse', 'Free-Browse') },
+    ...(role === 'player' && playerId
+      ? [{ id: 'sheet' as const, label: t('cockpit.tabSheet', 'Bogen') }]
+      : []),
   ] as const;
 
   return (
@@ -84,9 +106,25 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
       )}
 
       {activeTab === 'combatlog' && (
-        <Panel className="play-cockpit__pane">
+        <Panel className="play-cockpit__pane u-stack u-gap-2">
           <h3>{t('cockpit.combatLogTitle', 'Kampflog')}</h3>
-          <p>{t('cockpit.combatLogStub', 'Der Kampflog nimmt Würfe (S16) und Aktions-Posts vom Charakterbogen (S08) auf. Regel-Auflösung folgt im Kampf-Sub-Epic (M10b).')}</p>
+          {campaignId !== '' && (
+            <DiceRollerWidget
+              database={database}
+              campaignId={campaignId}
+              actorDisplay={role === 'dm' ? 'DM' : (playerId ?? 'Player')}
+              actorPlayerId={role === 'player' ? playerId : undefined}
+              onPosted={() => setLogTick((n) => n + 1)}
+            />
+          )}
+          <ul className="play-cockpit__log-list">
+            {logEntries.length === 0 && <li>{t('cockpit.logEmpty', 'Noch keine Einträge.')}</li>}
+            {logEntries.map((e) => (
+              <li key={e.id}>
+                <span className="u-muted">[{e.visibility}]</span> {e.text}
+              </li>
+            ))}
+          </ul>
         </Panel>
       )}
 
@@ -95,6 +133,25 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
           <h3>{t('cockpit.spotlightTitle', 'Spotlight')}</h3>
           <p>{t('cockpit.spotlightStub', 'Spotlight/Whiteboard — Panel wird durch S15 (Whiteboard-Elemente + per-Spieler-Boards) gefüllt.')}</p>
         </Panel>
+      )}
+
+      {activeTab === 'sheet' && role === 'player' && playerId && campaignId !== '' && (
+        <PlayerCharacterSheet
+          database={database}
+          campaignId={campaignId}
+          playerId={playerId}
+          onPostAction={(action) => {
+            void import('../services/combat-log-service').then(({ postEntry }) =>
+              postEntry(database, {
+                campaignId,
+                actorDisplay: action.characterId,
+                actorPlayerId: playerId,
+                text: action.text,
+                visibility: 'all',
+              }),
+            );
+          }}
+        />
       )}
 
       {activeTab === 'browse' && (

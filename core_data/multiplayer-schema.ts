@@ -76,6 +76,18 @@ export function applyMultiplayerSchema(db: MpDb): void {
   `);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS combat_log (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL,
+      actor_display TEXT NOT NULL,
+      actor_player_id TEXT,
+      text TEXT NOT NULL,
+      visibility TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS whiteboards (
       id TEXT PRIMARY KEY,
       campaign_id TEXT NOT NULL,

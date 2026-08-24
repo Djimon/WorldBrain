@@ -36,6 +36,16 @@ export async function createBoard(db: DatabaseLike, params: CreateBoardParams): 
   if (params.type === 'private' && (params.targetPlayerId === undefined || params.targetPlayerId === '')) {
     throw new Error('Private whiteboard requires targetPlayerId');
   }
+  // D19: genau EINE private Wand pro (campaignId, targetPlayerId).
+  if (params.type === 'private') {
+    const existing = await db.select<{ id: string }>(
+      "SELECT id FROM whiteboards WHERE campaign_id = ? AND type = 'private' AND target_player_id = ?",
+      [params.campaignId, params.targetPlayerId!],
+    );
+    if (existing.length > 0) {
+      throw new Error('Private whiteboard already exists for this campaign/player');
+    }
+  }
   const id = `wb_${crypto.randomUUID()}`;
   const created_at = new Date().toISOString();
   const target = params.type === 'private' ? params.targetPlayerId! : null;
@@ -46,7 +56,27 @@ export async function createBoard(db: DatabaseLike, params: CreateBoardParams): 
   return { id, campaign_id: params.campaignId, type: params.type, target_player_id: target, created_at };
 }
 
-export async function listBoards(db: DatabaseLike, campaignId: string): Promise<Whiteboard[]> {
+/**
+ * Listet Boards, sichtbar für den Aufrufer:
+ * - Ohne Kontext / role='dm' → alle Boards (DM sieht privaten für alle
+ *   Spieler, weil er sie bespielt, D19).
+ * - Mit role='player' + playerId → shared UND das eigene private
+ *   (target_player_id = playerId). Fremde private bleiben verborgen.
+ */
+export async function listBoards(
+  db: DatabaseLike, campaignId: string,
+  ctx: { role?: 'dm' | 'player'; playerId?: string } = {},
+): Promise<Whiteboard[]> {
+  if (ctx.role === 'player') {
+    return db.select<Whiteboard>(
+      `SELECT id, campaign_id, type, target_player_id, created_at
+       FROM whiteboards
+       WHERE campaign_id = ?
+         AND (type = 'shared' OR (type = 'private' AND target_player_id = ?))
+       ORDER BY created_at`,
+      [campaignId, ctx.playerId ?? ''],
+    );
+  }
   return db.select<Whiteboard>(
     'SELECT id, campaign_id, type, target_player_id, created_at FROM whiteboards WHERE campaign_id = ? ORDER BY created_at',
     [campaignId],
