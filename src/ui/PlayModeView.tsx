@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useDatabase } from '../services/DatabaseContext';
 import { listEntitiesByType } from '../services/entity-service';
 import { filterEntitiesForPlayer } from '../services/player-content-filter-service';
+import { onVisibilityChange } from '../services/visibility-service';
 import { LobbyPanel } from './LobbyPanel';
 import { PlayerCharacterSheet } from './PlayerCharacterSheet';
 import { DiceRollerWidget } from './DiceRollerWidget';
@@ -36,7 +37,19 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
   const [browseItems, setBrowseItems] = useState<EntityRef[]>([]);
   const [logEntries, setLogEntries] = useState<CombatLogEntry[]>([]);
   const [logTick, setLogTick] = useState(0);
+  // Live-Reload-Tick: erhöht sich bei jeder Visibility-Änderung. Der
+  // Browse-Effekt hört darauf und lädt die freigegebenen Entities neu.
+  const [visTick, setVisTick] = useState(0);
   const campaignId = activeSessionId ?? '';
+
+  // S09 Live-Push: lokaler Listener; bei Remote-Client wird derselbe Effekt
+  // durch eine 'visibility_change'-Nachricht des Hosts ausgelöst (S11/S12).
+  useEffect(() => {
+    return onVisibilityChange((change) => {
+      if (change.campaignId !== campaignId) return;
+      setVisTick((n) => n + 1);
+    });
+  }, [campaignId]);
 
   // Kampflog laden — role-basiertes host-seitiges Filtern (D17).
   useEffect(() => {
@@ -71,7 +84,7 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
       }
     })().catch(console.error);
     return () => { cancelled = true; };
-  }, [database, role, campaignId, playerId, playerGroupIds.join(',')]);
+  }, [database, role, campaignId, playerId, playerGroupIds.join(','), visTick]);
 
   // Player bekommt zusätzlich den „Bogen"-Reiter (S08-Charaktersheet als
   // Aktionsquelle, D13/D14). DM sieht den nicht (fremde Bögen unsichtbar, D20).

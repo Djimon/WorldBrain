@@ -87,10 +87,20 @@ Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die
 - **D26 — GM-Self-Join = „als Player beitreten" in der DM-App (Konkretisierung via D25).** Der DM wechselt auf **Spielen** und wählt beim Eintritt die Rolle **Player** (statt DM) — die App verbindet gegen den **eigenen laufenden Server (loopback)** und rendert die read-only Player-Sicht (S23-Gating aktiv). Ein Gerät = hosten **und** als Spieler mitspielen. Die DM-App braucht also **beide** Eintritts-Optionen (mit/ohne Bearbeiter-Rechte). Kein zweites Gerät, kein zweiter Build.
 - **D27 — Copy-UX für Einladungscode/-Link (Standard).** Der Code steht in einem **gesperrten (readonly) Input-Feld** mit **Copy-Button** (Klick kopiert in die Zwischenablage, sichtbares Feedback „kopiert") — **nicht** als nacktes Text-Element. Zusätzlich ein teilbarer **Einladungs-Link** (Server-URL + Code kombiniert) mit eigenem Copy-Button. Kein WebRTC-„Antwort-Code"-Rückkanal in Stufe 2 — die manuelle Offer/Answer-Signaling-UI (SignalingPanel, S12) erscheint **ausschließlich** in der Stufe-3-Sicht, **nie** in der LAN-Lobby.
 
-### Offene Detailfragen (als `needs-decision` in den jeweiligen Stories)
-- Session-Jetzt **absolut setzbar** (nicht nur vorstellen)? → S17.
-- Optionaler **Token-Lock** (per-Token/global) — Rechte-Modell? → S18/#299.
-- Öffentlicher vs. privater **Kampfzustand** (was sehen andere von fremder HP/Status?) → Combat-Sub-Epic.
+- **D28 — Signaling-Modell = Host/Connect wie klassische Multiplayer-Games (löst S11/S12-Richtung, 2026-08).** Ziel-UX: **der DM hostet, Spieler verbinden sich per Einladungslink/-Code** — der Host ist autoritativ, **Spieldaten laufen P2P host↔Spieler** (WebRTC-DataChannel, Aktueller Stand). Technisch = **Ecke B** des Signaling-Trilemmas:
+  - **Fremder Gratis-Signaling-Broker** (öffentlich, nicht selbst gehostet) = die „Matchmaking-Lobby" (wie früher Battle.net/Master-Server): reicht beim Verbinden **einmal** SDP/ICE weiter, danach raus. **Keine** Spieldaten über den Broker. **Kein Port-Forwarding** (STUN für NAT).
+  - **„Kein gehosteter Signaling-Server" ist damit präzisiert:** kein **selbst** betriebener Server; ein **fremder Gratis-Broker** ist ausdrücklich ok.
+  - **LAN (gleiches Netz):** funktioniert auch **ohne** Broker (lokale Discovery / direkte Verbindung) — Zero-Config am Tisch.
+  - **Fallback:** manueller Offer/Answer (SignalingPanel, Stufe-3-only) bei Broker-Ausfall / ~10–20 % strengen NATs.
+  - **Residual `needs-design` (nur noch Umsetzung, kein Konzept):** *welcher* konkrete Gratis-Broker 2026 (Zuverlässigkeit/Privacy/Gratis-Tier) — Mini-Spike, nicht Google-Treffer #1 nehmen. → S11/S12.
+
+### Detailfragen — Stand
+- ✅ **Session-Jetzt absolut setzbar?** → **JA, beides** (voranschreiten + absolut setzen), S17/#363.
+- ✅ **Token-Lock?** → **Nein in V1** (jeder bewegt jeden, kein Lock; Lock = spätere Kür), #366.
+- ✅ **Promote-Granularität?** → **ganze Entity, reversibel**, S21/#365.
+- ✅ **Split-View Pop-out?** → **nur In-App in V1**, OS-Pop-out später, S19/#364.
+- ✅ **Remote-Signaling?** → **D28: Host/Connect via Gratis-Broker (Ecke B)**; Rest nur noch Broker-Wahl (Mini-Spike), S11/S12.
+- ⏳ **offen:** Öffentlicher vs. privater **Kampfzustand** (fremde HP/Status?) → Combat-Sub-Epic (`M10b`, eigene Grill-Runde).
 
 ## Out of Scope
 
@@ -361,12 +371,12 @@ Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die
 | M10-S14 | #360 | p1 | S05+S06+S22 | Play-Cockpit: Reiter Map/Kampflog/Spotlight + Free-Browse (D13) |
 | M10-S15 | #361 | p1 | S01+S07 | Spotlight/Whiteboard — gemeinsam + per-Spieler privat (D19) |
 | M10-S16 | #362 | p1 | S01+S14 | Würfel-Roller + per-Wurf-Sichtbarkeit → Kampflog (D17) |
-| M10-S17 | #363 | p1 | S01+S20 | Session-Zeit + Kalender-Gate (D16) · `needs-decision` |
-| M10-S19 | #364 | p2 | — | In-App Split-View (D21) · `needs-decision` |
-| M10-S21 | #365 | p1 | S20 | Campaign-Override-Default + Promote-Schalter (D23) · `needs-decision` |
-| M10-Token | #366 | p1 | S01 | Token-Bewegung: Default offen (D18) · `needs-decision` |
-| M10-S11 | #367 | p2 | S01 | **Stufe 3:** WebRTC + STUN (remote) · `needs-design` |
-| M10-S12 | #368 | p2 | S01+S11 | **Stufe 3:** Serverloses Signaling (remote) · `needs-design` |
+| M10-S17 | #363 | p1 | S01+S20 | Session-Zeit + Kalender-Gate (D16) — ✅ voranschreiten **+** absolut setzen |
+| M10-S19 | #364 | p2 | — | In-App Split-View (D21) — ✅ nur In-App, kein Pop-out |
+| M10-S21 | #365 | p1 | S20 | Campaign-Override + Promote (D23) — ✅ ganze Entity, reversibel |
+| M10-Token | #366 | p1 | S01 | Token-Bewegung (D18) — ✅ V1 offen, kein Lock |
+| M10-S11 | #367 | p2 | S01 | **Stufe 3:** WebRTC + STUN + Gratis-Broker (D28) · `needs-design` (nur Broker-Wahl) |
+| M10-S12 | #368 | p2 | S01+S11 | **Stufe 3:** Broker-Signaling + manueller Fallback (D28) · `needs-design` (nur Broker-Wahl) |
 | Sub-Epic | — | — | M9+M10 | **Kampf-Engine** → `planning/epics/M10b-combat-engine.md` · `needs-design` |
 
 ## Implementierungs-Reihenfolge (verbindlich, rekursiv aufgelöst)

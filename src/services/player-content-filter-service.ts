@@ -9,7 +9,8 @@
 // visibility-service.setVisibilityOverride — die Push-Seite hört auf DB-Änderung
 // bzw. wird von der Feature-Story aufgerufen (kein globales Event-Bus hier).
 import type { DatabaseLike } from './entity-service';
-import { resolveSessionVisibility } from './visibility-service';
+import { onVisibilityChange, resolveSessionVisibility, type VisibilityChange } from './visibility-service';
+import type { SessionTransport } from './session-transport';
 
 export interface PlayerFilterContext {
   campaign_id: string;
@@ -65,4 +66,27 @@ export async function filterMarkersForPlayer(params: Omit<FilterIdsParams, 'targ
 
 export async function filterHandoutsForPlayer(params: Omit<FilterIdsParams, 'targetType'>): Promise<string[]> {
   return filterIdsForPlayer({ ...params, targetType: 'handout' });
+}
+
+/**
+ * S09-AC „Live-Push der Freigaben über den Transport (S01)": jede
+ * setVisibilityOverride/clearVisibilityOverride-Änderung wird als
+ * TransportMessage über den übergebenen SessionTransport gepusht. Der
+ * Empfänger-Client entscheidet dann, welche Sicht zu invalidieren ist
+ * (Reload / rerender). Systemweit-Token für DM-Broadcasts: 'system-dm'.
+ * Der Rückgabewert ist die Unregister-Funktion.
+ */
+export function attachVisibilityBroadcaster(
+  transport: SessionTransport,
+  systemToken = 'system-dm',
+): () => void {
+  const unsub = onVisibilityChange((change: VisibilityChange) => {
+    // Fire-and-forget; wenn der Transport gerade offline ist, verwerfen wir.
+    void transport.send({
+      type: 'visibility_change',
+      token: systemToken,
+      payload: change as unknown as Record<string, unknown>,
+    }).catch(() => {});
+  });
+  return unsub;
 }

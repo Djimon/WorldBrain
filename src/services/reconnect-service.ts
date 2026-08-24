@@ -81,21 +81,13 @@ export interface ReconnectResult {
 
 /**
  * Reconnect: gültiges, aktives Token → success. Gekickt / unbekannt → reject
- * mit Grund. Ohne DB (früher Client-Boot, Host offline) prüfen wir nur, dass
- * das Token nicht als gekickt markiert wurde — später beim ersten echten
- * Request greift die serverseitige Auth aus S02 automatisch.
+ * mit Grund. Ohne DB (Host offline) → `no_host` — UI zeigt Retry (D10). Die
+ * echte Antwort kommt sobald die DB/der Host wieder erreichbar ist.
  */
 export async function reconnect(params: ReconnectParams): Promise<ReconnectResult> {
-  if (params.database !== undefined) {
-    const ok = await validateToken(params.database, params.token);
-    return ok ? { success: true } : { success: false, reason: 'kicked' };
-  }
-  // TDD-Vertrag & pragmatische Offline-Heuristik: der TDD-Test macht
-  // reconnect({ token: 'tok-kicked' }) und erwartet success=false; im
-  // Produktionscode markieren wir gekickte Tokens durch Namenszusatz oder
-  // durch clearStoredToken() nach Kick-Notification.
-  const looksKicked = params.token.includes('kicked');
-  return looksKicked ? { success: false, reason: 'kicked' } : { success: true };
+  if (params.database === undefined) return { success: false, reason: 'no_host' };
+  const ok = await validateToken(params.database, params.token);
+  return ok ? { success: true } : { success: false, reason: 'kicked' };
 }
 
 /**

@@ -11,6 +11,7 @@ import {
   clearStoredToken,
   listStoredTokens,
   persistToken,
+  ping as pingHost,
   reconnect as reconnectSession,
 } from '../services/reconnect-service';
 import { Button, Field, Panel, StatusChip } from './primitives';
@@ -33,17 +34,19 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [joinedName, setJoinedName] = useState<string | null>(null);
+  // D10: Ping-basierte Online-Erkennung + Retry-Button; kein Heartbeat.
+  const [hostOnline, setHostOnline] = useState<boolean | null>(null);
+  const [checking, setChecking] = useState(false);
 
-  // Reconnect-Check beim Mount (D10/D11): existiert ein persistierter Token →
-  // reconnect versuchen; Erfolg → Success-Screen ohne Neu-Join. Verhindert,
-  // dass mehrfaches Öffnen der Play-Sicht weitere Player-Rows anlegt.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
+  async function runReconnect() {
+    setChecking(true);
+    try {
+      const online = await pingHost(database);
+      setHostOnline(online);
+      if (!online) return;
       const stored = (await listStoredTokens())[0];
-      if (!stored || cancelled) return;
+      if (!stored) return;
       const result = await reconnectSession({ token: stored.token, database });
-      if (cancelled) return;
       if (result.success) {
         setJoinedName(stored.displayName);
         onJoined?.({
@@ -51,10 +54,18 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
           playerId: stored.playerId ?? '',
           displayName: stored.displayName,
         });
-      } else {
+      } else if (result.reason === 'kicked') {
+        // Nur bei bestätigt gekicktem Token Slate leeren — bei no_host bleibt
+        // der Token erhalten, damit ein späterer Retry noch reconnecten kann.
         await clearStoredToken(stored.token);
       }
-    })().catch(() => { /* fail-open: normales Formular anzeigen */ });
+    } catch { /* fail-open */ } finally { setChecking(false); }
+  }
+
+  // Reconnect-Check beim Mount (D10/D11): einmaliger Ping + Reconnect.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => { if (!cancelled) await runReconnect(); })();
     return () => { cancelled = true; };
   }, [database]);
 
@@ -97,7 +108,24 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
         <StatusChip tone="success">
           {t('join.joinedMsg', 'Willkommen, {{name}}! Du bist der Campaign beigetreten.', { name: joinedName })}
         </StatusChip>
-        <p>{t('join.nextStep', 'Nächster Schritt: Charaktererstellung (folgt in S08).')}</p>
+        <p>{t('join.nextStep', 'Nächster Schritt: Charaktererstellung.')}</p>
+      </Panel>
+    );
+  }
+
+  // D10: „Host offline"-Zustand mit Retry-Button, wenn Ping fehlschlägt UND
+  // ein persistierter Token existiert (der Retry würde reconnecten).
+  if (hostOnline === false) {
+    return (
+      <Panel className="player-join-view u-stack u-gap-3" role="status"
+        aria-label={t('join.offlineTitle', 'Host offline')}>
+        <h2>{t('join.offlineTitle', 'Host offline')}</h2>
+        <StatusChip tone="failure">
+          {t('join.offlineMsg', 'Der Host ist gerade nicht erreichbar. Erneut versuchen, sobald verfügbar.')}
+        </StatusChip>
+        <Button tone="accent" onClick={() => void runReconnect()} disabled={checking}>
+          {checking ? t('join.retrying', 'Prüfe…') : t('join.retry', '🔄 Erneut verbinden')}
+        </Button>
       </Panel>
     );
   }
