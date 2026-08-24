@@ -18,6 +18,7 @@ import { getRelations } from '../services/relation-service';
 import type { RelationRow } from '../services/relation-service';
 import { Button, Chip, Tabs } from './primitives';
 import { useReadOnly } from './useReadOnly';
+import { VisibilityScopePicker, type BaseScope } from './VisibilityScopePicker';
 
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
@@ -160,10 +161,12 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
     setEditTitle(entity.title);
     setEditSummary(entity.summary);
     setEditProps({ ...entity.properties });
+    // M10-S07: editVisibility gilt für ALLE Entity-Typen (VisibilityScopePicker
+    // im Overview-Tab), nicht mehr nur für Events.
+    setEditVisibility(entity.visibility);
     if (entity.type === 'Event') {
       setEditStartDay(typeof entity.properties.start_day === 'number' ? entity.properties.start_day : 0);
       setEditEndDay(typeof entity.properties.end_day === 'number' ? entity.properties.end_day : undefined);
-      setEditVisibility(entity.visibility);
       setEditCategory(typeof entity.properties.category === 'string' ? entity.properties.category : undefined);
     }
     setEditing(true);
@@ -185,6 +188,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
         title: editTitle,
         summary: editSummary,
         properties: editProps,
+        visibility: editVisibility,
       });
     }
     setEditing(false);
@@ -234,16 +238,33 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
                 <EffectEditor database={database as DatabaseLike} eventId={entityId} startDay={editStartDay} calendar={effectiveCalendar} />
               </div>
             </>
-          ) : Object.keys(schema.properties).length > 0 && (
-            <div className="entity-detail__field">
-              <label className="entity-detail__field-label">{t('field.properties')}</label>
-              <PropertiesForm
-                schema={schema.properties}
-                values={editProps}
-                onChange={(patch) => setEditProps((prev) => ({ ...prev, ...patch }))}
-                entities={allEntities}
-              />
-            </div>
+          ) : (
+            <>
+              {Object.keys(schema.properties).length > 0 && (
+                <div className="entity-detail__field">
+                  <label className="entity-detail__field-label">{t('field.properties')}</label>
+                  <PropertiesForm
+                    schema={schema.properties}
+                    values={editProps}
+                    onChange={(patch) => setEditProps((prev) => ({ ...prev, ...patch }))}
+                    entities={allEntities}
+                  />
+                </div>
+              )}
+              {/* M10-S07 (#356): base-scope + per-Spieler/Gruppen-Overrides.
+                  Editor bewusst hier für alle nicht-Event-Typen (Events haben
+                  ihr eigenes Sichtbarkeits-Widget in EventFormFields). */}
+              <div className="entity-detail__field">
+                <label className="entity-detail__field-label">{t('field.visibility', 'Sichtbarkeit')}</label>
+                <VisibilityScopePicker
+                  database={database as DatabaseLike}
+                  targetType="entity"
+                  targetId={entityId}
+                  baseScope={(editVisibility || 'public') as BaseScope}
+                  onBaseScopeChange={(s) => setEditVisibility(s)}
+                />
+              </div>
+            </>
           )}
         </div>
       ) : (
