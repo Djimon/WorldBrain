@@ -76,6 +76,28 @@ export function applyMultiplayerSchema(db: MpDb): void {
   `);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS whiteboards (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      target_player_id TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS whiteboard_elements (
+      id TEXT PRIMARY KEY,
+      whiteboard_id TEXT NOT NULL,
+      element_type TEXT NOT NULL,
+      payload_json TEXT NOT NULL DEFAULT '{}',
+      x REAL NOT NULL DEFAULT 0,
+      y REAL NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS campaign_notes (
       id TEXT PRIMARY KEY,
       campaign_id TEXT NOT NULL,

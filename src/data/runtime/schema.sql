@@ -84,6 +84,26 @@ CREATE TABLE IF NOT EXISTS group_members (
   PRIMARY KEY (group_id, player_id)
 );
 
+-- M10-S15 (#361): Spotlight/Whiteboard (D19). type='shared' → gemeinsam
+-- (target_player_id NULL), type='private' → nur für target_player_id sichtbar.
+CREATE TABLE IF NOT EXISTS whiteboards (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL,
+  type TEXT NOT NULL,
+  target_player_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS whiteboard_elements (
+  id TEXT PRIMARY KEY,
+  whiteboard_id TEXT NOT NULL,
+  element_type TEXT NOT NULL,
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  x REAL NOT NULL DEFAULT 0,
+  y REAL NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- M10-S07 (#356): Per-Spieler/Gruppen-Visibility (Decisions 5–7).
 -- scope='player' → player_id gesetzt; scope='group' → group_id gesetzt.
 CREATE TABLE IF NOT EXISTS session_visibility_overrides (
