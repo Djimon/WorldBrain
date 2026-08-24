@@ -14,6 +14,8 @@ import {
 } from '../services/visibility-service';
 import { Button, StatusChip } from './primitives';
 
+interface PlayerNameRow { id: string; display_name: string }
+
 export type BaseScope = 'public' | 'gm_only' | 'player_known' | 'hidden_until_condition';
 
 export interface VisibilityScopePickerProps {
@@ -45,6 +47,7 @@ export function VisibilityScopePicker({
   const [players, setPlayers] = useState<SessionPlayer[]>([]);
   const [groups, setGroups] = useState<PlayerGroup[]>([]);
   const [overrides, setOverrides] = useState<OverrideRow[]>([]);
+  const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,9 +70,24 @@ export function VisibilityScopePicker({
           [selectedCampaignId, targetType, targetId],
         ),
       ]);
-      setPlayers(ps.filter((p) => p.status === 'active'));
+      const activePlayers = ps.filter((p) => p.status === 'active');
+      setPlayers(activePlayers);
       setGroups(gs);
       setOverrides(ovs);
+      // Anzeigename statt UUID: display_name pro player_id nachladen.
+      if (activePlayers.length > 0) {
+        const ids = activePlayers.map((p) => p.player_id);
+        const placeholders = ids.map(() => '?').join(',');
+        const names = await database.select<PlayerNameRow>(
+          `SELECT id, display_name FROM players WHERE id IN (${placeholders})`,
+          ids,
+        );
+        const map: Record<string, string> = {};
+        for (const n of names) map[n.id] = n.display_name;
+        setPlayerNames(map);
+      } else {
+        setPlayerNames({});
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -152,7 +170,7 @@ export function VisibilityScopePicker({
                     variant={isSet ? undefined : 'outline'}
                     onClick={() => void toggle('player', p.player_id)}
                   >
-                    {p.player_id}
+                    {playerNames[p.player_id] ?? p.player_id}
                   </Button>
                 );
               })}

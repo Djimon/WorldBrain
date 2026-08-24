@@ -14,7 +14,7 @@ import { LobbyPanel } from './LobbyPanel';
 import { PlayerCharacterSheet } from './PlayerCharacterSheet';
 import { DiceRollerWidget } from './DiceRollerWidget';
 import { listEntries, type CombatLogEntry } from '../services/combat-log-service';
-import { Panel, Tabs } from './primitives';
+import { ListSurface, Panel, Tabs } from './primitives';
 import type { SessionRole } from './AppModeContext';
 
 export interface PlayModeViewProps {
@@ -130,14 +130,14 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
               onPosted={() => setLogTick((n) => n + 1)}
             />
           )}
-          <ul className="play-cockpit__log-list">
+          <ListSurface className="play-cockpit__log-list">
             {logEntries.length === 0 && <li>{t('cockpit.logEmpty', 'Noch keine Einträge.')}</li>}
             {logEntries.map((e) => (
               <li key={e.id}>
                 <span className="u-muted">[{e.visibility}]</span> {e.text}
               </li>
             ))}
-          </ul>
+          </ListSurface>
         </Panel>
       )}
 
@@ -171,7 +171,7 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
         <Panel className="play-cockpit__pane u-stack u-gap-2">
           <h3>{t('cockpit.browseTitle', 'Free-Browse')}</h3>
           <p>{t('cockpit.browseHint', 'Alle Entities, die der DM für dich freigegeben hat (bzw. für den DM: alle).')}</p>
-          <ul className="play-cockpit__browse-list">
+          <ListSurface className="play-cockpit__browse-list">
             {browseItems.length === 0 && <li>{t('cockpit.browseEmpty', 'Nichts freigegeben.')}</li>}
             {browseItems.map((it) => (
               <li key={it.id}>
@@ -179,7 +179,7 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
                 <span className="u-muted"> — {it.type}</span>
               </li>
             ))}
-          </ul>
+          </ListSurface>
         </Panel>
       )}
     </div>

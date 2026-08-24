@@ -33,7 +33,7 @@ import { MapFolderTree } from './MapFolderTree';
 import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
-import { Button, Panel } from './primitives';
+import { Button, Field, Panel, Segmented } from './primitives';
 import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext';
 import { listCampaigns, createCampaign, type Campaign } from '../services/campaign-service';
 import { PlayModeView } from './PlayModeView';
@@ -116,6 +116,8 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // M10-S05/S08: Nach dem Player-Join steht Token+playerId+displayName fest;
   // die Play-Sicht schaltet dann auf PlayerCharacterSheet.
   const [playerContext, setPlayerContext] = useState<{ playerId: string; displayName: string } | null>(null);
+  // M10-S14: Group-IDs des Players für die host-seitige Gruppen-Sicht (S09).
+  const [playerGroupIds, setPlayerGroupIds] = useState<string[]>([]);
   // M10-S22 (Follow-up): echte Campaign-Auswahl beim Play-Eintritt statt
   // projectId-Hack. Campaigns werden beim Öffnen des Auswahl-Panels geladen.
   const [availableCampaigns, setAvailableCampaigns] = useState<Campaign[]>([]);
@@ -935,15 +937,25 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
             <span className="workspace-shell__area-name">{activeAreaLabel}</span>
             <div className="workspace-shell__header-controls">
-              <Button
+              <div
                 data-testid="mode-toggle"
                 aria-pressed={mode === 'play'}
-                tone={mode === 'play' ? 'accent' : 'neutral'}
                 onClick={handleModeToggle}
-                title={mode === 'edit' ? t('modeToggleToPlay', 'Spielen') : t('modeToggleToEdit', 'Bearbeiten')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleModeToggle(); }}
               >
-                {mode === 'edit' ? t('modeEdit', 'Bearbeiten') : t('modePlay', 'Spielen')}
-              </Button>
+                <Segmented
+                  label={t('modeToggleLabel', 'Modus')}
+                  value={mode}
+                  onChange={() => { /* wrapper handles the click */ }}
+                  size="compact"
+                  options={[
+                    { id: 'edit', label: t('modeEdit', 'Bearbeiten') },
+                    { id: 'play', label: t('modePlay', 'Spielen') },
+                  ]}
+                />
+              </div>
               <LanguageSwitcher />
               <ThemeToggle />
             </div>
@@ -953,27 +965,22 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
               aria-label={t('modeRolePickTitle', 'Rolle wählen')}>
               <p>{t('modeRolePickPrompt', 'Campaign und Rolle wählen:')}</p>
               <div className="workspace-shell__role-campaign u-stack u-gap-2">
-                <label className="u-row u-gap-2">
-                  <span>{t('modeCampaign', 'Campaign')}:</span>
-                  <select
-                    aria-label={t('modeCampaign', 'Campaign')}
+                {availableCampaigns.length > 0 && (
+                  <Segmented
+                    label={t('modeCampaign', 'Campaign')}
                     value={selectedCampaignForPlay}
-                    onChange={(e) => setSelectedCampaignForPlay(e.target.value)}
-                  >
-                    <option value="">{t('modeCampaignNone', '— wählen —')}</option>
-                    {availableCampaigns.map((c) => (
-                      <option key={c.id} value={c.id}>{c.title}</option>
-                    ))}
-                  </select>
-                </label>
+                    onChange={setSelectedCampaignForPlay}
+                    size="compact"
+                    options={availableCampaigns.map((c) => ({ id: c.id, label: c.title }))}
+                  />
+                )}
                 {availableCampaigns.length === 0 && (
                   <div className="u-row u-gap-2">
-                    <input
-                      type="text"
-                      aria-label={t('modeCampaignNew', 'Neue Campaign')}
-                      placeholder={t('modeCampaignNewPh', 'Titel für neue Campaign')}
+                    <Field
+                      label={t('modeCampaignNew', 'Neue Campaign')}
                       value={newCampaignTitle}
                       onChange={(e) => setNewCampaignTitle(e.target.value)}
+                      placeholder={t('modeCampaignNewPh', 'Titel')}
                     />
                     <Button
                       onClick={() => void createAndPickCampaign()}
@@ -1005,17 +1012,30 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             ) : playerContext !== null && activeSessionId !== null ? (
               // M10-S14: Nach dem Join sieht der Player das volle Cockpit
               // (Map/Kampflog/Spotlight/Free-Browse + Bogen), gefiltert durch
-              // S09 (host-seitige Content-Filter).
+              // S09 (host-seitige Content-Filter). Group-IDs kommen aus der
+              // group_members-Tabelle — die S09-Filter sind an alle Gruppen
+              // des Players adressiert (D6).
               <PlayModeView
                 role={sessionRole}
                 activeSessionId={activeSessionId}
                 playerId={playerContext.playerId}
+                playerGroupIds={playerGroupIds}
               />
             ) : (
               // M10-S05: Player-Rolle startet mit dem Beitritts-Flow.
               <PlayerJoinView
                 database={database}
-                onJoined={({ playerId, displayName }) => setPlayerContext({ playerId, displayName })}
+                onJoined={async ({ playerId, displayName }) => {
+                  setPlayerContext({ playerId, displayName });
+                  // Group-Zugehörigkeit des Players → Filter-Kontext für S09.
+                  try {
+                    const rows = await database.select<{ group_id: string }>(
+                      'SELECT group_id FROM group_members WHERE player_id = ?',
+                      [playerId],
+                    );
+                    setPlayerGroupIds(rows.map((r) => r.group_id));
+                  } catch { /* keine group_members → leere Liste */ }
+                }}
               />
             )
           ) : (

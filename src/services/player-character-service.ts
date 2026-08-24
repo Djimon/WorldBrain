@@ -12,26 +12,11 @@ export interface PlayerCharacter {
   player_id: string;
 }
 
-interface PlayerCharacterProps {
-  is_player_character?: boolean;
-  campaign_id?: string;
-  player_id?: string;
-}
-
 interface PlayerCharacterRow {
   id: string;
   title: string;
   summary: string;
   properties_json: string;
-}
-
-function parseProps(json: string): PlayerCharacterProps {
-  try {
-    const p = JSON.parse(json);
-    return typeof p === 'object' && p !== null ? p as PlayerCharacterProps : {};
-  } catch {
-    return {};
-  }
 }
 
 /**
@@ -43,22 +28,26 @@ export async function getPlayerCharacter(
   campaignId: string,
   playerId: string,
 ): Promise<PlayerCharacter | null> {
+  // json_extract statt Full-Scan+JS-Filter (SQLite ≥3.38 hat FTS + JSON1).
   const rows = await db.select<PlayerCharacterRow>(
-    "SELECT id, title, summary, properties_json FROM base_entities WHERE type = 'Character'",
+    `SELECT id, title, summary, properties_json
+     FROM base_entities
+     WHERE type = 'Character'
+       AND json_extract(properties_json, '$.is_player_character') = 1
+       AND json_extract(properties_json, '$.campaign_id') = ?
+       AND json_extract(properties_json, '$.player_id')  = ?
+     LIMIT 1`,
+    [campaignId, playerId],
   );
-  for (const row of rows) {
-    const p = parseProps(row.properties_json);
-    if (p.is_player_character === true && p.campaign_id === campaignId && p.player_id === playerId) {
-      return {
-        id: row.id,
-        title: row.title,
-        summary: row.summary,
-        campaign_id: campaignId,
-        player_id: playerId,
-      };
-    }
-  }
-  return null;
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    summary: row.summary,
+    campaign_id: campaignId,
+    player_id: playerId,
+  };
 }
 
 export interface CreatePlayerCharacterParams {
@@ -81,7 +70,7 @@ export async function createPlayerCharacter(
 
   const id = `pc_${crypto.randomUUID()}`;
   const now = new Date().toISOString();
-  const props: PlayerCharacterProps = {
+  const props = {
     is_player_character: true,
     campaign_id: params.campaignId,
     player_id: params.playerId,

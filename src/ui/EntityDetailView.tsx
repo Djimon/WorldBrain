@@ -237,6 +237,19 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
               <div className="entity-detail__field">
                 <EffectEditor database={database as DatabaseLike} eventId={entityId} startDay={editStartDay} calendar={effectiveCalendar} />
               </div>
+              {/* M10-S07: Auch Events bekommen den per-Spieler/Gruppen-Editor
+                  (der base-Scope-Select in EventFormFields deckt nur die 4
+                  Klassik-Scopes ab, hier folgt der additive Layer). */}
+              <div className="entity-detail__field">
+                <label className="entity-detail__field-label">{t('field.visibility', 'Sichtbarkeit (Overrides)')}</label>
+                <VisibilityScopePicker
+                  database={database as DatabaseLike}
+                  targetType="entity"
+                  targetId={entityId}
+                  baseScope={(editVisibility || 'public') as BaseScope}
+                  onBaseScopeChange={(s) => setEditVisibility(s)}
+                />
+              </div>
             </>
           ) : (
             <>
