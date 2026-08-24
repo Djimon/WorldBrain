@@ -38,6 +38,7 @@ import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext
 import { PlayModeView } from './PlayModeView';
 import { PlayerJoinView } from './PlayerJoinView';
 import { PlayerCharacterSheet } from './PlayerCharacterSheet';
+import { CampaignRosterPanel } from './CampaignRosterPanel';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
 
@@ -49,6 +50,7 @@ type Area =
   | 'maps'
   | 'calendar'
   | 'session'
+  | 'campaigns'
   | 'chronicle'
   | 'cards'
   | 'plugins'
@@ -84,6 +86,7 @@ const AREAS: { id: Area; icon: string }[] = [
   { id: 'maps',     icon: '🗺' },
   { id: 'calendar', icon: '📅' },
   { id: 'session',  icon: '🎲' },
+  { id: 'campaigns',icon: '🎭' },
   { id: 'chronicle',icon: '📜' },
   { id: 'cards',    icon: '🃏' },
   { id: 'plugins',  icon: '🔌' },
@@ -554,6 +557,14 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
         return (
           <div className="workspace-area">
             <p>{t('sessionAreaEditHint', 'Play-Cockpit über den „Spielen"-Toggle in der Kopfzeile öffnen.')}</p>
+          </div>
+        );
+
+      case 'campaigns':
+        // M10-S24 (#347): persistente Campaign-Roster-Verwaltung im Edit-Modus.
+        return (
+          <div className="workspace-area">
+            <CampaignRosterPanel database={database} />
           </div>
         );
 
