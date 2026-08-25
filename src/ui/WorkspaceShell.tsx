@@ -937,25 +937,16 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
             <span className="workspace-shell__area-name">{activeAreaLabel}</span>
             <div className="workspace-shell__header-controls">
-              <div
-                data-testid="mode-toggle"
-                aria-pressed={mode === 'play'}
-                onClick={handleModeToggle}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleModeToggle(); }}
-              >
-                <Segmented
-                  label={t('modeToggleLabel', 'Modus')}
-                  value={mode}
-                  onChange={() => { /* wrapper handles the click */ }}
-                  size="compact"
-                  options={[
-                    { id: 'edit', label: t('modeEdit', 'Bearbeiten') },
-                    { id: 'play', label: t('modePlay', 'Spielen') },
-                  ]}
-                />
-              </div>
+              <Segmented
+                label={t('modeToggleLabel', 'Modus')}
+                value={mode}
+                onChange={(id) => { if (id !== mode) handleModeToggle(); }}
+                size="compact"
+                options={[
+                  { id: 'edit', label: t('modeEdit', 'Bearbeiten') },
+                  { id: 'play', label: t('modePlay', 'Spielen') },
+                ]}
+              />
               <LanguageSwitcher />
               <ThemeToggle />
             </div>

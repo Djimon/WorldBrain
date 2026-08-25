@@ -137,7 +137,27 @@ vi.mock('../src/ui/primitives', () => ({
   Button: (props: Record<string, unknown>) => React.createElement('button', props),
   Panel: (props: Record<string, unknown>) => React.createElement('div', props),
   Field: (props: Record<string, unknown>) => React.createElement('input', props),
-  Segmented: (props: Record<string, unknown>) => React.createElement('div', props),
+  // Realistischer Mock: role="group" + aria-label + einzelne Buttons pro
+  // Segment (Text = label, aria-pressed spiegelt value). Genau das Kontrakt-
+  // Verhalten von Segmented, das die Tests via getByRole finden.
+  Segmented: ({ label, value, options, onChange }: {
+    label: string;
+    value: string;
+    options: readonly { id: string; label: React.ReactNode }[];
+    onChange: (id: string) => void;
+  }) => React.createElement(
+    'div',
+    { role: 'group', 'aria-label': label },
+    options.map((opt) => React.createElement(
+      'button',
+      {
+        key: opt.id,
+        'aria-pressed': opt.id === value,
+        onClick: () => onChange(opt.id),
+      },
+      opt.label,
+    )),
+  ),
 }));
 
 // PlayModeView mock — renders dm-cockpit testid so toggle tests can detect play mode
@@ -152,9 +172,14 @@ afterEach(cleanup);
 // ---------------------------------------------------------------------------
 
 describe('M10-S22 Source guards', () => {
-  it('WorkspaceShell source contains data-testid="mode-toggle"', () => {
+  it('WorkspaceShell mounts a Segmented mode toggle from primitives', () => {
     const source = readFileSync('src/ui/WorkspaceShell.tsx', 'utf-8');
-    expect(source).toMatch(/data-testid=["']mode-toggle["']/);
+    // Der Toggle wird aus dem primitives-Segmented gerendert — Test findet
+    // ihn zur Laufzeit über role="group" + aria-label (RTL-Idiom, siehe
+    // Integrationstests). Source-Guard nur, dass Segmented importiert und
+    // mit Modus-Label gemountet wird.
+    expect(source).toMatch(/import.*Segmented.*from.*primitives/);
+    expect(source).toMatch(/label=\{t\(['"]modeToggleLabel['"]/);
   });
 
   it('WorkspaceShell has mode state (edit|play)', () => {
@@ -177,18 +202,26 @@ describe('M10-S22 Mode toggle integration', () => {
     const mod = await import('../src/ui/WorkspaceShell');
     return mod.WorkspaceShell;
   }
+  // Segmented rendert als role="group" mit aria-label; die einzelnen
+  // Segmente sind Buttons ('Bearbeiten' / 'Spielen'). RTL-Idiom: über
+  // Rolle + Accessible-Name suchen, kein data-testid.
+  const modeToggle = () => screen.getByRole('group', { name: 'Modus' });
+  const playSeg = () => screen.getByRole('button', { name: 'Spielen' });
+  const editSeg = () => screen.getByRole('button', { name: 'Bearbeiten' });
+  const asDm = () => screen.getByRole('button', { name: /Als DM/i });
+  const asPlayer = () => screen.getByRole('button', { name: /Als Player/i });
 
   it('mode-toggle is rendered in WorkspaceShell', async () => {
     const Shell = await getWorkspaceShell();
     render(React.createElement(Shell));
-    expect(screen.getByTestId('mode-toggle')).toBeTruthy();
+    expect(modeToggle()).toBeTruthy();
   });
 
   it('default mode is edit — full AREAS menu visible', async () => {
     const Shell = await getWorkspaceShell();
     render(React.createElement(Shell));
     await waitFor(() => {
-      expect(screen.getByTestId('mode-toggle')).toBeTruthy();
+      expect(modeToggle()).toBeTruthy();
     });
     const sidebar = document.querySelector('[class*="sidebar"], nav, [role="navigation"]');
     expect(sidebar?.textContent).toMatch(/🌌/);
@@ -198,12 +231,11 @@ describe('M10-S22 Mode toggle integration', () => {
   it('clicking play → role selection → dm → play mode with reduced menu', async () => {
     const Shell = await getWorkspaceShell();
     render(React.createElement(Shell));
-    const toggle = screen.getByTestId('mode-toggle');
-    fireEvent.click(toggle);
+    fireEvent.click(playSeg());
     await waitFor(() => {
-      expect(screen.getByText(/DM/i)).toBeTruthy();
+      expect(asDm()).toBeTruthy();
     });
-    fireEvent.click(screen.getByText(/DM/i));
+    fireEvent.click(asDm());
     await waitFor(() => {
       expect(screen.getByTestId('dm-cockpit')).toBeTruthy();
     });
@@ -216,12 +248,11 @@ describe('M10-S22 Mode toggle integration', () => {
   it('switching back to edit restores full menu', async () => {
     const Shell = await getWorkspaceShell();
     render(React.createElement(Shell));
-    const toggle = screen.getByTestId('mode-toggle');
-    fireEvent.click(toggle);
-    await waitFor(() => screen.getByText(/DM/i));
-    fireEvent.click(screen.getByText(/DM/i));
+    fireEvent.click(playSeg());
+    await waitFor(() => asDm());
+    fireEvent.click(asDm());
     await waitFor(() => screen.getByTestId('dm-cockpit'));
-    fireEvent.click(screen.getByTestId('mode-toggle'));
+    fireEvent.click(editSeg());
     await waitFor(() => {
       const sidebar = document.querySelector('[class*="sidebar"], nav, [role="navigation"]');
       expect(sidebar?.textContent).toMatch(/🌌/);
@@ -231,9 +262,9 @@ describe('M10-S22 Mode toggle integration', () => {
   it('play mode as player sets sessionRole=player (no dm-cockpit)', async () => {
     const Shell = await getWorkspaceShell();
     render(React.createElement(Shell));
-    fireEvent.click(screen.getByTestId('mode-toggle'));
-    await waitFor(() => screen.getByText(/Player/i));
-    fireEvent.click(screen.getByText(/Player/i));
+    fireEvent.click(playSeg());
+    await waitFor(() => asPlayer());
+    fireEvent.click(asPlayer());
     await waitFor(() => {
       expect(screen.queryByTestId('dm-cockpit')).toBeNull();
     });
@@ -242,12 +273,14 @@ describe('M10-S22 Mode toggle integration', () => {
   it('mode-toggle is visible in both modes (aria-pressed tracks state)', async () => {
     const Shell = await getWorkspaceShell();
     render(React.createElement(Shell));
-    const toggle = screen.getByTestId('mode-toggle');
-    expect(toggle).toBeTruthy();
-    fireEvent.click(toggle);
-    await waitFor(() => screen.getByText(/DM/i));
-    fireEvent.click(screen.getByText(/DM/i));
+    expect(modeToggle()).toBeTruthy();
+    fireEvent.click(playSeg());
+    await waitFor(() => asDm());
+    fireEvent.click(asDm());
     await waitFor(() => screen.getByTestId('dm-cockpit'));
-    expect(screen.getByTestId('mode-toggle')).toBeTruthy();
+    expect(modeToggle()).toBeTruthy();
+    // aria-pressed spiegelt den aktiven Modus wider.
+    expect(playSeg().getAttribute('aria-pressed')).toBe('true');
+    expect(editSeg().getAttribute('aria-pressed')).toBe('false');
   });
 });
