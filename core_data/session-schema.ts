@@ -49,6 +49,49 @@ export function applySessionSchema(db: Db): void {
     )
   `);
 
+  // M13-S01: rule_modules — benannte, teilbare Overlays.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS rule_modules (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      base_system_id TEXT NOT NULL,
+      description TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS rule_module_entries (
+      id TEXT PRIMARY KEY,
+      module_id TEXT NOT NULL,
+      target TEXT NOT NULL,
+      op TEXT NOT NULL,
+      value_json TEXT NOT NULL DEFAULT 'null'
+    )
+  `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS session_ad_hoc_overrides (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      target TEXT NOT NULL,
+      op TEXT NOT NULL,
+      value_json TEXT NOT NULL DEFAULT 'null',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  // M13-S04 (#239): pro Session aktivierte House-Rule-Overlay-Module.
+  // Reihenfolge über display_order (kleinstes zuerst); enabled = 0 pausiert
+  // ein Modul, ohne den Eintrag zu verlieren.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS session_active_overlays (
+      session_id TEXT NOT NULL,
+      module_id TEXT NOT NULL,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      PRIMARY KEY (session_id, module_id)
+    )
+  `);
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS session_log (
       id TEXT PRIMARY KEY,

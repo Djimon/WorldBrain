@@ -1,0 +1,10 @@
+{
+  "id": "max_crit_damage",
+  "name": "Max Crit Damage",
+  "kind": "overlay",
+  "overlays": "dnd5e_srd",
+  "description": "Kritischer Treffer würfelt Schaden nicht doppelt — maximaler Schaden statt Extra-Würfel.",
+  "overrides": [
+    { "target": "hook:crit_damage", "op": "replace", "value": { "policy": "maximize", "extra_dice": 0 } }
+  ]
+}
