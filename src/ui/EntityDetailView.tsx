@@ -64,6 +64,10 @@ type EntityDetailViewProps = {
   /** Called after the entity is deleted — the parent owns what happens next
    *  (close an inline panel, clear a list selection, ...). */
   onDeleted?: () => void;
+  /** M14 (#345): Called after every successful `commitEdit()` — Parent kann
+   *  seinen Cache/Refresh-Token bumpen (z.B. Kalender-Refresh nach End-Datum-
+   *  Änderung). Feuert für Event- und Nicht-Event-Zweig. */
+  onSaved?: () => void;
   /** Read-only compact peek: render ONLY the overview tab (no registered extra
    *  tabs, no tab strip, no edit pencil). Used by the graph node-preview so it
    *  can't re-mount its own Graph tab → infinite recursion. The caller pairs it
@@ -71,7 +75,7 @@ type EntityDetailViewProps = {
   overviewOnly?: boolean;
 };
 
-export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted, overviewOnly }: EntityDetailViewProps) {
+export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted, onSaved, overviewOnly }: EntityDetailViewProps) {
   const { t } = useTranslation('entity');
   const readOnly = useReadOnly(); // M10-S23: Player-Modus blendet Edit/Delete aus.
   const [activeTab, setActiveTab] = useState('overview');
@@ -183,6 +187,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
         category: editCategory,
       });
       await saveEntity(database as DatabaseLike, entityId, { summary: editSummary, visibility: editVisibility });
+      onSaved?.();
     } else {
       await saveEntity(database as DatabaseLike, entityId, {
         title: editTitle,
@@ -190,6 +195,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
         properties: editProps,
         visibility: editVisibility,
       });
+      onSaved?.();
     }
     setEditing(false);
     load();

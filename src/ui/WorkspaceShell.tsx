@@ -695,6 +695,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                         onNavigateToEntity={navigateToEntity}
                         calendar={activeCalendar}
                         startInEditMode
+                        onSaved={() => setCalendarRefreshToken((n) => n + 1)}
                         onDeleted={() => {
                           setCalendarEditingEventId(null);
                           setCalendarRefreshToken((n) => n + 1);
