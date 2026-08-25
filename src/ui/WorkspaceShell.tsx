@@ -39,6 +39,7 @@ import { listCampaigns, createCampaign, type Campaign } from '../services/campai
 import { PlayModeView } from './PlayModeView';
 import { PlayerJoinView } from './PlayerJoinView';
 import { CampaignRosterPanel } from './CampaignRosterPanel';
+import { ModuleLibrary } from './ModuleLibrary';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
 
@@ -800,6 +801,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
               <button onClick={() => runEvaluation('quest')}>Quest-Blockaden prüfen</button>
               {evalResult && <pre>{evalResult}</pre>}
             </div>
+            <hr />
+            {/* M13-S07 (#242): House-Rule-Overlay-Bibliothek + Per-Session-Toggle. */}
+            <ModuleLibrary database={database} />
             <hr />
             {selectedScreenId ? (
               <>

@@ -165,3 +165,12 @@ CREATE TABLE IF NOT EXISTS session_ad_hoc_overrides (
   value_json TEXT NOT NULL DEFAULT 'null',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- M16-S10 (#327): projekt-lokaler Cache für vorberechnete Graph-Layout-
+-- Positionen. Schlüssel = structureHash(model). Bei Cache-Hit lädt der
+-- Consumer die Positionen direkt (kein Cold-Settle).
+CREATE TABLE IF NOT EXISTS graph_layout_cache (
+  structure_hash TEXT PRIMARY KEY,
+  positions_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

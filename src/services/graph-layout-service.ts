@@ -11,6 +11,7 @@ import {
   forceCenter, forceLink, forceManyBody, forceSimulation, forceX, forceY,
   type Simulation,
 } from 'd3-force';
+import type { DatabaseLike } from './entity-service';
 
 export interface LayoutNode { id: string }
 export interface LayoutEdge { source: string; target: string }
@@ -97,4 +98,64 @@ export function structureHash(model: LayoutModel): string {
     h = Math.imul(h, 0x01000193);
   }
   return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+// ---------------------------------------------------------------------------
+// M16-S10 Cache-Layer: DB-Persistenz für vorberechnete Positionen.
+// Consumer-Flow: (1) hash = structureHash(model); (2) getCachedLayout(db, hash);
+//   → wenn Map: direkt renderen, kein Recompute. → wenn null: computeLayout
+//     laufen lassen, saveCachedLayout(db, hash, result). Worker-Wrapper ist
+//     Consumer-Sache (Renderer-abhängig, S00b/#326).
+// ---------------------------------------------------------------------------
+
+interface CacheRow { positions_json: string }
+
+export async function getCachedLayout(
+  db: DatabaseLike, hash: string,
+): Promise<Map<string, LayoutPosition> | null> {
+  const rows = await db.select<CacheRow>(
+    'SELECT positions_json FROM graph_layout_cache WHERE structure_hash = ?',
+    [hash],
+  );
+  if (rows.length === 0) return null;
+  try {
+    const parsed = JSON.parse(rows[0].positions_json) as Array<[string, LayoutPosition]>;
+    return new Map(parsed);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveCachedLayout(
+  db: DatabaseLike, hash: string, positions: Map<string, LayoutPosition>,
+): Promise<void> {
+  const serialized = JSON.stringify(Array.from(positions.entries()));
+  await db.execute(
+    `INSERT INTO graph_layout_cache (structure_hash, positions_json)
+     VALUES (?, ?)
+     ON CONFLICT(structure_hash) DO UPDATE SET positions_json = excluded.positions_json`,
+    [hash, serialized],
+  );
+}
+
+/**
+ * All-in-one: gibt gecachte Positionen zurück wenn vorhanden; sonst berechnet
+ * headless + persistiert. Consumer, die den Cache benutzen wollen, greifen
+ * darauf statt direkt zu computeLayout — der `simCalls`-Zähler dient dem
+ * Test zur Verifikation, dass ein Cache-Hit die Sim NICHT erneut anwirft.
+ */
+let simCalls = 0;
+export function _getSimCalls(): number { return simCalls; }
+export function _resetSimCalls(): void { simCalls = 0; }
+
+export async function loadOrComputeLayout(
+  db: DatabaseLike, model: LayoutModel, opts: LayoutOptions,
+): Promise<Map<string, LayoutPosition>> {
+  const hash = structureHash(model);
+  const cached = await getCachedLayout(db, hash);
+  if (cached !== null) return cached;
+  simCalls += 1;
+  const positions = await computeLayout(model, opts);
+  await saveCachedLayout(db, hash, positions);
+  return positions;
 }
