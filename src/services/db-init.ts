@@ -4,6 +4,7 @@ import { applyAudioSchema } from '../../core_data/audio-schema';
 import { applyCalendarSchema } from '../../core_data/calendar-schema';
 import { applyCardSchema } from '../../core_data/card-schema';
 import { applyHandoutSchema } from '../../core_data/handout-schema';
+import { applyGraphSchema } from '../../core_data/graph-schema';
 import { applyMapSchema } from '../../core_data/map-schema';
 import { applyMultiplayerSchema } from '../../core_data/multiplayer-schema';
 import { applyRelationsSchema } from '../../core_data/relations-schema';
@@ -128,6 +129,9 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   // M10 Rebuild: campaigns/players/session_players/player_groups/group_members/
   // invite_codes/session_visibility_overrides/campaign_notes.
   applyMultiplayerSchema(db as unknown as Parameters<typeof applyMultiplayerSchema>[0]);
+  // M16-S10 (#327): graph_layout_cache — persist the precomputed layout so
+  // the renderer opens instantly (no cold-settle).
+  applyGraphSchema(db as unknown as Parameters<typeof applyGraphSchema>[0]);
 
   // Drain all fire-and-forget schema exec() calls before returning.
   await adapter.flush();
