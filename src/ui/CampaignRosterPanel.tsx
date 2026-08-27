@@ -13,9 +13,9 @@ import {
   kick as kickPlayer, listCampaignPlayers,
   type SessionPlayer,
 } from '../services/player-membership-service';
-import { generateInviteCode } from '../services/session-identity-service';
+import { generateInviteCode, getActiveInviteCode } from '../services/session-identity-service';
 import {
-  addMember, createGroup, listGroups, removeMember,
+  addMember, createGroup, deleteGroup, listGroups, removeMember, renameGroup,
   type PlayerGroup,
 } from '../services/player-groups-service';
 import { Button, Field, ListSurface, Panel, StatusChip } from './primitives';
@@ -80,6 +80,43 @@ export function CampaignRosterPanel({ database, campaignId: fixedCampaignId }: C
     }
   }
   useEffect(() => { void reload(); }, [database, selectedCampaignId]);
+
+  // #371 Fix 1/2: aktiven Code laden statt still neu generieren.
+  useEffect(() => {
+    if (selectedCampaignId === '') { setInviteCode(''); return; }
+    let cancelled = false;
+    void getActiveInviteCode(database, selectedCampaignId).then((code) => {
+      if (cancelled) return;
+      setInviteCode(code ?? '');
+    }).catch(() => { /* fail-open */ });
+    return () => { cancelled = true; };
+  }, [database, selectedCampaignId]);
+
+  const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
+  const [renameGroupValue, setRenameGroupValue] = useState('');
+
+  async function submitRenameGroup(groupId: string) {
+    if (renameGroupValue.trim() === '') { setRenamingGroupId(null); return; }
+    setError(null);
+    try {
+      await renameGroup({ database, groupId, name: renameGroupValue.trim() });
+      setRenamingGroupId(null);
+      setRenameGroupValue('');
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function handleDeleteGroup(groupId: string) {
+    setError(null);
+    try {
+      await deleteGroup({ database, groupId });
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   async function handleCreateCampaign() {
     if (newCampaignTitle.trim() === '') return;
@@ -173,17 +210,20 @@ export function CampaignRosterPanel({ database, campaignId: fixedCampaignId }: C
               {campaigns.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </label>
-          <div className="u-row u-gap-2">
-            <Field
-              label={t('roster.newCampaignLabel', 'Neue Campaign')}
-              value={newCampaignTitle}
-              onChange={(e) => setNewCampaignTitle(e.target.value)}
-              placeholder={t('roster.newCampaignPlaceholder', 'Titel')}
-            />
-            <Button tone="accent" disabled={newCampaignTitle.trim() === ''} onClick={() => void handleCreateCampaign()}>
-              {t('roster.createCampaign', 'Anlegen')}
-            </Button>
-          </div>
+          {/* #371 Fix 4: Neue-Campaign-Form nur wenn KEINE ausgewählt/vorhanden. */}
+          {selectedCampaignId === '' && (
+            <div className="u-row u-gap-2">
+              <Field
+                label={t('roster.newCampaignLabel', 'Neue Campaign')}
+                value={newCampaignTitle}
+                onChange={(e) => setNewCampaignTitle(e.target.value)}
+                placeholder={t('roster.newCampaignPlaceholder', 'Titel')}
+              />
+              <Button tone="accent" disabled={newCampaignTitle.trim() === ''} onClick={() => void handleCreateCampaign()}>
+                {t('roster.createCampaign', 'Anlegen')}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -221,6 +261,43 @@ export function CampaignRosterPanel({ database, campaignId: fixedCampaignId }: C
               </Button>
             </div>
             {groups.length === 0 && <p className="u-muted">{t('roster.noGroups', 'Noch keine Gruppen.')}</p>}
+            {/* #371 Fix 3: Gruppen-Liste sichtbar (Umbenennen/Löschen). */}
+            {groups.length > 0 && (
+              <ListSurface className="campaign-roster-panel__groups">
+                {groups.map((g) => (
+                  <li key={g.id} className="u-row u-gap-2">
+                    {renamingGroupId === g.id ? (
+                      <>
+                        <Field
+                          label={t('roster.renameGroupLabel', 'Neuer Name')}
+                          value={renameGroupValue}
+                          onChange={(e) => setRenameGroupValue(e.target.value)}
+                          autoFocus
+                        />
+                        <Button size="compact" tone="accent" onClick={() => void submitRenameGroup(g.id)}>
+                          {t('save', 'Speichern')}
+                        </Button>
+                        <Button size="compact" onClick={() => setRenamingGroupId(null)}>
+                          {t('cancel', 'Abbrechen')}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <strong>{g.name}</strong>
+                        <Button size="compact" variant="outline"
+                          onClick={() => { setRenamingGroupId(g.id); setRenameGroupValue(g.name); }}>
+                          {t('roster.renameGroup', 'Umbenennen')}
+                        </Button>
+                        <Button size="compact" tone="danger" variant="outline"
+                          onClick={() => void handleDeleteGroup(g.id)}>
+                          {t('roster.deleteGroup', 'Löschen')}
+                        </Button>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ListSurface>
+            )}
           </div>
 
           <div className="u-stack u-gap-2">

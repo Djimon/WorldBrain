@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { listCampaignPlayers, kick as kickPlayer } from '../services/player-membership-service';
-import { generateInviteCode } from '../services/session-identity-service';
+import { generateInviteCode, getActiveInviteCode } from '../services/session-identity-service';
 import type { SessionPlayer } from '../services/player-membership-service';
 import { Button, Field, ListSurface, Panel, StatusChip } from './primitives';
 
@@ -52,6 +52,18 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
   }
 
   useEffect(() => { void reload(); }, [database, campaignId]);
+
+  // #371 Fix 1/2: aktiven Code beim Mount aus der DB laden — kein Auto-Generate,
+  // Neu-Generieren bleibt explizite Aktion.
+  useEffect(() => {
+    if (campaignId === '') return;
+    let cancelled = false;
+    void getActiveInviteCode(database, campaignId).then((code) => {
+      if (cancelled) return;
+      if (code !== null) setInviteCode(code);
+    }).catch(() => { /* fail-open */ });
+    return () => { cancelled = true; };
+  }, [database, campaignId]);
 
   async function handleKick(playerId: string) {
     setError(null);

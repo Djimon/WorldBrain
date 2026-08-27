@@ -62,10 +62,15 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
     } catch { /* fail-open */ } finally { setChecking(false); }
   }
 
-  // Reconnect-Check beim Mount (D10/D11): einmaliger Ping + Reconnect.
+  // #371 Fix 5: Auto-Reconnect ist NICHT mehr still — der Spieler muss ihn
+  // explizit auslösen (Button „Wieder verbinden"). Sonst joint bei einer
+  // zweiten lokalen Instanz eine Alt-Sitzung ohne Zutun des Users.
+  const [storedTokenExists, setStoredTokenExists] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    void (async () => { if (!cancelled) await runReconnect(); })();
+    void listStoredTokens().then((toks) => {
+      if (!cancelled) setStoredTokenExists(toks.length > 0);
+    });
     return () => { cancelled = true; };
   }, [database]);
 
@@ -134,6 +139,17 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
     <Panel className="player-join-view u-stack u-gap-3" role="form"
       aria-label={t('join.title', 'Campaign beitreten')}>
       <h2>{t('join.title', 'Campaign beitreten')}</h2>
+      {/* #371 Fix 5: expliziter Reconnect statt still automatisch. */}
+      {storedTokenExists && (
+        <div className="u-row u-gap-2">
+          <StatusChip tone="muted">
+            {t('join.storedTokenPresent', 'Frühere Sitzung erkannt.')}
+          </StatusChip>
+          <Button tone="accent" onClick={() => void runReconnect()} disabled={checking}>
+            {checking ? t('join.retrying', 'Verbinde…') : t('join.reconnect', 'Wieder verbinden')}
+          </Button>
+        </div>
+      )}
       <Field
         label={t('join.codeLabel', 'Einladungslink / Code')}
         placeholder={t('join.codePlaceholder', 'z.B. ABCD-EFGH oder wbrain://…')}
