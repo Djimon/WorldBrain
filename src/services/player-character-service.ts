@@ -1,66 +1,59 @@
-// M10-S08 (#357): Spieler-Charakter — CRUD auf base_entities mit
-// `is_player_character: true` + player_id + campaign_id in properties.
+// M10-S08 + D30 (#376): Player-Charakter — CRUD auf eigener Tabelle
+// `player_characters` (nicht mehr in `base_entities`). Der Bogen liegt in
+// sheet_json (frei strukturiert; system_plugin_id-Schema folgt aus M9).
 // D10: genau 1 Charakter pro (campaignId, playerId).
-// D20: Spieler bearbeitet nur den eigenen; fremde Bögen sind nicht sichtbar.
 import type { DatabaseLike } from './entity-service';
 
 export interface PlayerCharacter {
   id: string;
-  title: string;
-  summary: string;
   campaign_id: string;
   player_id: string;
+  sheet: Record<string, unknown>;
 }
 
 interface PlayerCharacterRow {
   id: string;
-  title: string;
-  summary: string;
-  properties_json: string;
+  campaign_id: string;
+  player_id: string;
+  sheet_json: string;
 }
 
-/**
- * Sucht den Charakter eines Spielers in einer Campaign. Null wenn (noch) keiner
- * existiert — dann greift der Erstellungs-Flow.
- */
+function parseSheet(json: string): Record<string, unknown> {
+  try {
+    const s = JSON.parse(json);
+    return typeof s === 'object' && s !== null && !Array.isArray(s) ? (s as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
 export async function getPlayerCharacter(
   db: DatabaseLike,
   campaignId: string,
   playerId: string,
 ): Promise<PlayerCharacter | null> {
-  // json_extract statt Full-Scan+JS-Filter (SQLite ≥3.38 hat FTS + JSON1).
   const rows = await db.select<PlayerCharacterRow>(
-    `SELECT id, title, summary, properties_json
-     FROM base_entities
-     WHERE type = 'Character'
-       AND json_extract(properties_json, '$.is_player_character') = 1
-       AND json_extract(properties_json, '$.campaign_id') = ?
-       AND json_extract(properties_json, '$.player_id')  = ?
-     LIMIT 1`,
+    'SELECT id, campaign_id, player_id, sheet_json FROM player_characters WHERE campaign_id = ? AND player_id = ? LIMIT 1',
     [campaignId, playerId],
   );
   const row = rows[0];
   if (!row) return null;
   return {
     id: row.id,
-    title: row.title,
-    summary: row.summary,
-    campaign_id: campaignId,
-    player_id: playerId,
+    campaign_id: row.campaign_id,
+    player_id: row.player_id,
+    sheet: parseSheet(row.sheet_json),
   };
 }
 
 export interface CreatePlayerCharacterParams {
   campaignId: string;
   playerId: string;
-  name: string;
-  summary?: string;
+  /** Frei strukturierter Bogen (S08/M9-S03). Beispiel: { name, summary,
+   *  class, hp, ... }. Wird als JSON persistiert. */
+  sheetJson: Record<string, unknown>;
 }
 
-/**
- * Legt einen neuen Player-Charakter an. Wirft, wenn für (campaignId, playerId)
- * schon einer existiert — D10: genau 1 Charakter pro Spieler pro Campaign.
- */
 export async function createPlayerCharacter(
   db: DatabaseLike,
   params: CreatePlayerCharacterParams,
@@ -69,29 +62,21 @@ export async function createPlayerCharacter(
   if (existing !== null) throw new Error('Player already has a character in this campaign');
 
   const id = `pc_${crypto.randomUUID()}`;
-  const now = new Date().toISOString();
-  const props = {
-    is_player_character: true,
-    campaign_id: params.campaignId,
-    player_id: params.playerId,
-  };
   await db.execute(
-    `INSERT INTO base_entities (id, type, title, summary, aliases_json, properties_json, body_json, visibility, created_at, updated_at)
-     VALUES (?, 'Character', ?, ?, '[]', ?, '{"format":"portable_blocks_v1","blocks":[]}', 'public', ?, ?)`,
-    [id, params.name, params.summary ?? '', JSON.stringify(props), now, now],
+    'INSERT INTO player_characters (id, campaign_id, player_id, sheet_json) VALUES (?, ?, ?, ?)',
+    [id, params.campaignId, params.playerId, JSON.stringify(params.sheetJson)],
   );
   return {
     id,
-    title: params.name,
-    summary: params.summary ?? '',
     campaign_id: params.campaignId,
     player_id: params.playerId,
+    sheet: params.sheetJson,
   };
 }
 
 export interface UpdatePlayerCharacterParams {
-  title?: string;
-  summary?: string;
+  /** Neuer kompletter Bogen — replace-Semantik. */
+  sheetJson: Record<string, unknown>;
 }
 
 export async function updatePlayerCharacter(
@@ -99,12 +84,8 @@ export async function updatePlayerCharacter(
   id: string,
   patch: UpdatePlayerCharacterParams,
 ): Promise<void> {
-  const fields: string[] = [];
-  const args: unknown[] = [];
-  if (patch.title !== undefined) { fields.push('title = ?'); args.push(patch.title); }
-  if (patch.summary !== undefined) { fields.push('summary = ?'); args.push(patch.summary); }
-  if (fields.length === 0) return;
-  fields.push('updated_at = ?');
-  args.push(new Date().toISOString(), id);
-  await db.execute(`UPDATE base_entities SET ${fields.join(', ')} WHERE id = ?`, args);
+  await db.execute(
+    'UPDATE player_characters SET sheet_json = ? WHERE id = ?',
+    [JSON.stringify(patch.sheetJson), id],
+  );
 }

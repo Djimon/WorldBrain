@@ -63,8 +63,10 @@ export function PlayerCharacterSheet({
     try {
       const c = await createPlayerCharacter(database, {
         campaignId, playerId,
-        name: newName.trim(),
-        summary: newSummary.trim(),
+        sheetJson: {
+          name: newName.trim(),
+          summary: newSummary.trim(),
+        },
       });
       setCharacter(c);
     } catch (e) {
@@ -78,8 +80,9 @@ export function PlayerCharacterSheet({
     if (character === null) return;
     setError(null);
     try {
-      await updatePlayerCharacter(database, character.id, { summary: editSummary });
-      setCharacter({ ...character, summary: editSummary });
+      const nextSheet = { ...character.sheet, summary: editSummary };
+      await updatePlayerCharacter(database, character.id, { sheetJson: nextSheet });
+      setCharacter({ ...character, sheet: nextSheet });
       setEditing(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -128,10 +131,13 @@ export function PlayerCharacterSheet({
     );
   }
 
+  const charName = typeof character.sheet.name === 'string' ? character.sheet.name : '';
+  const charSummary = typeof character.sheet.summary === 'string' ? character.sheet.summary : '';
+
   return (
     <Panel className="player-character-sheet u-stack u-gap-3" role="region"
       aria-label={t('pc.sheetTitle', 'Charakterbogen')}>
-      <h2>{character.title}</h2>
+      <h2>{charName || t('pc.unnamed', '(unbenannt)')}</h2>
       {editing ? (
         <div className="u-stack u-gap-2">
           <Field
@@ -150,10 +156,10 @@ export function PlayerCharacterSheet({
         </div>
       ) : (
         <div className="u-stack u-gap-2">
-          <p>{character.summary || t('pc.noSummary', '(keine Kurzbeschreibung)')}</p>
+          <p>{charSummary || t('pc.noSummary', '(keine Kurzbeschreibung)')}</p>
           <Button
             size="compact"
-            onClick={() => { setEditSummary(character.summary); setEditing(true); }}
+            onClick={() => { setEditSummary(charSummary); setEditing(true); }}
           >
             {t('pc.editSummary', 'Bearbeiten')}
           </Button>
@@ -163,13 +169,13 @@ export function PlayerCharacterSheet({
         <h3>{t('pc.actionsTitle', 'Aktionen')}</h3>
         <p className="u-muted">{t('pc.actionsHint', 'Aktionen posten in den Kampflog (Regel-Auflösung folgt im Kampf-Sub-Epic M10b).')}</p>
         <div className="u-row u-gap-2">
-          <Button onClick={() => triggerAction('attack', t('pc.actionAttack', '{{name}} greift an.', { name: character.title }))}>
+          <Button onClick={() => triggerAction('attack', t('pc.actionAttack', '{{name}} greift an.', { name: charName }))}>
             {t('pc.actionAttack.btn', 'Angriff')}
           </Button>
-          <Button onClick={() => triggerAction('cast', t('pc.actionCast', '{{name}} wirkt einen Zauber.', { name: character.title }))}>
+          <Button onClick={() => triggerAction('cast', t('pc.actionCast', '{{name}} wirkt einen Zauber.', { name: charName }))}>
             {t('pc.actionCast.btn', 'Zauber')}
           </Button>
-          <Button onClick={() => triggerAction('skill', t('pc.actionSkill', '{{name}} nutzt eine Fertigkeit.', { name: character.title }))}>
+          <Button onClick={() => triggerAction('skill', t('pc.actionSkill', '{{name}} nutzt eine Fertigkeit.', { name: charName }))}>
             {t('pc.actionSkill.btn', 'Fertigkeit')}
           </Button>
         </div>

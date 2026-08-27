@@ -109,6 +109,18 @@ export function applyMultiplayerSchema(db: MpDb): void {
     )
   `);
 
+  // M10-D30 (#376): eigene Tabelle für Player-Charaktere; base_entities
+  // bleibt reines World-Building.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS player_characters (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL,
+      player_id TEXT NOT NULL,
+      sheet_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS campaign_notes (
       id TEXT PRIMARY KEY,

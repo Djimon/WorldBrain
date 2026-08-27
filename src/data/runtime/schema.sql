@@ -174,3 +174,13 @@ CREATE TABLE IF NOT EXISTS graph_layout_cache (
   positions_json TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- M10-D30 (#376): Player-Charaktere raus aus base_entities → eigene
+-- campaign-scoped Tabelle. Der Bogen liegt in sheet_json (frei strukturiert).
+CREATE TABLE IF NOT EXISTS player_characters (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL,
+  player_id TEXT NOT NULL,
+  sheet_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
