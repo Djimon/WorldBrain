@@ -78,6 +78,21 @@ npm run desktop:spike-m10-signaling
 - **PeerJS-Cloud ist tragfähig** — ~10× langsamer als Trystero (216 ms vs 22 ms), aber weit unter dem 10 s-Timeout. Bleibt Backup-Kandidat trotz Single-Broker-SPOF.
 - **Median ist warm, nicht cold.** Attempt #1 (echter Cold-Start): Nostr 1.3 s, MQTT 1.4 s, BitTorrent 1.1 s, PeerJS 0.7 s. Attempts 2-10 nutzen offen bleibende Relay-WebSocket → 20-215 ms. Realistischer User-Cold-Start = **~0.7–1.4 s**, nicht der Median.
 
+### Harness-Caveat: Loop-Desync ≠ Broker-Failure (Re-Run trystero-nostr, 2026-08-28)
+
+Ein zweiter Windows-Lauf (beide Peers Edge 151) ergab **A 4/10 · B 10/10** — obwohl das Signaling einwandfrei lief. Die Ursache liegt **nicht** bei Nostr, sondern im Harness selbst:
+
+- Beide Seiten fahren ihre 10 Attempts als **unabhängige Schleifen ohne gemeinsamen Takt** (`runBench` wird pro Seite per Button gestartet, `bench.ts`). Ein Attempt endet, sobald der **eigene** Ping zurück ist → sofort `close()`, dann nächster Attempt.
+- Die schnellere Seite (hier B, später gestartet) rennt durch alle 10 Attempts und **verlässt den Raum**, während die langsamere (A) noch mittendrin ist. Folge: A#5–6 `peer-joined-no-ping` (B hängt zwischen zwei Attempts, kein Ping-Responder), A#7–10 `no-peer-joined` (B ist fertig und weg).
+
+**Was der Lauf trotzdem positiv beweist — die Spike-Kernfrage (Join + Message-Exchange):**
+- Gleicher Raum: Topic-Hash `ebbc48b0…` auf beiden Seiten **identisch**.
+- Peer-Discovery + **bidirektionaler** Austausch: der Ping **round-trippt** — A RTT 52–65 ms (#1–4), B **10/10** RTT 45–67 ms.
+
+→ Join + Nachrichtenaustausch über trystero-nostr = **bestätigt**. Eine <10/10-Quote mit genau diesen Fail-Reasons ist als **Harness-Desync** zu lesen, nicht als Broker-Ausfall. Ein optionaler *End-Barrier* (beide bestätigen ihre RTT per Data-Channel, bevor `close()` läuft → die schnelle Seite wartet auf die langsame) würde die Quote glätten und die Loops ab Attempt #2 re-synchronisieren — für die **Viability-Aussage** aber unnötig; der Spike-Ordner wird laut `types.ts` ohnehin verworfen.
+
+**Cold-Start-TTC (dieser Lauf):** Erst-Kontakt **8–19 s** (A#1 = 12 s, B#7 = 19 s), danach warm <100 ms. Deutlich höher als der frühere Warm-Lauf (1.3 s) — der echte Cold-Announce über Nostr-Relays schwankt **netz-/relay-abhängig** stark (im Log dauerhaft nur 3/5 Relay-Sockets `OPEN`). **UX-Konsequenz:** der „Verbinde…"-Zustand muss bis **~20 s** tolerieren, nicht 1–2 s annehmen.
+
 ### Empfehlung an D28 (Windows-Only, Stand: Remote noch offen)
 
 **Trystero + Nostr bleibt Primär-Wahl** (10/10, ~1.3 s cold, ~20 ms warm). Strategie-Fallback-Kette (Nostr → MQTT → BitTorrent) empirisch belegt: alle drei liefern. PeerJS als 2nd-tier-Broker möglich, aber SPOF gegen Trystero-Vielfalt kein Argument mehr — Trystero ist gleich schnell und resilienter.
