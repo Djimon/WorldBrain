@@ -5,6 +5,12 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+call "%~dp0scripts\ensure-rust.bat"
+if errorlevel 1 (
+  echo Rust/MSVC-Build-Tools fehlen - siehe Hinweise oben.
+  pause
+  exit /b 1
+)
 cd /d "%~dp0"
 echo Sync npm-Pakete (nach Pull koennen neue Dependencies fehlen)...
 call npm install --no-audit --no-fund
