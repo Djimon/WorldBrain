@@ -27,6 +27,8 @@ export interface AdapterFactoryOpts {
   onError: (err: Error) => void;
   /** Für manual-SDP: die UI muss ein Panel für Copy/Paste rendern. */
   requestUiPanel?: (panel: ManualSdpPanel) => void;
+  /** Broker-Sichtbarkeit — Adapter loggt selfId, Relay-URLs, Socket-Zustände. */
+  onDiagnostic?: (msg: string) => void;
 }
 
 export interface AdapterHandle {
