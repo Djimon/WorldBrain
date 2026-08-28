@@ -45,14 +45,21 @@ echo [ensure-rust] Rust installiert.
 
 :check_msvc
 REM 4) MSVC C++ Build Tools vorhanden? (Linker link.exe + Windows SDK)
+REM Hinweis: %ProgramFiles(x86)% enthaelt "(x86)" - die Klammer darf NICHT in
+REM ein "for /f (...)" geraten, sonst bricht cmd die Session ab. Deshalb ueber
+REM eine Zwischendatei statt for/f-Backtick.
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 if not exist "%VSWHERE%" goto :msvc_missing
 set "VCINSTALL="
-for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2^>nul`) do set "VCINSTALL=%%i"
-if defined VCINSTALL (
-  echo [ensure-rust] MSVC Build Tools gefunden: %VCINSTALL%
-  goto :eof
-)
+"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath > "%TEMP%\_wbx_vcpath.txt" 2>nul
+if exist "%TEMP%\_wbx_vcpath.txt" set /p VCINSTALL=<"%TEMP%\_wbx_vcpath.txt"
+del "%TEMP%\_wbx_vcpath.txt" >nul 2>nul
+REM WICHTIG: %VCINSTALL% enthaelt "(x86)" - der Pfad darf NICHT in einem
+REM geklammerten "if (...)"-Block ausgegeben werden, sonst schliesst das ")" den
+REM Block vorzeitig und cmd bricht ab. Daher einzeilige if-Befehle ohne Klammern.
+if not defined VCINSTALL goto :msvc_missing
+echo [ensure-rust] MSVC Build Tools gefunden: %VCINSTALL%
+goto :eof
 
 :msvc_missing
 echo.
