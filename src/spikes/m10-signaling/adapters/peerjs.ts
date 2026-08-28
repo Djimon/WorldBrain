@@ -51,7 +51,8 @@ export const peerjsAdapter: AdapterFactory = async (opts) => {
       }
     }
 
-    peer.on('open', () => {
+    peer.on('open', (id: string) => {
+      opts.onDiagnostic?.(`[peerjs] broker registered: peerId=${id}`);
       tryConnect();
       resolve({
         send(payload) { for (const c of conns) if (c.open) c.send(payload); },
@@ -62,14 +63,20 @@ export const peerjsAdapter: AdapterFactory = async (opts) => {
         },
       });
     });
-    peer.on('connection', (c) => { wire(c); conns.push(c); });
+    peer.on('connection', (c) => {
+      opts.onDiagnostic?.(`[peerjs] inbound connection from ${c.peer}`);
+      wire(c);
+      conns.push(c);
+    });
+    peer.on('disconnected', () => opts.onDiagnostic?.('[peerjs] broker disconnected'));
     peer.on('error', (err: PeerError<string>) => {
       if (TRANSIENT_ERRORS.has(err.type)) {
-        // Transient — Retry planen. Der bench-Timeout (10s) begrenzt die Loop.
+        opts.onDiagnostic?.(`[peerjs] transient error: ${err.type} — retry in ${RETRY_DELAY_MS}ms`);
         if (retryTimer !== null) window.clearTimeout(retryTimer);
         retryTimer = window.setTimeout(tryConnect, RETRY_DELAY_MS);
         return;
       }
+      opts.onDiagnostic?.(`[peerjs] FATAL error: ${err.type} — ${err.message}`);
       opts.onError(err);
       if (!opened) reject(err);
     });

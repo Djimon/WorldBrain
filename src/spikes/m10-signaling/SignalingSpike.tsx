@@ -153,6 +153,7 @@ export function SignalingSpike(): React.ReactElement {
                 <th style={HEADER_CELL}>RTT ms</th>
                 <th style={HEADER_CELL}>Grund</th>
                 <th style={HEADER_CELL}>Fehler-Detail</th>
+                <th style={HEADER_CELL}>Broker-Log</th>
               </tr>
             </thead>
             <tbody>
@@ -164,6 +165,16 @@ export function SignalingSpike(): React.ReactElement {
                   <td style={CELL}>{a.pingRttMs?.toFixed(0) ?? '—'}</td>
                   <td style={CELL}>{a.failReason ?? ''}</td>
                   <td style={CELL}>{a.error ?? ''}</td>
+                  <td style={CELL}>
+                    {a.diagnostics.length === 0 ? '—' : (
+                      <details>
+                        <summary style={{ cursor: 'pointer' }}>{a.diagnostics.length} Zeilen</summary>
+                        <pre style={{ margin: 0, marginTop: 6, fontSize: 11, whiteSpace: 'pre-wrap', maxWidth: 600, background: '#0d0d0d', padding: 6, border: '1px solid #222' }}>
+                          {a.diagnostics.join('\n')}
+                        </pre>
+                      </details>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

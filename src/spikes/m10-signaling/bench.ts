@@ -36,6 +36,8 @@ export interface AttemptResult {
   failReason?: FailReason;
   error?: string;
   roomId: string;
+  /** Broker-Sichtbarkeit: selfId, Relay-URLs, Socket-Zustände, Retry-Events. */
+  diagnostics: string[];
 }
 
 export interface BenchResult {
@@ -73,6 +75,7 @@ export async function runBench(
         failReason: 'not-auto-benchable',
         error: 'Manual SDP braucht Copy/Paste pro Attempt — nicht auto-benchbar. Für Verifizierung: 1× manuellen Test außerhalb der Bench fahren.',
         roomId: `${roomIdPrefix}-attempt-${i}`,
+        diagnostics: [],
       };
       attempts.push(r);
       onProgress({ attempt: i, total: runCount, lastResult: r });
@@ -125,6 +128,11 @@ async function runOneAttempt(
   let pingSentAt: number | null = null;
   let pingRtt: number | null = null;
   let capturedError: Error | null = null;
+  const diagnostics: string[] = [];
+  const capture = (msg: string) => {
+    const t = (performance.now() - started).toFixed(0);
+    diagnostics.push(`+${t}ms ${msg}`);
+  };
 
   // Ping-Protokoll: {id, echo:false} = neuer Ping vom Sender.
   // {id, echo:true} = Reply des Peers. Nur wenn EIGENE id mit echo:true
@@ -146,7 +154,8 @@ async function runOneAttempt(
     handle = await factory({
       roomId,
       peerLabel,
-      onOpen: () => { openedAt = performance.now(); },
+      onOpen: () => { openedAt = performance.now(); capture('adapter reports OPEN (peer joined)'); },
+      onDiagnostic: capture,
       onMessage: (_from, payload) => {
         // Payload kann strukturiert oder String sein (manual-sdp stringifiziert).
         // Nur JSON-Objekte mit {id, echo} interpretieren.
@@ -192,6 +201,7 @@ async function runOneAttempt(
     failReason: success ? undefined : failReason,
     error: success || capturedError === null ? undefined : (capturedError as Error).message,
     roomId,
+    diagnostics,
   };
 }
 
