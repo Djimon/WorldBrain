@@ -1,6 +1,6 @@
 {
   "productName": "WorldBuilderX",
-  "version": "0.0.0",
+  "version": "../package.json",
   "identifier": "com.worldbuilderx.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
