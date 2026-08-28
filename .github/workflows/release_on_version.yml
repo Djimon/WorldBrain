@@ -12,63 +12,86 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
       - name: Compare versions
         id: version
-        shell: bash
+        shell: pwsh
         run: |
-          OLD_VERSION=$(git show "${{ github.event.before }}:package.json" | node -e "
-            let d='';
-            process.stdin.on('data', c => d += c);
-            process.stdin.on('end', () => console.log(JSON.parse(d).version));
-          ")
+          $oldJson = git show "${{ github.event.before }}:package.json" | Out-String | ConvertFrom-Json
+          $newJson = Get-Content package.json -Raw | ConvertFrom-Json
 
-          NEW_VERSION=$(node -p "require('./package.json').version")
+          $old = $oldJson.version.Split(".")
+          $new = $newJson.version.Split(".")
 
-          echo "Old: $OLD_VERSION"
-          echo "New: $NEW_VERSION"
+          while ($old.Count -lt 4) { $old += "0" }
+          while ($new.Count -lt 4) { $new += "0" }
 
-          IFS='.' read -r OLD_MAJOR OLD_MINOR OLD_PATCH OLD_BUILD <<< "$OLD_VERSION"
-          IFS='.' read -r NEW_MAJOR NEW_MINOR NEW_PATCH NEW_BUILD <<< "$NEW_VERSION"
+          $releaseType = "none"
 
-          OLD_BUILD=${OLD_BUILD:-0}
-          NEW_BUILD=${NEW_BUILD:-0}
+          if ([int]$new[0] -ne [int]$old[0]) {
+            $releaseType = "major"
+          }
+          elseif ([int]$new[1] -ne [int]$old[1]) {
+            $releaseType = "minor"
+          }
+          elseif ([int]$new[2] -ne [int]$old[2]) {
+            $releaseType = "patch"
+          }
 
-          RELEASE_TYPE="none"
+          $releaseVersion = "$($new[0]).$($new[1]).$($new[2])"
 
-          if (( NEW_MAJOR != OLD_MAJOR )); then
-            RELEASE_TYPE="major"
-          elif (( NEW_MINOR != OLD_MINOR )); then
-            RELEASE_TYPE="minor"
-          elif (( NEW_PATCH != OLD_PATCH )); then
-            RELEASE_TYPE="patch"
-          fi
+          "type=$releaseType" >> $env:GITHUB_OUTPUT
+          "version=$releaseVersion" >> $env:GITHUB_OUTPUT
 
-          RELEASE_VERSION="${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}"
+          Write-Host "Old: $($old -join '.')"
+          Write-Host "New: $($new -join '.')"
+          Write-Host "Detected: $releaseType"
 
-          echo "type=$RELEASE_TYPE" >> "$GITHUB_OUTPUT"
-          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+      - name: Install Rust
+        if: steps.version.outputs.type != 'none'
+        uses: dtolnay/rust-toolchain@stable
 
-          echo "Detected: $RELEASE_TYPE"
+      - name: Install dependencies
+        if: steps.version.outputs.type != 'none'
+        run: npm ci
+
+      - name: Build Tauri NSIS installer
+        if: steps.version.outputs.type != 'none'
+        run: npm run desktop:build
 
       - name: Create GitHub Release
         if: steps.version.outputs.type != 'none'
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          TYPE="${{ steps.version.outputs.type }}"
-          TAG="v$VERSION"
+          $version = "${{ steps.version.outputs.version }}"
+          $tag = "v$version"
 
-          echo "Creating $TYPE release: $TAG"
+          $installer = Get-ChildItem `
+            "src-tauri/target/release/bundle/nsis/*.exe" |
+            Select-Object -First 1
 
-          gh release create "$TAG" \
-            --target "$GITHUB_SHA" \
-            --title "$TAG" \
+          if (-not $installer) {
+            throw "NSIS installer not found."
+          }
+
+          Write-Host "Creating release $tag"
+          Write-Host "Uploading $($installer.FullName)"
+
+          gh release create $tag `
+            $installer.FullName `
+            --target $env:GITHUB_SHA `
+            --title $tag `
             --generate-notes
