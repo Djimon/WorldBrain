@@ -19,6 +19,7 @@ import {
   type PlayerGroup,
 } from '../services/player-groups-service';
 import { Button, Field, ListSurface, Panel, StatusChip } from './primitives';
+import { CampaignLog } from './CampaignLog';
 
 export interface CampaignRosterPanelProps {
   database: DatabaseLike;
@@ -345,6 +346,11 @@ export function CampaignRosterPanel({ database, campaignId: fixedCampaignId }: C
       )}
 
       {error !== null && <StatusChip tone="failure" role="alert">{error}</StatusChip>}
+
+      {/* #379 Campaign-Log-Aggregation — reine UI-Aggregation über session_log. */}
+      {selectedCampaignId !== '' && (
+        <CampaignLog database={database} campaignId={selectedCampaignId} />
+      )}
     </Panel>
   );
 }
