@@ -91,9 +91,9 @@ export function SignalingSpike(): React.ReactElement {
     <div style={{ padding: 20, color: '#eee', fontFamily: 'system-ui, sans-serif', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <h1 style={{ margin: 0 }}>M10 Signaling-Spike (#380)</h1>
       <div style={{ color: '#aaa', fontSize: 13, lineHeight: 1.5 }}>
-        <strong style={{ color: '#fc8' }}>Wichtig:</strong> Beide Fenster (A + B) müssen <strong>gleichzeitig</strong> denselben Adapter fahren
-        (Run auf beiden Seiten innerhalb ~1&nbsp;s klicken). Sonst sitzt eine Seite alleine im Raum und läuft ins Timeout.
-        Gleicher RoomId-Prefix auf beiden Seiten. Für jeden Kandidaten × Plattform Erfolgsquote (x/N) + Median-Zeit in die Matrix übertragen.
+        <strong style={{ color: '#8fc' }}>1-Raum-Modus:</strong> alle Attempts nutzen denselben Raum (= RoomId-Prefix). Beide Seiten treten dem selben Raum bei —
+        <strong> Startreihenfolge egal</strong>, wer zuerst joined wartet einfach auf den anderen. Timeout pro Attempt: 20&nbsp;s.
+        RoomId-Prefix auf beiden Seiten identisch setzen (etwas Eindeutiges wie <code>remote-2026-08-28-cd</code>). Ergebnis (x/N + Median TTC) in die Matrix übertragen.
       </div>
 
       <fieldset style={{ border: '1px solid #333', padding: 12 }}>

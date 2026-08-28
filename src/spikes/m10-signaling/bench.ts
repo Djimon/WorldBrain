@@ -53,7 +53,10 @@ export interface BenchResult {
   timestamp: string;
 }
 
-const TIMEOUT_MS = 10_000; // AC: < 10s (Verwerf-Schwelle)
+// Timeout: bei Cold-Announce über Nostr braucht der erste Attempt auf Handy-
+// Hotspot oft mehr als 10s. 20s ist der Kompromiss zwischen „ehrliches
+// Cold-Start-Fenster" und „User will nicht ewig warten".
+const TIMEOUT_MS = 20_000;
 
 export interface BenchProgress {
   attempt: number;
@@ -82,7 +85,7 @@ export async function runBench(
         attempt: i, success: false, timeToOpenMs: null, pingRttMs: null,
         failReason: 'not-auto-benchable',
         error: 'Manual SDP braucht Copy/Paste pro Attempt — nicht auto-benchbar. Für Verifizierung: 1× manuellen Test außerhalb der Bench fahren.',
-        roomId: `${roomIdPrefix}-attempt-${i}`,
+        roomId: roomIdPrefix,
         diagnostics: [],
       };
       attempts.push(r);
@@ -101,7 +104,11 @@ export async function runBench(
     // die Peers nie. Deterministisch aus Prefix+Attempt-Index. Cold-Start-
     // Freshness kommt aus dem NEUEN factory()-Call (neuer RTCPeerConnection,
     // neuer joinRoom), nicht aus zufälliger roomId.
-    const roomId = `${roomIdPrefix}-attempt-${i}`;
+    // 1-Raum-Modus: alle Attempts nutzen DENSELBEN Room. Beide Peers treten
+    // dem gleichen Raum bei, Reihenfolge egal — Cold-Start-Freshness kommt aus
+    // dem NEUEN factory()-Call (frische Trystero-Instanz, neue Peer-ID) nicht
+    // aus wechselnder roomId. Damit finden sich zeitversetzte Starts auch.
+    const roomId = roomIdPrefix;
     await logWriter?.writeRaw(`\n--- attempt ${i}/${runCount} — roomId="${roomId}" ---`);
     console.log(`[bench] ${adapter} attempt ${i}/${runCount} — room=${roomId}`);
     const result = await runOneAttempt(factory, peerLabel, roomId, i, logWriter);

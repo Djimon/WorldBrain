@@ -78,11 +78,11 @@ export async function joinTrystero(
   };
   action.onMessage = (data, ctx) => opts.onMessage(ctx.peerId, data);
 
-  // Broker-Socket-Zustand nach 2/5/8s snapshotten — zeigt ob wir den Broker
+  // Broker-Socket-Zustand nach 2/5/10/15s snapshotten — zeigt ob wir den Broker
   // überhaupt erreichen UND welche konkreten URLs verbunden sind (relay-Subset
   // ist entscheidend: zwei Peers müssen mindestens EINEN gemeinsamen Relay
-  // offen haben, sonst sehen sie sich nie).
-  const socketProbeTimers = [2000, 5000, 8000].map((delay) => window.setTimeout(() => {
+  // offen haben, sonst sehen sie sich nie). Mehr Probes passend zum 20s-Timeout.
+  const socketProbeTimers = [2000, 5000, 10000, 15000].map((delay) => window.setTimeout(() => {
     if (opened) return;
     const sockets = getRelaySockets();
     if (!sockets || typeof sockets !== 'object') {
