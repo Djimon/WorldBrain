@@ -1,6 +1,6 @@
 [package]
 name = "worldbuilderx"
-version = "0.0.21"
+version = "0.0.23.1"
 description = "WorldBuilderX desktop shell"
 authors = ["WorldBuilderX Contributors"]
 license = "UNLICENSED"
