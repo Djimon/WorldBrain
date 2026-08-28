@@ -18,20 +18,23 @@ import {
   updatePlayerCharacter,
   type PlayerCharacter,
 } from '../services/player-character-service';
+import type { PlayClientStoreImpl } from '../services/play-client-store';
 import { Button, Field, Panel, StatusChip } from './primitives';
 
 export interface PlayerCharacterSheetProps {
-  database: DatabaseLike;
+  /** DM-Pfad (Host-DB, volles CRUD). */
+  database?: DatabaseLike;
+  /** #374 Client-Pfad (Membran D30): Bogen aus dem Store lesen, Edits laufen
+   *  später als ClientAction — für jetzt read-only. */
+  store?: PlayClientStoreImpl;
   campaignId: string;
   playerId: string;
   displayName?: string;
-  /** Wird gerufen, wenn eine Aktion aus dem Bogen ausgelöst wird — der Play-
-   *  Cockpit (S14) postet sie in den Kampflog (kombiniert mit S16 Würfen). */
   onPostAction?: (action: { characterId: string; name: string; text: string }) => void;
 }
 
 export function PlayerCharacterSheet({
-  database, campaignId, playerId, displayName, onPostAction,
+  database, store, campaignId, playerId, displayName, onPostAction,
 }: PlayerCharacterSheetProps) {
   const { t } = useTranslation('multiplayer');
   const [character, setCharacter] = useState<PlayerCharacter | null>(null);
@@ -44,7 +47,26 @@ export function PlayerCharacterSheet({
   const [error, setError] = useState<string | null>(null);
   const [lastAction, setLastAction] = useState<string | null>(null);
 
+  // Store-Pfad (Client): read-only aus dem transport-gespeisten Store.
   useEffect(() => {
+    if (!store) return;
+    const sync = () => {
+      const own = store.ownCharacter();
+      setCharacter(own ? {
+        id: own.id,
+        campaign_id: campaignId,
+        player_id: playerId,
+        sheet: own.data,
+      } : null);
+      setLoading(false);
+    };
+    sync();
+    return store.subscribe(sync);
+  }, [store, campaignId, playerId]);
+
+  // DB-Pfad (DM/Host): volles CRUD.
+  useEffect(() => {
+    if (!database) return;
     let cancelled = false;
     setLoading(true);
     getPlayerCharacter(database, campaignId, playerId)
@@ -57,7 +79,10 @@ export function PlayerCharacterSheet({
     return () => { cancelled = true; };
   }, [database, campaignId, playerId]);
 
+  const readOnly = store !== undefined && database === undefined;
+
   async function handleCreate() {
+    if (!database) return; // Client-Pfad ist read-only.
     setError(null);
     setCreating(true);
     try {
@@ -77,7 +102,7 @@ export function PlayerCharacterSheet({
   }
 
   async function handleSaveSummary() {
-    if (character === null) return;
+    if (character === null || !database) return; // Client-Pfad read-only.
     setError(null);
     try {
       const nextSheet = { ...character.sheet, summary: editSummary };
@@ -101,6 +126,14 @@ export function PlayerCharacterSheet({
   }
 
   if (character === null) {
+    if (readOnly) {
+      return (
+        <Panel className="player-character-sheet u-stack u-gap-2">
+          <h2>{t('pc.createTitle', 'Charakter erstellen')}</h2>
+          <p className="u-muted">{t('pc.awaitingHost', 'Warte auf Host — noch kein Bogen freigegeben.')}</p>
+        </Panel>
+      );
+    }
     return (
       <Panel className="player-character-sheet u-stack u-gap-3" role="form"
         aria-label={t('pc.createTitle', 'Charakter erstellen')}>
@@ -157,12 +190,14 @@ export function PlayerCharacterSheet({
       ) : (
         <div className="u-stack u-gap-2">
           <p>{charSummary || t('pc.noSummary', '(keine Kurzbeschreibung)')}</p>
-          <Button
-            size="compact"
-            onClick={() => { setEditSummary(charSummary); setEditing(true); }}
-          >
-            {t('pc.editSummary', 'Bearbeiten')}
-          </Button>
+          {!readOnly && (
+            <Button
+              size="compact"
+              onClick={() => { setEditSummary(charSummary); setEditing(true); }}
+            >
+              {t('pc.editSummary', 'Bearbeiten')}
+            </Button>
+          )}
         </div>
       )}
       <div className="player-character-sheet__actions u-stack u-gap-2">

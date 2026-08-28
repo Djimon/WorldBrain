@@ -35,6 +35,9 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 import { Button, Field, Panel, Segmented } from './primitives';
 import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext';
+import { WebRtcTransport } from '../services/webrtc-transport';
+import { attachVisibilityBroadcaster } from '../services/player-content-filter-service';
+import { createPlayClientStore, type PlayClientStoreImpl } from '../services/play-client-store';
 import { listCampaigns, createCampaign, type Campaign } from '../services/campaign-service';
 import { PlayModeView } from './PlayModeView';
 import { PlayerJoinView } from './PlayerJoinView';
@@ -119,6 +122,10 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   const [playerContext, setPlayerContext] = useState<{ playerId: string; displayName: string } | null>(null);
   // M10-S14: Group-IDs des Players für die host-seitige Gruppen-Sicht (S09).
   const [playerGroupIds, setPlayerGroupIds] = useState<string[]>([]);
+  // #374 D30-Membran: der Client rendert nur aus dem Store. Lazy erzeugen,
+  // sobald Player-Kontext feststeht — der Host würde später Snapshot+Delta
+  // pushen (Transport in R2/R3-Verdrahtung folgt).
+  const [playerStore, setPlayerStore] = useState<PlayClientStoreImpl | null>(null);
   // M10-S22 (Follow-up): echte Campaign-Auswahl beim Play-Eintritt statt
   // projectId-Hack. Campaigns werden beim Öffnen des Auswahl-Panels geladen.
   const [availableCampaigns, setAvailableCampaigns] = useState<Campaign[]>([]);
@@ -911,6 +918,29 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   const modeContextValue = { mode, sessionRole, activeSessionId };
   const inPlayCockpit = mode === 'play' && activeArea === 'session';
 
+  // #374 D30: Player-Store erzeugen sobald Player-Kontext feststeht (leerer
+  // Store = „Host offline"). Snapshot+Delta füttert der Client-Transport
+  // (Verdrahtung folgt in R4 / #375).
+  useEffect(() => {
+    if (sessionRole !== 'player' || playerContext === null) { setPlayerStore(null); return; }
+    setPlayerStore(createPlayClientStore({ playerId: playerContext.playerId }));
+  }, [sessionRole, playerContext]);
+
+  // #373 M10-R2: Host-Push verdrahten. Sobald DM in den Play-Modus geht,
+  // wird WebRtcTransport.host(db) instanziiert und ein Visibility-Broadcaster
+  // an den Transport gehängt — set/clearVisibilityOverride pushen dann als
+  // TransportMessage.
+  useEffect(() => {
+    if (mode !== 'play' || sessionRole !== 'dm' || activeSessionId === null) return;
+    const transport = WebRtcTransport.host(activeSessionId, database);
+    void transport.connect().catch(() => { /* Signaling-Details in S11/S12 */ });
+    const unsub = attachVisibilityBroadcaster(transport);
+    return () => {
+      unsub();
+      void transport.close().catch(() => {});
+    };
+  }, [mode, sessionRole, activeSessionId, database]);
+
   return (
     <AppModeContext.Provider value={modeContextValue}>
       <div className="workspace-shell">
@@ -1004,7 +1034,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             </Panel>
           ) : inPlayCockpit ? (
             sessionRole === 'dm' ? (
-              <PlayModeView role={sessionRole} activeSessionId={activeSessionId} />
+              <PlayModeView role={sessionRole} activeSessionId={activeSessionId} database={database} />
             ) : playerContext !== null && activeSessionId !== null ? (
               // M10-S14: Nach dem Join sieht der Player das volle Cockpit
               // (Map/Kampflog/Spotlight/Free-Browse + Bogen), gefiltert durch
@@ -1014,6 +1044,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
               <PlayModeView
                 role={sessionRole}
                 activeSessionId={activeSessionId}
+                store={playerStore ?? undefined}
                 playerId={playerContext.playerId}
                 playerGroupIds={playerGroupIds}
               />

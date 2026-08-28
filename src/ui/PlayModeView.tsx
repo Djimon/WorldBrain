@@ -1,27 +1,31 @@
-// M10-S14 (#360): Play-Cockpit — Reiter Map/Kampflog/Spotlight + Free-Browse.
-// Von S22 als `session`-Bereich des Play-Modus gemountet; role kommt aus dem
-// AppModeContext (dm|player). LobbyPanel (S06) sitzt weiterhin oben als
-// permanentes Kontroll-Element für den DM.
-// Inhalte der Reiter (echte Regel-Engine / Whiteboard / Würfel) leben in
-// S15/S16/M10b — dieses File liefert Gerüst + Free-Browse + Mount-Punkte.
+// M10-S14 (#360) + #374: Play-Cockpit — Reiter Map/Kampflog/Spotlight +
+// Free-Browse. Role kommt aus AppModeContext (dm|player). Für den DM sitzt
+// LobbyPanel oben als permanentes Kontroll-Element.
+//
+// Datenherkunft (D30-Membran, #374):
+// - DM: liest per `database`-Prop direkt aus der Host-DB (Kampflog, Free-
+//   Browse, Lobby-Roster).
+// - Player: liest AUSSCHLIESSLICH aus dem transport-gespeisten `store` (kein
+//   lokaler DB-Zugriff). Der Store bekommt Snapshot/Delta vom Host.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useDatabase } from '../services/DatabaseContext';
-import { listEntitiesByType } from '../services/entity-service';
-import { filterEntitiesForPlayer } from '../services/player-content-filter-service';
+import type { DatabaseLike } from '../services/entity-service';
 import { onVisibilityChange } from '../services/visibility-service';
 import { LobbyPanel } from './LobbyPanel';
 import { PlayerCharacterSheet } from './PlayerCharacterSheet';
 import { DiceRollerWidget } from './DiceRollerWidget';
 import { listEntries, type CombatLogEntry } from '../services/combat-log-service';
+import type { PlayClientStoreImpl } from '../services/play-client-store';
 import { ListSurface, Panel, Tabs } from './primitives';
 import type { SessionRole } from './AppModeContext';
 
 export interface PlayModeViewProps {
   role: SessionRole; // 'dm' | 'player' | null
   activeSessionId: string | null;
-  /** Für Player: seine playerId + Gruppen — für die host-seitige Filterung.
-   *  Wird von der Player-Live-Sicht (S09) beim Reconnect / Join gesetzt. */
+  /** DM-Pfad: direkte Host-DB. Für Player NICHT gesetzt (Membran D30). */
+  database?: DatabaseLike;
+  /** Player-Pfad: transport-gespeister Store. Für DM ungenutzt. */
+  store?: PlayClientStoreImpl;
   playerId?: string;
   playerGroupIds?: string[];
 }
@@ -29,18 +33,18 @@ export interface PlayModeViewProps {
 type CockpitTab = 'map' | 'combatlog' | 'spotlight' | 'browse' | 'sheet';
 
 interface EntityRef { id: string; title: string; type: string }
+interface BaseEntityRow { id: string; title: string; type: string }
 
-export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds = [] }: PlayModeViewProps) {
+export function PlayModeView({ role, activeSessionId, database, store, playerId, playerGroupIds: _pgs = [] }: PlayModeViewProps) {
   const { t } = useTranslation('multiplayer');
-  const database = useDatabase();
   const [activeTab, setActiveTab] = useState<CockpitTab>('map');
   const [browseItems, setBrowseItems] = useState<EntityRef[]>([]);
   const [logEntries, setLogEntries] = useState<CombatLogEntry[]>([]);
   const [logTick, setLogTick] = useState(0);
-  // Live-Reload-Tick: erhöht sich bei jeder Visibility-Änderung. Der
-  // Browse-Effekt hört darauf und lädt die freigegebenen Entities neu.
   const [visTick, setVisTick] = useState(0);
+  const [storeTick, setStoreTick] = useState(0);
   const campaignId = activeSessionId ?? '';
+  const isPlayer = role === 'player';
 
   // S09 Live-Push: lokaler Listener; bei Remote-Client wird derselbe Effekt
   // durch eine 'visibility_change'-Nachricht des Hosts ausgelöst (S11/S12).
@@ -51,49 +55,64 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
     });
   }, [campaignId]);
 
-  // Kampflog laden — role-basiertes host-seitiges Filtern (D17).
+  // Store-Abo (Player): rerender auf Snapshot/Delta.
+  useEffect(() => {
+    if (!isPlayer || !store) return;
+    return store.subscribe(() => setStoreTick((n) => n + 1));
+  }, [isPlayer, store]);
+
+  // Kampflog — DM aus DB, Player aus Store.
   useEffect(() => {
     if (activeTab !== 'combatlog' || campaignId === '') return;
+    if (isPlayer) {
+      if (!store) { setLogEntries([]); return; }
+      const fromStore = store.list('combat_log').map((e) => ({
+        id: e.id,
+        campaign_id: campaignId,
+        actor_display: String(e.data.actor_display ?? ''),
+        actor_player_id: (e.data.actor_player_id as string | null) ?? null,
+        text: String(e.data.text ?? ''),
+        visibility: String(e.data.visibility ?? 'all'),
+        created_at: String(e.data.created_at ?? ''),
+      })) as CombatLogEntry[];
+      setLogEntries(fromStore);
+      return;
+    }
+    if (!database) { setLogEntries([]); return; }
     let cancelled = false;
-    void listEntries(database, {
-      campaignId,
-      role: role === 'player' ? 'player' : 'dm',
-      playerId,
-    }).then((es) => { if (!cancelled) setLogEntries(es); }).catch(console.error);
+    void listEntries(database, { campaignId, role: 'dm', playerId }).then((es) => {
+      if (!cancelled) setLogEntries(es);
+    }).catch(console.error);
     return () => { cancelled = true; };
-  }, [database, activeTab, campaignId, role, playerId, logTick]);
+  }, [database, store, isPlayer, activeTab, campaignId, playerId, logTick, storeTick]);
 
-  // Free-Browse (D15): der Player sieht Entities nur wenn host-seitig
-  // freigegeben (S09-Filter); der DM sieht alles.
+  // Free-Browse — DM aus DB (direktes SELECT), Player aus Store.
   useEffect(() => {
+    if (isPlayer) {
+      if (!store) { setBrowseItems([]); return; }
+      const items = store.list('entity').map((e) => ({
+        id: e.id,
+        title: String(e.data.title ?? ''),
+        type: String(e.data.type ?? ''),
+      }));
+      setBrowseItems(items);
+      return;
+    }
+    if (!database) { setBrowseItems([]); return; }
     let cancelled = false;
-    (async () => {
-      const raw = await listEntitiesByType({ database, type: null });
-      const items: EntityRef[] = raw.map((r) => ({ id: r.id, title: r.title, type: r.type }));
-      if (role === 'player' && playerId && campaignId !== '') {
-        const allowed = await filterEntitiesForPlayer({
-          database,
-          campaignId,
-          ids: items.map((i) => i.id),
-          context: { campaign_id: campaignId, player_id: playerId, group_ids: playerGroupIds },
-        });
-        const set = new Set(allowed);
-        if (!cancelled) setBrowseItems(items.filter((i) => set.has(i.id)));
-      } else if (!cancelled) {
-        setBrowseItems(items);
-      }
-    })().catch(console.error);
+    void database.select<BaseEntityRow>('SELECT id, title, type FROM base_entities ORDER BY title').then((rows) => {
+      if (!cancelled) setBrowseItems(rows);
+    }).catch(console.error);
     return () => { cancelled = true; };
-  }, [database, role, campaignId, playerId, playerGroupIds.join(','), visTick]);
+  }, [database, store, isPlayer, campaignId, visTick, storeTick]);
 
-  // Player bekommt zusätzlich den „Bogen"-Reiter (S08-Charaktersheet als
-  // Aktionsquelle, D13/D14). DM sieht den nicht (fremde Bögen unsichtbar, D20).
+  // Player sieht zusätzlich den „Bogen"-Reiter (D13/D14).
   const tabOptions = [
     { id: 'map', label: t('cockpit.tabMap', 'Map') },
     { id: 'combatlog', label: t('cockpit.tabCombatLog', 'Kampflog') },
     { id: 'spotlight', label: t('cockpit.tabSpotlight', 'Spotlight') },
     { id: 'browse', label: t('cockpit.tabBrowse', 'Free-Browse') },
-    ...(role === 'player' && playerId
+    ...(isPlayer && playerId
       ? [{ id: 'sheet' as const, label: t('cockpit.tabSheet', 'Bogen') }]
       : []),
   ] as const;
@@ -101,7 +120,7 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
   return (
     <div className="workspace-area play-cockpit u-stack u-gap-3" data-play-role={role ?? ''}
       data-session-id={activeSessionId ?? ''}>
-      {role === 'dm' && campaignId !== '' && (
+      {role === 'dm' && database !== undefined && campaignId !== '' && (
         <LobbyPanel database={database} campaignId={campaignId} />
       )}
 
@@ -121,14 +140,16 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
       {activeTab === 'combatlog' && (
         <Panel className="play-cockpit__pane u-stack u-gap-2">
           <h3>{t('cockpit.combatLogTitle', 'Kampflog')}</h3>
-          {campaignId !== '' && (
+          {!isPlayer && database !== undefined && campaignId !== '' && (
             <DiceRollerWidget
               database={database}
               campaignId={campaignId}
-              actorDisplay={role === 'dm' ? 'DM' : (playerId ?? 'Player')}
-              actorPlayerId={role === 'player' ? playerId : undefined}
+              actorDisplay="DM"
               onPosted={() => setLogTick((n) => n + 1)}
             />
+          )}
+          {isPlayer && store !== undefined && store.isOffline() && (
+            <p className="u-muted">{t('cockpit.offline', 'Host offline — noch keine Daten.')}</p>
           )}
           <ListSurface className="play-cockpit__log-list">
             {logEntries.length === 0 && <li>{t('cockpit.logEmpty', 'Noch keine Einträge.')}</li>}
@@ -148,22 +169,11 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
         </Panel>
       )}
 
-      {activeTab === 'sheet' && role === 'player' && playerId && campaignId !== '' && (
+      {activeTab === 'sheet' && isPlayer && playerId && campaignId !== '' && store !== undefined && (
         <PlayerCharacterSheet
-          database={database}
+          store={store}
           campaignId={campaignId}
           playerId={playerId}
-          onPostAction={(action) => {
-            void import('../services/combat-log-service').then(({ postEntry }) =>
-              postEntry(database, {
-                campaignId,
-                actorDisplay: action.characterId,
-                actorPlayerId: playerId,
-                text: action.text,
-                visibility: 'all',
-              }),
-            );
-          }}
         />
       )}
 
@@ -171,6 +181,9 @@ export function PlayModeView({ role, activeSessionId, playerId, playerGroupIds =
         <Panel className="play-cockpit__pane u-stack u-gap-2">
           <h3>{t('cockpit.browseTitle', 'Free-Browse')}</h3>
           <p>{t('cockpit.browseHint', 'Alle Entities, die der DM für dich freigegeben hat (bzw. für den DM: alle).')}</p>
+          {isPlayer && store !== undefined && store.isOffline() && (
+            <p className="u-muted">{t('cockpit.offline', 'Host offline — noch keine Daten.')}</p>
+          )}
           <ListSurface className="play-cockpit__browse-list">
             {browseItems.length === 0 && <li>{t('cockpit.browseEmpty', 'Nichts freigegeben.')}</li>}
             {browseItems.map((it) => (
