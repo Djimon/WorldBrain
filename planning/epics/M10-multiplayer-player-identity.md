@@ -94,7 +94,7 @@ Live-Test der gemounteten Multiplayer-UI zeigte: das Approve-Gate-Modell und die
   - **LAN (gleiches Netz):** funktioniert auch **ohne** Broker (lokale Discovery / direkte Verbindung) — Zero-Config am Tisch.
   - **Fallback:** manueller Offer/Answer (SignalingPanel, Stufe-3-only) bei Broker-Ausfall / ~10–20 % strengen NATs.
   - **AUSTAUSCHBAR bauen (Roadmap-Intent):** Das Signaling sitzt hinter einem **Interface** (analog Transport-Interface S01) — der Gratis-Broker (Trystero/Nostr) ist **eine** Implementierung, **kein** Lock-in. **v2/v3 ersetzt ihn durch einen selbst gehosteten Relay-Server**, ohne Rewrite des Rests. (Trystero hat schon eine self-hosted-WebSocket-Relay-Strategie = natürlicher Upgrade-Pfad.)
-  - **Broker-Wahl recherchiert** (`planning/research/multiplayer-signaling-broker-options.md`): **Empfehlung Trystero (MIT) + Nostr**; PeerJS-Cloud als Alternative; manueller SDP als Fallback. Verbleibend nur Real-Verifikation im Tauri-WebView2 (Windows = Chromium ok, macOS/WKWebView Test-Risiko). → S11/S12.
+  - **Broker-Wahl = OFFENER Spike #380 (ergebnisoffen).** Recherche (`planning/research/multiplayer-signaling-broker-options.md`) liefert die **Hypothese Trystero (MIT) + Nostr** (Alternativen: PeerJS-Cloud, manueller SDP) — aber **nicht vorentschieden**: der Spike testet Trystero/PeerJS/manuell **gleichwertig im echten Tauri-Build** (Win WebView2 + macOS WKWebView) und darf Trystero verwerfen. #367/#368 sind `blocked` durch #380. (Lektion: beim ersten Mal zu schnell auf Trystero eingeschossen.)
 
 ## Nachschärfung 2026-08-25 (Regression-Analyse) — Decisions 29–31
 

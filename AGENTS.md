@@ -73,6 +73,7 @@ Four phases, separate sessions, linear.
 Interview until Epic splits into Stories. A good Story: one behavior, one owner area, explicit AC, testable, reviewable independently. Split when crossing architecture boundaries or mixing UI + persistence.
 
 Mandatory before AC:
+- **The reader is NEVER the orchestrator.** The person in the chat is the **orchestrator** — they hand the ticket off and never implement it themselves. Every ticket goes to a **cold executor who may never talk to the orchestrator** and has zero chat context. So write each ticket **self-contained for that cold reader**: no references to chat content, private memory files, or conversation jargon (a decision number like `D28` only with its meaning **inlined**); context + setup/run instructions + mount point + environment edge-cases live **inside the ticket**. **Before every `gh issue create`, run a cold-read pass** — grep your own draft for leaks: bare decision-refs, `Memory`, chat jargon, undefined component names, missing setup/mount. For specs/issues the brevity / token-economy bias is **OFF** — thoroughness is the deliverable; "fast" means rebuilding it 2–3× = negative savings.
 - Specify the HOW, not just the WHAT: pin mechanism, UI structure, interfaces, named components, controls, interactions, and how it's measured/compared — a Story that only states goals ("compare 3 renderers") drifts. Unclear HOW → ask, don't guess.
 - Read `ANTI_PATTERNS.md` — copy relevant constraints verbatim into AC
 - Propagate Epic Decisions into every affected Story AC verbatim (not "see Decisions")
@@ -168,6 +169,7 @@ Plugin ids and directory names: `snake_case` with underscores (`dnd5e_srd`), nev
 - Centralize config; no scattered config
 - Early guard returns ordered by cost/risk
 - No over-engineering the current slice
+- **Read the truth source before typing against it — never invent APIs from memory.** Before writing an `import` from a third-party library not already established in the repo, read the installed types first: `cat node_modules/<pkg>/package.json` (version + exports) and `head node_modules/<pkg>/dist/*.d.ts` (real signatures). Same rule for anything external — DB schemas (read `core_data/*-schema.ts`), config files, JSON contracts. A self-authored `module-shims.d.ts` is an anti-pattern: it makes `tsc` validate against your invention, not reality — green types, dead runtime. If a shim is unavoidable (throwaway spike with intentionally-unbundled deps), it must be a **verbatim copy** from the real `.d.ts` with the source cited in a comment (`// from @pkg/dist/index.d.ts v0.25.3`), never a guess. On runtime errors like "X is not a function/iterable" from a third-party lib, first reflex is re-read the types — not retry, not guess.
 
 ---
 
