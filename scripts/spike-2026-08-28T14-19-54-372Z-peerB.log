@@ -1,0 +1,176 @@
+# M10 Signaling-Spike Log (#380)
+# Peer: B
+# Start: 2026-08-28T16:19:54.397
+# UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 Edg/151.0.0.0
+
+=================================================================
+RUN: adapter=trystero-nostr peer=B roomIdPrefix="spike" runs=10
+     appId="wbx-m10-signaling-spike"
+=================================================================
+
+
+--- attempt 1/10 — roomId="spike" ---
+2026-08-28T16:20:01.748 +20ms joinRoom({appId="wbx-m10-signaling-spike"}, roomId="spike") — calling…
+2026-08-28T16:20:01.768 +39ms joinRoom returned — waiting for peer to appear on any relay…
+2026-08-28T16:20:01.769 +41ms [trystero-nostr] === CONNECTION STRING ===
+2026-08-28T16:20:01.770 +41ms [trystero-nostr]   appId       = "wbx-m10-signaling-spike"
+2026-08-28T16:20:01.770 +42ms [trystero-nostr]   roomId      = "spike"
+2026-08-28T16:20:01.770 +42ms [trystero-nostr]   topic (sha1) = ebbc48b0bcf4a810065964409fe178942831ee06   <- BEIDE Seiten müssen denselben Topic haben
+2026-08-28T16:20:01.771 +42ms [trystero-nostr] defaultRelayUrls (47): wss://basspistol.org, wss://bucket.coracle.social, wss://chorus.almostmachines.dev, wss://chorus.pjv.me, wss://communities.nos.social, wss://ftp.halifax.rwth-aachen.de/nostr, wss://hol.is, wss://hornetstorage.net/relay, wss://koru.bitcointxoko.org, wss://nos.lol, wss://nostr-01.uid.ovh, wss://nostr-01.yakihonne.com, wss://nostr-relay.corb.net, wss://nostr.data.haus, wss://nostr.islandarea.net, wss://nostr.sathoarder.com, wss://nostr.self-determined.de, wss://nostr.tegila.com.br, wss://nostr.vulpem.com, wss://purplerelay.com, wss://relay-can.zombi.cloudrodion.com, wss://relay-rpi.edufeed.org, wss://relay.agorist.space, wss://relay.angor.io, wss://relay.artio.inf.unibe.ch, wss://relay.binaryrobot.com, wss://relay.damus.io, wss://relay.froth.zone, wss://relay.libernet.app, wss://relay.mostr.pub, wss://relay.mostro.network, wss://relay.nostr.place, wss://relay.nostrdice.com, wss://relay.notoshi.win, wss://relay.sigit.io, wss://relay02.lnfi.network, wss://relay2.angor.io, wss://schnorr.me, wss://slick.mjex.me, wss://social.amanah.eblessing.co, wss://staging.yabu.me, wss://strfry.openhoofd.nl, wss://strfry.shock.network, wss://testnet-relay.samt.st, wss://top.testrelay.top, wss://x.kojira.io, wss://yabu.me/v2
+2026-08-28T16:20:01.770 +42ms [trystero-nostr]   selfId      = SdKHukCRoJ8GtQrHqqL8
+2026-08-28T16:20:03.771 +2043ms relay sockets @2000ms — 3/5 OPEN:
+  OPEN       wss://social.amanah.eblessing.co
+  OPEN       wss://relay-rpi.edufeed.org
+  OPEN       wss://nostr.vulpem.com
+  CONNECTING wss://hol.is
+  CLOSED     wss://relay2.angor.io
+2026-08-28T16:20:06.771 +5043ms relay sockets @5000ms — 3/5 OPEN:
+  OPEN       wss://social.amanah.eblessing.co
+  OPEN       wss://relay-rpi.edufeed.org
+  OPEN       wss://nostr.vulpem.com
+  CONNECTING wss://hol.is
+  CLOSED     wss://relay2.angor.io
+2026-08-28T16:20:10.050 +8322ms peer joined: WSViWyHlc8c9lmZ1HZSN
+2026-08-28T16:20:10.050 +8322ms adapter reports OPEN (peer joined)
+--- result: SUCCESS ttc=8321.599999999627ms rtt=58.39999999944121ms reason=- ---
+
+--- attempt 2/10 — roomId="spike" ---
+2026-08-28T16:20:10.849 +0ms joinRoom({appId="wbx-m10-signaling-spike"}, roomId="spike") — calling…
+2026-08-28T16:20:10.867 +18ms joinRoom returned — waiting for peer to appear on any relay…
+2026-08-28T16:20:10.868 +19ms [trystero-nostr]   appId       = "wbx-m10-signaling-spike"
+2026-08-28T16:20:10.868 +19ms [trystero-nostr] === CONNECTION STRING ===
+2026-08-28T16:20:10.868 +19ms [trystero-nostr]   roomId      = "spike"
+2026-08-28T16:20:10.868 +20ms [trystero-nostr]   topic (sha1) = ebbc48b0bcf4a810065964409fe178942831ee06   <- BEIDE Seiten müssen denselben Topic haben
+2026-08-28T16:20:10.869 +20ms [trystero-nostr]   selfId      = SdKHukCRoJ8GtQrHqqL8
+2026-08-28T16:20:10.869 +20ms [trystero-nostr] defaultRelayUrls (47): wss://basspistol.org, wss://bucket.coracle.social, wss://chorus.almostmachines.dev, wss://chorus.pjv.me, wss://communities.nos.social, wss://ftp.halifax.rwth-aachen.de/nostr, wss://hol.is, wss://hornetstorage.net/relay, wss://koru.bitcointxoko.org, wss://nos.lol, wss://nostr-01.uid.ovh, wss://nostr-01.yakihonne.com, wss://nostr-relay.corb.net, wss://nostr.data.haus, wss://nostr.islandarea.net, wss://nostr.sathoarder.com, wss://nostr.self-determined.de, wss://nostr.tegila.com.br, wss://nostr.vulpem.com, wss://purplerelay.com, wss://relay-can.zombi.cloudrodion.com, wss://relay-rpi.edufeed.org, wss://relay.agorist.space, wss://relay.angor.io, wss://relay.artio.inf.unibe.ch, wss://relay.binaryrobot.com, wss://relay.damus.io, wss://relay.froth.zone, wss://relay.libernet.app, wss://relay.mostr.pub, wss://relay.mostro.network, wss://relay.nostr.place, wss://relay.nostrdice.com, wss://relay.notoshi.win, wss://relay.sigit.io, wss://relay02.lnfi.network, wss://relay2.angor.io, wss://schnorr.me, wss://slick.mjex.me, wss://social.amanah.eblessing.co, wss://staging.yabu.me, wss://strfry.openhoofd.nl, wss://strfry.shock.network, wss://testnet-relay.samt.st, wss://top.testrelay.top, wss://x.kojira.io, wss://yabu.me/v2
+2026-08-28T16:20:10.879 +30ms peer joined: WSViWyHlc8c9lmZ1HZSN
+2026-08-28T16:20:10.878 +30ms adapter reports OPEN (peer joined)
+--- result: SUCCESS ttc=29.5ms rtt=61.39999999944121ms reason=- ---
+
+--- attempt 3/10 — roomId="spike" ---
+2026-08-28T16:20:11.628 +0ms joinRoom({appId="wbx-m10-signaling-spike"}, roomId="spike") — calling…
+2026-08-28T16:20:11.646 +19ms joinRoom returned — waiting for peer to appear on any relay…
+2026-08-28T16:20:11.647 +20ms [trystero-nostr] === CONNECTION STRING ===
+2026-08-28T16:20:11.648 +20ms [trystero-nostr]   appId       = "wbx-m10-signaling-spike"
+2026-08-28T16:20:11.648 +20ms [trystero-nostr]   roomId      = "spike"
+2026-08-28T16:20:11.649 +21ms [trystero-nostr]   selfId      = SdKHukCRoJ8GtQrHqqL8
+2026-08-28T16:20:11.648 +21ms [trystero-nostr]   topic (sha1) = ebbc48b0bcf4a810065964409fe178942831ee06   <- BEIDE Seiten müssen denselben Topic haben
+2026-08-28T16:20:11.649 +22ms [trystero-nostr] defaultRelayUrls (47): wss://basspistol.org, wss://bucket.coracle.social, wss://chorus.almostmachines.dev, wss://chorus.pjv.me, wss://communities.nos.social, wss://ftp.halifax.rwth-aachen.de/nostr, wss://hol.is, wss://hornetstorage.net/relay, wss://koru.bitcointxoko.org, wss://nos.lol, wss://nostr-01.uid.ovh, wss://nostr-01.yakihonne.com, wss://nostr-relay.corb.net, wss://nostr.data.haus, wss://nostr.islandarea.net, wss://nostr.sathoarder.com, wss://nostr.self-determined.de, wss://nostr.tegila.com.br, wss://nostr.vulpem.com, wss://purplerelay.com, wss://relay-can.zombi.cloudrodion.com, wss://relay-rpi.edufeed.org, wss://relay.agorist.space, wss://relay.angor.io, wss://relay.artio.inf.unibe.ch, wss://relay.binaryrobot.com, wss://relay.damus.io, wss://relay.froth.zone, wss://relay.libernet.app, wss://relay.mostr.pub, wss://relay.mostro.network, wss://relay.nostr.place, wss://relay.nostrdice.com, wss://relay.notoshi.win, wss://relay.sigit.io, wss://relay02.lnfi.network, wss://relay2.angor.io, wss://schnorr.me, wss://slick.mjex.me, wss://social.amanah.eblessing.co, wss://staging.yabu.me, wss://strfry.openhoofd.nl, wss://strfry.shock.network, wss://testnet-relay.samt.st, wss://top.testrelay.top, wss://x.kojira.io, wss://yabu.me/v2
+2026-08-28T16:20:11.663 +36ms peer joined: WSViWyHlc8c9lmZ1HZSN
+2026-08-28T16:20:11.662 +35ms adapter reports OPEN (peer joined)
+--- result: SUCCESS ttc=34.799999999813735ms rtt=59.59999999962747ms reason=- ---
+
+--- attempt 4/10 — roomId="spike" ---
+2026-08-28T16:20:12.422 +0ms joinRoom({appId="wbx-m10-signaling-spike"}, roomId="spike") — calling…
+2026-08-28T16:20:12.442 +21ms [trystero-nostr] === CONNECTION STRING ===
+2026-08-28T16:20:12.441 +20ms joinRoom returned — waiting for peer to appear on any relay…
+2026-08-28T16:20:12.443 +21ms [trystero-nostr]   appId       = "wbx-m10-signaling-spike"
+2026-08-28T16:20:12.443 +22ms [trystero-nostr]   roomId      = "spike"
+2026-08-28T16:20:12.444 +22ms [trystero-nostr]   selfId      = SdKHukCRoJ8GtQrHqqL8
+2026-08-28T16:20:12.443 +22ms [trystero-nostr]   topic (sha1) = ebbc48b0bcf4a810065964409fe178942831ee06   <- BEIDE Seiten müssen denselben Topic haben
+2026-08-28T16:20:12.444 +22ms [trystero-nostr] defaultRelayUrls (47): wss://basspistol.org, wss://bucket.coracle.social, wss://chorus.almostmachines.dev, wss://chorus.pjv.me, wss://communities.nos.social, wss://ftp.halifax.rwth-aachen.de/nostr, wss://hol.is, wss://hornetstorage.net/relay, wss://koru.bitcointxoko.org, wss://nos.lol, wss://nostr-01.uid.ovh, wss://nostr-01.yakihonne.com, wss://nostr-relay.corb.net, wss://nostr.data.haus, wss://nostr.islandarea.net, wss://nostr.sathoarder.com, wss://nostr.self-determined.de, wss://nostr.tegila.com.br, wss://nostr.vulpem.com, wss://purplerelay.com, wss://relay-can.zombi.cloudrodion.com, wss://relay-rpi.edufeed.org, wss://relay.agorist.space, wss://relay.angor.io, wss://relay.artio.inf.unibe.ch, wss://relay.binaryrobot.com, wss://relay.damus.io, wss://relay.froth.zone, wss://relay.libernet.app, wss://relay.mostr.pub, wss://relay.mostro.network, wss://relay.nostr.place, wss://relay.nostrdice.com, wss://relay.notoshi.win, wss://relay.sigit.io, wss://relay02.lnfi.network, wss://relay2.angor.io, wss://schnorr.me, wss://slick.mjex.me, wss://social.amanah.eblessing.co, wss://staging.yabu.me, wss://strfry.openhoofd.nl, wss://strfry.shock.network, wss://testnet-relay.samt.st, wss://top.testrelay.top, wss://x.kojira.io, wss://yabu.me/v2
+2026-08-28T16:20:12.464 +43ms peer joined: WSViWyHlc8c9lmZ1HZSN
+2026-08-28T16:20:12.464 +42ms adapter reports OPEN (peer joined)
+--- result: SUCCESS ttc=42.09999999962747ms rtt=65.09999999962747ms reason=- ---
+
+--- attempt 5/10 — roomId="spike" ---
+2026-08-28T16:20:13.205 +0ms joinRoom({appId="wbx-m10-signaling-spike"}, roomId="spike") — calling…
+2026-08-28T16:20:13.223 +18ms joinRoom returned — waiting for peer to appear on any relay…
+2026-08-28T16:20:13.224 +19ms [trystero-nostr] === CONNECTION STRING ===
+2026-08-28T16:20:13.224 +20ms [trystero-nostr]   appId       = "wbx-m10-signaling-spike"
+2026-08-28T16:20:13.225 +20ms [trystero-nostr]   topic (sha1) = ebbc48b0bcf4a810065964409fe178942831ee06   <- BEIDE Seiten müssen denselben Topic haben
+2026-08-28T16:20:13.224 +20ms [trystero-nostr]   roomId      = "spike"
+2026-08-28T16:20:13.225 +21ms [trystero-nostr] defaultRelayUrls (47): wss://basspistol.org, wss://bucket.coracle.social, wss://chorus.almostmachines.dev, wss://chorus.pjv.me, wss://communities.nos.social, wss://ftp.halifax.rwth-aachen.de/nostr, wss://hol.is, wss://hornetstorage.net/relay, wss://koru.bitcointxoko.org, wss://nos.lol, wss://nostr-01.uid.ovh, wss://nostr-01.yakihonne.com, wss://nostr-relay.corb.net, wss://nostr.data.haus, wss://nostr.islandarea.net, wss://nostr.sathoarder.com, wss://nostr.self-determined.de, wss://nostr.tegila.com.br, wss://nostr.vulpem.com, wss://purplerelay.com, wss://relay-can.zombi.cloudrodion.com, wss://relay-rpi.edufeed.org, wss://relay.agorist.space, wss://relay.angor.io, wss://relay.artio.inf.unibe.ch, wss://relay.binaryrobot.com, wss://relay.damus.io, wss://relay.froth.zone, wss://relay.libernet.app, wss://relay.mostr.pub, wss://relay.mostro.network, wss://relay.nostr.place, wss://relay.nostrdice.com, wss://relay.notoshi.win, wss://relay.sigit.io, wss://relay02.lnfi.network, wss://relay2.angor.io, wss://schnorr.me, wss://slick.mjex.me, wss://social.amanah.eblessing.co, wss://staging.yabu.me, wss://strfry.openhoofd.nl, wss://strfry.shock.network, wss://testnet-relay.samt.st, wss://top.testrelay.top, wss://x.kojira.io, wss://yabu.me/v2
+2026-08-28T16:20:13.225 +21ms [trystero-nostr]   selfId      = SdKHukCRoJ8GtQrHqqL8
+2026-08-28T16:20:13.289 +84ms adapter reports OPEN (peer joined)
+2026-08-28T16:20:13.290 +85ms peer joined: WSViWyHlc8c9lmZ1HZSN
+--- result: SUCCESS ttc=84.3999999994412ms rtt=44.90000000037253ms reason=- ---
+
+--- attempt 6/10 — roomId="spike" ---
+2026-08-28T16:20:14.003 +0ms joinRoom({appId="wbx-m10-signaling-spike"}, roomId="spike") — calling…
+2026-08-28T16:20:14.022 +19ms joinRoom returned — waiting for peer to appear on any relay…
+2026-08-28T16:20:14.023 +20ms [trystero-nostr]   appId       = "wbx-m10-signaling-spike"
+2026-08-28T16:20:14.024 +21ms [trystero-nostr]   selfId      = SdKHukCRoJ8GtQrHqqL8
+2026-08-28T16:20:14.023 +20ms [trystero-nostr] === CONNECTION STRING ===
+2026-08-28T16:20:14.024 +21ms [trystero-nostr]   topic (sha1) = ebbc48b0bcf4a810065964409fe178942831ee06   <- BEIDE Seiten müssen denselben Topic haben
+2026-08-28T16:20:14.023 +21ms [trystero-nostr]   roomId      = "spike"
+2026-08-28T16:20:14.025 +22ms adapter reports OPEN (peer joined)
+2026-08-28T16:20:14.024 +22ms [trystero-nostr] defaultRelayUrls (47): wss://basspistol.org, wss://bucket.coracle.social, wss://chorus.almostmachines.dev, wss://chorus.pjv.me, wss://communities.nos.social, wss://ftp.halifax.rwth-aachen.de/nostr, wss://hol.is, wss://hornetstorage.net/relay, wss://koru.bitcointxoko.org, wss://nos.lol, wss://nostr-01.uid.ovh, wss://nostr-01.yakihonne.com, wss://nostr-relay.corb.net, wss://nostr.data.haus, wss://nostr.islandarea.net, wss://nostr.sathoarder.com, wss://nostr.self-determined.de, wss://nostr.tegila.com.br, wss://nostr.vulpem.com, wss://purplerelay.com, wss://relay-can.zombi.cloudrodion.com, wss://relay-rpi.edufeed.org, wss://relay.agorist.space, wss://relay.angor.io, wss://relay.artio.inf.unibe.ch, wss://relay.binaryrobot.com, wss://relay.damus.io, wss://relay.froth.zone, wss://relay.libernet.app, wss://relay.mostr.pub, wss://relay.mostro.network, wss://relay.nostr.place, wss://relay.nostrdice.com, wss://relay.notoshi.win, wss://relay.sigit.io, wss://relay02.lnfi.network, wss://relay2.angor.io, wss://schnorr.me, wss://slick.mjex.me, wss://social.amanah.eblessing.co, wss://staging.yabu.me, wss://strfry.openhoofd.nl, wss://strfry.shock.network, wss://testnet-relay.samt.st, wss://top.testrelay.top, wss://x.kojira.io, wss://yabu.me/v2
+2026-08-28T16:20:14.025 +22ms peer joined: WSViWyHlc8c9lmZ1HZSN
+--- result: SUCCESS ttc=22ms rtt=66.70000000018626ms reason=- ---
+
+--- attempt 7/10 — roomId="spike" ---
+2026-08-28T16:20:14.800 +0ms joinRoom({appId="wbx-m10-signaling-spike"}, roomId="spike") — calling…
+2026-08-28T16:20:14.818 +19ms joinRoom returned — waiting for peer to appear on any relay…
+2026-08-28T16:20:14.819 +20ms [trystero-nostr] === CONNECTION STRING ===
+2026-08-28T16:20:14.819 +20ms [trystero-nostr]   appId       = "wbx-m10-signaling-spike"
+2026-08-28T16:20:14.820 +20ms [trystero-nostr]   topic (sha1) = ebbc48b0bcf4a810065964409fe178942831ee06   <- BEIDE Seiten müssen denselben Topic haben
+2026-08-28T16:20:14.820 +20ms [trystero-nostr]   roomId      = "spike"
+2026-08-28T16:20:14.820 +21ms [trystero-nostr]   selfId      = SdKHukCRoJ8GtQrHqqL8
+2026-08-28T16:20:14.820 +21ms [trystero-nostr] defaultRelayUrls (47): wss://basspistol.org, wss://bucket.coracle.social, wss://chorus.almostmachines.dev, wss://chorus.pjv.me, wss://communities.nos.social, wss://ftp.halifax.rwth-aachen.de/nostr, wss://hol.is, wss://hornetstorage.net/relay, wss://koru.bitcointxoko.org, wss://nos.lol, wss://nostr-01.uid.ovh, wss://nostr-01.yakihonne.com, wss://nostr-relay.corb.net, wss://nostr.data.haus, wss://nostr.islandarea.net, wss://nostr.sathoarder.com, wss://nostr.self-determined.de, wss://nostr.tegila.com.br, wss://nostr.vulpem.com, wss://purplerelay.com, wss://relay-can.zombi.cloudrodion.com, wss://relay-rpi.edufeed.org, wss://relay.agorist.space, wss://relay.angor.io, wss://relay.artio.inf.unibe.ch, wss://relay.binaryrobot.com, wss://relay.damus.io, wss://relay.froth.zone, wss://relay.libernet.app, wss://relay.mostr.pub, wss://relay.mostro.network, wss://relay.nostr.place, wss://relay.nostrdice.com, wss://relay.notoshi.win, wss://relay.sigit.io, wss://relay02.lnfi.network, wss://relay2.angor.io, wss://schnorr.me, wss://slick.mjex.me, wss://social.amanah.eblessing.co, wss://staging.yabu.me, wss://strfry.openhoofd.nl, wss://strfry.shock.network, wss://testnet-relay.samt.st, wss://top.testrelay.top, wss://x.kojira.io, wss://yabu.me/v2
+2026-08-28T16:20:16.833 +2033ms relay sockets @2000ms — 3/5 OPEN:
+  OPEN       wss://social.amanah.eblessing.co
+  OPEN       wss://relay-rpi.edufeed.org
+  OPEN       wss://nostr.vulpem.com
+  CONNECTING wss://hol.is
+  CLOSED     wss://relay2.angor.io
+2026-08-28T16:20:19.820 +5021ms relay sockets @5000ms — 3/5 OPEN:
+  OPEN       wss://social.amanah.eblessing.co
+  OPEN       wss://relay-rpi.edufeed.org
+  OPEN       wss://nostr.vulpem.com
+  CONNECTING wss://hol.is
+  CLOSED     wss://relay2.angor.io
+2026-08-28T16:20:24.830 +10031ms relay sockets @10000ms — 3/5 OPEN:
+  OPEN       wss://social.amanah.eblessing.co
+  OPEN       wss://relay-rpi.edufeed.org
+  OPEN       wss://nostr.vulpem.com
+  CONNECTING wss://hol.is
+  CLOSED     wss://relay2.angor.io
+2026-08-28T16:20:29.831 +15032ms relay sockets @15000ms — 3/5 OPEN:
+  OPEN       wss://social.amanah.eblessing.co
+  OPEN       wss://relay-rpi.edufeed.org
+  OPEN       wss://nostr.vulpem.com
+  CONNECTING wss://hol.is
+  CLOSED     wss://relay2.angor.io
+2026-08-28T16:20:33.930 +19130ms adapter reports OPEN (peer joined)
+2026-08-28T16:20:33.930 +19131ms peer joined: WSViWyHlc8c9lmZ1HZSN
+--- result: SUCCESS ttc=19130.200000000186ms rtt=51.40000000037253ms reason=- ---
+
+--- attempt 8/10 — roomId="spike" ---
+2026-08-28T16:20:34.635 +0ms joinRoom({appId="wbx-m10-signaling-spike"}, roomId="spike") — calling…
+2026-08-28T16:20:34.651 +17ms joinRoom returned — waiting for peer to appear on any relay…
+2026-08-28T16:20:34.652 +18ms [trystero-nostr]   appId       = "wbx-m10-signaling-spike"
+2026-08-28T16:20:34.653 +18ms [trystero-nostr]   roomId      = "spike"
+2026-08-28T16:20:34.652 +17ms [trystero-nostr] === CONNECTION STRING ===
+2026-08-28T16:20:34.653 +19ms [trystero-nostr]   topic (sha1) = ebbc48b0bcf4a810065964409fe178942831ee06   <- BEIDE Seiten müssen denselben Topic haben
+2026-08-28T16:20:34.653 +19ms [trystero-nostr]   selfId      = SdKHukCRoJ8GtQrHqqL8
+2026-08-28T16:20:34.653 +19ms [trystero-nostr] defaultRelayUrls (47): wss://basspistol.org, wss://bucket.coracle.social, wss://chorus.almostmachines.dev, wss://chorus.pjv.me, wss://communities.nos.social, wss://ftp.halifax.rwth-aachen.de/nostr, wss://hol.is, wss://hornetstorage.net/relay, wss://koru.bitcointxoko.org, wss://nos.lol, wss://nostr-01.uid.ovh, wss://nostr-01.yakihonne.com, wss://nostr-relay.corb.net, wss://nostr.data.haus, wss://nostr.islandarea.net, wss://nostr.sathoarder.com, wss://nostr.self-determined.de, wss://nostr.tegila.com.br, wss://nostr.vulpem.com, wss://purplerelay.com, wss://relay-can.zombi.cloudrodion.com, wss://relay-rpi.edufeed.org, wss://relay.agorist.space, wss://relay.angor.io, wss://relay.artio.inf.unibe.ch, wss://relay.binaryrobot.com, wss://relay.damus.io, wss://relay.froth.zone, wss://relay.libernet.app, wss://relay.mostr.pub, wss://relay.mostro.network, wss://relay.nostr.place, wss://relay.nostrdice.com, wss://relay.notoshi.win, wss://relay.sigit.io, wss://relay02.lnfi.network, wss://relay2.angor.io, wss://schnorr.me, wss://slick.mjex.me, wss://social.amanah.eblessing.co, wss://staging.yabu.me, wss://strfry.openhoofd.nl, wss://strfry.shock.network, wss://testnet-relay.samt.st, wss://top.testrelay.top, wss://x.kojira.io, wss://yabu.me/v2
+2026-08-28T16:20:34.721 +86ms peer joined: WSViWyHlc8c9lmZ1HZSN
+2026-08-28T16:20:34.720 +86ms adapter reports OPEN (peer joined)
+--- result: SUCCESS ttc=86ms rtt=48.89999999944121ms reason=- ---
+
+--- attempt 9/10 — roomId="spike" ---
+2026-08-28T16:20:35.440 +0ms joinRoom({appId="wbx-m10-signaling-spike"}, roomId="spike") — calling…
+2026-08-28T16:20:35.458 +19ms joinRoom returned — waiting for peer to appear on any relay…
+2026-08-28T16:20:35.460 +20ms [trystero-nostr]   appId       = "wbx-m10-signaling-spike"
+2026-08-28T16:20:35.460 +21ms [trystero-nostr]   roomId      = "spike"
+2026-08-28T16:20:35.459 +20ms [trystero-nostr] === CONNECTION STRING ===
+2026-08-28T16:20:35.460 +21ms [trystero-nostr]   topic (sha1) = ebbc48b0bcf4a810065964409fe178942831ee06   <- BEIDE Seiten müssen denselben Topic haben
+2026-08-28T16:20:35.461 +21ms [trystero-nostr] defaultRelayUrls (47): wss://basspistol.org, wss://bucket.coracle.social, wss://chorus.almostmachines.dev, wss://chorus.pjv.me, wss://communities.nos.social, wss://ftp.halifax.rwth-aachen.de/nostr, wss://hol.is, wss://hornetstorage.net/relay, wss://koru.bitcointxoko.org, wss://nos.lol, wss://nostr-01.uid.ovh, wss://nostr-01.yakihonne.com, wss://nostr-relay.corb.net, wss://nostr.data.haus, wss://nostr.islandarea.net, wss://nostr.sathoarder.com, wss://nostr.self-determined.de, wss://nostr.tegila.com.br, wss://nostr.vulpem.com, wss://purplerelay.com, wss://relay-can.zombi.cloudrodion.com, wss://relay-rpi.edufeed.org, wss://relay.agorist.space, wss://relay.angor.io, wss://relay.artio.inf.unibe.ch, wss://relay.binaryrobot.com, wss://relay.damus.io, wss://relay.froth.zone, wss://relay.libernet.app, wss://relay.mostr.pub, wss://relay.mostro.network, wss://relay.nostr.place, wss://relay.nostrdice.com, wss://relay.notoshi.win, wss://relay.sigit.io, wss://relay02.lnfi.network, wss://relay2.angor.io, wss://schnorr.me, wss://slick.mjex.me, wss://social.amanah.eblessing.co, wss://staging.yabu.me, wss://strfry.openhoofd.nl, wss://strfry.shock.network, wss://testnet-relay.samt.st, wss://top.testrelay.top, wss://x.kojira.io, wss://yabu.me/v2
+2026-08-28T16:20:35.460 +21ms [trystero-nostr]   selfId      = SdKHukCRoJ8GtQrHqqL8
+2026-08-28T16:20:35.461 +22ms adapter reports OPEN (peer joined)
+2026-08-28T16:20:35.461 +22ms peer joined: WSViWyHlc8c9lmZ1HZSN
+--- result: SUCCESS ttc=21.700000000186265ms rtt=48.59999999962747ms reason=- ---
+
+--- attempt 10/10 — roomId="spike" ---
+2026-08-28T16:20:36.249 +0ms joinRoom({appId="wbx-m10-signaling-spike"}, roomId="spike") — calling…
+2026-08-28T16:20:36.266 +17ms joinRoom returned — waiting for peer to appear on any relay…
+2026-08-28T16:20:36.267 +18ms [trystero-nostr] === CONNECTION STRING ===
+2026-08-28T16:20:36.267 +19ms [trystero-nostr]   roomId      = "spike"
+2026-08-28T16:20:36.267 +18ms [trystero-nostr]   appId       = "wbx-m10-signaling-spike"
+2026-08-28T16:20:36.267 +19ms [trystero-nostr]   topic (sha1) = ebbc48b0bcf4a810065964409fe178942831ee06   <- BEIDE Seiten müssen denselben Topic haben
+2026-08-28T16:20:36.268 +19ms [trystero-nostr] defaultRelayUrls (47): wss://basspistol.org, wss://bucket.coracle.social, wss://chorus.almostmachines.dev, wss://chorus.pjv.me, wss://communities.nos.social, wss://ftp.halifax.rwth-aachen.de/nostr, wss://hol.is, wss://hornetstorage.net/relay, wss://koru.bitcointxoko.org, wss://nos.lol, wss://nostr-01.uid.ovh, wss://nostr-01.yakihonne.com, wss://nostr-relay.corb.net, wss://nostr.data.haus, wss://nostr.islandarea.net, wss://nostr.sathoarder.com, wss://nostr.self-determined.de, wss://nostr.tegila.com.br, wss://nostr.vulpem.com, wss://purplerelay.com, wss://relay-can.zombi.cloudrodion.com, wss://relay-rpi.edufeed.org, wss://relay.agorist.space, wss://relay.angor.io, wss://relay.artio.inf.unibe.ch, wss://relay.binaryrobot.com, wss://relay.damus.io, wss://relay.froth.zone, wss://relay.libernet.app, wss://relay.mostr.pub, wss://relay.mostro.network, wss://relay.nostr.place, wss://relay.nostrdice.com, wss://relay.notoshi.win, wss://relay.sigit.io, wss://relay02.lnfi.network, wss://relay2.angor.io, wss://schnorr.me, wss://slick.mjex.me, wss://social.amanah.eblessing.co, wss://staging.yabu.me, wss://strfry.openhoofd.nl, wss://strfry.shock.network, wss://testnet-relay.samt.st, wss://top.testrelay.top, wss://x.kojira.io, wss://yabu.me/v2
+2026-08-28T16:20:36.268 +20ms adapter reports OPEN (peer joined)
+2026-08-28T16:20:36.268 +19ms [trystero-nostr]   selfId      = SdKHukCRoJ8GtQrHqqL8
+2026-08-28T16:20:36.269 +20ms peer joined: WSViWyHlc8c9lmZ1HZSN
+--- result: SUCCESS ttc=19.799999999813735ms rtt=51.700000000186265ms reason=- ---
