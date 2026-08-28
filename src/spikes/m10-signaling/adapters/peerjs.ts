@@ -17,8 +17,16 @@ export const peerjsAdapter: AdapterFactory = async (opts) => {
   return new Promise<AdapterHandle>((resolve, reject) => {
     const selfSide = opts.peerLabel === 'A' ? 'a' : 'b';
     const otherSide = selfSide === 'a' ? 'b' : 'a';
+    const selfId = `${opts.roomId}-${selfSide}`;
     const otherId = `${opts.roomId}-${otherSide}`;
-    const peer = new Peer(`${opts.roomId}-${selfSide}`, undefined);
+    opts.onDiagnostic?.(`[peerjs] === CONNECTION STRING ===`);
+    opts.onDiagnostic?.(`[peerjs]   broker     = 0.peerjs.com:443 (default PeerServer-Cloud)`);
+    opts.onDiagnostic?.(`[peerjs]   appId      = "${opts.appId}" (INFO ONLY — PeerJS-Cloud kennt keinen appId-Namespace)`);
+    opts.onDiagnostic?.(`[peerjs]   roomId     = "${opts.roomId}"`);
+    opts.onDiagnostic?.(`[peerjs]   self peer  = "${selfId}"   <- so registriere ich mich am Broker`);
+    opts.onDiagnostic?.(`[peerjs]   target peer= "${otherId}"  <- diesen versuche ich zu connecten`);
+    opts.onDiagnostic?.(`[peerjs] new Peer("${selfId}") — awaiting broker 'open' event…`);
+    const peer = new Peer(selfId, undefined);
     const conns: DataConnection[] = [];
     let opened = false;
     let closed = false;
@@ -41,18 +49,18 @@ export const peerjsAdapter: AdapterFactory = async (opts) => {
 
     function tryConnect() {
       if (closed || opened) return;
+      opts.onDiagnostic?.(`[peerjs] peer.connect("${otherId}") — outbound attempt`);
       try {
         const c = peer.connect(otherId);
         wire(c);
         conns.push(c);
       } catch (e) {
-        // Sync-throw ist selten bei PeerJS — meist kommt der Fehler via 'error'.
         opts.onError(e instanceof Error ? e : new Error(String(e)));
       }
     }
 
     peer.on('open', (id: string) => {
-      opts.onDiagnostic?.(`[peerjs] broker registered: peerId=${id}`);
+      opts.onDiagnostic?.(`[peerjs] ✓ broker 'open' — registered as "${id}" (my Peer-ID at PeerServer-Cloud)`);
       tryConnect();
       resolve({
         send(payload) { for (const c of conns) if (c.open) c.send(payload); },

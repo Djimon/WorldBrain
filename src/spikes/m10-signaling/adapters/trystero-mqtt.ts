@@ -5,6 +5,6 @@ import { joinTrystero, reportTrysteroBrokerInfo } from './trystero-nostr';
 
 export const trysteroMqttAdapter: AdapterFactory = async (opts) => {
   const mod = await import('@trystero-p2p/mqtt');
-  reportTrysteroBrokerInfo(mod, 'mqtt', opts.onDiagnostic);
+  await reportTrysteroBrokerInfo(mod, 'mqtt', opts);
   return joinTrystero(mod.joinRoom, mod.getRelaySockets, opts);
 };

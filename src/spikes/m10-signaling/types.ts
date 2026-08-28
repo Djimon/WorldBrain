@@ -29,6 +29,8 @@ export interface AdapterFactoryOpts {
   requestUiPanel?: (panel: ManualSdpPanel) => void;
   /** Broker-Sichtbarkeit — Adapter loggt selfId, Relay-URLs, Socket-Zustände. */
   onDiagnostic?: (msg: string) => void;
+  /** appId für Broker-Namespacing. Trystero: joinRoom({appId}, roomId). */
+  appId: string;
 }
 
 export interface AdapterHandle {

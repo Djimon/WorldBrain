@@ -12,6 +12,9 @@ import { trysteroMqttAdapter } from './adapters/trystero-mqtt';
 import { trysteroBittorrentAdapter } from './adapters/trystero-bittorrent';
 import { peerjsAdapter } from './adapters/peerjs';
 import { manualSdpAdapter } from './adapters/manual-sdp';
+import type { LogWriter } from './log-writer';
+
+export const APP_ID = 'wbx-m10-signaling-spike';
 
 export const ADAPTERS: Record<AdapterKey, AdapterFactory> = {
   'trystero-nostr': trysteroNostrAdapter,
@@ -64,7 +67,12 @@ export async function runBench(
   roomIdPrefix: string,
   runCount: number,
   onProgress: (p: BenchProgress) => void,
+  logWriter?: LogWriter,
 ): Promise<BenchResult> {
+  await logWriter?.writeRaw(`\n=================================================================`);
+  await logWriter?.writeRaw(`RUN: adapter=${adapter} peer=${peerLabel} roomIdPrefix="${roomIdPrefix}" runs=${runCount}`);
+  await logWriter?.writeRaw(`     appId="${APP_ID}"`);
+  await logWriter?.writeRaw(`=================================================================\n`);
   // Manual-SDP ist Copy/Paste — nicht auto-benchbar. Short-circuit mit klarer
   // Begründung statt N sinnlose Timeouts zu produzieren.
   if (adapter === 'manual-sdp') {
@@ -94,9 +102,11 @@ export async function runBench(
     // Freshness kommt aus dem NEUEN factory()-Call (neuer RTCPeerConnection,
     // neuer joinRoom), nicht aus zufälliger roomId.
     const roomId = `${roomIdPrefix}-attempt-${i}`;
+    await logWriter?.writeRaw(`\n--- attempt ${i}/${runCount} — roomId="${roomId}" ---`);
     console.log(`[bench] ${adapter} attempt ${i}/${runCount} — room=${roomId}`);
-    const result = await runOneAttempt(factory, peerLabel, roomId, i);
+    const result = await runOneAttempt(factory, peerLabel, roomId, i, logWriter);
     console.log(`[bench] ${adapter} #${i}: success=${result.success}${result.failReason ? ` reason=${result.failReason}` : ''}${result.error ? ` err=${result.error}` : ''}`);
+    await logWriter?.writeRaw(`--- result: ${result.success ? 'SUCCESS' : 'FAIL'} ttc=${result.timeToOpenMs}ms rtt=${result.pingRttMs}ms reason=${result.failReason ?? '-'} ---`);
     attempts.push(result);
     onProgress({ attempt: i, total: runCount, lastResult: result });
     // 500ms Pause zwischen Attempts — PeerJS-Broker (und Nostr-Relays)
@@ -122,6 +132,7 @@ async function runOneAttempt(
   peerLabel: 'A' | 'B',
   roomId: string,
   attempt: number,
+  logWriter?: LogWriter,
 ): Promise<AttemptResult> {
   const started = performance.now();
   let openedAt: number | null = null;
@@ -131,7 +142,9 @@ async function runOneAttempt(
   const diagnostics: string[] = [];
   const capture = (msg: string) => {
     const t = (performance.now() - started).toFixed(0);
-    diagnostics.push(`+${t}ms ${msg}`);
+    const line = `+${t}ms ${msg}`;
+    diagnostics.push(line);
+    void logWriter?.write(line);
   };
 
   // Ping-Protokoll: {id, echo:false} = neuer Ping vom Sender.
@@ -154,6 +167,7 @@ async function runOneAttempt(
     handle = await factory({
       roomId,
       peerLabel,
+      appId: APP_ID,
       onOpen: () => { openedAt = performance.now(); capture('adapter reports OPEN (peer joined)'); },
       onDiagnostic: capture,
       onMessage: (_from, payload) => {

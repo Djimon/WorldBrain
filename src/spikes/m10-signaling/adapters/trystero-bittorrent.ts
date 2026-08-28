@@ -5,6 +5,6 @@ import { joinTrystero, reportTrysteroBrokerInfo } from './trystero-nostr';
 
 export const trysteroBittorrentAdapter: AdapterFactory = async (opts) => {
   const mod = await import('@trystero-p2p/torrent');
-  reportTrysteroBrokerInfo(mod, 'bittorrent', opts.onDiagnostic);
+  await reportTrysteroBrokerInfo(mod, 'bittorrent', opts);
   return joinTrystero(mod.joinRoom, mod.getRelaySockets, opts);
 };

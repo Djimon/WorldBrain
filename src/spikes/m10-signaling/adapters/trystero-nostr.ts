@@ -8,25 +8,39 @@ import type { Room, joinRoom as JoinRoomFn } from '@trystero-p2p/nostr';
 
 export const trysteroNostrAdapter: AdapterFactory = async (opts) => {
   const mod = await import('@trystero-p2p/nostr');
-  reportTrysteroBrokerInfo(mod, 'nostr', opts.onDiagnostic);
+  reportTrysteroBrokerInfo(mod, 'nostr', opts);
   return joinTrystero(mod.joinRoom, mod.getRelaySockets, opts);
 };
 
 /**
- * Loggt statische Broker-Fakten (selfId, konfigurierte Relay-URLs). Falls Nutzer
- * eine Diagnostik-Senke reingibt, landen die dort — sonst nur console.
+ * Loggt die vollständige Broker-Connection-String: appId, roomId, computed
+ * SHA-1-Topic (das ist der echte Namespace-Key den Trystero intern nutzt),
+ * selfId, alle Ziel-Relay-URLs. Damit können zwei Seiten ihre Logs
+ * vergleichen und sehen ob sie denselben Topic verwenden.
  */
-export function reportTrysteroBrokerInfo(
+export async function reportTrysteroBrokerInfo(
   mod: { selfId: string; defaultRelayUrls: string[] },
   label: string,
-  sink: ((s: string) => void) | undefined,
+  opts: { appId: string; roomId: string; onDiagnostic?: (s: string) => void },
 ) {
-  const line1 = `[trystero-${label}] selfId=${mod.selfId}`;
-  const line2 = `[trystero-${label}] defaultRelayUrls (${mod.defaultRelayUrls.length}): ${mod.defaultRelayUrls.join(', ')}`;
-  console.log(line1);
-  console.log(line2);
-  sink?.(line1);
-  sink?.(line2);
+  const sink = opts.onDiagnostic;
+  const topic = await computeTrysteroTopic(opts.appId, opts.roomId);
+  const lines = [
+    `[trystero-${label}] === CONNECTION STRING ===`,
+    `[trystero-${label}]   appId       = "${opts.appId}"`,
+    `[trystero-${label}]   roomId      = "${opts.roomId}"`,
+    `[trystero-${label}]   topic (sha1) = ${topic}   <- BEIDE Seiten müssen denselben Topic haben`,
+    `[trystero-${label}]   selfId      = ${mod.selfId}`,
+    `[trystero-${label}] defaultRelayUrls (${mod.defaultRelayUrls.length}): ${mod.defaultRelayUrls.join(', ')}`,
+  ];
+  for (const l of lines) { console.log(l); sink?.(l); }
+}
+
+/** Trystero-intern: sha1(appId + '/' + roomId) hex — muss auf beiden Seiten identisch sein. */
+async function computeTrysteroTopic(appId: string, roomId: string): Promise<string> {
+  const bytes = new TextEncoder().encode(`${appId}/${roomId}`);
+  const hash = await crypto.subtle.digest('SHA-1', bytes);
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 export async function joinTrystero(
@@ -35,6 +49,7 @@ export async function joinTrystero(
   opts: {
     roomId: string;
     peerLabel: string;
+    appId: string;
     onOpen: () => void;
     onMessage: (from: string, payload: unknown) => void;
     onError: (err: Error) => void;
@@ -43,7 +58,9 @@ export async function joinTrystero(
 ): Promise<AdapterHandle> {
   let room: Room;
   try {
-    room = joinRoom({ appId: 'wbx-m10-signaling-spike' }, opts.roomId);
+    opts.onDiagnostic?.(`joinRoom({appId="${opts.appId}"}, roomId="${opts.roomId}") — calling…`);
+    room = joinRoom({ appId: opts.appId }, opts.roomId);
+    opts.onDiagnostic?.(`joinRoom returned — waiting for peer to appear on any relay…`);
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
     opts.onError(err);
@@ -61,13 +78,15 @@ export async function joinTrystero(
   };
   action.onMessage = (data, ctx) => opts.onMessage(ctx.peerId, data);
 
-  // Broker-Socket-Zustand nach 2s + 5s snapshotten — zeigt ob wir den Broker
-  // überhaupt erreichen (WebSocket.readyState: 0=connecting, 1=open, 2=closing, 3=closed).
-  const socketProbeTimers = [2000, 5000].map((delay) => window.setTimeout(() => {
+  // Broker-Socket-Zustand nach 2/5/8s snapshotten — zeigt ob wir den Broker
+  // überhaupt erreichen UND welche konkreten URLs verbunden sind (relay-Subset
+  // ist entscheidend: zwei Peers müssen mindestens EINEN gemeinsamen Relay
+  // offen haben, sonst sehen sie sich nie).
+  const socketProbeTimers = [2000, 5000, 8000].map((delay) => window.setTimeout(() => {
     if (opened) return;
     const sockets = getRelaySockets();
     if (!sockets || typeof sockets !== 'object') {
-      opts.onDiagnostic?.(`relay sockets: none (getRelaySockets returned ${sockets})`);
+      opts.onDiagnostic?.(`relay sockets @${delay}ms: none (getRelaySockets returned ${sockets})`);
       return;
     }
     const rows = Object.entries(sockets).map(([url, ws]) => {
@@ -75,7 +94,8 @@ export async function joinTrystero(
       const stateName = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][state ?? 3] ?? 'UNKNOWN';
       return `  ${stateName.padEnd(10)} ${url}`;
     });
-    opts.onDiagnostic?.(`relay sockets @${delay}ms (${rows.length}):\n${rows.join('\n')}`);
+    const openCount = rows.filter((r) => r.startsWith('  OPEN')).length;
+    opts.onDiagnostic?.(`relay sockets @${delay}ms — ${openCount}/${rows.length} OPEN:\n${rows.join('\n')}`);
   }, delay));
 
   return {

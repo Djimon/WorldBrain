@@ -1,0 +1,13 @@
+{
+  "identifier": "signaling-spike",
+  "description": "Capability for the M10 Signaling-Spike windows (#380) — needs fs write to Dokumente for verbose broker logs.",
+  "windows": ["m10-signaling-spike-a", "m10-signaling-spike-b"],
+  "permissions": [
+    "core:default",
+    "fs:default",
+    "fs:allow-document-read-recursive",
+    "fs:allow-document-write-recursive",
+    "fs:allow-mkdir",
+    "dialog:default"
+  ]
+}

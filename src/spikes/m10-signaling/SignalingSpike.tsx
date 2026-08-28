@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AdapterKey, ManualSdpPanel } from './types';
 import { runBench, type BenchResult, type AttemptResult } from './bench';
+import { createLogWriter, type LogWriter } from './log-writer';
 
 const ADAPTER_LABELS: Record<AdapterKey, string> = {
   'trystero-nostr': 'Trystero / Nostr (Hypothese)',
@@ -35,8 +36,21 @@ export function SignalingSpike(): React.ReactElement {
   const [manualPanel, setManualPanel] = useState<ManualSdpPanel | null>(null);
   const [remoteBlob, setRemoteBlob] = useState('');
   const [copyState, setCopyState] = useState<'idle' | 'ok' | 'err'>('idle');
+  const [logWriter, setLogWriter] = useState<LogWriter | null>(null);
+  const [logPath, setLogPath] = useState<string>('(init...)');
 
   const platform = useMemo(() => navigator.userAgent, []);
+
+  // Log-Writer beim Mount pro Peer initialisieren — eine Datei pro Sitzung.
+  useEffect(() => {
+    let cancelled = false;
+    void createLogWriter(peerLabel).then((w) => {
+      if (cancelled) return;
+      setLogWriter(w);
+      setLogPath(w.getPath());
+    });
+    return () => { cancelled = true; };
+  }, [peerLabel]);
 
   useEffect(() => {
     // Neuer Adapter → altes manual-Panel wegwerfen.
@@ -52,7 +66,7 @@ export function SignalingSpike(): React.ReactElement {
       const res = await runBench(adapter, peerLabel, roomIdPrefix, runCount, (p) => {
         setProgress({ attempt: p.attempt, total: p.total });
         if (p.lastResult) setLastAttempt(p.lastResult);
-      });
+      }, logWriter ?? undefined);
       setResults((prev) => [...prev, res]);
     } finally {
       setRunning(false);
@@ -118,6 +132,9 @@ export function SignalingSpike(): React.ReactElement {
           </button>
         </div>
         <div style={{ color: '#888', fontSize: 12, marginTop: 8 }}>Plattform (UA): {platform}</div>
+        <div style={{ color: '#8fd', fontSize: 12, marginTop: 4 }}>
+          <strong>Log-Datei:</strong> {logPath}
+        </div>
       </fieldset>
 
       {adapter === 'manual-sdp' && manualPanel !== null && (
