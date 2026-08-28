@@ -33,7 +33,16 @@ import { MapFolderTree } from './MapFolderTree';
 import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
-import { Button } from './primitives';
+import { Button, Field, Panel, Segmented } from './primitives';
+import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext';
+import { WebRtcTransport } from '../services/webrtc-transport';
+import { attachVisibilityBroadcaster } from '../services/player-content-filter-service';
+import { createPlayClientStore, type PlayClientStoreImpl } from '../services/play-client-store';
+import { listCampaigns, createCampaign, type Campaign } from '../services/campaign-service';
+import { PlayModeView } from './PlayModeView';
+import { PlayerJoinView } from './PlayerJoinView';
+import { CampaignRosterPanel } from './CampaignRosterPanel';
+import { ModuleLibrary } from './ModuleLibrary';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
 
@@ -44,6 +53,8 @@ type Area =
   | 'search'
   | 'maps'
   | 'calendar'
+  | 'session'
+  | 'campaigns'
   | 'chronicle'
   | 'cards'
   | 'plugins'
@@ -78,6 +89,8 @@ const AREAS: { id: Area; icon: string }[] = [
   { id: 'search',   icon: '🔍' },
   { id: 'maps',     icon: '🗺' },
   { id: 'calendar', icon: '📅' },
+  { id: 'session',  icon: '🎲' },
+  { id: 'campaigns',icon: '🎭' },
   { id: 'chronicle',icon: '📜' },
   { id: 'cards',    icon: '🃏' },
   { id: 'plugins',  icon: '🔌' },
@@ -87,6 +100,9 @@ const AREAS: { id: Area; icon: string }[] = [
   { id: 'project',  icon: '⚙' },
 ];
 
+// M10-S22 (#342 / D25): fester Play-Subset — kein Konfig-Punkt.
+const PLAY_AREAS: Area[] = ['entities', 'search', 'maps', 'calendar', 'session'];
+
 const CORE_ENTITY_TYPES = [
   'Character', 'Location', 'Faction', 'Item',
   'Quest', 'Event', 'Scene', 'Rule', 'Resource', 'Culture', 'Lore',
@@ -95,6 +111,26 @@ const CORE_ENTITY_TYPES = [
 export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snapshotsDir, onProjectClose, activePanel }: Props) {
   const { t } = useTranslation('nav');
   const database = useDatabase();
+  // M10-S22 (D25): App-Mode-Shell. `edit` = voller Autor-Workspace, `play` =
+  // Session-Sicht mit festem Play-Subset (Menü-Reduktion) + gewählter Rolle.
+  const [mode, setMode] = useState<AppMode>('edit');
+  const [sessionRole, setSessionRole] = useState<SessionRole>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [showRoleSelect, setShowRoleSelect] = useState(false);
+  // M10-S05/S08: Nach dem Player-Join steht Token+playerId+displayName fest;
+  // die Play-Sicht schaltet dann auf PlayerCharacterSheet.
+  const [playerContext, setPlayerContext] = useState<{ playerId: string; displayName: string } | null>(null);
+  // M10-S14: Group-IDs des Players für die host-seitige Gruppen-Sicht (S09).
+  const [playerGroupIds, setPlayerGroupIds] = useState<string[]>([]);
+  // #374 D30-Membran: der Client rendert nur aus dem Store. Lazy erzeugen,
+  // sobald Player-Kontext feststeht — der Host würde später Snapshot+Delta
+  // pushen (Transport in R2/R3-Verdrahtung folgt).
+  const [playerStore, setPlayerStore] = useState<PlayClientStoreImpl | null>(null);
+  // M10-S22 (Follow-up): echte Campaign-Auswahl beim Play-Eintritt statt
+  // projectId-Hack. Campaigns werden beim Öffnen des Auswahl-Panels geladen.
+  const [availableCampaigns, setAvailableCampaigns] = useState<Campaign[]>([]);
+  const [selectedCampaignForPlay, setSelectedCampaignForPlay] = useState<string>('');
+  const [newCampaignTitle, setNewCampaignTitle] = useState('');
   const [activeArea, setActiveArea] = useState<Area>(activePanel ?? 'entities');
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | null>('Character');
@@ -528,6 +564,25 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           </div>
         );
 
+      case 'session':
+        // M10-S22: session-Icon ist Teil des Play-Subset (D25). Im edit-Modus
+        // ist es normalerweise nicht sichtbar, nur wenn activePanel='session'
+        // gesetzt wurde — dann Hinweis, dass der Play-Modus per Toggle
+        // erreicht wird.
+        return (
+          <div className="workspace-area">
+            <p>{t('sessionAreaEditHint', 'Play-Cockpit über den „Spielen"-Toggle in der Kopfzeile öffnen.')}</p>
+          </div>
+        );
+
+      case 'campaigns':
+        // M10-S24 (#347): persistente Campaign-Roster-Verwaltung im Edit-Modus.
+        return (
+          <div className="workspace-area">
+            <CampaignRosterPanel database={database} />
+          </div>
+        );
+
       case 'calendar':
         return (
           <div className="workspace-area workspace-area--column">
@@ -648,6 +703,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                         onNavigateToEntity={navigateToEntity}
                         calendar={activeCalendar}
                         startInEditMode
+                        onSaved={() => setCalendarRefreshToken((n) => n + 1)}
                         onDeleted={() => {
                           setCalendarEditingEventId(null);
                           setCalendarRefreshToken((n) => n + 1);
@@ -753,6 +809,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
               {evalResult && <pre>{evalResult}</pre>}
             </div>
             <hr />
+            {/* M13-S07 (#242): House-Rule-Overlay-Bibliothek + Per-Session-Toggle. */}
+            <ModuleLibrary database={database} />
+            <hr />
             {selectedScreenId ? (
               <>
                 <button onClick={() => setSelectedScreenId(null)}>← Screens</button>
@@ -808,43 +867,209 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   }
 
   const activeAreaLabel = t(activeArea);
+  const visibleAreas = mode === 'play' ? AREAS.filter((a) => PLAY_AREAS.includes(a.id)) : AREAS;
+
+  // M10-S22 (D25): Klick auf mode-toggle.
+  // edit → Role-Auswahl öffnen (mode wird erst nach Rolle+Session gesetzt).
+  // play → sofort zurück nach edit, Rolle/Session zurücksetzen.
+  function handleModeToggle() {
+    if (mode === 'edit') {
+      setShowRoleSelect(true);
+      // Campaign-Auswahl vorbereiten: aktuelle Campaigns laden.
+      void listCampaigns(database).then((cs) => {
+        setAvailableCampaigns(cs);
+        if (cs.length === 1) setSelectedCampaignForPlay(cs[0].id);
+      });
+    } else {
+      setMode('edit');
+      setSessionRole(null);
+      setActiveSessionId(null);
+      setShowRoleSelect(false);
+    }
+  }
+  async function pickRole(role: 'dm' | 'player') {
+    let campaignId = selectedCampaignForPlay;
+    if (campaignId === '') {
+      // Kein Campaign gewählt: DM darf automatisch eine anlegen (verhindert
+      // Sackgasse in einem leeren Projekt); Player braucht Auswahl.
+      if (role === 'dm') {
+        const c = await createCampaign(database, { title: t('modeCampaignDefault', 'Default Campaign') });
+        campaignId = c.id;
+        setAvailableCampaigns((prev) => [...prev, c]);
+      } else {
+        return;
+      }
+    }
+    setMode('play');
+    setSessionRole(role);
+    setActiveSessionId(campaignId);
+    setSelectedCampaignForPlay(campaignId);
+    setShowRoleSelect(false);
+    setActiveArea('session');
+  }
+  async function createAndPickCampaign() {
+    if (newCampaignTitle.trim() === '') return;
+    const c = await createCampaign(database, { title: newCampaignTitle.trim() });
+    setAvailableCampaigns((prev) => [...prev, c]);
+    setSelectedCampaignForPlay(c.id);
+    setNewCampaignTitle('');
+  }
+
+  const modeContextValue = { mode, sessionRole, activeSessionId };
+  const inPlayCockpit = mode === 'play' && activeArea === 'session';
+
+  // #374 D30: Player-Store erzeugen sobald Player-Kontext feststeht (leerer
+  // Store = „Host offline"). Snapshot+Delta füttert der Client-Transport
+  // (Verdrahtung folgt in R4 / #375).
+  useEffect(() => {
+    if (sessionRole !== 'player' || playerContext === null) { setPlayerStore(null); return; }
+    setPlayerStore(createPlayClientStore({ playerId: playerContext.playerId }));
+  }, [sessionRole, playerContext]);
+
+  // #373 M10-R2: Host-Push verdrahten. Sobald DM in den Play-Modus geht,
+  // wird WebRtcTransport.host(db) instanziiert und ein Visibility-Broadcaster
+  // an den Transport gehängt — set/clearVisibilityOverride pushen dann als
+  // TransportMessage.
+  useEffect(() => {
+    if (mode !== 'play' || sessionRole !== 'dm' || activeSessionId === null) return;
+    const transport = WebRtcTransport.host(activeSessionId, database);
+    void transport.connect().catch(() => { /* Signaling-Details in S11/S12 */ });
+    const unsub = attachVisibilityBroadcaster(transport);
+    return () => {
+      unsub();
+      void transport.close().catch(() => {});
+    };
+  }, [mode, sessionRole, activeSessionId, database]);
 
   return (
-    <div className="workspace-shell">
-      <nav className="workspace-shell__sidebar" aria-label="Workspace navigation">
-        {AREAS.map(({ id, icon }) => (
+    <AppModeContext.Provider value={modeContextValue}>
+      <div className="workspace-shell">
+        <nav className="workspace-shell__sidebar" aria-label="Workspace navigation">
+          {visibleAreas.map(({ id, icon }) => (
+            <button
+              key={id}
+              data-area={id}
+              aria-label={t(id)}
+              aria-pressed={activeArea === id}
+              onClick={() => setActiveArea(id)}
+              title={t(id)}
+            >
+              {icon}
+            </button>
+          ))}
+          <div className="workspace-shell__sidebar-spacer" />
           <button
-            key={id}
-            data-area={id}
-            aria-label={t(id)}
-            aria-pressed={activeArea === id}
-            onClick={() => setActiveArea(id)}
-            title={t(id)}
+            className="workspace-shell__close-btn"
+            aria-label={t('closeProject')}
+            title={t('closeProject')}
+            onClick={onProjectClose}
           >
-            {icon}
+            ✕
           </button>
-        ))}
-        <div className="workspace-shell__sidebar-spacer" />
-        <button
-          className="workspace-shell__close-btn"
-          aria-label={t('closeProject')}
-          title={t('closeProject')}
-          onClick={onProjectClose}
-        >
-          ✕
-        </button>
-      </nav>
-      <div className="workspace-shell__content">
-        <header className="workspace-shell__header">
-          <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
-          <span className="workspace-shell__area-name">{activeAreaLabel}</span>
-          <div className="workspace-shell__header-controls">
-            <LanguageSwitcher />
-            <ThemeToggle />
-          </div>
-        </header>
-        {renderArea()}
+        </nav>
+        <div className="workspace-shell__content">
+          <header className="workspace-shell__header">
+            <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
+            <span className="workspace-shell__area-name">{activeAreaLabel}</span>
+            <div className="workspace-shell__header-controls">
+              <Segmented
+                label={t('modeToggleLabel', 'Modus')}
+                value={mode}
+                onChange={(id) => { if (id !== mode) handleModeToggle(); }}
+                size="compact"
+                options={[
+                  { id: 'edit', label: t('modeEdit', 'Bearbeiten') },
+                  { id: 'play', label: t('modePlay', 'Spielen') },
+                ]}
+              />
+              <LanguageSwitcher />
+              <ThemeToggle />
+            </div>
+          </header>
+          {showRoleSelect ? (
+            <Panel className="workspace-area workspace-shell__role-select" role="dialog"
+              aria-label={t('modeRolePickTitle', 'Rolle wählen')}>
+              <p>{t('modeRolePickPrompt', 'Campaign und Rolle wählen:')}</p>
+              <div className="workspace-shell__role-campaign u-stack u-gap-2">
+                {availableCampaigns.length > 0 && (
+                  <Segmented
+                    label={t('modeCampaign', 'Campaign')}
+                    value={selectedCampaignForPlay}
+                    onChange={setSelectedCampaignForPlay}
+                    size="compact"
+                    options={availableCampaigns.map((c) => ({ id: c.id, label: c.title }))}
+                  />
+                )}
+                {availableCampaigns.length === 0 && (
+                  <div className="u-row u-gap-2">
+                    <Field
+                      label={t('modeCampaignNew', 'Neue Campaign')}
+                      value={newCampaignTitle}
+                      onChange={(e) => setNewCampaignTitle(e.target.value)}
+                      placeholder={t('modeCampaignNewPh', 'Titel')}
+                    />
+                    <Button
+                      onClick={() => void createAndPickCampaign()}
+                      disabled={newCampaignTitle.trim() === ''}
+                    >
+                      {t('modeCampaignCreate', 'Anlegen')}
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="workspace-shell__role-buttons">
+                <Button tone="accent" onClick={() => void pickRole('dm')}>
+                  {t('modeRoleDm', 'Als DM')}
+                </Button>
+                <Button
+                  disabled={selectedCampaignForPlay === ''}
+                  onClick={() => void pickRole('player')}
+                >
+                  {t('modeRolePlayer', 'Als Player')}
+                </Button>
+                <Button variant="outline" onClick={() => setShowRoleSelect(false)}>
+                  {t('cancel', 'Abbrechen')}
+                </Button>
+              </div>
+            </Panel>
+          ) : inPlayCockpit ? (
+            sessionRole === 'dm' ? (
+              <PlayModeView role={sessionRole} activeSessionId={activeSessionId} database={database} />
+            ) : playerContext !== null && activeSessionId !== null ? (
+              // M10-S14: Nach dem Join sieht der Player das volle Cockpit
+              // (Map/Kampflog/Spotlight/Free-Browse + Bogen), gefiltert durch
+              // S09 (host-seitige Content-Filter). Group-IDs kommen aus der
+              // group_members-Tabelle — die S09-Filter sind an alle Gruppen
+              // des Players adressiert (D6).
+              <PlayModeView
+                role={sessionRole}
+                activeSessionId={activeSessionId}
+                store={playerStore ?? undefined}
+                playerId={playerContext.playerId}
+                playerGroupIds={playerGroupIds}
+              />
+            ) : (
+              // M10-S05: Player-Rolle startet mit dem Beitritts-Flow.
+              <PlayerJoinView
+                database={database}
+                onJoined={async ({ playerId, displayName }) => {
+                  setPlayerContext({ playerId, displayName });
+                  // Group-Zugehörigkeit des Players → Filter-Kontext für S09.
+                  try {
+                    const rows = await database.select<{ group_id: string }>(
+                      'SELECT group_id FROM group_members WHERE player_id = ?',
+                      [playerId],
+                    );
+                    setPlayerGroupIds(rows.map((r) => r.group_id));
+                  } catch { /* keine group_members → leere Liste */ }
+                }}
+              />
+            )
+          ) : (
+            renderArea()
+          )}
+        </div>
       </div>
-    </div>
+    </AppModeContext.Provider>
   );
 }

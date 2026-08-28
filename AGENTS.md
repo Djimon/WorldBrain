@@ -73,6 +73,7 @@ Four phases, separate sessions, linear.
 Interview until Epic splits into Stories. A good Story: one behavior, one owner area, explicit AC, testable, reviewable independently. Split when crossing architecture boundaries or mixing UI + persistence.
 
 Mandatory before AC:
+- **The reader is NEVER the orchestrator.** The person in the chat is the **orchestrator** — they hand the ticket off and never implement it themselves. Every ticket goes to a **cold executor who may never talk to the orchestrator** and has zero chat context. So write each ticket **self-contained for that cold reader**: no references to chat content, private memory files, or conversation jargon (a decision number like `D28` only with its meaning **inlined**); context + setup/run instructions + mount point + environment edge-cases live **inside the ticket**. **Before every `gh issue create`, run a cold-read pass** — grep your own draft for leaks: bare decision-refs, `Memory`, chat jargon, undefined component names, missing setup/mount. For specs/issues the brevity / token-economy bias is **OFF** — thoroughness is the deliverable; "fast" means rebuilding it 2–3× = negative savings.
 - Specify the HOW, not just the WHAT: pin mechanism, UI structure, interfaces, named components, controls, interactions, and how it's measured/compared — a Story that only states goals ("compare 3 renderers") drifts. Unclear HOW → ask, don't guess.
 - Read `ANTI_PATTERNS.md` — copy relevant constraints verbatim into AC
 - Propagate Epic Decisions into every affected Story AC verbatim (not "see Decisions")
@@ -115,6 +116,8 @@ Read order — mandatory, in sequence:
 
 AC in the Issue overrides test assumptions when they conflict — tests describe behavior, the Issue describes intent. Do not edit tests. Tests wrong → stop and report.
 
+**The North Star is the AC, not the test.** Tests are tools for verification, not scope definitions. If the test is limited (only source grep, only guards, only a happy path) and the AC requires more—then implement the full AC. “Test green ⇒ done” is explicitly wrong if test coverage < AC coverage. Before every `PATCH_VERIFIED`, check: does the code satisfy every AC line, or only the tested ones? Untested AC items belong in the ticket comment when closing the ticket—they should not be tacitly omitted.
+
 if you have to build **new UI or edit old**: strictly follow: `docs/UIConsolidation/DEV-UI-GUIDE.md`
 **A UI component isn't done until it's mounted and reachable.** A passing isolated test (`render(<X/>)`) is NOT "done" — Before marking a UI story done, verify a real path renders it: grep that `<Component` appears outside its own file and tests, and that a route/menu/parent actually reaches it in the running app. 
 
@@ -126,7 +129,13 @@ if you have to build **new UI or edit old**: strictly follow: `docs/UIConsolidat
 
 ### 4. Review Agent
 
-Review against: Story AC · architecture · `ANTI_PATTERNS.md` (any instance = automatic Severe) · scope creep · hidden assumptions. Findings first, severity-ordered, with file/line refs.
+Review against: Story AC · architecture · `ANTI_PATTERNS.md` (any instance = automatic Severe) · scope creep · hidden assumptions. UI changes **also** against `docs/UIConsolidation/DEV-UI-GUIDE.md`. Findings first, severity-ordered, with file/line refs.
+
+**AC coverage ≠ test coverage:** test-green is not "done" — mirror of the Implementation North Star. Verify every AC line is met, not only the tested ones. Required-but-untested AC gaps are findings, not silent omissions.
+
+**UI mount/reachability:** each delivered UI component must be reached through a real path — grep that `<Component` appears outside its own file/tests and that a route/menu/parent actually mounts it. Built-but-unmounted = automatic Severe (P0 dead-wiring), never "polish later". Recurring — do not skip: #262, #274, #294, #339.
+
+**UI-Guide conformance:** the two `npm run lint` gates catch raw colors + static inline styles *mechanically*. The reviewer catches what they can't: a bespoke class where a primitive/utility already exists, an inline style that is only pseudo-dynamic, a new component-CSS file that should have been token/utility. Reuse over rebuild is the point.
 
 **Epic-vs-code deviation:** Check `git log` first — UX-sprint decisions often live only in the commit message, never reaching the Epic. Intentional → record it in the Epic instead of filing a finding. Unclear → ask, don't guess.
 
@@ -160,6 +169,7 @@ Plugin ids and directory names: `snake_case` with underscores (`dnd5e_srd`), nev
 - Centralize config; no scattered config
 - Early guard returns ordered by cost/risk
 - No over-engineering the current slice
+- **Read the truth source before typing against it — never invent APIs from memory.** Before writing an `import` from a third-party library not already established in the repo, read the installed types first: `cat node_modules/<pkg>/package.json` (version + exports) and `head node_modules/<pkg>/dist/*.d.ts` (real signatures). Same rule for anything external — DB schemas (read `core_data/*-schema.ts`), config files, JSON contracts. A self-authored `module-shims.d.ts` is an anti-pattern: it makes `tsc` validate against your invention, not reality — green types, dead runtime. If a shim is unavoidable (throwaway spike with intentionally-unbundled deps), it must be a **verbatim copy** from the real `.d.ts` with the source cited in a comment (`// from @pkg/dist/index.d.ts v0.25.3`), never a guess. On runtime errors like "X is not a function/iterable" from a third-party lib, first reflex is re-read the types — not retry, not guess.
 
 ---
 

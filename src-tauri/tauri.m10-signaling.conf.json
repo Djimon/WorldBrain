@@ -1,0 +1,28 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "m10-signaling-spike-a",
+        "title": "M10 Signaling-Spike (Peer A) — #380",
+        "url": "m10-signaling-spike.html?peer=A",
+        "width": 1100,
+        "height": 850,
+        "x": 40,
+        "y": 40,
+        "minWidth": 800,
+        "minHeight": 600
+      },
+      {
+        "label": "m10-signaling-spike-b",
+        "title": "M10 Signaling-Spike (Peer B) — #380",
+        "url": "m10-signaling-spike.html?peer=B",
+        "width": 1100,
+        "height": 850,
+        "x": 1160,
+        "y": 40,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ]
+  }
+}

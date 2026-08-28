@@ -1,0 +1,11 @@
+{
+  "id": "gritty_realism",
+  "name": "Gritty Realism",
+  "kind": "overlay",
+  "overlays": "dnd5e_srd",
+  "description": "Rest-Regeln nach D&D 5e DMG-Variante — kurze Rast dauert eine Nacht (8 h), lange Rast eine Woche (7 Tage).",
+  "overrides": [
+    { "target": "transition:short_rest", "op": "patch", "value": { "duration": "8h" } },
+    { "target": "transition:long_rest",  "op": "replace", "value": { "duration": "7d" } }
+  ]
+}

@@ -101,6 +101,32 @@ export interface SetVisibilityOverrideParams {
   groupId?: string;
 }
 
+// M10-S09 (#358): Live-Push-Hook. Consumer (Play-Cockpit, Whiteboard, ...)
+// registrieren einen Listener; setVisibilityOverride / clearVisibilityOverride
+// rufen ihn nach dem DB-Write auf. Die konkrete Push-Verdrahtung an einen
+// SessionTransport passiert im Consumer — Stufe 3 (S11/S12) wenn ein echter
+// Remote-Client existiert; heute lokal-DB reicht ein DB-Reload beim Consumer.
+export interface VisibilityChange {
+  kind: 'set' | 'clear';
+  campaignId: string;
+  targetType: string;
+  targetId: string;
+  playerId: string | null;
+  groupId: string | null;
+}
+type VisibilityChangeListener = (change: VisibilityChange) => void;
+const listeners = new Set<VisibilityChangeListener>();
+export function onVisibilityChange(listener: VisibilityChangeListener): () => void {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
+function emitChange(change: VisibilityChange): void {
+  for (const l of listeners) {
+    try { l(change); } catch { /* fail-open: ein rausrutschender Listener darf
+                                  den Editor nicht crashen */ }
+  }
+}
+
 export async function setVisibilityOverride(
   database: DatabaseLike,
   params: SetVisibilityOverrideParams,
@@ -110,6 +136,14 @@ export async function setVisibilityOverride(
     'INSERT INTO session_visibility_overrides (id, campaign_id, target_type, target_id, scope, player_id, group_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
     [id, params.campaignId, params.targetType, params.targetId, params.scope, params.playerId ?? null, params.groupId ?? null],
   );
+  emitChange({
+    kind: 'set',
+    campaignId: params.campaignId,
+    targetType: params.targetType,
+    targetId: params.targetId,
+    playerId: params.playerId ?? null,
+    groupId: params.groupId ?? null,
+  });
 }
 
 export interface ClearVisibilityOverrideParams {
@@ -128,4 +162,12 @@ export async function clearVisibilityOverride(
     'DELETE FROM session_visibility_overrides WHERE campaign_id = ? AND target_type = ? AND target_id = ? AND (player_id = ? OR group_id = ?)',
     [params.campaignId, params.targetType, params.targetId, params.playerId ?? null, params.groupId ?? null],
   );
+  emitChange({
+    kind: 'clear',
+    campaignId: params.campaignId,
+    targetType: params.targetType,
+    targetId: params.targetId,
+    playerId: params.playerId ?? null,
+    groupId: params.groupId ?? null,
+  });
 }

@@ -44,6 +44,19 @@ async function hashToken(token: string): Promise<string> {
 }
 
 /**
+ * Aktueller Einladungscode einer Campaign (der zuletzt generierte, nicht
+ * invalidierte). Null wenn noch nie einer erzeugt wurde. Die UI ruft das
+ * beim Mount, statt still einen neuen anzulegen (#371 Fix 1).
+ */
+export async function getActiveInviteCode(db: DatabaseLike, campaignId: string): Promise<string | null> {
+  const rows = await db.select<{ code: string }>(
+    "SELECT code FROM invite_codes WHERE campaign_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
+    [campaignId],
+  );
+  return rows[0]?.code ?? null;
+}
+
+/**
  * Erzeugt einen neuen Einladungscode für die Campaign und markiert alle
  * bestehenden aktiven Codes derselben Campaign als invalidiert.
  * Bereits eingeloggte Spieler behalten ihr Token (D24 — die Invalidierung

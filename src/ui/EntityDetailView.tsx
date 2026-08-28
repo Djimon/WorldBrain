@@ -17,6 +17,8 @@ import { loadActiveCalendar } from '../services/calendar-service';
 import { getRelations } from '../services/relation-service';
 import type { RelationRow } from '../services/relation-service';
 import { Button, Chip, Tabs } from './primitives';
+import { useReadOnly } from './useReadOnly';
+import { VisibilityScopePicker, type BaseScope } from './VisibilityScopePicker';
 
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
@@ -62,6 +64,10 @@ type EntityDetailViewProps = {
   /** Called after the entity is deleted — the parent owns what happens next
    *  (close an inline panel, clear a list selection, ...). */
   onDeleted?: () => void;
+  /** M14 (#345): Called after every successful `commitEdit()` — Parent kann
+   *  seinen Cache/Refresh-Token bumpen (z.B. Kalender-Refresh nach End-Datum-
+   *  Änderung). Feuert für Event- und Nicht-Event-Zweig. */
+  onSaved?: () => void;
   /** Read-only compact peek: render ONLY the overview tab (no registered extra
    *  tabs, no tab strip, no edit pencil). Used by the graph node-preview so it
    *  can't re-mount its own Graph tab → infinite recursion. The caller pairs it
@@ -69,8 +75,9 @@ type EntityDetailViewProps = {
   overviewOnly?: boolean;
 };
 
-export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted, overviewOnly }: EntityDetailViewProps) {
+export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted, onSaved, overviewOnly }: EntityDetailViewProps) {
   const { t } = useTranslation('entity');
+  const readOnly = useReadOnly(); // M10-S23: Player-Modus blendet Edit/Delete aus.
   const [activeTab, setActiveTab] = useState('overview');
   const [extraTabs] = useState<TabDefinition[]>(() => [...registeredTabs]);
   const [result, setResult] = useState<EffectiveResult | null>(null);
@@ -131,11 +138,11 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
   // the same entity (e.g. after commitEdit's own load() call).
   const autoEditAppliedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (startInEditMode && result?.found && autoEditAppliedFor.current !== entityId) {
+    if (startInEditMode && !readOnly && result?.found && autoEditAppliedFor.current !== entityId) {
       autoEditAppliedFor.current = entityId;
       startEdit();
     }
-  }, [result, startInEditMode, entityId]);
+  }, [result, startInEditMode, entityId, readOnly]);
 
   // #292 follow-up: participants/locations shown directly in the Event
   // overview (not only behind the separate Relations tab) — "who/where" is
@@ -158,10 +165,12 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
     setEditTitle(entity.title);
     setEditSummary(entity.summary);
     setEditProps({ ...entity.properties });
+    // M10-S07: editVisibility gilt für ALLE Entity-Typen (VisibilityScopePicker
+    // im Overview-Tab), nicht mehr nur für Events.
+    setEditVisibility(entity.visibility);
     if (entity.type === 'Event') {
       setEditStartDay(typeof entity.properties.start_day === 'number' ? entity.properties.start_day : 0);
       setEditEndDay(typeof entity.properties.end_day === 'number' ? entity.properties.end_day : undefined);
-      setEditVisibility(entity.visibility);
       setEditCategory(typeof entity.properties.category === 'string' ? entity.properties.category : undefined);
     }
     setEditing(true);
@@ -178,12 +187,15 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
         category: editCategory,
       });
       await saveEntity(database as DatabaseLike, entityId, { summary: editSummary, visibility: editVisibility });
+      onSaved?.();
     } else {
       await saveEntity(database as DatabaseLike, entityId, {
         title: editTitle,
         summary: editSummary,
         properties: editProps,
+        visibility: editVisibility,
       });
+      onSaved?.();
     }
     setEditing(false);
     load();
@@ -231,17 +243,47 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
               <div className="entity-detail__field">
                 <EffectEditor database={database as DatabaseLike} eventId={entityId} startDay={editStartDay} calendar={effectiveCalendar} />
               </div>
+              {/* M10-S07: Auch Events bekommen den per-Spieler/Gruppen-Editor
+                  (der base-Scope-Select in EventFormFields deckt nur die 4
+                  Klassik-Scopes ab, hier folgt der additive Layer). */}
+              <div className="entity-detail__field">
+                <label className="entity-detail__field-label">{t('field.visibility', 'Sichtbarkeit (Overrides)')}</label>
+                <VisibilityScopePicker
+                  database={database as DatabaseLike}
+                  targetType="entity"
+                  targetId={entityId}
+                  baseScope={(editVisibility || 'public') as BaseScope}
+                  onBaseScopeChange={(s) => setEditVisibility(s)}
+                />
+              </div>
             </>
-          ) : Object.keys(schema.properties).length > 0 && (
-            <div className="entity-detail__field">
-              <label className="entity-detail__field-label">{t('field.properties')}</label>
-              <PropertiesForm
-                schema={schema.properties}
-                values={editProps}
-                onChange={(patch) => setEditProps((prev) => ({ ...prev, ...patch }))}
-                entities={allEntities}
-              />
-            </div>
+          ) : (
+            <>
+              {Object.keys(schema.properties).length > 0 && (
+                <div className="entity-detail__field">
+                  <label className="entity-detail__field-label">{t('field.properties')}</label>
+                  <PropertiesForm
+                    schema={schema.properties}
+                    values={editProps}
+                    onChange={(patch) => setEditProps((prev) => ({ ...prev, ...patch }))}
+                    entities={allEntities}
+                  />
+                </div>
+              )}
+              {/* M10-S07 (#356): base-scope + per-Spieler/Gruppen-Overrides.
+                  Editor bewusst hier für alle nicht-Event-Typen (Events haben
+                  ihr eigenes Sichtbarkeits-Widget in EventFormFields). */}
+              <div className="entity-detail__field">
+                <label className="entity-detail__field-label">{t('field.visibility', 'Sichtbarkeit')}</label>
+                <VisibilityScopePicker
+                  database={database as DatabaseLike}
+                  targetType="entity"
+                  targetId={entityId}
+                  baseScope={(editVisibility || 'public') as BaseScope}
+                  onBaseScopeChange={(s) => setEditVisibility(s)}
+                />
+              </div>
+            </>
           )}
         </div>
       ) : (
@@ -374,7 +416,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
               <Button tone="danger" variant="outline" size="compact" onClick={() => setDeletePrompt(true)}>{t('delete', 'Löschen')}</Button>
             )}
           </>
-        ) : overviewOnly ? null : (
+        ) : overviewOnly || readOnly ? null : (
           <Button variant="ghost" size="icon" className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', 'Bearbeiten')} title={t('edit', 'Bearbeiten')}>✏️</Button>
         )}
       </div>

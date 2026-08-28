@@ -4,7 +4,9 @@ import { applyAudioSchema } from '../../core_data/audio-schema';
 import { applyCalendarSchema } from '../../core_data/calendar-schema';
 import { applyCardSchema } from '../../core_data/card-schema';
 import { applyHandoutSchema } from '../../core_data/handout-schema';
+import { applyGraphSchema } from '../../core_data/graph-schema';
 import { applyMapSchema } from '../../core_data/map-schema';
+import { applyMultiplayerSchema } from '../../core_data/multiplayer-schema';
 import { applyRelationsSchema } from '../../core_data/relations-schema';
 import { applyRuleSchema } from '../../core_data/rule-schema';
 import { applySavedViewsSchema } from '../../core_data/saved-views-schema';
@@ -41,14 +43,21 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   await adapter.execute(`ALTER TABLE base_entities ADD COLUMN body_json TEXT NOT NULL DEFAULT '{"format":"portable_blocks_v1","blocks":[]}'`).catch(() => {});
   await adapter.execute(`ALTER TABLE base_entities ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'`).catch(() => {});
 
+  // M10-S20 (D23): campaign-scoped overrides. Fresh shape ist campaign_id NOT
+  // NULL + updated_at; auf alten DBs ziehen die ALTERs die Spalten nach (die
+  // Alt-Rows kriegen '' als campaign_id → Dev-DB wegwerfbar, Epic D23).
   await adapter.execute(`
     CREATE TABLE IF NOT EXISTS campaign_entity_overrides (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL DEFAULT '',
       entity_id TEXT NOT NULL,
       patch_json TEXT NOT NULL DEFAULT '{}',
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
+  await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN campaign_id TEXT NOT NULL DEFAULT ''`).catch(() => {});
+  await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))`).catch(() => {});
 
   await adapter.execute(`ALTER TABLE maps ADD COLUMN grid_json TEXT`).catch(() => {});
 
@@ -95,9 +104,18 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN art_offset_x REAL NOT NULL DEFAULT 0`).catch(() => {});
   await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN art_offset_y REAL NOT NULL DEFAULT 0`).catch(() => {});
   await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN scale REAL NOT NULL DEFAULT 1`).catch(() => {});
+  // M15-S09 (#309): Single-counter → counters_json. Alle 4 Statements
+  // idempotent — .catch(() => {}) fängt „duplicate column", „no such
+  // column" beide Richtungen (fresh DB / alte DB).
+  await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN counters_json TEXT NOT NULL DEFAULT '[]'`).catch(() => {});
+  await adapter.execute(`UPDATE map_tokens SET counters_json = json_array(json_object('label', COALESCE(counter_label,''), 'value', counter_value)) WHERE counter_value IS NOT NULL`).catch(() => {});
+  await adapter.execute(`ALTER TABLE map_tokens DROP COLUMN counter_label`).catch(() => {});
+  await adapter.execute(`ALTER TABLE map_tokens DROP COLUMN counter_value`).catch(() => {});
   applySavedViewsSchema(db as unknown as Parameters<typeof applySavedViewsSchema>[0]);
   await applySearchSchema(adapter);
   applySessionSchema(db as unknown as Parameters<typeof applySessionSchema>[0]);
+  // M10-S20 (D23): Termin → Campaign-Bindung. Idempotent für alte DBs.
+  await adapter.execute(`ALTER TABLE sessions ADD COLUMN campaign_id TEXT`).catch(() => {});
   await applyRelationsSchema(adapter);
   // One-time (idempotent) cleanup: relations left dangling by deletes that
   // predate deleteEntity's cascade (or any other path that removed an entity
@@ -108,6 +126,12 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   ).catch(() => {});
   applyRuleSchema(adapter);
   applyAudioSchema(db as unknown as Parameters<typeof applyAudioSchema>[0]);
+  // M10 Rebuild: campaigns/players/session_players/player_groups/group_members/
+  // invite_codes/session_visibility_overrides/campaign_notes.
+  applyMultiplayerSchema(db as unknown as Parameters<typeof applyMultiplayerSchema>[0]);
+  // M16-S10 (#327): graph_layout_cache — persist the precomputed layout so
+  // the renderer opens instantly (no cold-settle).
+  applyGraphSchema(db as unknown as Parameters<typeof applyGraphSchema>[0]);
 
   // Drain all fire-and-forget schema exec() calls before returning.
   await adapter.flush();

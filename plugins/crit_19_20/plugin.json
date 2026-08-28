@@ -1,0 +1,10 @@
+{
+  "id": "crit_19_20",
+  "name": "Crit on 19–20",
+  "kind": "overlay",
+  "overlays": "dnd5e_srd",
+  "description": "Kritischer Treffer bereits bei natürlicher 19 (bei manchen Klassen/Waffen).",
+  "overrides": [
+    { "target": "bands:attack", "op": "patch", "value": { "crit_min": 19 } }
+  ]
+}

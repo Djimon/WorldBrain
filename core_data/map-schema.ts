@@ -63,17 +63,11 @@ export function applyMapSchema(db: MapDb): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
-  // M15-S09 (#309): migrate single-counter to counters_json array.
-  // Safe to run on fresh DBs (column already exists) and on old DBs.
-  try {
-    db.exec(`ALTER TABLE map_tokens ADD COLUMN counters_json TEXT NOT NULL DEFAULT '[]'`);
-    // Migrate existing single-counter rows to the new format.
-    db.exec(`UPDATE map_tokens SET counters_json = json_array(json_object('label', COALESCE(counter_label,''), 'value', counter_value)) WHERE counter_value IS NOT NULL`);
-    db.exec(`ALTER TABLE map_tokens DROP COLUMN counter_label`);
-    db.exec(`ALTER TABLE map_tokens DROP COLUMN counter_value`);
-  } catch {
-    // Column already exists (fresh DB from new schema) — nothing to do.
-  }
+  // M15-S09 (#309): Single-counter → counters_json Migration passiert nicht
+  // hier (TauriSqlAdapter.exec() verschluckt sync-errors, rejections eskapieren
+  // als unhandled promise). Die idempotenten ALTERs sitzen in src/services/
+  // db-init.ts, wo `adapter.execute(...).catch(() => {})` Konvention ist.
+  // Für synchrone DatabaseSync-Tests reicht das fresh-Schema oben.
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS map_markers (
