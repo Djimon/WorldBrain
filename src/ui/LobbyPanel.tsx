@@ -7,9 +7,11 @@ import type { DatabaseLike } from '../services/entity-service';
 import { listCampaignPlayers, kick as kickPlayer } from '../services/player-membership-service';
 import { generateInviteCode, getActiveInviteCode } from '../services/session-identity-service';
 import type { SessionPlayer } from '../services/player-membership-service';
+import { addMember, listGroups, removeMember, type PlayerGroup } from '../services/player-groups-service';
 import { Button, Field, ListSurface, Panel, StatusChip } from './primitives';
 
 interface PlayerRow { id: string; display_name: string }
+interface GroupMemberRow { group_id: string; player_id: string }
 
 export interface LobbyPanelProps {
   database: DatabaseLike;
@@ -27,11 +29,19 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
   const [inviteCode, setInviteCode] = useState(currentInviteCode);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // #377 D31: campaign-scoped Gruppen (Namen aus Edit-Panel #371) +
+  // per-Mitglied-Zuordnung; hier existieren die Mitglieder wirklich.
+  const [groups, setGroups] = useState<PlayerGroup[]>([]);
+  const [memberGroups, setMemberGroups] = useState<Record<string, string[]>>({});
 
   async function reload() {
     try {
-      const rows = await listCampaignPlayers(database, campaignId);
+      const [rows, gs] = await Promise.all([
+        listCampaignPlayers(database, campaignId),
+        listGroups({ database, campaignId }),
+      ]);
       setPlayers(rows);
+      setGroups(gs);
       // Anzeigename statt UUID: display_name aus der players-Tabelle nachladen.
       if (rows.length > 0) {
         const ids = rows.map((r) => r.player_id);
@@ -43,11 +53,35 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
         const map: Record<string, string> = {};
         for (const n of names) map[n.id] = n.display_name;
         setPlayerNames(map);
+        // Gruppen-Membership pro Mitglied laden.
+        const memberships = await database.select<GroupMemberRow>(
+          `SELECT group_id, player_id FROM group_members WHERE player_id IN (${placeholders})`,
+          ids,
+        );
+        const mg: Record<string, string[]> = {};
+        for (const m of memberships) {
+          if (!mg[m.player_id]) mg[m.player_id] = [];
+          mg[m.player_id].push(m.group_id);
+        }
+        setMemberGroups(mg);
       } else {
         setPlayerNames({});
+        setMemberGroups({});
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : t('lobby.loadError', 'Roster konnte nicht geladen werden.'));
+    }
+  }
+
+  async function toggleGroup(playerId: string, groupId: string) {
+    setError(null);
+    const current = memberGroups[playerId] ?? [];
+    try {
+      if (current.includes(groupId)) await removeMember({ database, groupId, playerId });
+      else await addMember({ database, groupId, playerId });
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -160,20 +194,44 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
           {activePlayers.length === 0 && (
             <li className="lobby-panel__empty">{t('lobby.rosterEmpty', 'Noch niemand beigetreten.')}</li>
           )}
-          {activePlayers.map((p) => (
-            <li key={p.id} className="lobby-panel__player u-row u-gap-2">
-              <span className="lobby-panel__player-name">{playerNames[p.player_id] ?? p.player_id}</span>
-              <StatusChip tone="success">{t('lobby.online', 'online')}</StatusChip>
-              <Button
-                tone="danger"
-                variant="outline"
-                size="compact"
-                onClick={() => void handleKick(p.player_id)}
-              >
-                {t('lobby.kick', 'Kick')}
-              </Button>
-            </li>
-          ))}
+          {activePlayers.map((p) => {
+            const assigned = memberGroups[p.player_id] ?? [];
+            return (
+              <li key={p.id} className="lobby-panel__player u-stack u-gap-1">
+                <div className="u-row u-gap-2">
+                  <span className="lobby-panel__player-name">{playerNames[p.player_id] ?? p.player_id}</span>
+                  <StatusChip tone="success">{t('lobby.online', 'online')}</StatusChip>
+                  <Button
+                    tone="danger"
+                    variant="outline"
+                    size="compact"
+                    onClick={() => void handleKick(p.player_id)}
+                  >
+                    {t('lobby.kick', 'Kick')}
+                  </Button>
+                </div>
+                {groups.length > 0 && (
+                  <div className="u-row u-gap-2">
+                    <span className="u-muted">{t('lobby.groups', 'Gruppen:')}</span>
+                    {groups.map((g) => {
+                      const isMember = assigned.includes(g.id);
+                      return (
+                        <Button
+                          key={g.id}
+                          size="compact"
+                          tone={isMember ? 'accent' : 'neutral'}
+                          variant={isMember ? undefined : 'outline'}
+                          onClick={() => void toggleGroup(p.player_id, g.id)}
+                        >
+                          {g.name}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ListSurface>
       </div>
     </Panel>
