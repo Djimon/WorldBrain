@@ -133,7 +133,7 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
   // Beim Mount die appId ableiten (deterministisch, per-Host).
   useEffect(() => {
     let cancelled = false;
-    void currentAppId('0.9').then((id) => { if (!cancelled) setNsAppId(id); });
+    void currentAppId().then((id) => { if (!cancelled) setNsAppId(id); });
     return () => { cancelled = true; };
   }, []);
 

@@ -18,6 +18,16 @@
 const STORAGE_KEY = 'wbrain.host-secret';
 const APP_NAME = 'WorldBuilderX';
 
+/**
+ * Konzeptionelle Major-Minor-Version der App für den Broker-Namespace.
+ * BEWUSST NICHT aus package.json abgeleitet: `package.json.version` (0.0.x)
+ * ist der Build-Zähler und wird bei jedem Release inkrementiert — würde
+ * darauf gehasht, wäre nach jedem Patch der Namespace neu und alle alten
+ * Einladungen tot. Diese Konstante wird nur bei bewussten Namespace-Cuts
+ * (inkompatible Netzwerk-Version) angefasst, nicht per Release-Automation.
+ */
+export const APP_MAJOR_MINOR = '0.9';
+
 export interface DeriveAppIdOpts {
   appName: string;
   majorMinor: string;
@@ -71,10 +81,13 @@ function generateSecret(): string {
 }
 
 /**
- * Convenience: für den aktuellen Host die appId mit Standard-Konstanten
- * (WorldBuilderX + majorMinor aus package-json-Konstante) ableiten.
+ * Convenience: für den aktuellen Host die appId mit den kanonischen
+ * Konstanten (APP_NAME + APP_MAJOR_MINOR) + persistiertem Host-Secret
+ * ableiten. Diese Funktion ist die EINZIGE Stelle wo Aufrufer die appId
+ * bekommen sollen — kein manuelles majorMinor-Übergeben mehr (verhindert
+ * Desync zwischen Aufruferstellen).
  */
-export async function currentAppId(majorMinor: string): Promise<string> {
+export async function currentAppId(): Promise<string> {
   const secret = await getHostSecret();
-  return deriveAppId({ appName: APP_NAME, majorMinor, hostSecret: secret });
+  return deriveAppId({ appName: APP_NAME, majorMinor: APP_MAJOR_MINOR, hostSecret: secret });
 }

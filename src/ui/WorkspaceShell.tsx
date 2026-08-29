@@ -936,7 +936,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     const campaignId = activeSessionId;
     void (async () => {
       await transport.connect();
-      const appId = await currentAppId('0.9');
+      const appId = await currentAppId();
       await transport.attachSignaling({
         appId,
         roomId: campaignId,
