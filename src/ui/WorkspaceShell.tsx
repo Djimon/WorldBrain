@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useDatabase } from '../services/DatabaseContext';
 import { listEntityTypes } from '../services/plugin-entity-service';
 import { listMaps, importMapImage } from '../services/map-service';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { copyMapAsset } from '../services/map-asset';
 import type { MapRow } from '../services/map-service';
 import { listViews } from '../services/saved-views-service';
 import type { SavedViewRow } from '../services/saved-views-service';
@@ -330,8 +332,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   }, [activeArea]);
 
   async function handleMapImport() {
-    const { open } = await import('@tauri-apps/plugin-dialog');
-    const selected = await open({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
+    const selected = await openDialog({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
     if (typeof selected !== 'string') return;
     setMapImporting(true);
     try {
@@ -347,8 +348,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
 
   async function handleAddImageLayer() {
     if (!selectedMapId) return;
-    const { open } = await import('@tauri-apps/plugin-dialog');
-    const selected = await open({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
+    const selected = await openDialog({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
     if (typeof selected !== 'string') return;
     const name = selected.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? 'Bild-Layer';
     await importImageLayer(database, { map_id: selectedMapId, srcPath: selected, projectDir: projectDir ?? '', name });
@@ -372,10 +372,8 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // #298: token art upload — opens the Tauri dialog, copies the image via the
   // shared asset flow, returns the asset id for the TokenEditor to store.
   async function handlePickTokenArt(): Promise<string | null> {
-    const { open } = await import('@tauri-apps/plugin-dialog');
-    const selected = await open({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
+    const selected = await openDialog({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
     if (typeof selected !== 'string') return null;
-    const { copyMapAsset } = await import('../services/map-asset');
     return copyMapAsset(selected, projectDir ?? '', `token-${crypto.randomUUID()}`);
   }
 

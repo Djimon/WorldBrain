@@ -1,7 +1,7 @@
 {
   "name": "worldbuilderx",
   "version": "0.0.27",
-  "build": 1,
+  "build": 2,
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
@@ -10,6 +10,7 @@
     "lint": "eslint src core_data && npm run lint:colors",
     "lint:colors": "node scripts/check-hardcoded-colors.mjs",
     "lint:prune": "eslint src core_data --prune-suppressions",
+    "bump:build": "node scripts/bump-build.mjs",
     "check": "npm run check:toolchain && npm run check:prerequisites && npm run lint && npm run test && npm run build && npm run desktop:build",
     "check:prerequisites": "node scripts/check-prerequisites.mjs",
     "check:toolchain": "node scripts/check-toolchain.mjs",

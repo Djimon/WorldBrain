@@ -8,6 +8,7 @@ import {
   createPreset, deletePreset, listPresets, updatePreset,
 } from '../services/audio-service';
 import type { SourceType } from '../services/audio-service';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { copyAudioAsset } from '../services/audio-asset';
 import { parseSpotifyUri } from '../services/spotify-uri';
 import { EmojiPicker } from './EmojiPicker';
@@ -85,8 +86,7 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
   }, [database, channelId, presetId]);
 
   async function handlePickFile() {
-    const { open } = await import('@tauri-apps/plugin-dialog');
-    const selected = await open({
+    const selected = await openDialog({
       filters: [{ name: t('audioClipAudioFiles', 'Audio'), extensions: ['mp3', 'wav', 'ogg', 'm4a', 'flac'] }],
       multiple: false,
     });
