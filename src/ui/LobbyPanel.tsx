@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { listCampaignPlayers, kick as kickPlayer } from '../services/player-membership-service';
 import { generateInviteCode, getActiveInviteCode } from '../services/session-identity-service';
+import { currentAppId } from '../services/app-id-service';
 import type { SessionPlayer } from '../services/player-membership-service';
 import { addMember, listGroups, removeMember, type PlayerGroup } from '../services/player-groups-service';
 import { Button, Field, ListSurface, Panel, StatusChip } from './primitives';
@@ -27,6 +28,10 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
   const [players, setPlayers] = useState<SessionPlayer[]>([]);
   const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
   const [inviteCode, setInviteCode] = useState(currentInviteCode);
+  // S11 (#367): per-Host `appId` (aus getHostSecret + majorMinor) wird als
+  // `&ns=<appId>` in den Einladungslink codiert — der Joiner kann den
+  // Broker-Namespace nicht selbst ableiten, deshalb trägt ihn der Link.
+  const [nsAppId, setNsAppId] = useState('');
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // #377 D31: campaign-scoped Gruppen (Namen aus Edit-Panel #371) +
@@ -125,11 +130,18 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
   // Reconnect-Schutz), tauchen aber nicht mehr in "Verbundene Spieler" auf.
   const activePlayers = players.filter((p) => p.status === 'active');
 
-  // Teilbarer Einladungs-Link (D27): trägt Code + Campaign — der Client kann
-  // ihn per Paste direkt in den Beitrittsflow einwerfen (S05 akzeptiert
-  // Link ODER nackten Code).
+  // Beim Mount die appId ableiten (deterministisch, per-Host).
+  useEffect(() => {
+    let cancelled = false;
+    void currentAppId('0.9').then((id) => { if (!cancelled) setNsAppId(id); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Teilbarer Einladungs-Link (D27 + S11): trägt Code + Campaign + `ns` als
+  // unerratbaren Broker-Namespace. S05 akzeptiert Link ODER nackten Code —
+  // der Link ist die einzige Quelle für `ns` (kein manuelles Eingeben).
   const inviteLink = inviteCode !== ''
-    ? `wbrain://join?code=${encodeURIComponent(inviteCode)}&campaign=${encodeURIComponent(campaignId)}`
+    ? `wbrain://join?code=${encodeURIComponent(inviteCode)}&campaign=${encodeURIComponent(campaignId)}&ns=${encodeURIComponent(nsAppId)}`
     : '';
 
   async function copyToClipboard(text: string) {

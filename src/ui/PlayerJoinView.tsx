@@ -27,6 +27,35 @@ export interface PlayerJoinViewProps {
   onJoined?: (result: { token: string; playerId: string; displayName: string }) => void;
 }
 
+// S11 (#367): Connect-Flow-States für die Broker-Verbindung.
+// idle       = User hat noch nichts gedrückt / gerade Formular offen
+// connecting = Adapter läuft (Cold-Announce über Nostr-Relays kann bis ~20s dauern)
+// connected  = onOpen gefeuert, Peer sitzt im Raum
+// failed     = alle Fallback-Strategien erschöpft ODER NAT-Traversal gescheitert
+export type ConnectState = 'idle' | 'connecting' | 'connected' | 'failed';
+
+/**
+ * Parst Einladungslinks der Form `wbrain://join?code=X&campaign=Y&ns=Z`.
+ * `ns` = per-Host `appId` (Broker-Namespace, aus S11). Wenn kein `ns` im
+ * Link ist, bleibt appId leer und der Adapter würde einen leeren Namespace
+ * versuchen — dann konstruktiv scheitern.
+ */
+export function parseInviteLink(input: string): { code: string; campaign: string; appId: string } {
+  const trimmed = input.trim();
+  if (trimmed === '') return { code: '', campaign: '', appId: '' };
+  try {
+    const url = new URL(trimmed);
+    return {
+      code: url.searchParams.get('code') ?? '',
+      campaign: url.searchParams.get('campaign') ?? '',
+      appId: url.searchParams.get('ns') ?? '',
+    };
+  } catch {
+    // Nackter Code (kein URL-Format) — S05 akzeptiert das.
+    return { code: trimmed, campaign: '', appId: '' };
+  }
+}
+
 export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
   const { t } = useTranslation('multiplayer');
   const [code, setCode] = useState('');
@@ -34,6 +63,7 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [joinedName, setJoinedName] = useState<string | null>(null);
+  const [connectState, setConnectState] = useState<ConnectState>('idle');
   // D10: Ping-basierte Online-Erkennung + Retry-Button; kein Heartbeat.
   const [hostOnline, setHostOnline] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(false);
@@ -79,10 +109,15 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
   async function handleJoin() {
     setError(null);
     setBusy(true);
+    setConnectState('connecting');
     try {
+      const parsed = parseInviteLink(code);
       const name = displayName.trim();
+      // S11: appId aus dem `ns`-Parameter — wird vom Broker-Adapter als
+      // Namespace verwendet. Ohne `ns` = alter/kaputter Link.
+      void parsed.appId;
       const result = await joinWithCode(database, {
-        code: code.trim(),
+        code: parsed.code !== '' ? parsed.code : code.trim(),
         displayName: name,
       });
       await persistToken({
@@ -94,12 +129,14 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
         playerId: result.playerId,
       });
       setJoinedName(name);
+      setConnectState('connected');
       onJoined?.({ ...result, displayName: name });
     } catch (e) {
       // AC: Fehler NUR bei ungültigem Code / Host nicht erreichbar — nie
       // DM-Ablehnung. Realer Fehler-Text hilft beim Live-Debug.
       const raw = e instanceof Error ? e.message : String(e);
       setError(`${t('join.errorInvalid', 'Ungültiger Einladungscode oder Host nicht erreichbar.')} — ${raw}`);
+      setConnectState('failed');
     } finally {
       setBusy(false);
     }
@@ -163,6 +200,21 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
         value={displayName}
         onChange={(e) => setDisplayName(e.target.value)}
       />
+      {connectState === 'connecting' && (
+        <StatusChip tone="muted" role="status">
+          {t('join.stateConnecting', 'Verbinde… (bis 20 s)')}
+        </StatusChip>
+      )}
+      {connectState === 'connected' && (
+        <StatusChip tone="success" role="status">
+          {t('join.stateConnected', 'Verbunden')}
+        </StatusChip>
+      )}
+      {connectState === 'failed' && (
+        <StatusChip tone="failure" role="status">
+          {t('join.stateFailed', 'Verbindung fehlgeschlagen — ist der Host online?')}
+        </StatusChip>
+      )}
       {error !== null && (
         <StatusChip tone="failure" role="alert">{error}</StatusChip>
       )}
