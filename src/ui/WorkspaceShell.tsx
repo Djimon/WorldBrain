@@ -38,6 +38,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { Button, Field, Panel, Segmented } from './primitives';
 import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext';
 import { WebRtcTransport } from '../services/webrtc-transport';
+import { currentAppId } from '../services/app-id-service';
 import { attachVisibilityBroadcaster } from '../services/player-content-filter-service';
 import { createPlayClientStore, type PlayClientStoreImpl } from '../services/play-client-store';
 import { listCampaigns, createCampaign, type Campaign } from '../services/campaign-service';
@@ -924,14 +925,25 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     setPlayerStore(createPlayClientStore({ playerId: playerContext.playerId }));
   }, [sessionRole, playerContext]);
 
-  // #373 M10-R2: Host-Push verdrahten. Sobald DM in den Play-Modus geht,
-  // wird WebRtcTransport.host(db) instanziiert und ein Visibility-Broadcaster
-  // an den Transport gehängt — set/clearVisibilityOverride pushen dann als
-  // TransportMessage.
+  // #373 M10-R2 + S11: Host-Push verdrahten + Broker-Signaling attachen.
+  // DM ist im Host/Connect-Modell Peer 'A' (Initiator). appId = currentAppId
+  // (per-Host-Namespace aus getHostSecret); roomId = campaignId. Der Signaling-
+  // Adapter läuft die Fallback-Kette (Nostr → MQTT → BitTorrent → PeerJS) und
+  // vermittelt SDP/ICE — Spieldaten bleiben P2P.
   useEffect(() => {
     if (mode !== 'play' || sessionRole !== 'dm' || activeSessionId === null) return;
     const transport = WebRtcTransport.host(activeSessionId, database);
-    void transport.connect().catch(() => { /* Signaling-Details in S11/S12 */ });
+    const campaignId = activeSessionId;
+    void (async () => {
+      await transport.connect();
+      const appId = await currentAppId('0.9');
+      await transport.attachSignaling({
+        appId,
+        roomId: campaignId,
+        peerLabel: 'A',
+        onError: (err) => console.warn('[host-signaling]', err.message),
+      });
+    })().catch((e) => console.warn('[host-signaling] setup failed', e));
     const unsub = attachVisibilityBroadcaster(transport);
     return () => {
       unsub();

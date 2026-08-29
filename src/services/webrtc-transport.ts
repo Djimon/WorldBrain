@@ -15,7 +15,7 @@ import { validateIncomingMessage } from './session-transport';
 import type { SessionTransport, TransportMessage } from './session-transport';
 import type { DatabaseLike } from './entity-service';
 import { validateToken } from './session-identity-service';
-import { createSignalingAdapter } from './signaling';
+import { createSignalingAdapter, connectWithFallback, STRATEGY_ORDER } from './signaling';
 import type { AdapterHandle, AdapterKey } from './signaling';
 
 const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
@@ -54,6 +54,8 @@ export interface SignalingAttachOpts {
   onDiagnostic?: (msg: string) => void;
   /** NAT-/Broker-Fehler → User-sichtbare Meldung. */
   onError?: (err: Error) => void;
+  /** Feuert wenn Broker Peer-Vermittlung geschafft hat (vor DataChannel-open). */
+  onConnected?: () => void;
 }
 
 export class WebRtcTransport implements SessionTransport {
@@ -90,23 +92,50 @@ export class WebRtcTransport implements SessionTransport {
   }
 
   /**
-   * S11: Signaling-Adapter (#368) an den Transport hängen. Der Adapter
-   * tauscht SDP-Offer/Answer + ICE-Kandidaten über den Broker (Nostr/MQTT/
-   * BitTorrent/PeerJS) aus. Danach läuft die P2P-Verbindung direkt.
+   * S11: Signaling-Adapter (#368) an den Transport hängen — über den
+   * Fallback-Orchestrator (`connectWithFallback`), sodass die feste Kette
+   * Nostr → MQTT → BitTorrent → PeerJS automatisch durchläuft, wenn eine
+   * Strategie zickt. Erfolg = `onOpen` beim ersten funktionierenden Broker.
    *
    * Der Broker sieht nur SDP/ICE — keine Spieldaten (E2E via WebRTC).
    * Bei strenger Symmetric-NAT scheitert die ICE-Handshake trotz STUN und
    * feuert `onError` (kein TURN in V1).
+   *
+   * `opts.onConnected` feuert wenn der Broker beide Peers vermittelt hat —
+   * die eigentliche P2P-DataChannel-Öffnung folgt asynchron danach.
    */
   async attachSignaling(opts: SignalingAttachOpts): Promise<void> {
     if (this.pc === null) throw new Error('Transport not connected — call connect() first');
     const pc = this.pc;
-    const strategy: AdapterKey = opts.strategy ?? 'nostr';
-    this.signalingHandle = await createSignalingAdapter(strategy, {
+    // Nur echte AdapterKey akzeptieren; wenn strategy gesetzt, single-shot,
+    // sonst volle Fallback-Kette.
+    const order: AdapterKey[] = opts.strategy !== undefined
+      ? [opts.strategy]
+      : STRATEGY_ORDER;
+    // ICE-Kandidaten des lokalen Peers via Broker mit-teilen (Handler muss
+    // GESETZT sein bevor der Adapter open feuert — sonst gehen frühe
+    // Kandidaten verloren; deshalb hier vor connectWithFallback).
+    pc.onicecandidate = (ev) => {
+      if (ev.candidate !== null) {
+        this.signalingHandle?.send({ kind: 'ice', candidate: ev.candidate.toJSON() });
+      }
+    };
+    this.signalingHandle = await connectWithFallback({
       appId: opts.appId,
       roomId: opts.roomId,
       peerLabel: opts.peerLabel,
-      onOpen: () => opts.onDiagnostic?.('[signaling] peer joined broker'),
+      order,
+      onOpen: () => {
+        opts.onDiagnostic?.('[signaling] peer joined broker');
+        opts.onConnected?.();
+        // A initiiert Offer nach open; B wartet auf offer via onMessage.
+        if (opts.peerLabel === 'A') {
+          void pc.createOffer().then(async (offer) => {
+            await pc.setLocalDescription(offer);
+            this.signalingHandle?.send({ kind: 'offer', sdp: offer.sdp, type: offer.type });
+          }).catch((e) => opts.onError?.(new Error(`Offer failed: ${e instanceof Error ? e.message : String(e)}`)));
+        }
+      },
       onDiagnostic: opts.onDiagnostic,
       onMessage: (from, payload) => {
         void from;
@@ -118,18 +147,19 @@ export class WebRtcTransport implements SessionTransport {
         opts.onError?.(new Error(`NAT/Signaling failed: ${err.message}`));
       },
     });
-    // ICE-Kandidaten des lokalen Peers via Broker mit-teilen.
-    pc.onicecandidate = (ev) => {
-      if (ev.candidate !== null) {
-        this.signalingHandle?.send({ kind: 'ice', candidate: ev.candidate.toJSON() });
-      }
-    };
-    // Offer initiiert die A-Seite; B wartet auf Offer.
-    if (opts.peerLabel === 'A') {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      this.signalingHandle.send({ kind: 'offer', sdp: offer.sdp, type: offer.type });
-    }
+  }
+
+  // Legacy-Direct-Adapter für Tests, die die Fallback-Kette umgehen wollen.
+  // Nutzt createSignalingAdapter direkt — kein Orchestrator.
+  async attachSingleAdapter(key: AdapterKey, opts: Omit<SignalingAttachOpts, 'strategy'>): Promise<void> {
+    if (this.pc === null) throw new Error('Transport not connected');
+    void createSignalingAdapter(key, {
+      appId: opts.appId, roomId: opts.roomId, peerLabel: opts.peerLabel,
+      onOpen: () => opts.onConnected?.(),
+      onMessage: () => {},
+      onError: (err) => opts.onError?.(err),
+      onDiagnostic: opts.onDiagnostic,
+    });
   }
 
   private async handleSignalingPayload(

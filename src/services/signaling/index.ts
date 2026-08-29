@@ -44,6 +44,11 @@ export interface FallbackOpts extends AdapterFactoryOpts {
   perStrategyMs?: number;
   /** Optional: Reihenfolge überschreiben (nur für Tests). BEIDE Peers müssen gleich. */
   order?: AdapterKey[];
+  /**
+   * Injectable adapter-Factory für Tests — Default: `createSignalingAdapter`.
+   * Ermöglicht Orchestrator-Testen (fake-fail / fake-success) ohne Real-Broker.
+   */
+  createAdapterFn?: (key: AdapterKey, opts: AdapterFactoryOpts) => Promise<AdapterHandle>;
 }
 
 /**
@@ -54,6 +59,7 @@ export interface FallbackOpts extends AdapterFactoryOpts {
 export async function connectWithFallback(opts: FallbackOpts): Promise<AdapterHandle> {
   const perStrategyMs = opts.perStrategyMs ?? 8000;
   const order = opts.order ?? STRATEGY_ORDER;
+  const createFn = opts.createAdapterFn ?? createSignalingAdapter;
   let lastErr: Error | null = null;
 
   for (const key of order) {
@@ -62,23 +68,24 @@ export async function connectWithFallback(opts: FallbackOpts): Promise<AdapterHa
       const handle = await new Promise<AdapterHandle>((resolve, reject) => {
         let opened = false;
         let hopped: AdapterHandle | null = null;
-        const timer = window.setTimeout(() => {
+        const timer = setTimeout(() => {
           if (!opened) {
             void hopped?.close();
             reject(new Error(`strategy ${key} timed out after ${perStrategyMs}ms`));
           }
         }, perStrategyMs);
 
-        void createSignalingAdapter(key, {
+        void createFn(key, {
           ...opts,
           onOpen: () => {
             opened = true;
-            window.clearTimeout(timer);
+            clearTimeout(timer);
             opts.onOpen();
+            if (hopped !== null) resolve(hopped);
           },
           onError: (err) => {
             if (!opened) {
-              window.clearTimeout(timer);
+              clearTimeout(timer);
               reject(err);
             } else {
               opts.onError(err);
@@ -87,15 +94,10 @@ export async function connectWithFallback(opts: FallbackOpts): Promise<AdapterHa
         }).then((h) => {
           hopped = h;
           if (opened) resolve(h);
-          // Fenster für onOpen offen halten — bei Erfolg resolved die onOpen-Race.
-          const rescueTimer = window.setInterval(() => {
-            if (opened) {
-              window.clearInterval(rescueTimer);
-              resolve(h);
-            }
-          }, 50);
-          window.setTimeout(() => window.clearInterval(rescueTimer), perStrategyMs + 100);
-        }, reject);
+        }, (err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
       });
       opts.onDiagnostic?.(`[orchestrator] connected via ${key}`);
       return handle;

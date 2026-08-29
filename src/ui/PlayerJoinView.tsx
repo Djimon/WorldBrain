@@ -3,10 +3,11 @@
 // Rendezvous-Info selbst (Signaling-Details in S11/S12). Gültiger Code
 // → sofort aktives Mitglied via session-identity-service, dann Übergang
 // zur Charaktererstellung (S08 baut die Weiterleitung aus).
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { joinWithCode } from '../services/session-identity-service';
+import { WebRtcTransport } from '../services/webrtc-transport';
 import {
   clearStoredToken,
   listStoredTokens,
@@ -64,6 +65,8 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
   const [busy, setBusy] = useState(false);
   const [joinedName, setJoinedName] = useState<string | null>(null);
   const [connectState, setConnectState] = useState<ConnectState>('idle');
+  // Transport-Ref: bleibt über Renders erhalten damit close() beim Unmount klappt.
+  const transportRef = useRef<WebRtcTransport | null>(null);
   // D10: Ping-basierte Online-Erkennung + Retry-Button; kein Heartbeat.
   const [hostOnline, setHostOnline] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(false);
@@ -113,33 +116,64 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
     try {
       const parsed = parseInviteLink(code);
       const name = displayName.trim();
-      // S11: appId aus dem `ns`-Parameter — wird vom Broker-Adapter als
-      // Namespace verwendet. Ohne `ns` = alter/kaputter Link.
-      void parsed.appId;
+      // 1) Lokaler Token-Auth (kein Broker beteiligt).
       const result = await joinWithCode(database, {
         code: parsed.code !== '' ? parsed.code : code.trim(),
         displayName: name,
       });
       await persistToken({
-        hostLabel: '', // D10-Slot; wird gesetzt wenn Host-Label bekannt ist.
+        hostLabel: '',
         code: code.trim(),
         token: result.token,
         displayName: name,
-        campaignName: '',
+        campaignName: parsed.campaign,
         playerId: result.playerId,
       });
-      setJoinedName(name);
-      setConnectState('connected');
-      onJoined?.({ ...result, displayName: name });
+      // 2) S11: echter Broker-Handshake. `ns` aus dem Link = appId (per-Host
+      //    Namespace, unerratbar). ConnectState wird von den Adapter-
+      //    Callbacks getrieben — kein Fassaden-connected mehr.
+      if (parsed.appId !== '') {
+        const transport = new WebRtcTransport({ campaignId: parsed.campaign });
+        transportRef.current = transport;
+        await transport.connect();
+        await transport.attachSignaling({
+          appId: parsed.appId,
+          roomId: parsed.campaign,
+          peerLabel: 'B', // Joiner ist B (Answerer); Host ist A (Initiator).
+          onConnected: () => {
+            setConnectState('connected');
+            setJoinedName(name);
+            onJoined?.({ ...result, displayName: name });
+          },
+          onError: (err) => {
+            setError(`${t('join.errorBroker', 'Verbindung zum Host fehlgeschlagen.')} — ${err.message}`);
+            setConnectState('failed');
+          },
+        });
+      } else {
+        // Kein `ns` im Link → alter/kaputter Link. Warnung, Token bleibt gültig.
+        setError(t('join.errorMissingNs', 'Einladungslink unvollständig (fehlender Broker-Namespace).'));
+        setConnectState('failed');
+      }
     } catch (e) {
-      // AC: Fehler NUR bei ungültigem Code / Host nicht erreichbar — nie
-      // DM-Ablehnung. Realer Fehler-Text hilft beim Live-Debug.
       const raw = e instanceof Error ? e.message : String(e);
       setError(`${t('join.errorInvalid', 'Ungültiger Einladungscode oder Host nicht erreichbar.')} — ${raw}`);
       setConnectState('failed');
     } finally {
       setBusy(false);
     }
+  }
+
+  // Transport beim Unmount aufräumen — sonst bleiben Broker-Sockets offen.
+  useEffect(() => {
+    return () => {
+      const t = transportRef.current;
+      if (t !== null) void t.close();
+    };
+  }, []);
+
+  function retry() {
+    void handleJoin();
   }
 
   if (joinedName !== null) {
@@ -211,9 +245,14 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
         </StatusChip>
       )}
       {connectState === 'failed' && (
-        <StatusChip tone="failure" role="status">
-          {t('join.stateFailed', 'Verbindung fehlgeschlagen — ist der Host online?')}
-        </StatusChip>
+        <div className="u-row u-gap-2">
+          <StatusChip tone="failure" role="status">
+            {t('join.stateFailed', 'Verbindung fehlgeschlagen — ist der Host online?')}
+          </StatusChip>
+          <Button size="compact" onClick={() => retry()}>
+            {t('join.retry', 'Erneut versuchen')}
+          </Button>
+        </div>
       )}
       {error !== null && (
         <StatusChip tone="failure" role="alert">{error}</StatusChip>
