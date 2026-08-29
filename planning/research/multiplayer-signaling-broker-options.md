@@ -45,7 +45,7 @@
 
 ---
 
-## Spike-Harness (#380, 2026-08) — Windows-Zeile gefahren
+## Spike-Harness (#380, 2026-08) — Windows + Cross-Netz (trystero-nostr) gefahren
 
 Wegwerf-Harness liegt unter `src/spikes/m10-signaling/` und implementiert **EIN** `SignalingAdapter`-Interface mit 5 Adaptern (`trystero-nostr`, `trystero-mqtt`, `trystero-bittorrent`, `peerjs`, `manual-sdp`) — apples-to-apples hinter derselben Fassade. Das beweist zugleich die D28-**Austauschbarkeit**: v2/v3-Eigen-Relay = weiterer Adapter, kein Rewrite.
 
@@ -63,11 +63,13 @@ npm run desktop:spike-m10-signaling
 
 | Kandidat            | Windows / WebView2 (Edge 151)         | Remote (2 Netze) |
 |---------------------|---------------------------------------|------------------|
-| trystero-nostr      | **A 10/10 · 24 ms** · **B 10/10 · 20 ms** ✅ | PENDING          |
+| trystero-nostr      | **A 10/10 · 24 ms** · **B 10/10 · 20 ms** ✅ | **B 10/10 · A 4/10² · RTT ~50 ms** ✅ |
 | trystero-mqtt       | **A 10/10 · 19 ms** · **B 10/10 · 24 ms** ✅ | PENDING          |
 | trystero-bittorrent | **A 9/10 · 28 ms** · **B 9/10 · 22 ms** ✅¹  | PENDING          |
 | peerjs              | **A 10/10 · 216 ms** · **B 9/10 · 216 ms** ✅ | PENDING          |
 | manual-sdp          | n/a — Copy/Paste, nicht auto-benchbar  | PENDING (manuell) |
+
+² *trystero-nostr Cross-Netz (2 Geräte, verschiedene Netze, 2026-08-28, `scripts/spike-*-peer{A,B}.log`): **B 10/10**, **A 4/10** — die A-Ausfälle sind **Harness-Loop-Desync** (`peer-joined-no-ping`/`no-peer-joined`, siehe Abschnitt unten), **kein** Broker-/NAT-Failure. Verbindung selbst bestätigt: gemeinsamer Topic, `datachannel.onopen`, Ping-Round-Trip ~45–67 ms; Cold-Start 8–19 s. → **Cross-Netz-Traversal für Nostr funktioniert.** Andere Adapter cross-netz noch nicht gefahren.*
 
 ¹ *BitTorrent: Attempt #1 auf beiden Seiten `no-peer-joined` — Tracker-Cold-Handshake > 10s beim allerersten Kontakt. Attempts 2-10 durchgehend erfolgreich.*
 
@@ -78,9 +80,9 @@ npm run desktop:spike-m10-signaling
 - **PeerJS-Cloud ist tragfähig** — ~10× langsamer als Trystero (216 ms vs 22 ms), aber weit unter dem 10 s-Timeout. Bleibt Backup-Kandidat trotz Single-Broker-SPOF.
 - **Median ist warm, nicht cold.** Attempt #1 (echter Cold-Start): Nostr 1.3 s, MQTT 1.4 s, BitTorrent 1.1 s, PeerJS 0.7 s. Attempts 2-10 nutzen offen bleibende Relay-WebSocket → 20-215 ms. Realistischer User-Cold-Start = **~0.7–1.4 s**, nicht der Median.
 
-### Harness-Caveat: Loop-Desync ≠ Broker-Failure (Re-Run trystero-nostr, 2026-08-28)
+### Harness-Caveat: Loop-Desync ≠ Broker-Failure (**Cross-Netz-Lauf** trystero-nostr, 2026-08-28)
 
-Ein zweiter Windows-Lauf (beide Peers Edge 151) ergab **A 4/10 · B 10/10** — obwohl das Signaling einwandfrei lief. Die Ursache liegt **nicht** bei Nostr, sondern im Harness selbst:
+**Dies war der Remote-/2-Netze-Lauf** (2 Geräte in verschiedenen Netzen, beide Edge 151), nicht ein zweiter Windows-Lauf — er ergab **A 4/10 · B 10/10**, obwohl das Signaling einwandfrei lief. Die A-Ausfälle liegen **nicht** bei Nostr, sondern im Harness selbst:
 
 - Beide Seiten fahren ihre 10 Attempts als **unabhängige Schleifen ohne gemeinsamen Takt** (`runBench` wird pro Seite per Button gestartet, `bench.ts`). Ein Attempt endet, sobald der **eigene** Ping zurück ist → sofort `close()`, dann nächster Attempt.
 - Die schnellere Seite (hier B, später gestartet) rennt durch alle 10 Attempts und **verlässt den Raum**, während die langsamere (A) noch mittendrin ist. Folge: A#5–6 `peer-joined-no-ping` (B hängt zwischen zwei Attempts, kein Ping-Responder), A#7–10 `no-peer-joined` (B ist fertig und weg).
@@ -93,11 +95,11 @@ Ein zweiter Windows-Lauf (beide Peers Edge 151) ergab **A 4/10 · B 10/10** — 
 
 **Cold-Start-TTC (dieser Lauf):** Erst-Kontakt **8–19 s** (A#1 = 12 s, B#7 = 19 s), danach warm <100 ms. Deutlich höher als der frühere Warm-Lauf (1.3 s) — der echte Cold-Announce über Nostr-Relays schwankt **netz-/relay-abhängig** stark (im Log dauerhaft nur 3/5 Relay-Sockets `OPEN`). **UX-Konsequenz:** der „Verbinde…"-Zustand muss bis **~20 s** tolerieren, nicht 1–2 s annehmen.
 
-### Empfehlung an D28 (Windows-Only, Stand: Remote noch offen)
+### Empfehlung an D28 (Windows + Cross-Netz für trystero-nostr bestätigt)
 
-**Trystero + Nostr bleibt Primär-Wahl** (10/10, ~1.3 s cold, ~20 ms warm). Strategie-Fallback-Kette (Nostr → MQTT → BitTorrent) empirisch belegt: alle drei liefern. PeerJS als 2nd-tier-Broker möglich, aber SPOF gegen Trystero-Vielfalt kein Argument mehr — Trystero ist gleich schnell und resilienter.
+**Trystero + Nostr bleibt Primär-Wahl** — Windows 10/10 (~1.3 s cold, ~20 ms warm) **und Cross-Netz bestätigt** (2 Geräte/2 Netze: B 10/10, A 4/10 = Harness-Desync, RTT ~50 ms). Strategie-Fallback-Kette (Nostr → MQTT → BitTorrent) auf Windows empirisch belegt. PeerJS als 2nd-tier-Broker möglich, aber SPOF gegen Trystero-Vielfalt kein Argument mehr.
 
-**Endgültige Freigabe erst nach Remote-Zeile** — NAT-Traversal-Verhalten (harte NATs, Symmetric-NAT-Tail ~10–20 %) muss noch mit 2 Geräten in verschiedenen Netzen gefahren werden.
+**Freigabe-Stand:** Nostr ist cross-netz **bewiesen** — der Kern-Remote-Fall funktioniert. **Rest-Risiko** (kein Blocker): der Symmetric-NAT-Tail (~10–20 %) scheitert **broker-unabhängig** ohne TURN (V1: klare Meldung, kein TURN); die MQTT/BitTorrent/PeerJS-Adapter wurden **cross-netz noch nicht separat** gegengetestet (auf Windows bestehen sie).
 
 ### Produkt-Übergang: 2-Schichten-Namespacing (für M10-S11/S12)
 
