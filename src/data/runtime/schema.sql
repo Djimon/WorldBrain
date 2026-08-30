@@ -30,14 +30,21 @@ CREATE TABLE IF NOT EXISTS campaigns (
 );
 
 -- Overrides sind campaign-scoped (D23 — nicht mehr welt-global).
+-- M10-S21 (#365): promoted_at + pre_promote_json machen Promote REVERSIBEL —
+-- der Override bleibt nach dem Promote erhalten (nachvollziehbar), und der
+-- vorherige Welt-Zustand ist gesnapshottet, sodass unpromote ihn wiederherstellt.
 CREATE TABLE IF NOT EXISTS campaign_entity_overrides (
   id TEXT PRIMARY KEY,
   campaign_id TEXT NOT NULL,
   entity_id TEXT NOT NULL,
   patch_json TEXT NOT NULL,
+  promoted_at TEXT,
+  pre_promote_json TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_campaign_entity_overrides_key
+  ON campaign_entity_overrides (campaign_id, entity_id);
 
 CREATE TABLE IF NOT EXISTS campaign_notes (
   id TEXT PRIMARY KEY,

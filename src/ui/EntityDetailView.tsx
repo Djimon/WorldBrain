@@ -19,6 +19,7 @@ import type { RelationRow } from '../services/relation-service';
 import { Button, Chip, Tabs } from './primitives';
 import { useReadOnly } from './useReadOnly';
 import { VisibilityScopePicker, type BaseScope } from './VisibilityScopePicker';
+import { PromoteControl } from './PromoteControl';
 
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
@@ -73,9 +74,13 @@ type EntityDetailViewProps = {
    *  can't re-mount its own Graph tab → infinite recursion. The caller pairs it
    *  with its own jump-to-entity affordance (e.g. the graph's "Öffnen" button). */
   overviewOnly?: boolean;
+  /** M10-S21 (#365): im Campaign-Kontext gesetzt — dann erscheint der
+   *  Promote-Schalter (Override → Welt-Basis). Bei reinem Welt-Basis-Edit
+   *  ungesetzt → kein Promote (es gibt keinen Override). */
+  campaignId?: string;
 };
 
-export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted, onSaved, overviewOnly }: EntityDetailViewProps) {
+export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted, onSaved, overviewOnly, campaignId }: EntityDetailViewProps) {
   const { t } = useTranslation('entity');
   const readOnly = useReadOnly(); // M10-S23: Player-Modus blendet Edit/Delete aus.
   const [activeTab, setActiveTab] = useState('overview');
@@ -418,6 +423,11 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
           </>
         ) : overviewOnly || readOnly ? null : (
           <Button variant="ghost" size="icon" className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', 'Bearbeiten')} title={t('edit', 'Bearbeiten')}>✏️</Button>
+        )}
+        {/* M10-S21 (#365): Promote-Schalter nur im Campaign-Kontext + nicht
+            read-only. Hebt den Campaign-Override dieser Entity in die Welt. */}
+        {campaignId !== undefined && !overviewOnly && !readOnly && database !== undefined && (
+          <PromoteControl database={database} campaignId={campaignId} entityId={entityId} onChanged={onSaved} />
         )}
       </div>
       {!overviewOnly && (
