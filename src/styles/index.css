@@ -21,5 +21,6 @@
 @import './components/maps-panels.css' layer(components);
 @import './components/audio.css' layer(components);
 @import './components/pickers.css' layer(components);
+@import './components/split-view.css' layer(components);
 
 @import './utilities.css' layer(utilities);

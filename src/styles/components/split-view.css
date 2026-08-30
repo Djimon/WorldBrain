@@ -1,0 +1,34 @@
+/* M10-S19 (#364, D21): generischer 2-Pane-Split-View mit verschiebbarer
+   Grenze. Farben/Abstände aus Tokens; die Pane-Ratio kommt als dynamisches
+   inline flex-basis (per Drag). Kein horizontales Body-Scrolling — jede Pane
+   scrollt in sich (overflow:auto), der Container clippt (overflow:hidden). */
+.split-view {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.split-view__pane {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.split-view__divider {
+  flex: 0 0 auto;
+  width: var(--space-1);
+  cursor: col-resize;
+  background: var(--color-border);
+  align-self: stretch;
+  border: none;
+  padding: 0;
+}
+
+.split-view__divider:hover,
+.split-view__divider:focus-visible {
+  background: var(--color-accent);
+  outline: none;
+}

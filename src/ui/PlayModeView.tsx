@@ -16,7 +16,8 @@ import { PlayerCharacterSheet } from './PlayerCharacterSheet';
 import { DiceRollerWidget } from './DiceRollerWidget';
 import { listEntries, type CombatLogEntry } from '../services/combat-log-service';
 import type { PlayClientStoreImpl } from '../services/play-client-store';
-import { ListSurface, Panel, Tabs } from './primitives';
+import { Button, ListSurface, Panel, Tabs } from './primitives';
+import { SplitView } from './SplitView';
 import type { SessionRole } from './AppModeContext';
 
 export interface PlayModeViewProps {
@@ -106,6 +107,41 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
     return () => { cancelled = true; };
   }, [database, store, isPlayer, campaignId, visTick, storeTick]);
 
+  // S19 (#364): DM kann Map ‖ Kampflog als 2-Pane-Split nebeneinander sehen
+  // (In-App, kein OS-Pop-out). Nur DM (der Anwendungsfall aus D21).
+  const [splitMode, setSplitMode] = useState(false);
+
+  const mapPane = (
+    <Panel className="play-cockpit__pane">
+      <p>{t('cockpit.mapStub', 'Karten-Reiter — MapViewer-Einbettung folgt (nutzt bestehende Map-Komponenten + Fog/Token).')}</p>
+    </Panel>
+  );
+
+  const combatPane = (
+    <Panel className="play-cockpit__pane u-stack u-gap-2">
+      <h3>{t('cockpit.combatLogTitle', 'Kampflog')}</h3>
+      {!isPlayer && database !== undefined && campaignId !== '' && (
+        <DiceRollerWidget
+          database={database}
+          campaignId={campaignId}
+          actorDisplay="DM"
+          onPosted={() => setLogTick((n) => n + 1)}
+        />
+      )}
+      {isPlayer && store !== undefined && store.isOffline() && (
+        <p className="u-muted">{t('cockpit.offline', 'Host offline — noch keine Daten.')}</p>
+      )}
+      <ListSurface className="play-cockpit__log-list">
+        {logEntries.length === 0 && <li>{t('cockpit.logEmpty', 'Noch keine Einträge.')}</li>}
+        {logEntries.map((e) => (
+          <li key={e.id}>
+            <span className="u-muted">[{e.visibility}]</span> {e.text}
+          </li>
+        ))}
+      </ListSurface>
+    </Panel>
+  );
+
   // Player sieht zusätzlich den „Bogen"-Reiter (D13/D14).
   const tabOptions = [
     { id: 'map', label: t('cockpit.tabMap', 'Map') },
@@ -124,43 +160,36 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
         <LobbyPanel database={database} campaignId={campaignId} />
       )}
 
-      <Tabs
-        label={t('cockpit.tabsLabel', 'Cockpit-Reiter')}
-        activeId={activeTab}
-        options={tabOptions}
-        onSelect={(id) => setActiveTab(id as CockpitTab)}
-      />
+      <div className="u-row u-gap-2">
+        <Tabs
+          label={t('cockpit.tabsLabel', 'Cockpit-Reiter')}
+          activeId={activeTab}
+          options={tabOptions}
+          onSelect={(id) => setActiveTab(id as CockpitTab)}
+        />
+        {role === 'dm' && (
+          <Button
+            size="compact"
+            tone={splitMode ? 'accent' : 'neutral'}
+            variant={splitMode ? undefined : 'outline'}
+            aria-pressed={splitMode}
+            onClick={() => setSplitMode((s) => !s)}
+          >
+            {t('cockpit.splitToggle', 'Split: Map ‖ Kampflog')}
+          </Button>
+        )}
+      </div>
 
-      {activeTab === 'map' && (
-        <Panel className="play-cockpit__pane">
-          <p>{t('cockpit.mapStub', 'Karten-Reiter — MapViewer-Einbettung folgt (nutzt bestehende Map-Komponenten + Fog/Token).')}</p>
-        </Panel>
-      )}
-
-      {activeTab === 'combatlog' && (
-        <Panel className="play-cockpit__pane u-stack u-gap-2">
-          <h3>{t('cockpit.combatLogTitle', 'Kampflog')}</h3>
-          {!isPlayer && database !== undefined && campaignId !== '' && (
-            <DiceRollerWidget
-              database={database}
-              campaignId={campaignId}
-              actorDisplay="DM"
-              onPosted={() => setLogTick((n) => n + 1)}
-            />
-          )}
-          {isPlayer && store !== undefined && store.isOffline() && (
-            <p className="u-muted">{t('cockpit.offline', 'Host offline — noch keine Daten.')}</p>
-          )}
-          <ListSurface className="play-cockpit__log-list">
-            {logEntries.length === 0 && <li>{t('cockpit.logEmpty', 'Noch keine Einträge.')}</li>}
-            {logEntries.map((e) => (
-              <li key={e.id}>
-                <span className="u-muted">[{e.visibility}]</span> {e.text}
-              </li>
-            ))}
-          </ListSurface>
-        </Panel>
-      )}
+      {/* S19: DM-Split zeigt Map ‖ Kampflog nebeneinander (überschreibt die
+          Tab-Ansicht solange aktiv). */}
+      {splitMode && role === 'dm' ? (
+        <div className="play-cockpit__split">
+          <SplitView primary={mapPane} secondary={combatPane} />
+        </div>
+      ) : (
+        <>
+          {activeTab === 'map' && mapPane}
+          {activeTab === 'combatlog' && combatPane}
 
       {activeTab === 'spotlight' && (
         <Panel className="play-cockpit__pane">
@@ -194,6 +223,8 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
             ))}
           </ListSurface>
         </Panel>
+      )}
+        </>
       )}
     </div>
   );
