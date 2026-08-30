@@ -19,6 +19,8 @@ import { listEntries, type CombatLogEntry } from '../services/combat-log-service
 import type { PlayClientStoreImpl } from '../services/play-client-store';
 import { Button, ListSurface, Panel, Tabs } from './primitives';
 import { SplitView } from './SplitView';
+import { PlayCockpitMap } from './PlayCockpitMap';
+import type { SessionTransport } from '../services/session-transport';
 import type { SessionRole } from './AppModeContext';
 
 export interface PlayModeViewProps {
@@ -30,6 +32,8 @@ export interface PlayModeViewProps {
   store?: PlayClientStoreImpl;
   playerId?: string;
   playerGroupIds?: string[];
+  /** M10-#386: Host-Transport für den Token-Broadcast der präsentierten Karte. */
+  transport?: Pick<SessionTransport, 'send'>;
 }
 
 type CockpitTab = 'map' | 'combatlog' | 'spotlight' | 'browse' | 'sheet';
@@ -37,7 +41,7 @@ type CockpitTab = 'map' | 'combatlog' | 'spotlight' | 'browse' | 'sheet';
 interface EntityRef { id: string; title: string; type: string }
 interface BaseEntityRow { id: string; title: string; type: string }
 
-export function PlayModeView({ role, activeSessionId, database, store, playerId, playerGroupIds: _pgs = [] }: PlayModeViewProps) {
+export function PlayModeView({ role, activeSessionId, database, store, playerId, playerGroupIds: _pgs = [], transport }: PlayModeViewProps) {
   const { t } = useTranslation('multiplayer');
   const [activeTab, setActiveTab] = useState<CockpitTab>('map');
   const [browseItems, setBrowseItems] = useState<EntityRef[]>([]);
@@ -113,9 +117,13 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
   const [splitMode, setSplitMode] = useState(false);
 
   const mapPane = (
-    <Panel className="play-cockpit__pane">
-      <p>{t('cockpit.mapStub', 'Karten-Reiter — MapViewer-Einbettung folgt (nutzt bestehende Map-Komponenten + Fog/Token).')}</p>
-    </Panel>
+    <PlayCockpitMap
+      role={role === 'player' ? 'player' : 'dm'}
+      campaignId={campaignId}
+      database={database}
+      store={store}
+      transport={transport}
+    />
   );
 
   const combatPane = (

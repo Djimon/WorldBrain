@@ -129,6 +129,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // sobald Player-Kontext feststeht — der Host würde später Snapshot+Delta
   // pushen (Transport in R2/R3-Verdrahtung folgt).
   const [playerStore, setPlayerStore] = useState<PlayClientStoreImpl | null>(null);
+  // M10-#386: der Host-Transport wird in State gehoben, damit das Play-Cockpit
+  // (PlayModeView → MapViewer) Token-Bewegungen darüber broadcasten kann.
+  const [hostTransport, setHostTransport] = useState<WebRtcTransport | null>(null);
   // M10-S22 (Follow-up): echte Campaign-Auswahl beim Play-Eintritt statt
   // projectId-Hack. Campaigns werden beim Öffnen des Auswahl-Panels geladen.
   const [availableCampaigns, setAvailableCampaigns] = useState<Campaign[]>([]);
@@ -933,6 +936,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   useEffect(() => {
     if (mode !== 'play' || sessionRole !== 'dm' || activeSessionId === null) return;
     const transport = WebRtcTransport.host(activeSessionId, database);
+    setHostTransport(transport);
     const campaignId = activeSessionId;
     void (async () => {
       await transport.connect();
@@ -947,6 +951,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     const unsub = attachVisibilityBroadcaster(transport);
     return () => {
       unsub();
+      setHostTransport(null);
       void transport.close().catch(() => {});
     };
   }, [mode, sessionRole, activeSessionId, database]);
@@ -1044,7 +1049,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             </Panel>
           ) : inPlayCockpit ? (
             sessionRole === 'dm' ? (
-              <PlayModeView role={sessionRole} activeSessionId={activeSessionId} database={database} />
+              <PlayModeView role={sessionRole} activeSessionId={activeSessionId} database={database} transport={hostTransport ?? undefined} />
             ) : playerContext !== null && activeSessionId !== null ? (
               // M10-S14: Nach dem Join sieht der Player das volle Cockpit
               // (Map/Kampflog/Spotlight/Free-Browse + Bogen), gefiltert durch

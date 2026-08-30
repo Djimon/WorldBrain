@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   world_time_start TEXT,
+  active_map_id TEXT,
   created_at TEXT NOT NULL
 );
 

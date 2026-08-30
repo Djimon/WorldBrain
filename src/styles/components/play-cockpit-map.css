@@ -1,0 +1,33 @@
+/* M10-#386: Play-Cockpit-Map. Der DB-lose Player-Pfad rendert das Karten-Bild
+   + Tokens (position via dynamischem inline transform). Farben/Maße aus Tokens. */
+.play-cockpit-map__stage {
+  position: relative;
+  width: 100%;
+  overflow: auto;
+}
+
+.play-cockpit-map__img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.play-cockpit-map__token {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--space-4);
+  height: var(--space-4);
+  margin-left: calc(var(--space-4) / -2);
+  margin-top: calc(var(--space-4) / -2);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  border: 2px solid var(--color-on-accent);
+  pointer-events: none;
+}
+
+.play-cockpit-map__picker-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

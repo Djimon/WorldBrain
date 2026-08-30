@@ -55,6 +55,9 @@ interface Props {
   moveLayerId?: string | null;
   /** Opens the Tauri file dialog, copies the image, returns the token art asset id. */
   onPickTokenArt?: () => Promise<string | null>;
+  /** M10-#386: nach jedem Token-Drag (committed) — der Play-Cockpit hängt hier
+   *  broadcastMovement(→ Transport) dran, damit die Bewegung live an alle geht. */
+  onTokenMoved?: (tokenId: string, x: number, y: number) => void;
 }
 
 function parsePinGeometry(json: string): { x: number; y: number; notes?: string; condition?: unknown } {
@@ -177,7 +180,7 @@ function RadiusOverlay({
   );
 }
 
-export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity, editFogLayerId = null, reloadKey = 0, onLayersChanged, moveLayerId = null, onPickTokenArt }: Props) {
+export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity, editFogLayerId = null, reloadKey = 0, onLayersChanged, moveLayerId = null, onPickTokenArt, onTokenMoved }: Props) {
   const { t } = useTranslation('map');
   const readOnly = useReadOnly(); // M10-S23: Player-Modus blendet Marker/Token-Edit-Affordances aus.
   const [imgSrc, setImgSrc] = useState<string | null>(null);
@@ -476,7 +479,11 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     if (!moved) return; // a plain click — selection handled in onClick
     suppressTokenClick.current = true; // swallow the click that follows a drag
     const p = toMapCoords(e.clientX, e.clientY);
-    moveToken(database, id, Math.round(p.x + dx), Math.round(p.y + dy)).then(reloadTokens).catch(console.error);
+    const nx = Math.round(p.x + dx);
+    const ny = Math.round(p.y + dy);
+    moveToken(database, id, nx, ny).then(reloadTokens).catch(console.error);
+    // M10-#386: Live-Broadcast der Bewegung (Play-Cockpit hängt sich hier ein).
+    onTokenMoved?.(id, nx, ny);
   }
 
   function handleTokenClick(token: MapTokenRow, e: React.MouseEvent<HTMLDivElement>) {

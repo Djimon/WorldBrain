@@ -12,9 +12,13 @@ export function applyMultiplayerSchema(db: MpDb): void {
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       world_time_start TEXT,
+      active_map_id TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
+  // M10-#386: aktive präsentierte Karte (Play-Cockpit). ALTER für bestehende
+  // Dev-DBs (idempotent) — CREATE oben deckt frische DBs.
+  try { db.exec(`ALTER TABLE campaigns ADD COLUMN active_map_id TEXT`); } catch { /* Spalte existiert schon */ }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS invite_codes (
