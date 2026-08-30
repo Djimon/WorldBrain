@@ -24,9 +24,9 @@ export function PromoteControl({ database, campaignId, entityId, onChanged }: Pr
 
   useEffect(() => {
     let cancelled = false;
-    void isPromoted(database, { campaignId, entityId }).then((p) => {
-      if (!cancelled) setPromoted(p);
-    });
+    void isPromoted(database, { campaignId, entityId })
+      .then((p) => { if (!cancelled) setPromoted(p); })
+      .catch(() => { if (!cancelled) setPromoted(false); });
     return () => { cancelled = true; };
   }, [database, campaignId, entityId]);
 

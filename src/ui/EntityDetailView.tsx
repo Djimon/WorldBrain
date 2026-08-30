@@ -20,6 +20,8 @@ import { Button, Chip, Tabs } from './primitives';
 import { useReadOnly } from './useReadOnly';
 import { VisibilityScopePicker, type BaseScope } from './VisibilityScopePicker';
 import { PromoteControl } from './PromoteControl';
+import { useAppMode } from './AppModeContext';
+import { upsertCampaignOverride } from '../services/campaign-override-service';
 
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
@@ -80,7 +82,14 @@ type EntityDetailViewProps = {
   campaignId?: string;
 };
 
-export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted, onSaved, overviewOnly, campaignId }: EntityDetailViewProps) {
+export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted, onSaved, overviewOnly, campaignId: campaignIdProp }: EntityDetailViewProps) {
+  // M10-S21 (#365, D25-Reconciliation): das Edit-Ziel kommt aus dem aktiven
+  // Campaign-Kontext, NICHT vom Bearbeiten/Spielen-Toggle. Nur wenn der DM im
+  // Play-Modus eine aktive Campaign hat, sind Edits campaign-scoped (Override)
+  // und der Promote-Schalter erreichbar. Sonst = Welt-Basis (kein Override).
+  const { mode, sessionRole, activeSessionId } = useAppMode();
+  const campaignId = campaignIdProp
+    ?? (mode === 'play' && sessionRole === 'dm' && activeSessionId !== null ? activeSessionId : undefined);
   const { t } = useTranslation('entity');
   const readOnly = useReadOnly(); // M10-S23: Player-Modus blendet Edit/Delete aus.
   const [activeTab, setActiveTab] = useState('overview');
@@ -192,6 +201,16 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
         category: editCategory,
       });
       await saveEntity(database as DatabaseLike, entityId, { summary: editSummary, visibility: editVisibility });
+      onSaved?.();
+    } else if (campaignId !== undefined) {
+      // M10-S21: Edit im aktiven DM-Play-Campaign-Kontext → Campaign-Override
+      // (properties), Basis-Welt UNBERÜHRT. Der Promote-Schalter kann den
+      // Override später in die Welt heben.
+      await upsertCampaignOverride(database as DatabaseLike, {
+        campaignId,
+        entityId,
+        patchJson: JSON.stringify(editProps),
+      });
       onSaved?.();
     } else {
       await saveEntity(database as DatabaseLike, entityId, {

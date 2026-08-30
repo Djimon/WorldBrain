@@ -52,12 +52,21 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
       campaign_id TEXT NOT NULL DEFAULT '',
       entity_id TEXT NOT NULL,
       patch_json TEXT NOT NULL DEFAULT '{}',
+      promoted_at TEXT,
+      pre_promote_json TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
   await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN campaign_id TEXT NOT NULL DEFAULT ''`).catch(() => {});
   await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))`).catch(() => {});
+  // M10-S21 (#365): Promote-Reversibilität + Upsert-Key. ALTER für bestehende
+  // Dev-DBs (idempotent via catch), CREATE-Spalten oben für frische DBs.
+  await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN promoted_at TEXT`).catch(() => {});
+  await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN pre_promote_json TEXT`).catch(() => {});
+  await adapter.execute(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_campaign_entity_overrides_key ON campaign_entity_overrides (campaign_id, entity_id)`,
+  ).catch(() => {});
 
   await adapter.execute(`ALTER TABLE maps ADD COLUMN grid_json TEXT`).catch(() => {});
 
