@@ -35,8 +35,8 @@ Der Nutzer erlebt **eine** Plattform-Marke und sieht im Header **je nach aktivem
 
 5. **Theming ist Config — und ein Theme wird KOMPLETT gewechselt.** Der Modus-Akzent ist über eine **Theme-Registry** austauschbar. Ein „Theme" ist ein benanntes, **vollständiges** Skin-Config-Objekt, das je Shell-Modus (Prep/Live) einen kompletten Akzent-Satz liefert. Ein Theme-Wechsel ersetzt das **gesamte** Skin auf einmal — kein teilweises Übermalen.
    - **Dark/Light ist ein Erscheinungs-Modus, KEIN Theme.** Drei orthogonale Achsen, die nie vermischt werden dürfen: **(a) Shell-Modus** = Prep/Autor ⟷ Live/Session (das, was dieser Epic sonst schlicht „Modus" nennt); **(b) Erscheinungs-Modus** = Dark ⟷ Light (eine reine Anzeige-Präferenz); **(c) Theme** = das vollständige benannte Skin. Der **Dark/Light-Umschalter ist ein eigener Bedienpfad** und darf **niemals** das aktive Theme wechseln — und ein Theme-Wechsel darf **niemals** über den Dark/Light-Umschalter huckepack laufen. Genau diese falsche Kopplung existierte im früheren Beweis-Theme (Theme hing am Dark/Light-Toggle) und ist zu **entfernen**.
-   - **Jedes Theme besitzt seine Erscheinung selbst.** Ein Theme deklariert explizit `appearanceSupport`: entweder **`both`** — es bringt einen **eigenen, separat autorisierten** Dark- **und** Light-Token-Satz mit (der Light-Satz wird **nicht** aus dem Dark-Wert „abgeleitet") — oder **`dark`/`light`** (Single-Mode): dann erzwingt das Theme seine eine Erscheinung, und der Dark/Light-Umschalter ist bei aktivem Theme deaktiviert/wirkungslos.
-   - **Ausgeliefert werden zwei Themes:** **„Default"** (`appearanceSupport: both`; Prep = Rot, Live = Amber) und **„Teal"** (`appearanceSupport: dark` — Single-Mode dunkel; Prep = Rot, Live = Teal). „Teal" ist das **erste Beispiel-Theme**, an dem das Theming erklärt wird — es demonstriert bewusst den **Single-Mode**-Zweig, „Default" den **Both**-Zweig. So ist der Akzent nachweislich Config, und beide `appearanceSupport`-Fälle sind ab Werk belegt.
+   - **Jedes Theme deklariert seine Komplexität auf zwei unabhängigen Achsen** (Details + Tabelle: Sektion „Theme-Komplexität"): **`modeSupport: 'unified' | 'per-mode'`** (eine Farbwelt für edit+play **oder** getrennte Akzente je Shell-Modus) und **`appearanceSupport: 'both' | 'dark' | 'light'`** (eigener, separat autorisierter Dark- **und** Light-Satz — Light **nie** aus dem Dark-Hue abgeleitet — **oder** nur eine Erscheinung, die dann erzwungen wird und den Dark/Light-Umschalter deaktiviert). Ihre Kombination ergibt **vier erlaubte Komplexitätsvarianten**; ein Custom-Theme darf jede sein. Ein `unified`-Theme ist erlaubt, **weil** der Modus nie nur über Farbe erkennbar ist (Header-Label + Lock tragen immer mit, Decision 4).
+   - **Ausgeliefert werden zwei Themes:** **„Default"** = Variante 4 (`modeSupport: per-mode`, `appearanceSupport: both`; Prep = Rot, Live = Amber) und **„Teal"** = Variante 3 (`modeSupport: per-mode`, `appearanceSupport: dark` — Single-Mode dunkel; Prep = Rot, Live = Teal). „Teal" ist das **erste Beispiel-Theme**, an dem das Theming erklärt wird — es demonstriert bewusst den **Single-Appearance**-Zweig, „Default" den vollen Both-Zweig. So ist der Akzent nachweislich Config.
 
 6. **Engine-Name ist Platzhalter, aber kein Blocker.** Der frühere Arbeitstitel „WorldAnvil" wird **nicht** verwendet (es existiert ein gleichnamiges reales Worldbuilding-Produkt → Kollision). Kandidaten: **„RuleLoom"** oder **„CodexLoom"**. Der finale Name ist noch offen; die Implementierung nutzt **einen einzigen Konstanten-/Übersetzungs-Key** mit Platzhalter-Wert, sodass ein späterer Namenswechsel eine Ein-Zeilen-Änderung ist.
 
@@ -75,6 +75,22 @@ Semantische Accent-Tokens (Namen als Vorschlag; ein Token-Set, pro aktivem Shell
 **Kontrast-Hinweis (Pflicht):** `--mode-accent-on` ist bewusst pro Farbe verschieden. Auf dem hellen Amber (`#eaa53c`) und dem mittleren Teal (`#19b8a6`) hat **weißer** Text zu wenig Kontrast → dort **dunkler** Vordergrund. Auf dem Rot (`#e5484d`) ist weißer Text korrekt. Nicht vereinheitlichen.
 
 **Warum Amber (Live) neben Rot (Prep) funktioniert:** Amber/Gold liegt in Helligkeit *und* im Blau-Kanal weit genug vom Rot, dass der „falsches-Fenster"-Reflex auch bei Rot-Grün-Sehschwäche trägt (ein *grüner* Live-Ton würde dort mit dem Rot verschmelzen — deshalb verworfen).
+
+## Theme-Komplexität — vier erlaubte Varianten
+
+Ein Theme (auch ein Custom-Theme) deklariert zwei **unabhängige** Fähigkeits-Achsen. Ihre Kombination ergibt vier erlaubte Komplexitätsstufen — von „eine Farbe für alles" bis voll:
+
+| Variante | `modeSupport` | `appearanceSupport` | Bedeutung | Token-Sätze |
+|---|---|---|---|---|
+| 1 — minimal | `unified` | `dark` *oder* `light` | Eine Farbwelt für edit+play, eine Erscheinung | 1 |
+| 2 | `unified` | `both` | Eine Farbwelt für edit+play, eigener Dark **und** Light | 2 |
+| 3 | `per-mode` | `dark` *oder* `light` | Getrennte edit/play-Farben, eine Erscheinung | 2 |
+| 4 — voll | `per-mode` | `both` | Getrennt je Modus **und** je Erscheinung | 4 |
+
+- Ein „Token-Satz" = die fünf Accent-Tokens (`--mode-accent`, `--mode-accent-hover`, `--mode-accent-on`, `--mode-accent-text`, `--mode-accent-soft`).
+- **Auflösung zur Laufzeit:** der aktive Akzent wird aus *aktivem Theme × aktivem Shell-Modus × aktiver Erscheinung* bestimmt; über nicht unterstützte Achsen wird zusammengefasst — `modeSupport: unified` ignoriert den Shell-Modus (edit und play teilen den Satz), eine Single-Appearance erzwingt ihre Erscheinung (Dark/Light-Umschalter dann deaktiviert).
+- **Ausgelieferte Themes:** „Default" = Variante 4 (per-mode + both); „Teal" = Variante 3 (per-mode + dark).
+- Ein `unified`-Theme (Variante 1 oder 2) verzichtet bewusst auf die farbliche Modus-Unterscheidung — **erlaubt**, weil der Modus nie nur über Farbe erkennbar ist (Header-Label + Lock, Decision 4).
 
 ## Out of Scope
 
