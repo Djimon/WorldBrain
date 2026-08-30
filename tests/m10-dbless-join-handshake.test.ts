@@ -1,0 +1,241 @@
+// @vitest-environment node
+// M10 (#387): DB-loser Join/Auth als Transport-Handshake
+// See: https://github.com/Djimon/WorldBrain/issues/387
+
+import { DatabaseSync } from 'node:sqlite';
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import type { DatabaseLike } from '../src/services/entity-service';
+
+function makeAsyncDb(db: DatabaseSync): DatabaseLike {
+  return {
+    execute: (sql: string, args: unknown[] = []) => {
+      db.prepare(sql).run(...args);
+      return Promise.resolve();
+    },
+    select: <T>(sql: string, args: unknown[] = []): Promise<T[]> =>
+      Promise.resolve(db.prepare(sql).all(...args) as T[]),
+  };
+}
+
+const runtimeSchemaSql = readFileSync(
+  new URL('../src/data/runtime/schema.sql', import.meta.url),
+  'utf8',
+);
+
+function createHostDb() {
+  const raw = new DatabaseSync(':memory:');
+  raw.exec(runtimeSchemaSql);
+  return { db: raw, asyncDb: makeAsyncDb(raw) };
+}
+
+// ---------------------------------------------------------------------------
+// Minimal loopback transport for tests
+// ---------------------------------------------------------------------------
+
+interface Msg { type: string; token?: string; payload: unknown }
+
+function createLoopbackPair() {
+  const hostInbox: Msg[] = [];
+  const playerInbox: Msg[] = [];
+  const hostListeners: Array<(m: Msg) => void> = [];
+  const playerListeners: Array<(m: Msg) => void> = [];
+
+  const hostTransport = {
+    send(m: Msg) { playerInbox.push(m); for (const l of playerListeners) l(m); },
+    onMessage(fn: (m: Msg) => void) { hostListeners.push(fn); },
+  };
+  const playerTransport = {
+    send(m: Msg) { hostInbox.push(m); for (const l of hostListeners) l(m); },
+    onMessage(fn: (m: Msg) => void) { playerListeners.push(fn); },
+  };
+
+  return { hostTransport, playerTransport, hostInbox, playerInbox };
+}
+
+// ---------------------------------------------------------------------------
+// 1. Loopback E2E: join_request → join_response{ok:true} + snapshot
+// ---------------------------------------------------------------------------
+
+describe('#387 Loopback E2E join handshake', () => {
+  async function getHostJoinSync() {
+    return import('../src/services/host-join-sync');
+  }
+  async function getIdentity() {
+    return import('../src/services/session-identity-service');
+  }
+
+  it('player sends join_request → host responds with ok:true + token + snapshot', async () => {
+    const { asyncDb, db } = createHostDb();
+    try {
+      const identity = await getIdentity();
+      const hostSync = await getHostJoinSync();
+      const { hostTransport, playerTransport, playerInbox } = createLoopbackPair();
+
+      const code = await identity.generateInviteCode(asyncDb, { campaignId: 'c1' });
+
+      hostSync.attachHostJoinSync({
+        transport: hostTransport as never,
+        database: asyncDb,
+        campaignId: 'c1',
+      });
+
+      playerTransport.send({
+        type: 'join_request',
+        payload: { code, displayName: 'Alice' },
+      });
+
+      await new Promise<void>((r) => setTimeout(r, 50));
+
+      const joinResp = playerInbox.find((m) => m.type === 'join_response');
+      expect(joinResp).toBeTruthy();
+      expect((joinResp!.payload as { ok: boolean }).ok).toBe(true);
+      expect((joinResp!.payload as { token: string }).token).toBeTruthy();
+
+      const snapshot = playerInbox.find((m) => m.type === 'snapshot');
+      expect(snapshot).toBeTruthy();
+    } finally {
+      db.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2. Invalid code → join_response{ok:false}, no session_players entry
+// ---------------------------------------------------------------------------
+
+describe('#387 Invalid code rejection', () => {
+  async function getHostJoinSync() {
+    return import('../src/services/host-join-sync');
+  }
+
+  it('unknown code → ok:false, no DB entry', async () => {
+    const { asyncDb, db } = createHostDb();
+    try {
+      const hostSync = await getHostJoinSync();
+      const { hostTransport, playerTransport, playerInbox } = createLoopbackPair();
+
+      hostSync.attachHostJoinSync({
+        transport: hostTransport as never,
+        database: asyncDb,
+        campaignId: 'c1',
+      });
+
+      playerTransport.send({
+        type: 'join_request',
+        payload: { code: 'INVALID', displayName: 'Bob' },
+      });
+
+      await new Promise<void>((r) => setTimeout(r, 50));
+
+      const resp = playerInbox.find((m) => m.type === 'join_response');
+      expect(resp).toBeTruthy();
+      expect((resp!.payload as { ok: boolean }).ok).toBe(false);
+
+      const players = await asyncDb.select<{ id: string }>(
+        "SELECT id FROM session_players WHERE campaign_id = 'c1'",
+      );
+      expect(players).toHaveLength(0);
+    } finally {
+      db.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3. Auth after join: player token-move intent authorized
+// ---------------------------------------------------------------------------
+
+describe('#387 Auth after join', () => {
+  async function getHostJoinSync() {
+    return import('../src/services/host-join-sync');
+  }
+  async function getIdentity() {
+    return import('../src/services/session-identity-service');
+  }
+  async function getHostTokenSync() {
+    return import('../src/services/host-token-sync');
+  }
+
+  it('after handshake, player token-move intent is authorized by host', async () => {
+    const { asyncDb, db } = createHostDb();
+    try {
+      const identity = await getIdentity();
+      const hostSync = await getHostJoinSync();
+      const tokenSync = await getHostTokenSync();
+      const { hostTransport, playerTransport, playerInbox } = createLoopbackPair();
+
+      const code = await identity.generateInviteCode(asyncDb, { campaignId: 'c1' });
+
+      hostSync.attachHostJoinSync({
+        transport: hostTransport as never,
+        database: asyncDb,
+        campaignId: 'c1',
+      });
+      tokenSync.attachHostTokenSync({
+        transport: hostTransport as never,
+        database: asyncDb,
+        campaignId: 'c1',
+      });
+
+      playerTransport.send({
+        type: 'join_request',
+        payload: { code, displayName: 'Alice' },
+      });
+      await new Promise<void>((r) => setTimeout(r, 50));
+
+      const joinResp = playerInbox.find((m) => m.type === 'join_response');
+      const { token, playerId } = joinResp!.payload as { token: string; playerId: string };
+
+      playerTransport.send({
+        type: 'client_action',
+        token,
+        payload: {
+          kind: 'token_move',
+          campaignId: 'c1',
+          senderPlayerId: playerId,
+          tokenId: 'tok-1',
+          x: 100,
+          y: 200,
+        },
+      });
+      await new Promise<void>((r) => setTimeout(r, 50));
+
+      const moveDelta = playerInbox.find((m) => m.type === 'delta' || m.type === 'token_move_broadcast');
+      expect(moveDelta).toBeTruthy();
+    } finally {
+      db.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. Regression guard: PlayerJoinView has no database prop / DB calls
+// ---------------------------------------------------------------------------
+
+describe('#387 PlayerJoinView DB-guard', () => {
+  it('PlayerJoinView has no database prop', () => {
+    const source = readFileSync('src/ui/PlayerJoinView.tsx', 'utf-8');
+    expect(source).not.toMatch(/database\s*[?:]\s*DatabaseLike/);
+  });
+
+  it('PlayerJoinView does not call joinWithCode', () => {
+    const source = readFileSync('src/ui/PlayerJoinView.tsx', 'utf-8');
+    expect(source).not.toMatch(/joinWithCode\s*\(/);
+  });
+
+  it('PlayerJoinView does not call reconnectSession', () => {
+    const source = readFileSync('src/ui/PlayerJoinView.tsx', 'utf-8');
+    expect(source).not.toMatch(/reconnectSession\s*\(/);
+  });
+
+  it('PlayerJoinView does not call pingHost', () => {
+    const source = readFileSync('src/ui/PlayerJoinView.tsx', 'utf-8');
+    expect(source).not.toMatch(/pingHost\s*\(/);
+  });
+
+  it('PlayerJoinView does not import DatabaseLike', () => {
+    const source = readFileSync('src/ui/PlayerJoinView.tsx', 'utf-8');
+    expect(source).not.toMatch(/import.*DatabaseLike/);
+  });
+});
