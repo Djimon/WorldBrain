@@ -9,6 +9,11 @@
 // - Nur gekickte/inaktive Spieler dürfen nicht bewegen (Token-Sperre).
 // Die Bewegung wird als normales `token`-Update-Delta live an alle gepusht.
 import type { Delta } from './play-sync-protocol';
+import type { SessionTransport, TransportMessage } from './session-transport';
+import type { PlayClientStore } from './play-client-store';
+
+// Systemweit-Token für DM-/Host-Broadcasts (wie im Visibility-Broadcaster).
+const SYSTEM_TOKEN = 'system-dm';
 
 export type PlayerStatus = 'active' | 'kicked' | 'inactive' | string;
 
@@ -41,18 +46,11 @@ export function moveToken(params: MoveTokenParams): MoveTokenResult {
   return { success: true };
 }
 
-/**
- * Baut das Live-Push-Delta für eine autorisierte Token-Bewegung (kind:'token',
- * op:'update'). Wird an alle aktiven Empfänger verteilt (Token-Bewegung ist
- * nicht per-Spieler-gefiltert — sie ist für alle sichtbar, D18/D20). Der
- * optionale `send`-Callback verdrahtet den Transport (S01); ohne ihn liefert
- * die Funktion nur das Delta zurück (test-/consumer-freundlich).
- */
-export function broadcastMovement(
+/** Baut das Token-Bewegungs-Delta (kind:'token', op:'update'). */
+export function buildMovementDelta(
   params: { campaignId: string; tokenId: string; x: number; y: number; serverTime?: string },
-  send?: (delta: Delta) => void,
 ): Delta {
-  const delta: Delta = {
+  return {
     type: 'delta',
     campaignId: params.campaignId,
     op: 'update',
@@ -61,6 +59,39 @@ export function broadcastMovement(
     data: { x: params.x, y: params.y },
     serverTime: params.serverTime ?? new Date().toISOString(),
   };
-  send?.(delta);
+}
+
+/**
+ * Live-Push (Host→alle): verteilt eine autorisierte Token-Bewegung über den
+ * Host-Push-Pfad (SessionTransport, #373). Token-Bewegung ist NICHT
+ * per-Spieler-gefiltert — sie ist für alle sichtbar (D18/D20), daher ein
+ * einfacher Broadcast. Das Delta reist als TransportMessage
+ * (type:'delta', payload=Delta). Gibt das gesendete Delta zurück.
+ */
+export function broadcastMovement(
+  params: { campaignId: string; tokenId: string; x: number; y: number; serverTime?: string },
+  transport: Pick<SessionTransport, 'send'>,
+): Delta {
+  const delta = buildMovementDelta(params);
+  const msg: TransportMessage = {
+    type: 'delta',
+    token: SYSTEM_TOKEN,
+    payload: delta as unknown as Record<string, unknown>,
+  };
+  void transport.send(msg).catch(() => { /* offline → verwerfen (fire-and-forget) */ });
   return delta;
+}
+
+/**
+ * Client-Seite (D29, DB-los): wendet eine eingehende Token-Bewegungs-
+ * TransportMessage auf den transport-gespeisten Store an. Nur `delta`-
+ * Nachrichten mit kind:'token' werden angewandt; alles andere ignoriert.
+ * Gibt true zurück, wenn eine Token-Bewegung angewandt wurde.
+ */
+export function applyMovementMessage(msg: TransportMessage, store: PlayClientStore): boolean {
+  if (msg.type !== 'delta') return false;
+  const delta = msg.payload as unknown as Delta;
+  if (delta.kind !== 'token') return false;
+  store.applyDelta(delta);
+  return true;
 }
