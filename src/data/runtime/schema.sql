@@ -184,3 +184,11 @@ CREATE TABLE IF NOT EXISTS player_characters (
   sheet_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- M10-S17 (#363, D16): campaign-scoped „Session-Jetzt" als absoluter Tages-
+-- Zähler. Der DM schreibt vor / setzt absolut; das host-seitige Kalender-
+-- Gate liefert nur Ereignisse mit start_day <= day aus (Zukunft nie).
+CREATE TABLE IF NOT EXISTS campaign_session_now (
+  campaign_id TEXT PRIMARY KEY,
+  day INTEGER NOT NULL DEFAULT 0
+);
