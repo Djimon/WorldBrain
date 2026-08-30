@@ -402,7 +402,8 @@ Live-Test der rebuild-Schiene (`planning/M10-multiplayer-regression-analysis.md`
 | M10-S17 | #363 | p1 | S01+S20 | Session-Zeit + Kalender-Gate (D16) — ✅ voranschreiten **+** absolut setzen |
 | M10-S19 | #364 | p2 | — | In-App Split-View (D21) — ✅ nur In-App, kein Pop-out |
 | M10-S21 | #365 | p1 | S20 | Campaign-Override + Promote (D23) — ✅ ganze Entity, reversibel |
-| M10-Token | #366 | p1 | S01 | Token-Bewegung (D18) — ✅ V1 offen, kein Lock |
+| M10-Token | #366 | p1 | S01 | Token-Bewegung (D18) — ✅ V1 offen, kein Lock (Sync-Maschinerie fertig; Render-Fläche = #386) |
+| M10-CockpitMap | #386 | p1 | #360+#366 | Play-Cockpit-Map: eigener Play-Map-Picker + MapViewer-Einbettung + Token-Sync-Loop — schließt #366-„letzte Meile" + #360-Map-Stub |
 | M10-S11 | #367 | p2 | S01 | **Stufe 3:** WebRTC + STUN + Gratis-Broker (D28) · `needs-design` (nur Broker-Wahl) |
 | M10-S12 | #368 | p2 | S01+S11 | **Stufe 3:** Broker-Signaling + manueller Fallback (D28) · `needs-design` (nur Broker-Wahl) |
 | Sub-Epic | — | — | M9+M10 | **Kampf-Engine** → `planning/epics/M10b-combat-engine.md` · `needs-design` |
@@ -425,7 +426,7 @@ Live-Test der rebuild-Schiene (`planning/M10-multiplayer-regression-analysis.md`
 
 **Phase 3 — Play:**
 - **S08 #357** Charaktererstellung (braucht S05) · **S09 #358** Live-Sicht (braucht S07+S01) · **S10 #359** Reconnect
-- **S14 #360** Play-Cockpit (braucht S05+S06+S22) · **S15 #361** Whiteboard · **S16 #362** Würfel · **S17 #363** Session-Zeit · **#366** Token-Bewegung · **S19 #364** Split-View
+- **S14 #360** Play-Cockpit (braucht S05+S06+S22) · **S15 #361** Whiteboard · **S16 #362** Würfel · **S17 #363** Session-Zeit · **#366** Token-Bewegung · **#386** Play-Cockpit-Map (braucht #360+#366) · **S19 #364** Split-View
 - **S21 #365** Override-Default + Promote (braucht S20) — Authoring-seitig, parallel
 
 **Phase 4 — Später:** Stufe 3 (**S11 #367** / **S12 #368**, braucht S01, `needs-design` Signaling), **Kampf-Sub-Epic** (`M10b`), Campaign-Log-UI (Aggregation, kein eigenes Objekt).
