@@ -123,6 +123,7 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
       database={database}
       store={store}
       transport={transport}
+      playerId={playerId}
     />
   );
 

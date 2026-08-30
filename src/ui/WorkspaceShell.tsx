@@ -40,6 +40,8 @@ import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext
 import { WebRtcTransport } from '../services/webrtc-transport';
 import { currentAppId } from '../services/app-id-service';
 import { attachVisibilityBroadcaster } from '../services/player-content-filter-service';
+import { attachHostTokenSync } from '../services/host-token-sync';
+import { attachClientStoreToTransport } from '../services/client-store-transport-bridge';
 import { createPlayClientStore, type PlayClientStoreImpl } from '../services/play-client-store';
 import { listCampaigns, createCampaign, type Campaign } from '../services/campaign-service';
 import { PlayModeView } from './PlayModeView';
@@ -132,6 +134,10 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // M10-#386: der Host-Transport wird in State gehoben, damit das Play-Cockpit
   // (PlayModeView → MapViewer) Token-Bewegungen darüber broadcasten kann.
   const [hostTransport, setHostTransport] = useState<WebRtcTransport | null>(null);
+  // M10-#386 (Variante A): der Player-Transport kommt aus dem Join-Flow
+  // (PlayerJoinView) hoch — die Shell speist damit den DB-losen Store (D29-Feed)
+  // und der Player sendet darüber Token-Bewegungs-Intents.
+  const [playerTransport, setPlayerTransport] = useState<WebRtcTransport | null>(null);
   // M10-S22 (Follow-up): echte Campaign-Auswahl beim Play-Eintritt statt
   // projectId-Hack. Campaigns werden beim Öffnen des Auswahl-Panels geladen.
   const [availableCampaigns, setAvailableCampaigns] = useState<Campaign[]>([]);
@@ -928,6 +934,14 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     setPlayerStore(createPlayClientStore({ playerId: playerContext.playerId }));
   }, [sessionRole, playerContext]);
 
+  // M10-#386 (D29-Feed): sobald Player-Store UND -Transport existieren, den
+  // Store an den Transport-Feed hängen — Snapshot/Delta (inkl. Token-
+  // Bewegungen) fließen dann in den DB-losen Client.
+  useEffect(() => {
+    if (playerStore === null || playerTransport === null) return;
+    attachClientStoreToTransport(playerTransport, playerStore);
+  }, [playerStore, playerTransport]);
+
   // #373 M10-R2 + S11: Host-Push verdrahten + Broker-Signaling attachen.
   // DM ist im Host/Connect-Modell Peer 'A' (Initiator). appId = currentAppId
   // (per-Host-Namespace aus getHostSecret); roomId = campaignId. Der Signaling-
@@ -949,6 +963,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       });
     })().catch((e) => console.warn('[host-signaling] setup failed', e));
     const unsub = attachVisibilityBroadcaster(transport);
+    // M10-#386 (D18, host-authoritative): eingehende Token-Bewegungs-Intents
+    // der Spieler autorisieren + Ground-Truth persistieren + an alle broadcasten.
+    attachHostTokenSync({ transport, database, campaignId });
     return () => {
       unsub();
       setHostTransport(null);
@@ -1062,13 +1079,15 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                 store={playerStore ?? undefined}
                 playerId={playerContext.playerId}
                 playerGroupIds={playerGroupIds}
+                transport={playerTransport ?? undefined}
               />
             ) : (
               // M10-S05: Player-Rolle startet mit dem Beitritts-Flow.
               <PlayerJoinView
                 database={database}
-                onJoined={async ({ playerId, displayName }) => {
+                onJoined={async ({ playerId, displayName, transport }) => {
                   setPlayerContext({ playerId, displayName });
+                  setPlayerTransport(transport ?? null); // #386 D29-Feed
                   // Group-Zugehörigkeit des Players → Filter-Kontext für S09.
                   try {
                     const rows = await database.select<{ group_id: string }>(

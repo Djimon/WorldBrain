@@ -17,6 +17,7 @@ import type { PlayClientStoreImpl } from '../services/play-client-store';
 import { listMaps, type MapRow } from '../services/map-service';
 import { getPresentedMapId, setPresentedMapId } from '../services/presented-map-service';
 import { broadcastMovement } from '../services/token-movement-service';
+import { sendMoveIntent } from '../services/host-token-sync';
 import { MapViewer } from './MapViewer';
 import { Button, ListSurface, Panel } from './primitives';
 
@@ -27,13 +28,15 @@ export interface PlayCockpitMapProps {
   database?: DatabaseLike;
   /** Player-Pfad: transport-gespeister Store. */
   store?: PlayClientStoreImpl;
-  /** Host-Transport — der DM broadcastet Token-Bewegungen darüber. */
+  /** Host-Transport (DM broadcastet) bzw. Player-Transport (Player schickt Intent). */
   transport?: Pick<SessionTransport, 'send'>;
+  /** Player-Pfad: eigene Spieler-ID (Absender des Bewegungs-Intents). */
+  playerId?: string;
 }
 
 interface StoreToken { id: string; x: number; y: number }
 
-export function PlayCockpitMap({ role, campaignId, database, store, transport }: PlayCockpitMapProps) {
+export function PlayCockpitMap({ role, campaignId, database, store, transport, playerId }: PlayCockpitMapProps) {
   const { t } = useTranslation('multiplayer');
 
   // ---- DM/Host-Pfad ------------------------------------------------------
@@ -81,8 +84,30 @@ export function PlayCockpitMap({ role, campaignId, database, store, transport }:
           <div className="play-cockpit-map__stage">
             {imageUrl !== '' && <img className="play-cockpit-map__img" src={imageUrl} alt="" />}
             {tokens.map((tk) => (
-              <div key={tk.id} className="play-cockpit-map__token" data-token-id={tk.id}
-                data-x={tk.x} data-y={tk.y} style={{ transform: `translate(${tk.x}px, ${tk.y}px)` }} />
+              <div
+                key={tk.id}
+                className="play-cockpit-map__token play-cockpit-map__token--interactive"
+                data-token-id={tk.id}
+                data-x={tk.x} data-y={tk.y}
+                style={{ transform: `translate(${tk.x}px, ${tk.y}px)` }}
+                onPointerDown={(e) => {
+                  // Host-autoritativ: der Player schreibt NICHT lokal, er schickt
+                  // beim Loslassen einen Intent. Ground truth + Broadcast kommen
+                  // vom Host zurück (memory: host-authoritative-token-sync).
+                  const stage = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+                  const startX = tk.x; const startY = tk.y;
+                  const startClientX = e.clientX; const startClientY = e.clientY;
+                  const onUp = (ev: PointerEvent) => {
+                    window.removeEventListener('pointerup', onUp);
+                    if (transport === undefined || playerId === undefined) return;
+                    const nx = Math.round(startX + (ev.clientX - startClientX));
+                    const ny = Math.round(startY + (ev.clientY - startClientY));
+                    void stage; // Stage-Rect nur für spätere Clamping-Erweiterung
+                    sendMoveIntent(transport, { campaignId, senderPlayerId: playerId, tokenId: tk.id, x: nx, y: ny });
+                  };
+                  window.addEventListener('pointerup', onUp);
+                }}
+              />
             ))}
           </div>
         )}

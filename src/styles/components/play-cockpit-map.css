@@ -26,6 +26,12 @@
   pointer-events: none;
 }
 
+.play-cockpit-map__token--interactive {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
 .play-cockpit-map__picker-list {
   display: flex;
   flex-wrap: wrap;

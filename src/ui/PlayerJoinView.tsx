@@ -24,8 +24,11 @@ import { Button, Field, Panel, StatusChip } from './primitives';
 
 export interface PlayerJoinViewProps {
   database: DatabaseLike;
-  /** Callback nach erfolgreichem Join (Token verfügbar) → S08 nimmt hier auf. */
-  onJoined?: (result: { token: string; playerId: string; displayName: string }) => void;
+  /** Callback nach erfolgreichem Join (Token verfügbar) → S08 nimmt hier auf.
+   *  `transport` (#386): der verbundene Broker-Transport wird hochgereicht,
+   *  damit die Shell den DB-losen Client-Store daran anschließt (D29-Feed)
+   *  und der Player Token-Bewegungs-Intents senden kann. */
+  onJoined?: (result: { token: string; playerId: string; displayName: string; transport?: WebRtcTransport }) => void;
 }
 
 // S11 (#367): Connect-Flow-States für die Broker-Verbindung.
@@ -143,7 +146,8 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
           onConnected: () => {
             setConnectState('connected');
             setJoinedName(name);
-            onJoined?.({ ...result, displayName: name });
+            // #386: den verbundenen Transport hochreichen → Shell speist Store.
+            onJoined?.({ ...result, displayName: name, transport: transportRef.current ?? undefined });
           },
           onError: (err) => {
             setError(`${t('join.errorBroker', 'Verbindung zum Host fehlgeschlagen.')} — ${err.message}`);
