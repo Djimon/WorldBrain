@@ -1,0 +1,22 @@
+Name-ideas:
+Aetherforge								(Firma/Gruppe/Company)
+└── Beyond Worlds						(Plattform)
+    ├── RealmForge						(DM-Tools)
+    │   ├── Entities / Lore
+    │   ├── Relations
+    │   ├── Maps
+    │   └── Timeline / Calendar
+    │
+    ├── Adventure Nexus					(Play-Tools)
+    │   ├── World State
+    │   ├── Campaign Runtime
+    │   ├── Groups / Players
+    │   ├── Sessions
+    │   └── VTT / Live Tools
+    │
+    └── WorldAnvil						(Plugin-System/Rules/Homebrew)
+        ├── Rulesets
+        ├── System Plugins
+        ├── Character Sheets
+        ├── Formulas / Conditions
+        └── Homebrew
