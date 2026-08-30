@@ -42,6 +42,7 @@ import { currentAppId } from '../services/app-id-service';
 import { attachVisibilityBroadcaster } from '../services/player-content-filter-service';
 import { attachHostTokenSync } from '../services/host-token-sync';
 import { attachClientStoreToTransport } from '../services/client-store-transport-bridge';
+import { pushPresentedMapSnapshot } from '../services/presented-map-push';
 import { createPlayClientStore, type PlayClientStoreImpl } from '../services/play-client-store';
 import { listCampaigns, createCampaign, type Campaign } from '../services/campaign-service';
 import { PlayModeView } from './PlayModeView';
@@ -966,6 +967,11 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     // M10-#386 (D18, host-authoritative): eingehende Token-Bewegungs-Intents
     // der Spieler autorisieren + Ground-Truth persistieren + an alle broadcasten.
     attachHostTokenSync({ transport, database, campaignId });
+    // M10-#386: Initial-Snapshot der präsentierten Karte + Tokens senden, sobald
+    // der Host-Transport steht — sonst bekäme der DB-lose Player-Store nie die
+    // Szene (computeSnapshot wurde vorher nie gesendet). present() re-pusht bei
+    // Kartenwechsel.
+    void pushPresentedMapSnapshot({ database, campaignId, transport });
     return () => {
       unsub();
       setHostTransport(null);

@@ -18,6 +18,7 @@ import { listMaps, type MapRow } from '../services/map-service';
 import { getPresentedMapId, setPresentedMapId } from '../services/presented-map-service';
 import { broadcastMovement } from '../services/token-movement-service';
 import { sendMoveIntent } from '../services/host-token-sync';
+import { pushPresentedMapSnapshot } from '../services/presented-map-push';
 import { MapViewer } from './MapViewer';
 import { Button, ListSurface, Panel } from './primitives';
 
@@ -58,6 +59,8 @@ export function PlayCockpitMap({ role, campaignId, database, store, transport, p
     if (!database) return;
     await setPresentedMapId(database, { campaignId, mapId });
     setPresentedId(mapId);
+    // Neue präsentierte Karte + Tokens an die Spieler pushen.
+    if (transport) await pushPresentedMapSnapshot({ database, campaignId, transport });
   }
 
   // ---- Player-Pfad (DB-los) ---------------------------------------------
