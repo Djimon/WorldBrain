@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { onVisibilityChange } from '../services/visibility-service';
 import { LobbyPanel } from './LobbyPanel';
+import { SessionTimeControl } from './SessionTimeControl';
 import { PlayerCharacterSheet } from './PlayerCharacterSheet';
 import { DiceRollerWidget } from './DiceRollerWidget';
 import { listEntries, type CombatLogEntry } from '../services/combat-log-service';
@@ -158,6 +159,14 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
       data-session-id={activeSessionId ?? ''}>
       {role === 'dm' && database !== undefined && campaignId !== '' && (
         <LobbyPanel database={database} campaignId={campaignId} />
+      )}
+
+      {/* S17 (#363): DM-Session-Zeit-Control (voranschreiten + absolut setzen).
+          Nur DM; das host-seitige Kalender-Gate hängt am resultierenden
+          Session-Jetzt. */}
+      {role === 'dm' && database !== undefined && campaignId !== '' && (
+        <SessionTimeControl database={database} campaignId={campaignId}
+          onChanged={() => setVisTick((n) => n + 1)} />
       )}
 
       <div className="u-row u-gap-2">

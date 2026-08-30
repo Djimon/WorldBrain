@@ -10,6 +10,7 @@
 // bzw. wird von der Feature-Story aufgerufen (kein globales Event-Bus hier).
 import type { DatabaseLike } from './entity-service';
 import { onVisibilityChange, resolveSessionVisibility, type VisibilityChange } from './visibility-service';
+import { filterEventsBySessionNow } from './session-time-service';
 import type { SessionTransport } from './session-transport';
 
 export interface PlayerFilterContext {
@@ -66,6 +67,40 @@ export async function filterMarkersForPlayer(params: Omit<FilterIdsParams, 'targ
 
 export async function filterHandoutsForPlayer(params: Omit<FilterIdsParams, 'targetType'>): Promise<string[]> {
   return filterIdsForPlayer({ ...params, targetType: 'handout' });
+}
+
+/**
+ * M10-S17 (#363, D16): Kalender-Events für den Spieler filtern — ZWEISTUFIG:
+ * 1. Sichtbarkeit (S07/Decision 8, wie alle anderen Kategorien).
+ * 2. **Session-Zeit-Gate**: Events mit start_day > „Session-Jetzt" verlassen
+ *    den Host NIE (Zukunft nie ausgeliefert). Der Client filtert nie selbst.
+ * Reihenfolge egal (beide Filter sind Schnitte); wir gaten zuerst über die
+ * Zeit (billig, ohne DB-Roundtrip pro ID) und danach über die Sichtbarkeit.
+ */
+export async function filterEventsForPlayer<T extends { id: string; start_day: number }>(
+  params: {
+    database: DatabaseLike;
+    campaignId: string;
+    context: PlayerFilterContext;
+    events: T[];
+  },
+): Promise<T[]> {
+  // 1. Zeit-Gate: nur Events <= Session-Jetzt.
+  const inTime = await filterEventsBySessionNow(params.database, {
+    campaignId: params.campaignId,
+    events: params.events,
+  });
+  // 2. Sichtbarkeits-Gate über die verbleibenden IDs.
+  const visibleIds = new Set(
+    await filterIdsForPlayer({
+      database: params.database,
+      campaignId: params.campaignId,
+      targetType: 'event',
+      ids: inTime.map((e) => e.id),
+      context: params.context,
+    }),
+  );
+  return inTime.filter((e) => visibleIds.has(e.id));
 }
 
 /**
