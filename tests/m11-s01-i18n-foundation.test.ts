@@ -6,7 +6,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const LOCALES_ROOT = 'src/locales';
-const REQUIRED_NAMESPACES = ['common', 'nav', 'entity', 'map', 'session'];
+const REQUIRED_NAMESPACES = ['common', 'nav', 'entity', 'map', 'session', 'multiplayer'];
 const REQUIRED_LANGS = ['en', 'de'];
 
 describe('M11-S01 i18n foundation', () => {

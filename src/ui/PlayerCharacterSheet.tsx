@@ -205,13 +205,13 @@ export function PlayerCharacterSheet({
         <p className="u-muted">{t('pc.actionsHint', 'Aktionen posten in den Kampflog (Regel-Auflösung folgt im Kampf-Sub-Epic M10b).')}</p>
         <div className="u-row u-gap-2">
           <Button onClick={() => triggerAction('attack', t('pc.actionAttack', '{{name}} greift an.', { name: charName }))}>
-            {t('pc.actionAttack.btn', 'Angriff')}
+            {t('pc.actionAttackBtn', 'Angriff')}
           </Button>
           <Button onClick={() => triggerAction('cast', t('pc.actionCast', '{{name}} wirkt einen Zauber.', { name: charName }))}>
-            {t('pc.actionCast.btn', 'Zauber')}
+            {t('pc.actionCastBtn', 'Zauber')}
           </Button>
           <Button onClick={() => triggerAction('skill', t('pc.actionSkill', '{{name}} nutzt eine Fertigkeit.', { name: charName }))}>
-            {t('pc.actionSkill.btn', 'Fertigkeit')}
+            {t('pc.actionSkillBtn', 'Fertigkeit')}
           </Button>
         </div>
         {lastAction !== null && (
