@@ -1,0 +1,141 @@
+// @vitest-environment jsdom
+// M17-S07 (#389): Header-Identität zusammenführen (EINE Wortmarke „Beyond Worlds
+// – RealmForge/Adventure Nexus") + modus-abhängiger OS-Fenstertitel.
+// Integrationstest durch den ECHTEN WorkspaceShell-Mount (analog m17-s03-mount);
+// setTitle ist gemockt und wird auf den korrekten Titel geprüft.
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import { readFileSync } from 'node:fs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
+
+const { setTitle } = vi.hoisted(() => ({ setTitle: vi.fn(() => Promise.resolve()) }));
+
+vi.mock('../src/services/DatabaseContext', () => ({
+  useDatabase: () => ({ execute: vi.fn().mockResolvedValue(undefined), select: vi.fn().mockResolvedValue([]) }),
+  DatabaseContext: { Provider: ({ children }: { children: React.ReactNode }) => children },
+  DatabaseProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+vi.mock('../src/services/plugin-entity-service', () => ({
+  listEntityTypes: vi.fn().mockReturnValue([]), registerPluginEntityType: vi.fn(), getEntityType: vi.fn(),
+  registerPluginRelationType: vi.fn(), getRelationTypeDefinition: vi.fn(), listPluginRelationTypes: vi.fn().mockReturnValue([]), flagOutdatedSchema: vi.fn(),
+}));
+vi.mock('../src/services/map-service', () => ({ listMaps: vi.fn().mockResolvedValue([]), importMapImage: vi.fn() }));
+vi.mock('../src/services/saved-views-service', () => ({ listViews: vi.fn().mockResolvedValue([]) }));
+vi.mock('../src/services/rule-import-service', () => ({ importRules: vi.fn() }));
+vi.mock('../src/services/rule-evaluations', () => ({
+  detectMysteryBreakers: vi.fn().mockResolvedValue([]), analyzeRoleCoverage: vi.fn().mockResolvedValue([]), detectQuestBlockers: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('../src/services/calendar-service', () => ({ listCalendars: vi.fn().mockResolvedValue([]), setActiveCalendar: vi.fn(), deleteCalendar: vi.fn() }));
+vi.mock('../../core_data/calendar-schema', () => ({ formatCalendarDate: vi.fn().mockReturnValue('') }));
+vi.mock('../src/services/event-entity-service', () => ({ createEventEntity: vi.fn() }));
+vi.mock('../src/services/map-layer-service', () => ({ importImageLayer: vi.fn(), createFogLayer: vi.fn() }));
+vi.mock('@tauri-apps/api/webviewWindow', () => {
+  const WebviewWindow = vi.fn().mockImplementation(() => ({ once: vi.fn(), listen: vi.fn() }));
+  (WebviewWindow as unknown as Record<string, unknown>).getByLabel = vi.fn().mockResolvedValue(null);
+  // #389: setTitle-Spy über den echten Bezugsweg WebviewWindow.getCurrent().
+  (WebviewWindow as unknown as Record<string, unknown>).getCurrent = vi.fn(() => ({ setTitle }));
+  return { WebviewWindow };
+});
+vi.mock('@tauri-apps/api/path', () => ({ join: vi.fn().mockResolvedValue('') }));
+vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue(null) }));
+vi.mock('@tauri-apps/plugin-fs', () => ({ readTextFile: vi.fn().mockResolvedValue(''), writeTextFile: vi.fn().mockResolvedValue(undefined), exists: vi.fn().mockResolvedValue(false) }));
+vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn().mockResolvedValue(null), save: vi.fn().mockResolvedValue(null) }));
+
+const stubComponent = (name: string) =>
+  (props: Record<string, unknown>) => React.createElement('div', { 'data-testid': `stub-${name}`, ...props });
+
+vi.mock('../src/ui/EntityMasterDetail', () => ({ EntityMasterDetail: stubComponent('EntityMasterDetail') }));
+vi.mock('../src/ui/EntityDetailView', () => ({ EntityDetailView: stubComponent('EntityDetailView') }));
+vi.mock('../src/ui/GlobalSearch', () => ({ GlobalSearch: stubComponent('GlobalSearch') }));
+vi.mock('../src/ui/ChronicleView', () => ({ ChronicleView: stubComponent('ChronicleView') }));
+vi.mock('../src/ui/CalendarWizard', () => ({ CalendarWizard: stubComponent('CalendarWizard') }));
+vi.mock('../src/ui/CalendarMonthView', () => ({ CalendarMonthView: stubComponent('CalendarMonthView') }));
+vi.mock('../src/ui/CalendarLinkPanel', () => ({ CalendarLinkPanel: stubComponent('CalendarLinkPanel') }));
+vi.mock('../src/ui/CardList', () => ({ CardList: stubComponent('CardList') }));
+vi.mock('../src/ui/CardCreationFlow', () => ({ CardCreationFlow: stubComponent('CardCreationFlow') }));
+vi.mock('../src/ui/PrintSheetComposer', () => ({ PrintSheetComposer: stubComponent('PrintSheetComposer') }));
+vi.mock('../src/ui/PluginManager', () => ({ PluginManager: stubComponent('PluginManager') }));
+vi.mock('../src/ui/DmScreen', () => ({ DmScreen: stubComponent('DmScreen'), DmScreenSelector: stubComponent('DmScreenSelector') }));
+vi.mock('../src/ui/SnapshotManager', () => ({ SnapshotManager: stubComponent('SnapshotManager') }));
+vi.mock('../src/ui/UpdateNotification', () => ({ UpdateNotification: stubComponent('UpdateNotification') }));
+vi.mock('../src/ui/MapViewer', () => ({ MapViewer: stubComponent('MapViewer') }));
+vi.mock('../src/ui/GlobalGraphView', () => ({ GlobalGraphView: stubComponent('GlobalGraphView') }));
+vi.mock('../src/ui/LayerPanel', () => ({ LayerPanel: stubComponent('LayerPanel') }));
+vi.mock('../src/ui/MapsSidebarTabs', () => ({ MapsSidebarTabs: stubComponent('MapsSidebarTabs') }));
+vi.mock('../src/ui/MapFolderTree', () => ({ MapFolderTree: stubComponent('MapFolderTree') }));
+vi.mock('../src/ui/LanguageSwitcher', () => ({ LanguageSwitcher: stubComponent('LanguageSwitcher') }));
+vi.mock('../src/ui/ThemeToggle', () => ({ ThemeToggle: stubComponent('ThemeToggle') }));
+vi.mock('../src/ui/PlayModeView', () => ({ PlayModeView: () => React.createElement('div', { 'data-testid': 'dm-cockpit' }, 'Play mode') }));
+
+afterEach(() => { cleanup(); document.documentElement.removeAttribute('data-mode'); setTitle.mockClear(); });
+
+async function getShell() {
+  const mod = await import('../src/ui/WorkspaceShell');
+  return mod.WorkspaceShell;
+}
+const playSeg = () => screen.getByRole('button', { name: 'Spielen' });
+const asDm = () => screen.getByRole('button', { name: /Als DM/i });
+
+describe('M17-S07 merged wordmark through real WorkspaceShell mount', () => {
+  it('renders ONE wordmark containing platform + edit mode mark', async () => {
+    const Shell = await getShell();
+    render(React.createElement(Shell));
+    await waitFor(() => expect(document.documentElement.getAttribute('data-mode')).toBe('edit'));
+    const wm = document.querySelector('.workspace-shell__wordmark');
+    expect(wm).toBeTruthy();
+    // Beide Marken stecken in EINEM Wortmarken-Element (zusammengeführt).
+    expect(wm!.textContent).toContain('Beyond Worlds');
+    expect(wm!.textContent).toContain('RealmForge');
+    // nur der Modus-Teil ist ein eigenes, akzentgetragenes Element.
+    expect(wm!.querySelector('.workspace-shell__wordmark-mode')!.textContent).toBe('RealmForge');
+  });
+
+  it('project + area names still present but as secondary elements', async () => {
+    const Shell = await getShell();
+    render(React.createElement(Shell));
+    await waitFor(() => expect(document.documentElement.getAttribute('data-mode')).toBe('edit'));
+    expect(document.querySelector('.workspace-shell__project-name')).toBeTruthy();
+    expect(document.querySelector('.workspace-shell__area-name')).toBeTruthy();
+  });
+
+  it('sets OS window title to "Beyond Worlds – RealmForge" in edit mode', async () => {
+    const Shell = await getShell();
+    render(React.createElement(Shell));
+    await waitFor(() => expect(setTitle).toHaveBeenCalledWith('Beyond Worlds – RealmForge'));
+  });
+
+  it('switching to play flips the wordmark mode part AND the window title', async () => {
+    const Shell = await getShell();
+    render(React.createElement(Shell));
+    await waitFor(() => expect(document.documentElement.getAttribute('data-mode')).toBe('edit'));
+
+    fireEvent.click(playSeg());
+    await waitFor(() => expect(asDm()).toBeTruthy());
+    fireEvent.click(asDm());
+
+    await waitFor(() => expect(document.documentElement.getAttribute('data-mode')).toBe('play'));
+    const wm = document.querySelector('.workspace-shell__wordmark');
+    expect(wm!.querySelector('.workspace-shell__wordmark-mode')!.textContent).toBe('Adventure Nexus');
+    expect(wm!.textContent).toContain('Beyond Worlds');
+    await waitFor(() => expect(setTitle).toHaveBeenCalledWith('Beyond Worlds – Adventure Nexus'));
+  });
+});
+
+describe('M17-S07 styling guards (CSS source)', () => {
+  it('only the mode part of the wordmark carries the accent token', () => {
+    const css = readFileSync('src/styles/components/shell.css', 'utf-8');
+    expect(css).toMatch(/\.workspace-shell__wordmark-mode\s*\{[^}]*--mode-accent-text/);
+  });
+
+  it('project + area names are demoted to muted secondary text', () => {
+    const css = readFileSync('src/styles/components/shell.css', 'utf-8');
+    const proj = css.slice(css.indexOf('.workspace-shell__project-name'));
+    expect(proj).toMatch(/color:\s*var\(--color-text-muted\)/);
+  });
+
+  it('static window title preset is "Beyond Worlds"', () => {
+    const conf = readFileSync('src-tauri/tauri.conf.json', 'utf-8');
+    expect(conf).toMatch(/"title":\s*"Beyond Worlds"/);
+  });
+});

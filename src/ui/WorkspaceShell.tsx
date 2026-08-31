@@ -936,6 +936,12 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
 
   const modeContextValue = { mode, sessionRole, activeSessionId };
 
+  // M17-S07 (#389): Marken-Strings aus der Registry (#381) — Quelle für die
+  // zusammengeführte Wortmarke UND den OS-Fenstertitel. Modus-Teil folgt `mode`
+  // (Decision 2: Modus→Marke, NIE Rolle→Marke).
+  const brandPlatform = t('brand.platform', { ns: 'common' });
+  const brandModeMark = t(mode === 'play' ? 'brand.mode.play' : 'brand.mode.edit', { ns: 'common' });
+
   // M17-S03 (#382): den aktiven Shell-Modus als zweite Achse (neben data-theme)
   // auf documentElement spiegeln — die Modus-Akzent-Tokens in tokens.css hängen
   // an `:root[data-mode='…']`. So wechselt der Akzent Rot⟷Amber ohne Reload.
@@ -945,6 +951,16 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     // nachziehen — Built-in-Themes räumt der Applier no-op ab (CSS bleibt zuständig).
     applyThemeVars();
   }, [mode]);
+
+  // M17-S07 (#389): OS-Fenstertitel modus-abhängig — „Beyond Worlds – RealmForge"
+  // (edit) bzw. „Beyond Worlds – Adventure Nexus" (play). In Nicht-Tauri-Umgebungen
+  // (Tests/Browser) ist getCurrentWindow nicht verfügbar → guarded; der Titel ist
+  // kosmetisch, ein Fehlschlag darf die App nicht stören.
+  useEffect(() => {
+    try {
+      void WebviewWindow.getCurrent().setTitle(`${brandPlatform} – ${brandModeMark}`).catch(() => { /* kosmetisch */ });
+    } catch { /* nicht in Tauri */ }
+  }, [brandPlatform, brandModeMark]);
   const inPlayCockpit = mode === 'play' && activeArea === 'session';
 
   // #374 D30: Player-Store erzeugen sobald Player-Kontext feststeht (leerer
@@ -1034,18 +1050,19 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
               (Prep-Rot / Live-Amber) aus --mode-accent, rein dekorativ. */}
           <div className="workspace-shell__mode-stripe" aria-hidden="true" />
           <header className="workspace-shell__header">
-            {/* M17-S02 (#383): Produkt-Identitätsleiste — Plattform-Marke „Beyond
-                Worlds" (ruhige Kennung) + aktives Modus-Label. Marken-Strings aus
-                der Registry (#381, common-Namespace), Chrome aus Primitives/Tokens. */}
+            {/* M17-S07 (#389): EINE zusammengeführte Produkt-Wortmarke „Beyond
+                Worlds – RealmForge" (bzw. „… – Adventure Nexus"). Einheitliche Typo/
+                Basis-Farbe; nur der Modus-Teil trägt dezent den Modus-Akzent
+                (--mode-accent-text) — kein zweiter, andersartiger Pill-Style. Modus-
+                Teil folgt `mode` (Decision 2), Strings aus der Registry (#381).
+                Nicht-farbliche Modus-Kennzeichnung #1 (Decision 4) = der Klartext-Name. */}
             <div className="workspace-shell__identity" role="group"
               aria-label={t('modeIdentityAria', 'Produkt-Identität')}>
-              <span className="workspace-shell__brand-platform">{t('brand.platform', { ns: 'common' })}</span>
-              {/* Modus-Marke — Quelle ist `mode` (Decision 2: Modus→Marke, NIE
-                  Rolle→Marke), Marken-Keys aus der Registry (#381). Nicht-farbliche
-                  Modus-Kennzeichnung #1 (Decision 4). */}
-              <StatusChip tone="accent" aria-label={t('modeBrandAria', 'Aktiver Modus')}>
-                {t(mode === 'play' ? 'brand.mode.play' : 'brand.mode.edit', { ns: 'common' })}
-              </StatusChip>
+              <span className="workspace-shell__wordmark">
+                <span className="workspace-shell__wordmark-platform">{brandPlatform}</span>
+                <span className="workspace-shell__wordmark-sep" aria-hidden="true"> – </span>
+                <span className="workspace-shell__wordmark-mode">{brandModeMark}</span>
+              </span>
               {/* Live-Modus-Schloss — nicht-farbliche Modus-Kennzeichnung #2 (Decision 4). */}
               {mode === 'play' && (
                 <StatusChip tone="warning" aria-label={t('modeLockedAria', 'Live-Modus (gesperrt)')}>
@@ -1053,6 +1070,8 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                 </StatusChip>
               )}
             </div>
+            {/* #389: Projekt- und Area-Name sind sekundär — sie dürfen die Identität
+                nicht überlagern (kleiner/gedämpft via shell.css). */}
             <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
             <span className="workspace-shell__area-name">{activeAreaLabel}</span>
             <div className="workspace-shell__header-controls">
