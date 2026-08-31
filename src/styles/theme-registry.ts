@@ -92,16 +92,8 @@ export function forcedAppearance(theme: ThemeDef): Appearance | null {
   return theme.appearanceSupport === 'both' ? null : theme.appearanceSupport;
 }
 
-/**
- * Löst den Akzent-Satz aus Theme × Shell-Modus auf — die Daten-Spiegelung der
- * CSS-Kaskade in tokens.css. Über nicht unterstützte Achsen wird zusammengefasst:
- * `modeSupport: 'unified'` ignoriert den Shell-Modus (edit und play teilen den
- * unter `tokens.edit` abgelegten Satz). (Die Erscheinung wählt zur Laufzeit die
- * CSS-Kaskade über `data-appearance`; ein Single-Appearance-Theme erzwingt sie.)
- */
-export function resolveAccent(theme: ThemeDef, mode: ShellMode): AccentTokens {
-  const effectiveMode: ShellMode = theme.modeSupport === 'unified' ? 'edit' : mode;
-  const tokens = theme.tokens[effectiveMode] ?? theme.tokens.edit;
-  if (!tokens) throw new Error(`Theme '${theme.id}' has no accent tokens`);
-  return tokens;
+/** Repräsentativer Akzent eines Themes für die Vorschau (Live-Modus, sonst der
+ *  geteilte Satz) — vom ThemePicker als Farb-Swatch genutzt. */
+export function previewAccent(theme: ThemeDef): string {
+  return (theme.tokens.play ?? theme.tokens.edit)?.['--mode-accent'] ?? 'transparent';
 }

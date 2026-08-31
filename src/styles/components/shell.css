@@ -108,6 +108,20 @@
   white-space: nowrap;
 }
 
+/* M17-S04 (#385): Theme-Picker-Option mit Live-Akzent-Swatch (Farbe via --swatch). */
+.theme-picker__option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.theme-picker__swatch {
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: var(--radius-pill);
+  background: var(--swatch);
+  border: 1px solid var(--color-border);
+}
+
 .workspace-shell__header-controls {
   margin-left: auto;
   display: flex;
