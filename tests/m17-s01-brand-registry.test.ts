@@ -55,4 +55,16 @@ describe('M17-S01 i18n keys resolve to German defaults', () => {
     const source = readFileSync('src/branding/brand.ts', 'utf-8');
     expect(source).toMatch(/t\s*\(\s*['"]brand\./);
   });
+
+  // AC: „die Registry-/i18n-Keys lösen zu den erwarteten deutschen Defaults auf."
+  // Der Grep oben belegt die Verdrahtung; dieser Test belegt die tatsächliche
+  // Auflösung über die registrierte i18n-Instanz (common-Namespace).
+  it('brand keys resolve through i18n to the expected brand names', async () => {
+    const { default: i18n } = await import('../src/i18n');
+    await i18n.changeLanguage('de');
+    expect(i18n.t('brand.platform', { ns: 'common' })).toBe('Beyond Worlds');
+    expect(i18n.t('brand.mode.edit', { ns: 'common' })).toBe('RealmForge');
+    expect(i18n.t('brand.mode.play', { ns: 'common' })).toBe('Adventure Nexus');
+    expect(i18n.t('brand.engine', { ns: 'common' })).toBe('RuleLoom');
+  });
 });

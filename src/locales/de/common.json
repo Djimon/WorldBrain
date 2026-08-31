@@ -16,5 +16,13 @@
   "confirm": "Bestätigen",
   "yes": "Ja",
   "no": "Nein",
-  "all": "Alle"
+  "all": "Alle",
+  "brand": {
+    "platform": "Beyond Worlds",
+    "mode": {
+      "edit": "RealmForge",
+      "play": "Adventure Nexus"
+    },
+    "engine": "RuleLoom"
+  }
 }
