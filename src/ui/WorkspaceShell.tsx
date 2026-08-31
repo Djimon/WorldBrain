@@ -36,6 +36,7 @@ import { importImageLayer, createFogLayer } from '../services/map-layer-service'
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 import { ThemePicker } from './ThemePicker';
+import { applyThemeVars } from '../theme';
 import { Button, Field, Panel, Segmented, StatusChip } from './primitives';
 import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext';
 import { WebRtcTransport } from '../services/webrtc-transport';
@@ -940,6 +941,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // an `:root[data-mode='…']`. So wechselt der Akzent Rot⟷Amber ohne Reload.
   useEffect(() => {
     document.documentElement.setAttribute('data-mode', mode);
+    // #388: bei einem per-mode User-Theme den (jetzt anderen) Modus-Accent inline
+    // nachziehen — Built-in-Themes räumt der Applier no-op ab (CSS bleibt zuständig).
+    applyThemeVars();
   }, [mode]);
   const inPlayCockpit = mode === 'play' && activeArea === 'session';
 

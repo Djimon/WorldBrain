@@ -46,7 +46,10 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-pill: 999px;
-  --shadow-panel: 0 12px 28px rgba(15, 18, 22, 0.12);
+  /* #388: Composite-Schatten Farbe/Geometrie getrennt — die FARBE ist ein
+     eigener --color-*-Token (themebar), die Pixel (Offset/Blur) bleiben fix. */
+  --color-shadow-panel: rgba(15, 18, 22, 0.12);
+  --shadow-panel: 0 12px 28px var(--color-shadow-panel);
 }
 
 /* ── M17-S03/S04 (#382/#385): Modus-Akzent-Token-System ──
@@ -132,5 +135,6 @@
   --color-status-failure: #e06b6b;
   --color-status-muted:   #9aa3ab;
 
-  --shadow-panel: 0 12px 28px rgba(0, 0, 0, 0.45);
+  --color-shadow-panel: rgba(0, 0, 0, 0.45);
+  --shadow-panel: 0 12px 28px var(--color-shadow-panel);
 }

@@ -7,6 +7,8 @@ import type { ProjectEntry } from './services/app-config-service';
 import { openProjectDb } from './services/db-init';
 import { scanPlugins } from './services/plugin-loader';
 import { loadPluginEntityTypes } from './services/plugin-schema-loader';
+import { scanUserThemes } from './services/user-theme-loader';
+import { applyStoredTheme } from './theme';
 import { DatabaseProvider } from './services/DatabaseContext';
 import { WelcomeScreen } from './ui/WelcomeScreen';
 import { NewProjectDialog } from './ui/NewProjectDialog';
@@ -17,6 +19,7 @@ import './tab-wiring';
 
 const APP_CONFIG_FILENAME = 'app-config.json';
 const PROJECTS_SUBDIR = 'projects';
+const THEMES_SUBDIR = 'themes';
 
 type AppMode =
   | { kind: 'welcome' }
@@ -65,6 +68,12 @@ export function App() {
     appDataDir().then(async (base) => {
       if (cancelled) return;
       appBase.current = base;
+      // #388: importierbare User-Themes einlesen und registrieren, dann das
+      // gespeicherte Theme erneut anwenden — bei initTheme() (main.tsx) war ein
+      // User-Theme noch nicht registriert und fiel auf Default zurück.
+      const themesDir = await join(base, THEMES_SUBDIR);
+      const scan = await scanUserThemes(themesDir);
+      if (scan.registered.length) applyStoredTheme();
       const configPath = await join(base, APP_CONFIG_FILENAME);
       const projectsBase = await join(base, PROJECTS_SUBDIR);
       const config = await readAppConfig(configPath);

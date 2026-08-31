@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WorldBuilderX — Theme-Tester</title>
+<!--
+  Standalone Theme-Tester (#388). Komplett self-contained: kein Build, keine
+  Abhängigkeiten, kein Server — per Doppelklick im Browser öffnen. Zweck: dein
+  Theme-JSON testen, BEVOR du es unter <appDataDir>/themes/ ablegst.
+
+  Die App-Komponenten unten sind HIER hart nachgebaut (nicht die echten importiert)
+  und ausschließlich über die Tokens gestylt — kein Hex im Mock. Die Basiswerte
+  (light + dark) sind unten in JS eingebettet (Kopie aus src/styles/tokens.css),
+  damit die Datei ohne die App funktioniert.
+-->
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--color-background); color: var(--color-text);
+    transition: background .15s, color .15s;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1.15rem; margin: 0 0 2px; }
+  .sub { color: var(--color-text-muted); font-size: .85rem; margin: 0 0 14px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .seg { display: inline-flex; border: 1px solid var(--color-border); border-radius: var(--radius-pill); overflow: hidden; }
+  .seg button { border: none; background: var(--color-surface); color: var(--color-text-muted); padding: 4px 12px; cursor: pointer; font: inherit; }
+  .seg button[aria-pressed="true"] { background: var(--mode-accent); color: var(--mode-accent-on); }
+  .seg button:disabled { opacity: .4; cursor: not-allowed; }
+  .cols { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); gap: 16px; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+  .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: var(--shadow-panel); overflow: hidden; }
+  .card > h2 { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); margin: 0; padding: 8px 12px; border-bottom: 1px solid var(--color-border); }
+
+  /* ── App-Mock ── */
+  .mock { }
+  .mock__stripe { height: 3px; background: var(--mode-accent); }
+  .mock__header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+  .mock__brand { font-weight: 650; letter-spacing: .02em; }
+  .mock__brand small { color: var(--color-text-muted); font-weight: 500; }
+  .mock__mode-pill { padding: 1px 10px; border-radius: var(--radius-pill); background: var(--mode-accent-soft); color: var(--mode-accent-text); font-size: .75rem; font-weight: 600; }
+  .mock__lock { margin-left: 2px; }
+  .mock__spacer { flex: 1; }
+  .mock__body { display: flex; min-height: 260px; }
+  .mock__side { width: 46px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; background: var(--color-surface); border-right: 1px solid var(--color-border); }
+  .mock__side button { width: 32px; height: 32px; border: none; border-radius: var(--radius-sm); background: transparent; color: var(--color-text-muted); cursor: pointer; font-size: 15px; }
+  .mock__side button:hover { background: var(--color-surface-hover); color: var(--color-text); }
+  .mock__side button[aria-pressed="true"] { background: var(--mode-accent); color: var(--mode-accent-on); }
+  .mock__main { flex: 1; min-width: 0; padding: 12px; background: var(--color-background); display: flex; flex-direction: column; gap: 10px; }
+
+  .mock__tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--color-border); }
+  .mock__tabs button { border: none; border-bottom: 2px solid transparent; background: transparent; color: var(--color-text-muted); padding: 5px 10px; cursor: pointer; font: inherit; font-size: .85rem; }
+  .mock__tabs button[aria-selected="true"] { color: var(--mode-accent-text); border-bottom-color: var(--mode-accent); }
+
+  .rows { display: flex; flex-direction: column; gap: 3px; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border-left: 2px solid transparent; border-radius: var(--radius-sm); background: var(--color-surface); cursor: pointer; }
+  .row:hover { background: var(--color-surface-hover); }
+  .row[data-selected] { border-left-color: var(--mode-accent); background: var(--mode-accent-soft); }
+  .row__title { flex: 1; }
+  .row__type { font-size: .72rem; color: var(--mode-accent-text); text-transform: uppercase; }
+  .row__sub { font-size: .72rem; color: var(--color-text-muted); }
+
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn { min-height: 30px; padding: 5px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); cursor: pointer; font: inherit; font-size: .85rem; }
+  .btn:hover { border-color: var(--mode-accent); }
+  .btn--accent { border-color: var(--mode-accent); background: var(--mode-accent); color: var(--mode-accent-on); }
+  .btn--accent:hover { background: var(--mode-accent-hover); border-color: var(--mode-accent-hover); }
+  .btn--danger { border-color: var(--color-status-failure); background: var(--color-status-failure); color: var(--color-on-accent); }
+  .btn--danger:hover { filter: brightness(1.08); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { padding: 1px 9px; border-radius: var(--radius-pill); font-size: .72rem; border: 1px solid transparent; }
+  .chip--accent { background: var(--mode-accent-soft); color: var(--mode-accent-text); }
+  .chip--success { background: color-mix(in srgb, var(--color-status-success) 18%, transparent); color: var(--color-status-success); }
+  .chip--warning { background: color-mix(in srgb, var(--color-status-warning) 18%, transparent); color: var(--color-status-warning); }
+  .chip--failure { background: color-mix(in srgb, var(--color-status-failure) 18%, transparent); color: var(--color-status-failure); }
+  .chip--muted { background: color-mix(in srgb, var(--color-status-muted) 18%, transparent); color: var(--color-status-muted); }
+
+  .field { display: flex; flex-direction: column; gap: 3px; font-size: .72rem; color: var(--color-text-muted); }
+  .field input { padding: 5px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); font: inherit; }
+  .field input:focus { outline: none; border-color: var(--mode-accent); box-shadow: 0 0 0 2px var(--color-focus-glow); }
+
+  .play { position: relative; height: 84px; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background:
+      repeating-linear-gradient(0deg, transparent, transparent 19px, color-mix(in srgb, var(--color-border) 60%, transparent) 20px),
+      repeating-linear-gradient(90deg, transparent, transparent 19px, color-mix(in srgb, var(--color-border) 60%, transparent) 20px),
+      var(--color-surface-alt); overflow: hidden; }
+  .play__token { position: absolute; top: 26px; left: 40px; width: 22px; height: 22px; border-radius: 50%; background: var(--mode-accent); border: 2px solid var(--mode-accent-on); }
+  .play__pin { position: absolute; top: 16px; left: 130px; color: var(--color-layer-token); font-size: 20px; }
+  .play__dice { position: absolute; right: 10px; bottom: 10px; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--color-scrim); color: var(--color-highlight); font-size: .72rem; }
+
+  /* ── Token-Übersicht ── */
+  .tok-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; padding: 10px; }
+  .tok { display: flex; align-items: center; gap: 7px; font-size: .72rem; min-width: 0; }
+  .tok__sw { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--color-swatch-outline); flex-shrink: 0; }
+  .tok__meta { min-width: 0; }
+  .tok__name { font-family: ui-monospace, Consolas, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tok__val { color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tok__group { grid-column: 1 / -1; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); margin-top: 4px; }
+
+  /* ── JSON-Tester ── */
+  .json { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .json textarea { width: 100%; min-height: 240px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 12px; padding: 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); }
+  .json__actions { display: flex; gap: 8px; align-items: center; }
+  .json__msg { font-size: .8rem; }
+  .json__msg[data-kind="err"] { color: var(--color-status-failure); }
+  .json__msg[data-kind="ok"] { color: var(--color-status-success); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>WorldBuilderX — Theme-Tester</h1>
+  <p class="sub">Dein Theme-JSON (Format aus <code>docs/adding-a-theme.md</code>) unten einfügen → „Anwenden". Der App-Mock und die Token-Übersicht aktualisieren sich live. Standalone, keine App nötig.</p>
+
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Erscheinung">
+      <button id="app-dark" aria-pressed="true">Dark</button>
+      <button id="app-light" aria-pressed="false">Light</button>
+    </div>
+    <div class="seg" role="group" aria-label="Modus">
+      <button id="mode-edit" aria-pressed="true">Bearbeiten</button>
+      <button id="mode-play" aria-pressed="false">Spielen</button>
+    </div>
+    <span id="forced-note" class="sub" style="margin:0"></span>
+  </div>
+
+  <div class="cols">
+    <!-- App-Mock -->
+    <section class="card mock">
+      <h2>App-Vorschau (Mock)</h2>
+      <div class="mock__stripe"></div>
+      <div class="mock__header">
+        <span class="mock__brand">Beyond Worlds <small id="mock-modename">– RealmForge</small></span>
+        <span class="mock__mode-pill" id="mock-modepill">Bearbeiten</span>
+        <span class="mock__lock" id="mock-lock" hidden>🔒</span>
+        <span class="mock__spacer"></span>
+      </div>
+      <div class="mock__body">
+        <nav class="mock__side">
+          <button aria-pressed="true">🗺️</button>
+          <button>📖</button>
+          <button>🗓️</button>
+          <button>🎲</button>
+          <button>⚙️</button>
+        </nav>
+        <div class="mock__main">
+          <div class="mock__tabs">
+            <button aria-selected="true">Übersicht</button>
+            <button aria-selected="false">Details</button>
+            <button aria-selected="false">Verknüpfungen</button>
+          </div>
+          <div class="rows">
+            <div class="row" data-selected><span class="row__type">Ort</span><span class="row__title">Silberhafen</span><span class="row__sub">ausgewählt</span></div>
+            <div class="row"><span class="row__type">NSC</span><span class="row__title">Kapitän Mara</span><span class="row__sub">Kontakt</span></div>
+            <div class="row"><span class="row__type">Quest</span><span class="row__title">Der versunkene Turm</span><span class="row__sub">offen</span></div>
+          </div>
+          <div class="btns">
+            <button class="btn btn--accent">Primär</button>
+            <button class="btn">Neutral</button>
+            <button class="btn btn--danger">Löschen</button>
+          </div>
+          <div class="chips">
+            <span class="chip chip--accent">Akzent</span>
+            <span class="chip chip--success">Erfolg</span>
+            <span class="chip chip--warning">Warnung</span>
+            <span class="chip chip--failure">Fehler</span>
+            <span class="chip chip--muted">Neutral</span>
+          </div>
+          <label class="field">Name<input value="Silberhafen" /></label>
+          <div class="play">
+            <div class="play__token"></div>
+            <div class="play__pin">📍</div>
+            <div class="play__dice">🎲 W20: 17</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- rechte Spalte -->
+    <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
+      <section class="card">
+        <h2>JSON testen</h2>
+        <div class="json">
+          <textarea id="json-input" spellcheck="false" placeholder="Theme-JSON hier einfügen…"></textarea>
+          <div class="json__actions">
+            <button class="btn btn--accent" id="apply">Anwenden</button>
+            <button class="btn" id="reset">Zurücksetzen</button>
+            <button class="btn" id="sample">Beispiel laden</button>
+            <span class="json__msg" id="msg"></span>
+          </div>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Themebare Tokens (aktuell aufgelöst)</h2>
+        <div class="tok-grid" id="tok-grid"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+/* eslint-disable */
+// ── Basiswerte (Kopie aus src/styles/tokens.css) ────────────────────────────
+var BASE_LIGHT = {
+  '--color-text':'#1f2326','--color-text-muted':'#5b6169',
+  '--color-accent':'#7b1d1d','--color-accent-strong':'#5f1515','--color-accent-soft':'#ffecec',
+  '--color-surface':'#ffffff','--color-surface-alt':'#f7f8fa','--color-surface-hover':'#f0f1f3','--color-surface-active':'#fdeaea',
+  '--color-background':'#f2f3f5','--color-border':'#d5d8dd',
+  '--color-status-success':'#3c6f55','--color-status-warning':'#a06b1f','--color-status-failure':'#9f3a2e','--color-status-muted':'#6a6f75',
+  '--color-on-accent':'#ffffff','--color-scrim':'rgb(0 0 0 / 0.6)','--color-overlay-border':'rgb(255 255 255 / 0.2)',
+  '--color-shadow':'#000','--color-highlight':'#fff',
+  '--color-layer-image':'#6ea8fe','--color-layer-fog':'#b0b8c4','--color-layer-token':'#e0a15a',
+  '--color-swatch-outline':'#666','--color-print-border':'#ccc',
+  '--color-focus-glow':'rgba(47,111,145,0.15)','--color-error-soft':'rgba(180,60,60,0.12)','--color-shadow-panel':'rgba(15,18,22,0.12)'
+};
+var BASE_DARK_OVERRIDES = {
+  '--color-text':'#e7e2d8','--color-text-muted':'#a9b2ba',
+  '--color-accent':'#c04b4b','--color-accent-strong':'#e06b6b','--color-accent-soft':'#2b1b1b',
+  '--color-surface':'#1f2428','--color-surface-alt':'#232a30','--color-surface-hover':'#293036','--color-surface-active':'#2b1b1b',
+  '--color-background':'#15181b','--color-border':'#2f363d',
+  '--color-status-success':'#4c9a73','--color-status-warning':'#c28a3a','--color-status-failure':'#e06b6b','--color-status-muted':'#9aa3ab',
+  '--color-shadow-panel':'rgba(0,0,0,0.45)'
+};
+// Geometrie-Tokens (nicht themebar) — nur damit der Mock rendert.
+var GEOMETRY = { '--radius-sm':'4px','--radius-md':'6px','--radius-pill':'999px','--shadow-panel':'0 12px 28px var(--color-shadow-panel)' };
+// Default-Theme Mode-Accents je Erscheinung × Modus.
+var DEFAULT_ACCENTS = {
+  light: {
+    edit: { accent:'#c1121f',hover:'#a80f1a',on:'#ffffff',text:'#b3121f',soft:'rgba(193,18,31,0.12)' },
+    play: { accent:'#b45309',hover:'#92400e',on:'#ffffff',text:'#b45309',soft:'rgba(180,83,9,0.14)' }
+  },
+  dark: {
+    edit: { accent:'#e5484d',hover:'#ef5a5f',on:'#ffffff',text:'#f0888b',soft:'rgba(229,72,77,0.16)' },
+    play: { accent:'#eaa53c',hover:'#f2b451',on:'#241a05',text:'#f2bd63',soft:'rgba(234,165,60,0.16)' }
+  }
+};
+var COLOR_TOKENS = Object.keys(BASE_LIGHT);
+var ACCENT_MAP = { accent:'--mode-accent', hover:'--mode-accent-hover', on:'--mode-accent-on', text:'--mode-accent-text', soft:'--mode-accent-soft' };
+var ACCENT_FIELDS = ['accent','hover','on','text','soft'];
+
+// ── Zustand ──────────────────────────────────────────────────────────────────
+var appearance = 'dark', mode = 'edit', userTheme = null;
+var root = document.documentElement;
+
+// ── Validierung (Spiegel von user-theme-loader.ts) ───────────────────────────
+function isObj(v){ return v && typeof v==='object' && !Array.isArray(v); }
+function isStr(v){ return typeof v==='string' && v.length>0; }
+function validAccentSet(v){ return isObj(v) && ACCENT_FIELDS.every(function(f){ return isStr(v[f]); }); }
+function validateBlock(block, modeSupport, where){
+  if(!isObj(block)) return "Block '"+where+"' fehlt oder ist kein Objekt";
+  if(block.palette!==undefined){
+    if(!isObj(block.palette)) return "'"+where+".palette' ist kein Objekt";
+    for(var k in block.palette){
+      if(COLOR_TOKENS.indexOf(k)<0) return "'"+where+".palette' hat unbekannten Token '"+k+"'";
+      if(!isStr(block.palette[k])) return "'"+where+".palette."+k+"' ist kein Farb-String";
+    }
+  }
+  if(modeSupport==='per-mode'){
+    if(!isObj(block.accents)) return "'"+where+".accents' fehlt (brauche { edit, play })";
+    if(!validAccentSet(block.accents.edit)) return "'"+where+".accents.edit' unvollständig";
+    if(!validAccentSet(block.accents.play)) return "'"+where+".accents.play' unvollständig";
+  } else {
+    if(!validAccentSet(block.accents)) return "'"+where+".accents' unvollständig (accent/hover/on/text/soft)";
+  }
+  return null;
+}
+function validate(dto){
+  if(!isObj(dto)) return 'kein JSON-Objekt';
+  if(!isStr(dto.id) || !/^[a-z0-9-]+$/.test(dto.id)) return "ungültige/fehlende 'id' (^[a-z0-9-]+$)";
+  if(!isStr(dto.label)) return "fehlendes 'label'";
+  if(['dark','light','both'].indexOf(dto.appearance)<0) return "ungültige 'appearance' (dark|light|both)";
+  if(['unified','per-mode'].indexOf(dto.modeSupport)<0) return "ungültiges 'modeSupport' (unified|per-mode)";
+  var req = dto.appearance==='both' ? ['dark','light'] : [dto.appearance];
+  for(var i=0;i<req.length;i++){ var err = validateBlock(dto[req[i]], dto.modeSupport, req[i]); if(err) return err; }
+  return null;
+}
+
+// ── Auflösen + Anwenden ──────────────────────────────────────────────────────
+function mapAccents(a){ var o={}; ACCENT_FIELDS.forEach(function(f){ o[ACCENT_MAP[f]] = a[f]; }); return o; }
+function effectiveAppearance(){
+  if(userTheme && userTheme.appearance!=='both') return userTheme.appearance; // single-appearance erzwingt
+  return appearance;
+}
+function resolve(){
+  var app = effectiveAppearance();
+  var colors = {}; for(var k in BASE_LIGHT) colors[k]=BASE_LIGHT[k];
+  if(app==='dark') for(var k in BASE_DARK_OVERRIDES) colors[k]=BASE_DARK_OVERRIDES[k];
+  var accents = DEFAULT_ACCENTS[app][mode];
+  if(userTheme){
+    var block = userTheme[app];
+    if(block){
+      if(block.palette) for(var k in block.palette) colors[k]=block.palette[k];
+      var acc = userTheme.modeSupport==='unified' ? block.accents : block.accents[mode];
+      if(acc) accents = acc;
+    }
+  }
+  for(var g in GEOMETRY) root.style.setProperty(g, GEOMETRY[g]);
+  for(var c in colors) root.style.setProperty(c, colors[c]);
+  var ma = mapAccents(accents); for(var m in ma) root.style.setProperty(m, ma[m]);
+  return { colors: colors, accents: ma, app: app };
+}
+
+// ── UI-Sync ──────────────────────────────────────────────────────────────────
+function renderTokens(state){
+  var grid = document.getElementById('tok-grid'); grid.innerHTML='';
+  function group(name){ var d=document.createElement('div'); d.className='tok__group'; d.textContent=name; grid.appendChild(d); }
+  function swatch(name,value){
+    var t=document.createElement('div'); t.className='tok';
+    var sw=document.createElement('div'); sw.className='tok__sw'; sw.style.background=value;
+    var meta=document.createElement('div'); meta.className='tok__meta';
+    var nm=document.createElement('div'); nm.className='tok__name'; nm.textContent=name;
+    var vl=document.createElement('div'); vl.className='tok__val'; vl.textContent=value;
+    meta.appendChild(nm); meta.appendChild(vl); t.appendChild(sw); t.appendChild(meta); grid.appendChild(t);
+  }
+  group('Mode-Accents ('+state.app+' / '+mode+')');
+  ACCENT_FIELDS.forEach(function(f){ var n=ACCENT_MAP[f]; swatch(n, state.accents[n]); });
+  group('Palette ('+state.app+')');
+  COLOR_TOKENS.forEach(function(n){ swatch(n, state.colors[n]); });
+}
+function syncControls(){
+  var forced = userTheme && userTheme.appearance!=='both';
+  document.getElementById('app-dark').disabled = forced;
+  document.getElementById('app-light').disabled = forced;
+  document.getElementById('forced-note').textContent = forced ? ('Theme erzwingt '+userTheme.appearance+' — Umschalter aus') : '';
+  var app = effectiveAppearance();
+  document.getElementById('app-dark').setAttribute('aria-pressed', String(app==='dark'));
+  document.getElementById('app-light').setAttribute('aria-pressed', String(app==='light'));
+  document.getElementById('mode-edit').setAttribute('aria-pressed', String(mode==='edit'));
+  document.getElementById('mode-play').setAttribute('aria-pressed', String(mode==='play'));
+  document.getElementById('mock-modename').textContent = mode==='play' ? '– Adventure Nexus' : '– RealmForge';
+  document.getElementById('mock-modepill').textContent = mode==='play' ? 'Spielen' : 'Bearbeiten';
+  document.getElementById('mock-lock').hidden = mode!=='play';
+}
+function refresh(){ syncControls(); renderTokens(resolve()); }
+
+// ── Events ────────────────────────────────────────────────────────────────────
+document.getElementById('app-dark').onclick = function(){ appearance='dark'; refresh(); };
+document.getElementById('app-light').onclick = function(){ appearance='light'; refresh(); };
+document.getElementById('mode-edit').onclick = function(){ mode='edit'; refresh(); };
+document.getElementById('mode-play').onclick = function(){ mode='play'; refresh(); };
+function setMsg(text, kind){ var m=document.getElementById('msg'); m.textContent=text||''; m.setAttribute('data-kind', kind||''); }
+document.getElementById('apply').onclick = function(){
+  var text = document.getElementById('json-input').value;
+  var dto; try { dto = JSON.parse(text); } catch(e){ userTheme=null; setMsg('JSON-Fehler: '+e.message,'err'); refresh(); return; }
+  var err = validate(dto);
+  if(err){ userTheme=null; setMsg('Ungültig: '+err,'err'); refresh(); return; }
+  userTheme = dto; setMsg("OK — Theme '"+dto.label+"' angewandt.",'ok'); refresh();
+};
+document.getElementById('reset').onclick = function(){ userTheme=null; document.getElementById('json-input').value=''; setMsg('Zurückgesetzt auf Default.',''); refresh(); };
+var SAMPLE = {
+  id:'amethyst', label:'Amethyst', appearance:'both', modeSupport:'per-mode',
+  dark:{ palette:{ '--color-background':'#160a26','--color-surface':'#241236','--color-text':'#e9e0f5','--color-accent':'#a855f7' },
+    accents:{ edit:{accent:'#e5484d',hover:'#ef5a5f',on:'#ffffff',text:'#f0888b',soft:'rgba(229,72,77,0.16)'},
+              play:{accent:'#a855f7',hover:'#b975f9',on:'#1a0733',text:'#d8b4fe',soft:'rgba(168,85,247,0.16)'} } },
+  light:{ palette:{ '--color-background':'#f6f2fb','--color-surface':'#ffffff','--color-text':'#241236','--color-accent':'#7c3aed' },
+    accents:{ edit:{accent:'#c1121f',hover:'#a80f1a',on:'#ffffff',text:'#b3121f',soft:'rgba(193,18,31,0.12)'},
+              play:{accent:'#7c3aed',hover:'#6d28d9',on:'#ffffff',text:'#7c3aed',soft:'rgba(124,58,237,0.14)'} } }
+};
+document.getElementById('sample').onclick = function(){ document.getElementById('json-input').value = JSON.stringify(SAMPLE, null, 2); };
+
+refresh();
+</script>
+</body>
+</html>

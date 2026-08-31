@@ -20,6 +20,17 @@ export interface AccentTokens {
   '--mode-accent-soft': string;
 }
 
+/** Palette-Overrides (VS-Code-Stil): beliebige --color-*-Tokens; nicht gesetzte
+ *  erben die Basis-Palette der aktiven Erscheinung. Nur bekannte Namen (s.u.). */
+export type PaletteOverrides = Partial<Record<string, string>>;
+
+/** Vollständiger Skin für EINE Erscheinung (dark oder light): Palette-Overrides
+ *  + Akzent-Satz je Shell-Modus (per-mode) bzw. geteilt unter 'edit' (unified). */
+export interface AppearanceSkin {
+  palette?: PaletteOverrides;
+  tokens: Partial<Record<ShellMode, AccentTokens>>;
+}
+
 export interface ThemeDef {
   id: string;
   labelKey: string;
@@ -28,9 +39,40 @@ export interface ThemeDef {
   appearanceSupport: AppearanceSupport;
   /** Kanonischer Akzent-Satz je Shell-Modus (per-mode) bzw. der eine geteilte Satz
    *  unter 'edit' (unified). Bei appearanceSupport 'both' sind dies die Dark-Werte;
-   *  die Light-Variante liefert die CSS-Kaskade in tokens.css (Runtime-Wahrheit). */
+   *  bei eingebauten Themes liefert die Light-Variante die CSS-Kaskade in
+   *  tokens.css. Dient außerdem als Vorschau-Quelle (previewAccent). */
   tokens: Partial<Record<ShellMode, AccentTokens>>;
+  /** #388 — Voll-Token-Skins je Erscheinung, vom JS-Applier zur Laufzeit inline
+   *  gesetzt. NUR bei importierten User-Themes gefüllt; eingebaute Themes lassen
+   *  dies leer (sie sind CSS-getrieben, der Applier fasst sie nicht an). */
+  skins?: Partial<Record<Appearance, AppearanceSkin>>;
+  /** true = eingebaut/CSS-getrieben (default/teal): nicht überschreibbar, kein
+   *  Inline-Applier. Importierte User-Themes sind es NICHT. */
+  builtin?: boolean;
 }
+
+/** #388 — die themebaren --color-*-Tokens (Basis-Palette aus tokens.css, plus der
+ *  aufgetrennte Schatten-Farbanteil --color-shadow-panel). Ein User-Theme darf nur
+ *  diese Namen als palette-Override setzen; die fünf --mode-accent-* laufen über
+ *  `accents`. Geometrie (--radius-*, --space-*, Schatten-Pixel) ist NICHT themebar. */
+export const THEMEABLE_COLOR_TOKENS: ReadonlySet<string> = new Set([
+  '--color-text', '--color-text-muted',
+  '--color-accent', '--color-accent-strong', '--color-accent-soft',
+  '--color-surface', '--color-surface-alt', '--color-surface-hover', '--color-surface-active',
+  '--color-background', '--color-border',
+  '--color-status-success', '--color-status-warning', '--color-status-failure', '--color-status-muted',
+  '--color-on-accent', '--color-scrim', '--color-overlay-border',
+  '--color-shadow', '--color-highlight',
+  '--color-layer-image', '--color-layer-fog', '--color-layer-token',
+  '--color-swatch-outline', '--color-print-border',
+  '--color-focus-glow', '--color-error-soft', '--color-shadow-panel',
+]);
+
+/** Die fünf Akzent-Token-Namen in kanonischer Reihenfolge (Mapping-Ziel für
+ *  einen `accents`-Satz im User-Theme-Format). */
+export const ACCENT_TOKEN_KEYS: readonly (keyof AccentTokens)[] = [
+  '--mode-accent', '--mode-accent-hover', '--mode-accent-on', '--mode-accent-text', '--mode-accent-soft',
+];
 
 const DEFAULT_THEME: ThemeDef = {
   id: 'default',
@@ -38,6 +80,7 @@ const DEFAULT_THEME: ThemeDef = {
   defaultLabel: 'Standard',
   modeSupport: 'per-mode',
   appearanceSupport: 'both',
+  builtin: true,
   tokens: {
     edit: {
       '--mode-accent': '#e5484d', '--mode-accent-hover': '#ef5a5f', '--mode-accent-on': '#ffffff',
@@ -56,6 +99,7 @@ const TEAL_THEME: ThemeDef = {
   defaultLabel: 'Teal',
   modeSupport: 'per-mode',
   appearanceSupport: 'dark', // Single-Appearance: erzwingt Dark, Dark/Light-Umschalter aus
+  builtin: true,
   tokens: {
     edit: {
       // Prep bleibt Rot (stabil über beide ausgelieferten Themes).
@@ -81,6 +125,19 @@ export function listThemes(): ThemeDef[] {
 
 export function getTheme(id: string): ThemeDef {
   return THEMES[id] ?? DEFAULT_THEME;
+}
+
+/**
+ * #388 — ein (importiertes) User-Theme registrieren. Eingebaute IDs
+ * (`default`/`teal`) sind NICHT überschreibbar: Kollision → Built-in gewinnt,
+ * `false` zurück (Aufrufer loggt + überspringt die Datei). Sonst wird das Theme
+ * in die interne Map aufgenommen und ab sofort von `listThemes()`/`getTheme()`
+ * geführt; `true` zurück.
+ */
+export function registerTheme(def: ThemeDef): boolean {
+  if (THEMES[def.id]?.builtin) return false;
+  THEMES[def.id] = def;
+  return true;
 }
 
 /**
