@@ -127,7 +127,7 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
     <Panel variant="popover" className="token-editor u-stack u-gap-2" role="dialog" aria-label={t('token.editorTitle', 'Token bearbeiten')}>
       <div className="token-editor__header">
         <strong>{t('token.editorTitle', 'Token bearbeiten')}</strong>
-        <Button variant="ghost" size="icon" onClick={onClose} title={t('close', 'Schließen')}>✕</Button>
+        <Button variant="ghost" size="icon" onClick={onClose} title={t('close', { ns: 'common' })}>✕</Button>
       </div>
 
       <label className="token-editor__field">
@@ -235,7 +235,7 @@ export function TokenEditor({ token, onPickArt, resolveAssetUrl, onSave, onDelet
       </fieldset>
 
       <div className="token-editor__actions">
-        <Button tone="accent" size="compact" onClick={save}>{t('save', 'Speichern')}</Button>
+        <Button tone="accent" size="compact" onClick={save}>{t('save', { ns: 'common' })}</Button>
         <Button tone="danger" variant="outline" size="compact" onClick={onDelete}>{t('token.delete', 'Token löschen')}</Button>
       </div>
     </Panel>
