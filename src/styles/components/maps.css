@@ -989,6 +989,12 @@
   z-index: 100;
   font-size: 0.8rem;
   color: var(--color-text);
+  /* #398: nie über den Fensterrand hinaus — Panel als Flex-Spalte begrenzen,
+     der Body scrollt (Header bleibt gepinnt). --gc-top = dynamischer fixed-top-
+     Offset, inline aus panelPos gesetzt; Fallback für Nicht-Tauri/Tests. */
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - var(--gc-top, 96px) - var(--space-3));
 }
 
 .grid-controls-panel__header {
@@ -998,6 +1004,15 @@
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-border);
   font-weight: 600;
+  flex: 0 0 auto; /* #398: Kopf bleibt gepinnt, schrumpft nicht */
+}
+
+/* #398: scrollbarer Panel-Body — nimmt Resthöhe, scrollt vertikal wenn der
+   Inhalt (Maßstab/Lineal/Footer) die begrenzte Panel-Höhe übersteigt. */
+.grid-controls-panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .grid-controls-panel__header button {

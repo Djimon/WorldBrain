@@ -302,12 +302,14 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
       <Button size="icon" aria-pressed={open} onClick={toggleOpen} title="Grid Controls">⊞</Button>
 
       {open && (
-        <div className="grid-controls-panel" style={{ position: 'fixed', top: panelPos.top, left: panelPos.left }}>
+        <div className="grid-controls-panel"
+          style={{ position: 'fixed', top: panelPos.top, left: panelPos.left, ['--gc-top' as string]: `${panelPos.top}px` }}>
           <div className="grid-controls-panel__header">
             <span>Grid Controls</span>
             <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>✕</Button>
           </div>
 
+          <div className="grid-controls-panel__body">
           <div className="grid-controls-panel__row">
             <div className="grid-controls-panel__col">
               <label>Color</label>
@@ -469,6 +471,7 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
             <Button tone="danger" variant="outline" size="compact" onClick={onClear}>
               {t('all')}
             </Button>
+          </div>
           </div>
         </div>
       )}
