@@ -271,7 +271,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
                   (der base-Scope-Select in EventFormFields deckt nur die 4
                   Klassik-Scopes ab, hier folgt der additive Layer). */}
               <div className="entity-detail__field">
-                <label className="entity-detail__field-label">{t('field.visibility', 'Sichtbarkeit (Overrides)')}</label>
+                <label className="entity-detail__field-label">{t('field.visibility')}</label>
                 <VisibilityScopePicker
                   database={database as DatabaseLike}
                   targetType="entity"
@@ -298,7 +298,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
                   Editor bewusst hier für alle nicht-Event-Typen (Events haben
                   ihr eigenes Sichtbarkeits-Widget in EventFormFields). */}
               <div className="entity-detail__field">
-                <label className="entity-detail__field-label">{t('field.visibility', 'Sichtbarkeit')}</label>
+                <label className="entity-detail__field-label">{t('field.visibility')}</label>
                 <VisibilityScopePicker
                   database={database as DatabaseLike}
                   targetType="entity"
@@ -331,25 +331,25 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
               <div className="entity-detail__properties">
                 {effectiveCalendar && typeof entity.properties.start_day === 'number' && (
                   <div className="entity-detail__prop-row">
-                    <span className="entity-detail__prop-key">Start</span>
+                    <span className="entity-detail__prop-key">{t('event.start')}</span>
                     <span className="entity-detail__prop-val">{formatCalendarDate(effectiveCalendar, entity.properties.start_day)}</span>
                   </div>
                 )}
                 {effectiveCalendar && typeof entity.properties.end_day === 'number' && (
                   <div className="entity-detail__prop-row">
-                    <span className="entity-detail__prop-key">Ende</span>
+                    <span className="entity-detail__prop-key">{t('event.end')}</span>
                     <span className="entity-detail__prop-val">{formatCalendarDate(effectiveCalendar, entity.properties.end_day)}</span>
                   </div>
                 )}
                 {typeof entity.properties.category === 'string' && entity.properties.category !== '' && (
                   <div className="entity-detail__prop-row">
-                    <span className="entity-detail__prop-key">Kategorie</span>
+                    <span className="entity-detail__prop-key">{t('event.category')}</span>
                     <span className="entity-detail__prop-val">{String(entity.properties.category)}</span>
                   </div>
                 )}
                 {eventRelations.filter((r) => r.relation_type === 'event_has_participant' && r.active === 1).length > 0 && (
                   <div className="entity-detail__prop-row">
-                    <span className="entity-detail__prop-key">Teilnehmer</span>
+                    <span className="entity-detail__prop-key">{t('event.participants')}</span>
                     <span className="entity-detail__prop-val">
                       {eventRelations
                         .filter((r) => r.relation_type === 'event_has_participant' && r.active === 1)
@@ -360,7 +360,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
                 )}
                 {eventRelations.filter((r) => r.relation_type === 'event_at_location' && r.active === 1).length > 0 && (
                   <div className="entity-detail__prop-row">
-                    <span className="entity-detail__prop-key">Orte</span>
+                    <span className="entity-detail__prop-key">{t('event.locations')}</span>
                     <span className="entity-detail__prop-val">
                       {eventRelations
                         .filter((r) => r.relation_type === 'event_at_location' && r.active === 1)
@@ -381,7 +381,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
                   const display = Array.isArray(val) ? (val as string[]).join(', ') : String(val);
                   return (
                     <div key={key} className="entity-detail__prop-row">
-                      <span className="entity-detail__prop-key">{fieldDef.title ?? key}</span>
+                      <span className="entity-detail__prop-key">{t('prop.' + key, { ns: 'entity', defaultValue: fieldDef.title ?? key })}</span>
                       <span className="entity-detail__prop-val">
                         <MentionText text={display} onNavigate={onNavigateToEntity} />
                       </span>
@@ -428,20 +428,20 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
         <Chip tone="accent" className="entity-detail__type-badge">{entity.type}</Chip>
         {editing ? (
           <>
-            <Button tone="accent" size="compact" onClick={() => void commitEdit()}>{t('save')}</Button>
-            <Button size="compact" onClick={() => setEditing(false)}>{t('cancel')}</Button>
+            <Button tone="accent" size="compact" onClick={() => void commitEdit()}>{t('save', { ns: 'common' })}</Button>
+            <Button size="compact" onClick={() => setEditing(false)}>{t('cancel', { ns: 'common' })}</Button>
             {deletePrompt ? (
               <span className="entity-detail__delete-confirm">
-                <span>{t('deleteConfirm', 'Wirklich löschen?')}</span>
-                <Button tone="danger" variant="outline" size="compact" onClick={() => void handleDelete()}>{t('deleteConfirmYes', 'Ja, löschen')}</Button>
-                <Button size="compact" onClick={() => setDeletePrompt(false)}>{t('cancel')}</Button>
+                <span>{t('deleteConfirm')}</span>
+                <Button tone="danger" variant="outline" size="compact" onClick={() => void handleDelete()}>{t('deleteConfirmYes')}</Button>
+                <Button size="compact" onClick={() => setDeletePrompt(false)}>{t('cancel', { ns: 'common' })}</Button>
               </span>
             ) : (
-              <Button tone="danger" variant="outline" size="compact" onClick={() => setDeletePrompt(true)}>{t('delete', 'Löschen')}</Button>
+              <Button tone="danger" variant="outline" size="compact" onClick={() => setDeletePrompt(true)}>{t('delete', { ns: 'common' })}</Button>
             )}
           </>
         ) : overviewOnly || readOnly ? null : (
-          <Button variant="ghost" size="icon" className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', 'Bearbeiten')} title={t('edit', 'Bearbeiten')}>✏️</Button>
+          <Button variant="ghost" size="icon" className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', { ns: 'common' })} title={t('edit', { ns: 'common' })}>✏️</Button>
         )}
         {/* M10-S21 (#365): Promote-Schalter nur im Campaign-Kontext + nicht
             read-only. Hebt den Campaign-Override dieser Entity in die Welt. */}
@@ -452,7 +452,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
       {!overviewOnly && (
         <Tabs
           className="entity-detail__tabs"
-          label={t('entityDetailTabs', 'Detailbereiche')}
+          label={t('entityDetailTabs')}
           activeId={activeTab}
           onSelect={setActiveTab}
           options={tabs.map((tab) => ({ id: tab.id, label: tab.label }))}

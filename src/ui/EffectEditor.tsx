@@ -8,6 +8,7 @@
 // falls back to the plain counter-day number input (m14-s12's tests exercise
 // that fallback path directly), same pattern as EventFormFields.tsx.
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { addEffect, listEffects, removeEffect } from '../services/event-effects-service';
 import type { EffectInput } from '../services/event-effects-service';
@@ -36,6 +37,7 @@ function isValidTarget(target: string): boolean {
 }
 
 export function EffectEditor({ database, eventId, startDay, calendar }: EffectEditorProps) {
+  const { t } = useTranslation('entity');
   const [effects, setEffects] = useState<EffectInput[]>([]);
   const [worldVars, setWorldVars] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
@@ -80,11 +82,11 @@ export function EffectEditor({ database, eventId, startDay, calendar }: EffectEd
       <ul className="effect-editor__list">
         {effects.map((e, index) => (
           <li key={index}>
-            <span>{e.target} · {e.verb} · {calendar && e.day !== undefined ? formatCalendarDate(calendar, e.day) : `Tag ${e.day}`}</span>
-            <button type="button" onClick={() => handleRemove(index)}>Entfernen</button>
+            <span>{e.target} · {e.verb} · {calendar && e.day !== undefined ? formatCalendarDate(calendar, e.day) : t('event.dayCounter', { day: e.day })}</span>
+            <button type="button" onClick={() => handleRemove(index)}>{t('remove', { ns: 'common' })}</button>
           </li>
         ))}
-        {effects.length === 0 && <li className="effect-editor__empty">Keine Effekte</li>}
+        {effects.length === 0 && <li className="effect-editor__empty">{t('effect.empty')}</li>}
       </ul>
 
       {adding ? (
@@ -99,14 +101,14 @@ export function EffectEditor({ database, eventId, startDay, calendar }: EffectEd
             <input
               type="number"
               role="spinbutton"
-              aria-label="Tag"
+              aria-label={t('effect.day')}
               value={day}
               onChange={(e) => setDay(Number(e.target.value))}
             />
           )}
           <input
             type="text"
-            aria-label="Target"
+            aria-label={t('effect.target')}
             value={target}
             onChange={(e) => setTarget(e.target.value)}
           />
@@ -117,17 +119,17 @@ export function EffectEditor({ database, eventId, startDay, calendar }: EffectEd
               ))}
             </div>
           )}
-          <select aria-label="Verb" value={verb} onChange={(e) => setVerb(e.target.value as EffectVerb)}>
+          <select aria-label={t('effect.verb')} value={verb} onChange={(e) => setVerb(e.target.value as EffectVerb)}>
             {EFFECT_VERBS.map((v) => <option key={v} value={v}>{v}</option>)}
           </select>
-          <input type="text" aria-label="Wert" value={value} onChange={(e) => setValue(e.target.value)} />
+          <input type="text" aria-label={t('effect.value')} value={value} onChange={(e) => setValue(e.target.value)} />
           <div className="effect-editor__form-actions">
-            <button type="button" disabled={!targetValid} onClick={() => void handleAdd()}>Effekt hinzufügen</button>
-            <button type="button" onClick={() => setAdding(false)}>Abbrechen</button>
+            <button type="button" disabled={!targetValid} onClick={() => void handleAdd()}>{t('effect.add')}</button>
+            <button type="button" onClick={() => setAdding(false)}>{t('cancel', { ns: 'common' })}</button>
           </div>
         </div>
       ) : (
-        <button type="button" className="effect-editor__add-toggle" onClick={openAddForm}>+ Neuer Effekt</button>
+        <button type="button" className="effect-editor__add-toggle" onClick={openAddForm}>{t('effect.new')}</button>
       )}
     </div>
   );

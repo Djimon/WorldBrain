@@ -162,6 +162,7 @@ type TagFieldProps = {
 };
 
 function TagField({ fieldKey, label, required, items, onChange }: TagFieldProps) {
+  const { t } = useTranslation('entity');
   const [inputValue, setInputValue] = useState('');
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -183,11 +184,11 @@ function TagField({ fieldKey, label, required, items, onChange }: TagFieldProps)
         {items.map((item, i) => (
           <Chip key={i} className="tag-field__chip">
             {item}
-            <button type="button" aria-label={`Remove ${item}`} onClick={() => handleRemove(i)}>×</button>
+            <button type="button" aria-label={t('tag.removeItem', { item })} onClick={() => handleRemove(i)}>×</button>
           </Chip>
         ))}
       </div>
-      <input type="text" aria-label={`Add ${label}`} placeholder="Enter → hinzufügen"
+      <input type="text" aria-label={t('tag.addItem', { label })} placeholder={t('tag.addHint')}
         value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} />
     </div>
   );
@@ -204,11 +205,10 @@ type PropertiesFormProps = {
 
 export function PropertiesForm({ schema, values, onChange, entities = [] }: PropertiesFormProps) {
   const { t } = useTranslation('entity');
-  void t; // used for i18n readiness
   return (
     <div className="props-form">
       {Object.entries(schema).map(([key, fieldSchema]) => {
-        const label = fieldSchema.title ?? key;
+        const label = t('prop.' + key, { ns: 'entity', defaultValue: fieldSchema.title ?? key });
         const value = values[key];
         const required = fieldSchema.required ?? false;
 

@@ -12,6 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
 import { EffectEditor } from '../src/ui/EffectEditor';
 
 vi.mock('../src/services/event-effects-service', () => ({

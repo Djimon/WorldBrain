@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 import type { ComponentProps } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
 import { EventFormFields, isEventFormValid } from '../src/ui/EventFormFields';
 import { EVENT_CATEGORY_SUGGESTIONS } from '../src/services/event-entity-service';
 

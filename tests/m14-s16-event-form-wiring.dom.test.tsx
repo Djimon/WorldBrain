@@ -22,6 +22,7 @@
 import { readFileSync } from 'node:fs';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
 import { EntityDetailView, clearEntityTabs } from '../src/ui/EntityDetailView';
 import { deriveEventKind } from '../src/ui/EventFormFields';
 

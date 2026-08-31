@@ -3,6 +3,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
 import { EntityDetailView, registerEntityTab, clearEntityTabs } from '../src/ui/EntityDetailView';
 
 // Minimal database mock — entity data flows via prop/service, not live DB in component tests

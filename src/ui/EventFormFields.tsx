@@ -11,6 +11,7 @@
 // exercise that fallback path directly.
 import { useEffect, useState } from 'react';
 import type { KeyboardEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
 import { addRelation, deactivateRelation, getRelations } from '../services/relation-service';
@@ -77,6 +78,7 @@ function RelationAutocomplete({
   onRemovePill: (id: string) => void;
   onEnterFallback: (input: string) => void;
 }) {
+  const { t } = useTranslation('entity');
   const [input, setInput] = useState('');
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
@@ -142,7 +144,7 @@ function RelationAutocomplete({
       {pills.map((p) => (
         <span key={p.id} data-pill>
           <span>{p.title}</span>
-          <button type="button" aria-label="Entfernen" onClick={() => onRemovePill(p.id)}>×</button>
+          <button type="button" aria-label={t('remove', { ns: 'common' })} onClick={() => onRemovePill(p.id)}>×</button>
         </span>
       ))}
     </div>
@@ -153,6 +155,7 @@ export function EventFormFields({
   database, eventId, startDay, endDay, onEndDayChange, visibility, onVisibilityChange,
   category, onCategoryChange, calendar,
 }: EventFormFieldsProps) {
+  const { t } = useTranslation('entity');
   const [entityTitles, setEntityTitles] = useState<Record<string, string>>({});
   const [allEntities, setAllEntities] = useState<EntityOption[]>([]);
   const [relations, setRelations] = useState<RelationRow[]>([]);
@@ -207,12 +210,12 @@ export function EventFormFields({
   return (
     <div className="event-form-fields">
       <div className="event-form-fields__kind">
-        <span>Start: {calendar ? formatCalendarDate(calendar, startDay) : `Tag ${startDay}`}</span>
+        <span>{t('event.startLabel')}{calendar ? formatCalendarDate(calendar, startDay) : t('event.dayCounter', { day: startDay })}</span>
       </div>
 
       {calendar ? (
         <div className="event-form-fields__enddate">
-          <span className="event-form-fields__field-label">Ende</span>
+          <span className="event-form-fields__field-label">{t('event.end')}</span>
           <CalendarDateInput
             months={calendar.months ?? []}
             value={counterToDate(calendar, endDay ?? startDay)}
@@ -223,7 +226,7 @@ export function EventFormFields({
         <input
           type="number"
           role="spinbutton"
-          aria-label="Enddatum"
+          aria-label={t('event.endDate')}
           value={endDay ?? ''}
           onChange={(e) => {
             if (e.target.value === '') { onEndDayChange(undefined); return; }
@@ -233,7 +236,7 @@ export function EventFormFields({
       )}
 
       <RelationAutocomplete
-        label="Teilnehmer"
+        label={t('event.participants')}
         entities={allEntities}
         onSelect={(entity) => void addPillRelation(PARTICIPANT_RELATION, PARTICIPANT_INVERSE, entity)}
         onEnterFallback={(input) => void confirmExactMatch(PARTICIPANT_RELATION, PARTICIPANT_INVERSE, input, () => {})}
@@ -242,7 +245,7 @@ export function EventFormFields({
       />
 
       <RelationAutocomplete
-        label="Orte"
+        label={t('event.locations')}
         entities={allEntities}
         onSelect={(entity) => void addPillRelation(LOCATION_RELATION, LOCATION_INVERSE, entity)}
         onEnterFallback={(input) => void confirmExactMatch(LOCATION_RELATION, LOCATION_INVERSE, input, () => {})}
@@ -250,15 +253,15 @@ export function EventFormFields({
         onRemovePill={removePill}
       />
 
-      <select aria-label="Sichtbarkeit" value={visibility} onChange={(e) => onVisibilityChange(e.target.value)}>
-        <option value="public">Öffentlich</option>
-        <option value="gm_only">Nur SL</option>
+      <select aria-label={t('field.visibility')} value={visibility} onChange={(e) => onVisibilityChange(e.target.value)}>
+        <option value="public">{t('vis.public')}</option>
+        <option value="gm_only">{t('vis.gmOnly')}</option>
       </select>
 
       <input
         type="text"
-        aria-label="Kategorie"
-        placeholder="Kategorie"
+        aria-label={t('event.category')}
+        placeholder={t('event.category')}
         list="event-category-suggestions"
         value={category ?? ''}
         onChange={(e) => onCategoryChange?.(e.target.value)}
