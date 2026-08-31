@@ -230,6 +230,19 @@ describe('M10-S22 Mode toggle integration', () => {
     expect(sidebar?.textContent).toMatch(/🎧/);
   });
 
+  it('#397: edit mode has NO campaigns area (🎭) in the sidebar', async () => {
+    const Shell = await getWorkspaceShell();
+    render(React.createElement(Shell));
+    await waitFor(() => {
+      expect(modeToggle()).toBeTruthy();
+    });
+    const sidebar = document.querySelector('[class*="sidebar"], nav, [role="navigation"]');
+    // Campaign-Bereich per Entscheidung entfernt (Lobby im Play-Modus ersetzt ihn,
+    // eine Campaign = eine Gruppe). Weder Bereichs-Knopf noch das 🎭-Emoji.
+    expect(sidebar?.querySelector('[data-area="campaigns"]')).toBeNull();
+    expect(sidebar?.textContent).not.toMatch(/🎭/);
+  });
+
   it('clicking play → role selection → dm → play mode with reduced menu', async () => {
     const Shell = await getWorkspaceShell();
     render(React.createElement(Shell));

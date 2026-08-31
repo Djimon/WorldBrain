@@ -72,21 +72,10 @@ describe('#371 Fix 1: getActiveInviteCode', () => {
   });
 });
 
-describe('#371 Fix 3: Gruppen-Liste sichtbar', () => {
-  it('CampaignRosterPanel renders group names list', () => {
-    const source = readFileSync('src/ui/CampaignRosterPanel.tsx', 'utf-8');
-    expect(source).toMatch(/group|Gruppen/i);
-    expect(source).toMatch(/rename|umbenennen|deleteGroup|removeGroup/i);
-  });
-});
-
-describe('#371 Fix 4: Campaign-Form einklappbar', () => {
-  it('Campaign create form not shown unconditionally', () => {
-    const source = readFileSync('src/ui/CampaignRosterPanel.tsx', 'utf-8');
-    expect(source).not.toMatch(/Neue Campaign.*{\/\*\s*always/i);
-    expect(source).toMatch(/selectedCampaign|activeCampaign|campaign\s*&&/i);
-  });
-});
+// #397 (pre-release): Fix 3 („Gruppen-Liste sichtbar") und Fix 4 („Campaign-Form
+// einklappbar") entfernt — sie prüften die per Entscheidung gelöschte
+// CampaignRosterPanel (eine Campaign = eine Gruppe, kein Roster/Gruppen-Panel).
+// Invite-Code-Service (Fix 1) und PlayerJoinView (Fix 5) bleiben gültig.
 
 describe('#371 Fix 5: kein stiller Auto-Reconnect', () => {
   it('PlayerJoinView does not auto-reconnect on mount', () => {
