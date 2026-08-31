@@ -6,6 +6,7 @@ src-tauri/gen/schemas/
 .worldbuilderx/runtime/
 npm-debug.log*
 .temp/
+temp/
 .codex-plugins/
 .agents/
 .claude/
