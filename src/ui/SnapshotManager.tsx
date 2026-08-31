@@ -59,14 +59,14 @@ export function SnapshotManager({ projectId, onRestored, projectDir, snapshotsDi
 
   return (
     <div>
-      <h2>Speicherstände</h2>
+      <h2>{t('snapshot.title')}</h2>
 
       <div>
         <label>
-          Name
+          {t('snapshot.name')}
           <input
             type="text"
-            aria-label="Name"
+            aria-label={t('snapshot.name')}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
           />
@@ -80,11 +80,11 @@ export function SnapshotManager({ projectId, onRestored, projectDir, snapshotsDi
             <span>{snap.name}</span>
             <span>{formatDate(snap.createdAt)}</span>
             <span>{formatSize(snap.sizeBytes)}</span>
-            <button aria-label="Wiederherstellen" onClick={() => setDialog({ type: 'restore', snapshot: snap })}>
-              Wiederherstellen
+            <button aria-label={t('snapshot.restore')} onClick={() => setDialog({ type: 'restore', snapshot: snap })}>
+              {t('snapshot.restore')}
             </button>
-            <button aria-label="Löschen" onClick={() => setDialog({ type: 'delete', snapshot: snap })}>
-              Löschen
+            <button aria-label={t('snapshot.delete')} onClick={() => setDialog({ type: 'delete', snapshot: snap })}>
+              {t('snapshot.delete')}
             </button>
           </li>
         ))}
@@ -92,17 +92,17 @@ export function SnapshotManager({ projectId, onRestored, projectDir, snapshotsDi
 
       {dialog?.type === 'restore' && (
         <div role="dialog" aria-modal="true">
-          <p>Aktuelle Änderungen gehen verloren — fortfahren?</p>
-          <button onClick={handleConfirmRestore}>Ja</button>
-          <button onClick={() => setDialog(null)}>Abbrechen</button>
+          <p>{t('snapshot.confirmRestore')}</p>
+          <button onClick={handleConfirmRestore}>{t('yes', { ns: 'common' })}</button>
+          <button onClick={() => setDialog(null)}>{t('cancel', { ns: 'common' })}</button>
         </div>
       )}
 
       {dialog?.type === 'delete' && (
         <div role="dialog" aria-modal="true">
-          <p>Speicherstand „{dialog.snapshot.name}" wirklich löschen?</p>
-          <button onClick={handleConfirmDelete}>Ja</button>
-          <button onClick={() => setDialog(null)}>Abbrechen</button>
+          <p>{t('snapshot.confirmDelete', { name: dialog.snapshot.name })}</p>
+          <button onClick={handleConfirmDelete}>{t('yes', { ns: 'common' })}</button>
+          <button onClick={() => setDialog(null)}>{t('cancel', { ns: 'common' })}</button>
         </div>
       )}
     </div>

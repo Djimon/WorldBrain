@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Chip, ListRow } from './primitives';
 import { stripMarkdown } from '../utils/markdown';
 import { searchEntities, getSearchFacets, rebuildSearchIndex } from '../services/search-service';
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function GlobalSearch({ onNavigate, database }: Props) {
+  const { t } = useTranslation('nav');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -75,12 +77,12 @@ export function GlobalSearch({ onNavigate, database }: Props) {
           ref={inputRef}
           className="gsearch__input"
           role="searchbox"
-          aria-label="Entities suchen"
+          aria-label={t('globalSearch.aria')}
           type="search"
           value={query}
           onChange={(e) => void handleChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Entities suchen… (Ctrl+K)"
+          placeholder={t('globalSearch.placeholder')}
         />
       </div>
 
@@ -103,12 +105,12 @@ export function GlobalSearch({ onNavigate, database }: Props) {
       <div className="emd u-min-h-0">
         <div className="emd__list u-scroll-y">
           {query && filtered.length === 0 && (
-            <div className="gsearch__empty">Keine Ergebnisse für „{query}"</div>
+            <div className="gsearch__empty">{t('globalSearch.noResults', { query })}</div>
           )}
 
           {!query && (
             <div className="gsearch__hint">
-              {indexing ? 'Index wird aktualisiert…' : 'Tippe um Entities, Orte, Fraktionen u.v.m. zu suchen.'}
+              {indexing ? t('globalSearch.indexing') : t('globalSearch.hint')}
             </div>
           )}
 

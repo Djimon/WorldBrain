@@ -121,6 +121,29 @@
   "audioClipConfirmDeleteTitle": "Clip löschen?",
   "audioClipConfirmDeleteBody": "Der Clip wird gelöscht.",
   "audioClipConfirmDeleteAction": "Löschen",
+  "update": {
+    "available": "Update verfügbar.",
+    "availableVersion": "Update verfügbar (v{{version}}).",
+    "install": "Installieren"
+  },
+  "zipImport": {
+    "title": "ZIP importieren",
+    "checking": "Prüfe ZIP…",
+    "invalid": "Ungültige ZIP-Datei.",
+    "failed": "Import fehlgeschlagen.",
+    "project": "Projekt: {{title}}",
+    "import": "Importieren",
+    "conflict": "Ein Projekt mit dieser ID existiert bereits.",
+    "overwrite": "Überschreiben",
+    "keepBoth": "Beide behalten"
+  },
+  "globalSearch": {
+    "aria": "Entities suchen",
+    "placeholder": "Entities suchen… (Ctrl+K)",
+    "noResults": "Keine Ergebnisse für „{{query}}“",
+    "indexing": "Index wird aktualisiert…",
+    "hint": "Tippe um Entities, Orte, Fraktionen u.v.m. zu suchen."
+  },
   "savedViews": "Gespeicherte Ansichten",
   "mapsEmptySelect": "Karte aus der Liste wählen oder importieren",
   "fileFilterImages": "Bilder",

@@ -121,6 +121,29 @@
   "audioClipConfirmDeleteTitle": "Delete clip?",
   "audioClipConfirmDeleteBody": "The clip will be deleted.",
   "audioClipConfirmDeleteAction": "Delete",
+  "update": {
+    "available": "Update available.",
+    "availableVersion": "Update available (v{{version}}).",
+    "install": "Install"
+  },
+  "zipImport": {
+    "title": "Import ZIP",
+    "checking": "Checking ZIP…",
+    "invalid": "Invalid ZIP file.",
+    "failed": "Import failed.",
+    "project": "Project: {{title}}",
+    "import": "Import",
+    "conflict": "A project with this ID already exists.",
+    "overwrite": "Overwrite",
+    "keepBoth": "Keep both"
+  },
+  "globalSearch": {
+    "aria": "Search entities",
+    "placeholder": "Search entities… (Ctrl+K)",
+    "noResults": "No results for “{{query}}”",
+    "indexing": "Updating index…",
+    "hint": "Type to search entities, places, factions and more."
+  },
   "savedViews": "Saved views",
   "mapsEmptySelect": "Select a map from the list or import one",
   "fileFilterImages": "Images",

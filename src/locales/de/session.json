@@ -10,12 +10,13 @@
   "nextRound": "Nächste Runde",
   "allStatuses": "Alle",
   "snapshot": {
+    "title": "Speicherstände",
     "create": "Snapshot erstellen",
     "name": "Snapshot-Name",
     "restore": "Wiederherstellen",
     "delete": "Löschen",
-    "confirmRestore": "Diesen Snapshot wiederherstellen?",
-    "confirmDelete": "Diesen Snapshot löschen?"
+    "confirmRestore": "Aktuelle Änderungen gehen verloren — fortfahren?",
+    "confirmDelete": "Speicherstand „{{name}}“ wirklich löschen?"
   },
   "playMode": {
     "switchToCreate": "Zu Create-Modus wechseln",

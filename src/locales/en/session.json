@@ -10,12 +10,13 @@
   "nextRound": "Next Round",
   "allStatuses": "All",
   "snapshot": {
+    "title": "Snapshots",
     "create": "Create snapshot",
     "name": "Snapshot name",
     "restore": "Restore",
     "delete": "Delete",
-    "confirmRestore": "Restore this snapshot?",
-    "confirmDelete": "Delete this snapshot?"
+    "confirmRestore": "Current changes will be lost — continue?",
+    "confirmDelete": "Delete snapshot “{{name}}”?"
   },
   "playMode": {
     "switchToCreate": "Switch to Create mode",

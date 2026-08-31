@@ -20,8 +20,8 @@ export function ZipImportDialog({ onImported, onCancel, zipPath: initialZipPath,
 
   useEffect(() => {
     if (!zipPath) { setValidation(null); return; }
-    validateProjectZip(zipPath).then(setValidation).catch(() => setValidation({ valid: false, error: 'Ungültige ZIP-Datei.' }));
-  }, [zipPath]);
+    validateProjectZip(zipPath).then(setValidation).catch(() => setValidation({ valid: false, error: t('zipImport.invalid') }));
+  }, [zipPath, t]);
 
   async function handlePickFile() {
     const selected = await open({ filters: [{ name: 'ZIP', extensions: ['zip'] }], multiple: false });
@@ -35,12 +35,12 @@ export function ZipImportDialog({ onImported, onCancel, zipPath: initialZipPath,
     if (!zipPath || !validation?.valid) return;
     importProjectZip({ zipPath, conflictStrategy: strategy })
       .then((result) => onImported(result.id))
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : typeof e === 'string' ? e : 'Import fehlgeschlagen.'));
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : typeof e === 'string' ? e : t('zipImport.failed')));
   }
 
   return (
     <div>
-      <h2>ZIP importieren</h2>
+      <h2>{t('zipImport.title')}</h2>
 
       {error && <div role="alert">{error}</div>}
 
@@ -49,29 +49,29 @@ export function ZipImportDialog({ onImported, onCancel, zipPath: initialZipPath,
       )}
 
       {zipPath && !validation && (
-        <div>Prüfe ZIP…</div>
+        <div>{t('zipImport.checking')}</div>
       )}
 
       {zipPath && validation && !validation.valid && (
-        <div role="alert">{validation.error ?? 'Ungültige ZIP-Datei.'}</div>
+        <div role="alert">{validation.error ?? t('zipImport.invalid')}</div>
       )}
 
       {zipPath && validation?.valid && !hasConflict && (
         <div>
-          <p>Projekt: {String(validation.projectJson?.title ?? '')}</p>
-          <button onClick={() => handleImport()}>Importieren</button>
+          <p>{t('zipImport.project', { title: String(validation.projectJson?.title ?? '') })}</p>
+          <button onClick={() => handleImport()}>{t('zipImport.import')}</button>
         </div>
       )}
 
       {zipPath && validation?.valid && hasConflict && conflictStrategy === null && (
         <div>
-          <p>Ein Projekt mit dieser ID existiert bereits.</p>
-          <button onClick={() => { setConflictStrategy('overwrite'); handleImport('overwrite'); }}>Überschreiben</button>
-          <button onClick={() => { setConflictStrategy('keep-both'); handleImport('keep-both'); }}>Beide behalten</button>
+          <p>{t('zipImport.conflict')}</p>
+          <button onClick={() => { setConflictStrategy('overwrite'); handleImport('overwrite'); }}>{t('zipImport.overwrite')}</button>
+          <button onClick={() => { setConflictStrategy('keep-both'); handleImport('keep-both'); }}>{t('zipImport.keepBoth')}</button>
         </div>
       )}
 
-      <button onClick={onCancel}>Abbrechen</button>
+      <button onClick={onCancel}>{t('cancel', { ns: 'common' })}</button>
     </div>
   );
 }
