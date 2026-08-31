@@ -5,6 +5,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { EncounterCounters } from '../src/ui/EncounterCounters';
 
+// #378: EncounterCounters darf NICHT mehr in base_entities schreiben — die
+// Encounter-Zusammenfassung geht ins session-scoped session_log. event-entity-
+// service bleibt gemockt, um zu beweisen, dass es NICHT (mehr) gerufen wird.
+vi.mock('../src/services/session-log-service', () => ({
+  addLogEntry: vi.fn(async () => ({})),
+}));
 vi.mock('../src/services/event-entity-service', () => ({
   createEventEntity: vi.fn(() => ({ id: 'enc-1' })),
   listEventEntities: vi.fn(async () => []),
@@ -99,21 +105,25 @@ describe('M5-S08 encounter counters', () => {
       expect(screen.getByRole('button', { name: /end encounter/i })).toBeInTheDocument();
     });
 
-    it('clicking End Encounter saves summary to event and calls onEncounterEnd', () => {
+    it('clicking End Encounter records the summary and calls onEncounterEnd', () => {
       const onEnd = vi.fn();
       render(<EncounterCounters sessionId="s1" database={mockDb as never} onEncounterEnd={onEnd} />);
       fireEvent.click(screen.getByRole('button', { name: /end encounter/i }));
       expect(onEnd).toHaveBeenCalled();
     });
 
-    it('issue #270: End Encounter creates an Event entity via event-entity-service (event_kind single, start_day)', async () => {
+    it('#378: End Encounter records to session_log (session-scoped), NOT base_entities', async () => {
+      const { addLogEntry } = await import('../src/services/session-log-service');
       const { createEventEntity } = await import('../src/services/event-entity-service');
       render(<EncounterCounters sessionId="s1" database={mockDb as never} />);
       fireEvent.click(screen.getByRole('button', { name: /end encounter/i }));
-      expect(createEventEntity).toHaveBeenCalledWith(
+      // Encounter-Zusammenfassung ist ein Session-Laufzeit-Record → session_log.
+      expect(addLogEntry).toHaveBeenCalledWith(
         mockDb,
-        expect.objectContaining({ event_kind: 'single', start_day: expect.any(Number) }),
+        expect.objectContaining({ session_id: 's1', action_type: 'encounter' }),
       );
+      // Grenze (#378): KEIN base_entities-Event mehr (kein Welt-Zeitstrahl-Leak).
+      expect(createEventEntity).not.toHaveBeenCalled();
     });
 
     it('encounter counters are not persisted after end — component resets', () => {

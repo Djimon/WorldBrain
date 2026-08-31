@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createEventEntity } from '../services/event-entity-service';
+import { addLogEntry } from '../services/session-log-service';
 import type { DatabaseLike } from '../services/entity-service';
 
 interface CustomCounter {
@@ -17,7 +17,7 @@ interface Props {
 
 const SECONDS_PER_ROUND = 6;
 
-export function EncounterCounters({ sessionId: _sessionId, database, onEncounterEnd }: Props) {
+export function EncounterCounters({ sessionId, database, onEncounterEnd }: Props) {
   const { t } = useTranslation('session');
   const [round, setRound] = useState(1);
   const [counters, setCounters] = useState<CustomCounter[]>([]);
@@ -55,10 +55,22 @@ export function EncounterCounters({ sessionId: _sessionId, database, onEncounter
   }
 
   function handleEndEncounter() {
-    createEventEntity(database, {
-      title: `Encounter — ${round} rounds (${elapsedSeconds + SECONDS_PER_ROUND}s)`,
-      event_kind: 'single',
-      start_day: 0,
+    // #378: Die Encounter-Zusammenfassung ist ein SESSION-Laufzeit-Record und
+    // gehört ins session-scoped `session_log` (wie EncounterMode) — NICHT als
+    // `base_entities`-Event (World-Building). Der frühere createEventEntity-Call
+    // verschmutzte den Welt-Zeitstrahl/Chronicle/Suche/Graph mit Mechanik-Bullshit
+    // („Encounter — N rounds", start_day:0).
+    void addLogEntry(database, {
+      session_id: sessionId,
+      real_timestamp: new Date().toISOString(),
+      world_datetime: '',
+      round: null,
+      action_type: 'encounter',
+      description: t('encounter.endedRounds', 'Encounter beendet — {{rounds}} Runden ({{secs}}s)', {
+        rounds: round,
+        secs: elapsedSeconds + SECONDS_PER_ROUND,
+      }),
+      entity_id: null,
     });
     setRound(1);
     setCounters([]);
