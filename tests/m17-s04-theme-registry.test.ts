@@ -36,6 +36,13 @@ describe('M17-S04 Theme registry', () => {
     expect(teal.modeSupport).toBe('per-mode');
     expect(teal.appearanceSupport).toBe('dark');
   });
+
+  it('#396: isBuiltinThemeId — true für default/teal, false für unbekannte/User-IDs', async () => {
+    const mod = await getThemeRegistry();
+    expect(mod.isBuiltinThemeId('default')).toBe(true);
+    expect(mod.isBuiltinThemeId('teal')).toBe(true);
+    expect(mod.isBuiltinThemeId('some-user-theme')).toBe(false);
+  });
 });
 
 describe('M17-S04 Dark/Light decoupled from Theme', () => {

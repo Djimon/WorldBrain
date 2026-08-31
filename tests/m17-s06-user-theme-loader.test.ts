@@ -208,6 +208,16 @@ describe('M17-S06 scanUserThemes: valide laden, invalide überspringen', () => {
     expect(getTheme('teal').builtin).toBe(true);
   });
 
+  it('#396: doppelte User-id — erste gewinnt, zweite übersprungen + geloggt', async () => {
+    files['a-dup.json'] = A_DARK_UNIFIED.replace('"carbon"', '"dup"'); // id dup, label "Carbon"
+    files['b-dup.json'] = A_DARK_UNIFIED.replace('"carbon"', '"dup"').replace('"Carbon"', '"Second"'); // id dup, label "Second"
+    const { scanUserThemes } = await import('../src/services/user-theme-loader');
+    const result = await scanUserThemes('/app/themes');
+    expect(result.registered.filter((id) => id === 'dup')).toHaveLength(1); // nur EINMAL registriert
+    expect(result.skipped.some((s) => /duplicate id 'dup'/.test(s.reason))).toBe(true);
+    expect(getTheme('dup').defaultLabel).toBe('Carbon'); // erste (sortiert: a-dup) gewinnt
+  });
+
   it('fehlender Ordner → leeres Ergebnis, kein Fehler', async () => {
     const fs = await import('@tauri-apps/plugin-fs');
     (fs.readDir as unknown as { mockRejectedValueOnce: (e: unknown) => void }).mockRejectedValueOnce(new Error('ENOENT'));

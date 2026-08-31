@@ -3,7 +3,8 @@ import { createRoot } from 'react-dom/client';
 import './i18n';
 import { App } from './App';
 import { AudioSoundboardWindow } from './ui/AudioSoundboardWindow';
-import { initTheme, bootstrapUserThemes } from './theme';
+import { initTheme, bootstrapUserThemes, getStoredThemeId } from './theme';
+import { isBuiltinThemeId } from './styles/theme-registry';
 
 // Apply the persisted theme before first render (no flash) and keep this window
 // in sync with theme changes from other windows. Runs for EVERY window — the
@@ -11,11 +12,6 @@ import { initTheme, bootstrapUserThemes } from './theme';
 // thing that themes them (previously only 'dark' was handled, so a 'toxic'
 // preference stripped data-theme and left detached windows on light).
 initTheme();
-// #393: importierbare User-Themes ebenfalls für JEDES Fenster registrieren (auch
-// die abgedockten Soundboard-/Player-Fenster mit eigenem JS-Kontext) und danach
-// das gespeicherte Theme erneut anwenden — sonst degradiert ein aktives User-Theme
-// dort still auf die Default-Palette.
-void bootstrapUserThemes();
 
 const rootElement = document.getElementById('root');
 
@@ -33,10 +29,26 @@ const soundboardParams = new URLSearchParams(window.location.search);
 const soundboardDbPath = soundboardParams.get('db');
 const soundboardProjectDir = soundboardParams.get('projectDir');
 
-createRoot(rootElement).render(
-  <StrictMode>
-    {isSoundboardWindow
-      ? <AudioSoundboardWindow dbPath={soundboardDbPath} projectDir={soundboardProjectDir} />
-      : <App />}
-  </StrictMode>,
-);
+function mountApp(): void {
+  createRoot(rootElement as HTMLElement).render(
+    <StrictMode>
+      {isSoundboardWindow
+        ? <AudioSoundboardWindow dbPath={soundboardDbPath} projectDir={soundboardProjectDir} />
+        : <App />}
+    </StrictMode>,
+  );
+}
+
+// #393: importierbare User-Themes für JEDES Fenster registrieren (auch die
+// abgedockten Soundboard-/Player-Fenster mit eigenem JS-Kontext), sonst degradiert
+// ein aktives User-Theme dort still auf die Default-Palette.
+// #396: ist das GESPEICHERTE Theme ein Built-in, sofort painten und parallel scannen
+// (kein Flash möglich). Ist es ein NICHT-Built-in (User-Theme, zu diesem Zeitpunkt
+// noch nicht registriert), erst scannen+anwenden, DANN painten — vermeidet den
+// kurzen Default-Paletten-Flash.
+if (isBuiltinThemeId(getStoredThemeId())) {
+  void bootstrapUserThemes();
+  mountApp();
+} else {
+  void bootstrapUserThemes().finally(mountApp);
+}

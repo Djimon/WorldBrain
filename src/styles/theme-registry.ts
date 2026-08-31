@@ -127,6 +127,14 @@ export function getTheme(id: string): ThemeDef {
   return THEMES[id] ?? DEFAULT_THEME;
 }
 
+/** #396 — ist `id` eine EINGEBAUTE Theme-ID? (Ohne Fallback — anders als getTheme,
+ *  das für unbekannte/noch-nicht-registrierte IDs `default` liefert.) Genutzt im
+ *  Startup, um zu entscheiden, ob vor dem ersten Paint auf den User-Theme-Scan
+ *  gewartet werden muss (Flash-Vermeidung). */
+export function isBuiltinThemeId(id: string): boolean {
+  return THEMES[id]?.builtin === true;
+}
+
 /**
  * #388 — ein (importiertes) User-Theme registrieren. Eingebaute IDs
  * (`default`/`teal`) sind NICHT überschreibbar: Kollision → Built-in gewinnt,

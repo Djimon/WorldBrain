@@ -157,6 +157,10 @@ export interface ScanResult {
 export async function scanUserThemes(themesDir: string): Promise<ScanResult> {
   const registered: string[] = [];
   const skipped: { file: string; reason: string }[] = [];
+  // #396: doppelte User-IDs innerhalb eines Scans dürfen sich nicht still
+  // überschreiben (last-wins). Erste gewinnt (Dateien sind sortiert), weitere
+  // werden übersprungen + geloggt — konsistent mit skip-on-invalid.
+  const seenIds = new Set<string>();
 
   let files: string[];
   try {
@@ -186,11 +190,17 @@ export async function scanUserThemes(themesDir: string): Promise<ScanResult> {
       console.warn(`[user-theme] ${file}: ${res.reason} — skipped`);
       continue;
     }
+    if (seenIds.has(res.def.id)) {
+      skipped.push({ file, reason: `duplicate id '${res.def.id}' — ignored` });
+      console.warn(`[user-theme] ${file}: duplicate id '${res.def.id}' (already loaded from another file) — ignored`);
+      continue;
+    }
     if (!registerTheme(res.def)) {
       skipped.push({ file, reason: `id '${res.def.id}' is a built-in — ignored` });
       console.warn(`[user-theme] ${file}: id '${res.def.id}' collides with a built-in theme — ignored`);
       continue;
     }
+    seenIds.add(res.def.id);
     registered.push(res.def.id);
   }
 
