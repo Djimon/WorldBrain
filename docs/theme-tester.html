@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<!-- AP-004 (#395): restriktive CSP — die Datei verarbeitet user-gepastetes JSON.
+     default-src 'none' erlaubt KEINE externen Requests (blockt u.a. url()-Beacons
+     als Defense-in-depth zu #392); inline CSS/JS bleiben lauffähig (self-contained). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
 <title>WorldBuilderX — Theme-Tester</title>
 <!--
   Standalone Theme-Tester (#388). Komplett self-contained: kein Build, keine
