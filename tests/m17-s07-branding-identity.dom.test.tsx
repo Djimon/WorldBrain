@@ -138,4 +138,13 @@ describe('M17-S07 styling guards (CSS source)', () => {
     const conf = readFileSync('src-tauri/tauri.conf.json', 'utf-8');
     expect(conf).toMatch(/"title":\s*"Beyond Worlds"/);
   });
+
+  it('#401: main-window capability grants set-title', () => {
+    // Ohne core:window:allow-set-title lehnt die Tauri-v2-ACL das set_title-
+    // Command ab → die setTitle-Promise (WorkspaceShell) rejectet und der
+    // OS-Fenstertitel bleibt auf dem statischen Preset "Beyond Worlds".
+    // core:window:default enthält nur Getter (allow-title = lesen), NICHT den Setter.
+    const cap = JSON.parse(readFileSync('src-tauri/capabilities/default.json', 'utf-8'));
+    expect(cap.permissions).toContain('core:window:allow-set-title');
+  });
 });
