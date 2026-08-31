@@ -48,6 +48,7 @@ import { attachClientStoreToTransport } from '../services/client-store-transport
 import { pushPresentedMapSnapshot } from '../services/presented-map-push';
 import { createPlayClientStore, type PlayClientStoreImpl } from '../services/play-client-store';
 import { listCampaigns, createCampaign, type Campaign } from '../services/campaign-service';
+import { getPlayContext, setPlayContext, clearPlayContext } from '../services/play-context-store';
 import { PlayModeView } from './PlayModeView';
 import { PlayerJoinView } from './PlayerJoinView';
 import { CampaignRosterPanel } from './CampaignRosterPanel';
@@ -70,7 +71,8 @@ type Area =
   | 'rules'
   | 'audio'
   | 'graph'
-  | 'project';
+  | 'project'
+  | 'play-settings';
 
 interface CalendarRow {
   id: string;
@@ -107,10 +109,13 @@ const AREAS: { id: Area; icon: string }[] = [
   { id: 'audio',    icon: '🎧' },
   { id: 'graph',    icon: '🌌' },
   { id: 'project',  icon: '⚙' },
+  // #390: Play-Settings — nur im Play-Modus sichtbar (Campaign/Rolle/Verlassen).
+  { id: 'play-settings', icon: '⚙' },
 ];
 
 // M10-S22 (#342 / D25): fester Play-Subset — kein Konfig-Punkt.
-const PLAY_AREAS: Area[] = ['entities', 'search', 'maps', 'calendar', 'session'];
+// #390: play-settings ergänzt den Subset (Play-scoped Einstellungs-Bereich).
+const PLAY_AREAS: Area[] = ['entities', 'search', 'maps', 'calendar', 'session', 'play-settings'];
 
 const CORE_ENTITY_TYPES = [
   'Character', 'Location', 'Faction', 'Item',
@@ -882,23 +887,66 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             <button onClick={() => onProjectClose?.()}>Projekt schließen</button>
           </div>
         );
+      case 'play-settings':
+        // #390: Play-scoped Einstellungs-Bereich — Campaign/Rolle wechseln,
+        // Session verlassen. Aufgebaut aus Primitives, Farben aus Tokens.
+        return (
+          <div className="workspace-area">
+            <h2>{t('play-settings')}</h2>
+            <section className="u-stack u-gap-2">
+              <h3>{t('playSettingsCampaign', 'Campaign')}</h3>
+              {availableCampaigns.length > 0 ? (
+                <Segmented
+                  label={t('playSettingsCampaign', 'Campaign')}
+                  value={activeSessionId ?? ''}
+                  onChange={switchPlayCampaign}
+                  size="compact"
+                  options={availableCampaigns.map((c) => ({ id: c.id, label: c.title }))}
+                />
+              ) : (
+                <p className="workspace-shell__empty-note">{t('playSettingsNoCampaigns', 'Keine Campaigns vorhanden.')}</p>
+              )}
+            </section>
+            <hr />
+            <section className="u-stack u-gap-2">
+              <h3>{t('playSettingsRole', 'Rolle')}</h3>
+              <Segmented
+                label={t('playSettingsRole', 'Rolle')}
+                value={sessionRole ?? 'dm'}
+                onChange={(id) => switchPlayRole(id === 'player' ? 'player' : 'dm')}
+                size="compact"
+                options={[
+                  { id: 'dm', label: t('modeRoleDm', 'Als DM') },
+                  { id: 'player', label: t('modeRolePlayer', 'Als Player') },
+                ]}
+              />
+            </section>
+            <hr />
+            <Button tone="danger" variant="outline" onClick={leavePlaySession}>
+              {t('playSettingsLeave', 'Session verlassen')}
+            </Button>
+          </div>
+        );
     }
   }
 
   const activeAreaLabel = t(activeArea);
-  const visibleAreas = mode === 'play' ? AREAS.filter((a) => PLAY_AREAS.includes(a.id)) : AREAS;
+  const visibleAreas = mode === 'play'
+    ? AREAS.filter((a) => PLAY_AREAS.includes(a.id))
+    : AREAS.filter((a) => a.id !== 'play-settings'); // #390: play-only im Edit ausblenden
 
-  // M10-S22 (D25): Klick auf mode-toggle.
-  // edit → Role-Auswahl öffnen (mode wird erst nach Rolle+Session gesetzt).
-  // play → sofort zurück nach edit, Rolle/Session zurücksetzen.
+  // M10-S22 (D25) + #390: Klick auf mode-toggle.
+  // edit → wenn ein Play-Kontext gemerkt ist, DIREKT hinein (kein Dialog);
+  //        sonst den „Campaign + Rolle"-Auswahl-Schritt öffnen.
+  // play → sofort zurück nach edit; der gemerkte Kontext BLEIBT (schneller Rückweg).
   function handleModeToggle() {
     if (mode === 'edit') {
-      setShowRoleSelect(true);
-      // Campaign-Auswahl vorbereiten: aktuelle Campaigns laden.
-      void listCampaigns(database).then((cs) => {
-        setAvailableCampaigns(cs);
-        if (cs.length === 1) setSelectedCampaignForPlay(cs[0].id);
-      });
+      const remembered = getPlayContext(projectId);
+      if (remembered) {
+        void enterPlay(remembered.campaignId, remembered.role);
+      } else {
+        openRoleSelect();
+      }
     } else {
       setMode('edit');
       setSessionRole(null);
@@ -906,6 +954,36 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       setShowRoleSelect(false);
     }
   }
+
+  // #390: den „Campaign + Rolle"-Auswahl-Schritt öffnen (nur wenn kein Kontext).
+  function openRoleSelect() {
+    setShowRoleSelect(true);
+    void listCampaigns(database).then((cs) => {
+      setAvailableCampaigns(cs);
+      if (cs.length === 1) setSelectedCampaignForPlay(cs[0].id);
+    });
+  }
+
+  // #390: gemerkten Kontext direkt betreten. Edge-Case: existiert die Campaign
+  // nicht mehr (gelöscht) → Kontext verwerfen und sauber auf den Auswahl-Schritt
+  // zurückfallen (kein Crash).
+  async function enterPlay(campaignId: string, role: 'dm' | 'player') {
+    const cs = await listCampaigns(database);
+    setAvailableCampaigns(cs);
+    if (!cs.some((c) => c.id === campaignId)) {
+      clearPlayContext(projectId);
+      if (cs.length === 1) setSelectedCampaignForPlay(cs[0].id);
+      setShowRoleSelect(true);
+      return;
+    }
+    setMode('play');
+    setSessionRole(role);
+    setActiveSessionId(campaignId);
+    setSelectedCampaignForPlay(campaignId);
+    setShowRoleSelect(false);
+    setActiveArea('session');
+  }
+
   async function pickRole(role: 'dm' | 'player') {
     let campaignId = selectedCampaignForPlay;
     if (campaignId === '') {
@@ -925,6 +1003,34 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     setSelectedCampaignForPlay(campaignId);
     setShowRoleSelect(false);
     setActiveArea('session');
+    setPlayContext(projectId, { campaignId, role }); // #390: Kontext merken
+  }
+
+  // #390 — Play-Settings-Aktionen (im Play-Modus, eigener Bereich):
+  /** Campaign umschalten ohne Edit-Umweg — aktualisiert die aktive Session + Merker. */
+  function switchPlayCampaign(campaignId: string) {
+    if (campaignId === activeSessionId) return;
+    setActiveSessionId(campaignId);
+    setSelectedCampaignForPlay(campaignId);
+    if (sessionRole === 'dm' || sessionRole === 'player') {
+      setPlayContext(projectId, { campaignId, role: sessionRole });
+    }
+  }
+  /** Rolle wechseln (DM/Player) — Player-Wechsel setzt den Join-Kontext zurück. */
+  function switchPlayRole(role: 'dm' | 'player') {
+    if (role === sessionRole) return;
+    setSessionRole(role);
+    if (role === 'player') setPlayerContext(null);
+    if (activeSessionId !== null) setPlayContext(projectId, { campaignId: activeSessionId, role });
+  }
+  /** Session verlassen — gemerkten Kontext löschen und zurück nach Bearbeiten. */
+  function leavePlaySession() {
+    clearPlayContext(projectId);
+    setMode('edit');
+    setSessionRole(null);
+    setActiveSessionId(null);
+    setShowRoleSelect(false);
+    setActiveArea('entities');
   }
   async function createAndPickCampaign() {
     if (newCampaignTitle.trim() === '') return;

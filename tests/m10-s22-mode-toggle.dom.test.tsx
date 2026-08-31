@@ -244,7 +244,11 @@ describe('M10-S22 Mode toggle integration', () => {
     const sidebar = document.querySelector('[class*="sidebar"], nav, [role="navigation"]');
     expect(sidebar?.textContent).not.toMatch(/🌌/);
     expect(sidebar?.textContent).not.toMatch(/🎧/);
-    expect(sidebar?.textContent).not.toMatch(/⚙/);
+    // #390: der Edit-Einstellungsbereich (project ⚙) bleibt im Play-Modus verborgen;
+    // stattdessen erscheint der Play-scoped Einstellungsbereich (play-settings ⚙).
+    // Beide nutzen ⚙ → präzise über data-area statt über das Emoji prüfen.
+    expect(sidebar?.querySelector('[data-area="project"]')).toBeNull();
+    expect(sidebar?.querySelector('[data-area="play-settings"]')).toBeTruthy();
   });
 
   it('switching back to edit restores full menu', async () => {
