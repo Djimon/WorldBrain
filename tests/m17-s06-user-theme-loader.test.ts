@@ -125,6 +125,31 @@ describe('M17-S06 invalide Dateien werden verworfen', () => {
   it('kaputtes JSON → verworfen (kein Wurf)', () => {
     expect(parseUserTheme('{ not json ').ok).toBe(false);
   });
+
+  // #392: Farbwerte müssen echte Farbliterale sein — url()/;/@import verworfen.
+  it('palette-Wert mit url(...) → verworfen (Beacon-Vektor)', () => {
+    const bad = JSON.stringify({
+      id: 'x', label: 'X', appearance: 'dark', modeSupport: 'unified',
+      dark: { palette: { '--color-background': 'url(https://evil.example/beacon.png)' }, accents: { accent: '#111', hover: '#222', on: '#333', text: '#444', soft: '#555' } },
+    });
+    expect(parseUserTheme(bad).ok).toBe(false);
+  });
+
+  it('accent-Wert mit url(...) → verworfen', () => {
+    const bad = JSON.stringify({
+      id: 'x', label: 'X', appearance: 'dark', modeSupport: 'unified',
+      dark: { accents: { accent: 'url(https://evil.example/x.png)', hover: '#222', on: '#333', text: '#444', soft: '#555' } },
+    });
+    expect(parseUserTheme(bad).ok).toBe(false);
+  });
+
+  it('Wert mit ; / @import → verworfen (CSS-Ausbruch)', () => {
+    const semi = JSON.stringify({
+      id: 'x', label: 'X', appearance: 'dark', modeSupport: 'unified',
+      dark: { palette: { '--color-text': '#fff; background: url(https://evil.example/b.png)' }, accents: { accent: '#111', hover: '#222', on: '#333', text: '#444', soft: '#555' } },
+    });
+    expect(parseUserTheme(semi).ok).toBe(false);
+  });
 });
 
 describe('M17-S06 Registry: registrieren + Built-in-Schutz', () => {
@@ -168,11 +193,17 @@ describe('M17-S06 scanUserThemes: valide laden, invalide überspringen', () => {
     files['good.json'] = A_DARK_UNIFIED.replace('"carbon"', '"carbon-scan"');
     files['broken.json'] = '{ not json';
     files['collide.json'] = A_DARK_UNIFIED.replace('"carbon"', '"teal"'); // Built-in
+    // #392: valides JSON, aber url()-Farbwert → muss ebenfalls übersprungen werden.
+    files['beacon.json'] = JSON.stringify({
+      id: 'beacon', label: 'Beacon', appearance: 'dark', modeSupport: 'unified',
+      dark: { palette: { '--color-background': 'url(https://evil.example/b.png)' }, accents: { accent: '#111', hover: '#222', on: '#333', text: '#444', soft: '#555' } },
+    });
     const { scanUserThemes } = await import('../src/services/user-theme-loader');
     const result = await scanUserThemes('/app/themes');
     expect(result.registered).toContain('carbon-scan');
-    expect(result.skipped.map((s) => s.file).sort()).toEqual(['broken.json', 'collide.json']);
+    expect(result.skipped.map((s) => s.file).sort()).toEqual(['beacon.json', 'broken.json', 'collide.json']);
     expect(getTheme('carbon-scan').appearanceSupport).toBe('dark');
+    expect(getTheme('beacon').id).toBe('default'); // nicht registriert → Fallback
     // Built-in teal blieb unangetastet
     expect(getTheme('teal').builtin).toBe(true);
   });

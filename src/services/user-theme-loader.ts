@@ -25,14 +25,22 @@ export type ValidationResult =
   | { ok: false; reason: string };
 
 const ID_RE = /^[a-z0-9-]+$/;
+// #392: Farbwerte, die keine reinen Farbliterale sind, ablehnen — verhindert,
+// dass ein Fremd-Theme via `url(...)` einen ausgehenden Request (Tracking/Exfil-
+// Beacon) in die CSS-Kaskade schmuggelt, oder via `;`/`@import`/Kommentar aus der
+// Deklaration ausbricht. Kein Script (kein XSS), aber ein Netzwerk-Side-Effect.
+const UNSAFE_VALUE_RE = /url\(|expression\(|@import|;|\/\*/i;
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 const isStr = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
+/** Nicht-leerer String, der wie ein Farbliteral aussieht (kein url()/;/@import/…). */
+const isSafeColorValue = (v: unknown): v is string => isStr(v) && !UNSAFE_VALUE_RE.test(v);
 
-/** Ein Accent-Satz muss alle fünf Felder als nicht-leere Strings tragen. */
+/** Ein Accent-Satz muss alle fünf Felder als sichere Farbliterale tragen. */
 function validAccentSet(v: unknown): v is AccentSetDto {
   return isObj(v)
-    && isStr(v.accent) && isStr(v.hover) && isStr(v.on) && isStr(v.text) && isStr(v.soft);
+    && isSafeColorValue(v.accent) && isSafeColorValue(v.hover) && isSafeColorValue(v.on)
+    && isSafeColorValue(v.text) && isSafeColorValue(v.soft);
 }
 
 function accentSetToTokens(dto: AccentSetDto): AccentTokens {
@@ -59,7 +67,7 @@ function validateBlock(block: unknown, modeSupport: 'unified' | 'per-mode', wher
     palette = {};
     for (const [name, value] of Object.entries(b.palette)) {
       if (!THEMEABLE_COLOR_TOKENS.has(name)) return { reason: `'${where}.palette' has unknown token '${name}'` };
-      if (!isStr(value)) return { reason: `'${where}.palette.${name}' is not a colour string` };
+      if (!isSafeColorValue(value)) return { reason: `'${where}.palette.${name}' is not a safe colour literal (no url()/;/@import)` };
       palette[name] = value;
     }
   }

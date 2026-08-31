@@ -247,14 +247,18 @@ var root = document.documentElement;
 // ── Validierung (Spiegel von user-theme-loader.ts) ───────────────────────────
 function isObj(v){ return v && typeof v==='object' && !Array.isArray(v); }
 function isStr(v){ return typeof v==='string' && v.length>0; }
-function validAccentSet(v){ return isObj(v) && ACCENT_FIELDS.every(function(f){ return isStr(v[f]); }); }
+// #392: nur echte Farbliterale zulassen — kein url()/expression()/;/@import/Kommentar
+// (verhindert Tracking-/Exfil-Beacons via url() aus einem Fremd-Theme).
+var UNSAFE_VALUE_RE = /url\(|expression\(|@import|;|\/\*/i;
+function isSafeColor(v){ return isStr(v) && !UNSAFE_VALUE_RE.test(v); }
+function validAccentSet(v){ return isObj(v) && ACCENT_FIELDS.every(function(f){ return isSafeColor(v[f]); }); }
 function validateBlock(block, modeSupport, where){
   if(!isObj(block)) return "Block '"+where+"' fehlt oder ist kein Objekt";
   if(block.palette!==undefined){
     if(!isObj(block.palette)) return "'"+where+".palette' ist kein Objekt";
     for(var k in block.palette){
       if(COLOR_TOKENS.indexOf(k)<0) return "'"+where+".palette' hat unbekannten Token '"+k+"'";
-      if(!isStr(block.palette[k])) return "'"+where+".palette."+k+"' ist kein Farb-String";
+      if(!isSafeColor(block.palette[k])) return "'"+where+".palette."+k+"' ist kein sicheres Farbliteral (kein url()/;/@import)";
     }
   }
   if(modeSupport==='per-mode'){
