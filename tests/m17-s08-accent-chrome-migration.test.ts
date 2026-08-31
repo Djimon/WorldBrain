@@ -6,33 +6,27 @@
 // sondern aus den modus-GEGATETEN `--mode-accent*`-Tokens — dadurch folgt sie
 // automatisch dem aktiven Shell-Modus (edit=Rot, play=Amber/Teal).
 //
-// jsdom rechnet keine CSS-Kaskade aus Stylesheets aus (vgl. m17-s03-mount).
-// Der Moduswechsel edit⟷play → Akzentwechsel ist zweistufig bewiesen:
-//   (a) `tests/m17-s03-mode-accent-mount.dom.test.tsx` — data-mode flippt real,
-//   (b) hier + `m17-s03-mode-accent-tokens` — die --mode-accent*-Tokens hängen an
-//       data-mode/-theme, und die Chrome-Selektoren binden an eben diese Tokens.
-// Zusammen: Chrome ist an data-mode gebunden → wechselt mit dem Modus.
+// Der EIGENTLICHE Flip-Beweis (migrierte Chrome löst edit≠play unterschiedliche
+// Akzente auf, echte CSS gemountet) liegt in `tests/m17-s08-accent-chrome-flip.dom.test.tsx`.
+// Hier: Positiv-Bindung der zentralen Selektoren + ein Absence-Guard, der über ALLE
+// CSS-Dateien (Glob) läuft — eine neue Datei mit Rest-`--color-accent*`-Chrome wird
+// dadurch ebenfalls gefangen.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-// Alle CSS-Flächen, deren Akzent-Chrome migriert wurde (+ die Primitives-Vorlage).
-const MIGRATED_CSS = [
-  'src/ui/primitives.css',
-  'src/ui/graph.css',
-  'src/styles/base.css',
-  'src/styles/components/maps.css',
-  'src/styles/components/maps-panels.css',
-  'src/styles/components/entities.css',
-  'src/styles/components/calendar.css',
-  'src/styles/components/calendar-extras.css',
-  'src/styles/components/audio.css',
-  'src/styles/components/pickers.css',
-  'src/styles/components/search.css',
-  'src/styles/components/split-view.css',
-  'src/styles/components/shell.css',
-  'src/styles/components/play-cockpit-map.css',
-];
+// Glob-Ersatz: alle .css unter src/styles/** und src/ui/** rekursiv einsammeln —
+// keine fixe Dateiliste, damit neue CSS-Flächen automatisch abgedeckt sind.
+function walkCss(dir: string, out: string[] = []): string[] {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) walkCss(p, out);
+    else if (name.endsWith('.css')) out.push(p.replace(/\\/g, '/'));
+  }
+  return out;
+}
+const ALL_CSS = [...walkCss('src/styles'), ...walkCss('src/ui')];
 
 const read = (f: string) => readFileSync(f, 'utf-8');
 
@@ -73,9 +67,9 @@ describe('M17-S08 Akzent-Chrome bindet an --mode-accent (positiv)', () => {
 });
 
 describe('M17-S08 Guard: keine --color-accent*-Chrome mehr (Regressionsnetz)', () => {
-  it('keine migrierte CSS-Fläche konsumiert noch --color-accent*/--color-surface-active', () => {
+  it('KEINE CSS-Fläche (Glob über src/styles + src/ui) konsumiert noch --color-accent*/--color-surface-active', () => {
     const offenders: string[] = [];
-    for (const f of MIGRATED_CSS) {
+    for (const f of ALL_CSS) {
       const src = read(f);
       for (const [i, line] of src.split('\n').entries()) {
         if (/var\(--color-accent(-strong|-soft)?\)|var\(--color-surface-active\)/.test(line)) {
@@ -96,8 +90,8 @@ describe('M17-S08 Guard: keine --color-accent*-Chrome mehr (Regressionsnetz)', (
 describe('M17-S08 Mechanismus: --mode-accent ist modus-gegatet (schaltet mit dem Modus)', () => {
   it('tokens.css belegt --mode-accent im Play-Modus separat', () => {
     const src = read('src/styles/tokens.css');
-    // Es existiert ein play-Block, der --mode-accent neu setzt → migrierte Chrome
-    // löst im Play-Modus einen anderen Akzent auf als im Edit-Modus.
+    // Quell-Beleg; der COMPUTED-Flip-Beweis (edit≠play am gemounteten Element) liegt
+    // in tests/m17-s08-accent-chrome-flip.dom.test.tsx.
     expect(src).toMatch(/\[data-mode='play'\][\s\S]*?--mode-accent\s*:/);
   });
 });
