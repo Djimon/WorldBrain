@@ -100,7 +100,10 @@
     "removeChip": "Remove chip",
     "chipsMaxed": "Max 12 chips (full circle)",
     "addChip": "+ Chip",
-    "delete": "Delete token"
+    "delete": "Delete token",
+    "counterIncrease": "Increase",
+    "counterDecrease": "Decrease",
+    "resizeDrag": "Drag to resize"
   },
   "mapSideTabs": {
     "label": "Pins and tokens",

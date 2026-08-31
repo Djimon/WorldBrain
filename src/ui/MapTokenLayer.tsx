@@ -10,6 +10,7 @@
 // token on paper, and simply grow/shrink with it. Only the token's own
 // `scale` (#301, the resize handle) changes its size.
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Counter, MapTokenRow } from '../services/map-token-service';
 import { getIcon } from '../services/icon-set-registry';
 
@@ -61,6 +62,7 @@ function CounterBadge({ counter, index, selected, onCounterStep }: {
   counter: Counter; index: number; selected: boolean;
   onCounterStep?: (index: number, delta: number) => void;
 }) {
+  const { t } = useTranslation('map');
   const [hover, setHover] = useState(false);
   const showStepper = hover || selected;
   const swallow = (e: React.SyntheticEvent) => e.stopPropagation();
@@ -75,10 +77,10 @@ function CounterBadge({ counter, index, selected, onCounterStep }: {
       <span className="map-token__counter-val">{counter.value}</span>
       {showStepper && (
         <div className="map-token__counter-steps">
-          <button type="button" className="map-token__counter-btn" aria-label="Erhöhen"
+          <button type="button" className="map-token__counter-btn" aria-label={t('token.counterIncrease')}
             onPointerDown={swallow} onMouseDown={swallow}
             onClick={(e) => { e.stopPropagation(); onCounterStep?.(index, 1); }}>+</button>
-          <button type="button" className="map-token__counter-btn" aria-label="Verringern"
+          <button type="button" className="map-token__counter-btn" aria-label={t('token.counterDecrease')}
             onPointerDown={swallow} onMouseDown={swallow}
             onClick={(e) => { e.stopPropagation(); onCounterStep?.(index, -1); }}>−</button>
         </div>
@@ -91,6 +93,7 @@ export function MapToken({
   token, selected = false, dragging = false, resolveAssetUrl,
   onPointerDown, onPointerMove, onPointerUp, onSelect, onResizeStart, onCounterStep,
 }: MapTokenProps) {
+  const { t } = useTranslation('map');
   const name = tokenName(token);
   const initial = name.trim().charAt(0).toUpperCase() || '?';
   const ring = token.ring_color || DEFAULT_RING;
@@ -182,7 +185,7 @@ export function MapToken({
       {selected && (
         <div
           className="map-token__resize"
-          title="Größe ziehen"
+          title={t('token.resizeDrag')}
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => { e.stopPropagation(); onResizeStart?.(e); }}
         >
