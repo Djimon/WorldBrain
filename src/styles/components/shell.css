@@ -76,6 +76,14 @@
   flex-direction: column;
 }
 
+/* M17-S03 (#382): Kopf-Akzentstreifen — die Modus-Farbe (Prep-Rot / Live-Amber)
+   aus dem Token; sofort sichtbarer Farb-Indikator des aktiven Shell-Modus. */
+.workspace-shell__mode-stripe {
+  height: 3px;
+  background: var(--mode-accent);
+  flex-shrink: 0;
+}
+
 .workspace-shell__header {
   display: flex;
   align-items: center;

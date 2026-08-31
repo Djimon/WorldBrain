@@ -49,6 +49,50 @@
   --shadow-panel: 0 12px 28px rgba(15, 18, 22, 0.12);
 }
 
+/* ── M17-S03 (#382): Modus-Akzent-Token-System (Default-Theme) ──
+   Zwei orthogonale Achsen auf :root (documentElement):
+     Modus     — data-mode: edit = Prep/RealmForge (Rot) · play = Live/Adventure Nexus (Amber)
+     Erscheinung — kein/​data-theme='light' = Light · data-theme='dark' = Dark
+   Default ohne data-mode = edit (Prep). Fünf semantische Tokens; die
+   Light-Werte sind SEPARAT autorisiert (WCAG AA auf hellem Grund), NICHT aus
+   dem Dark-Hue abgeleitet. `--mode-accent-on` (Vordergrund auf gefülltem Akzent)
+   ist bewusst pro Farbe verschieden — Weiß auf Amber wäre zu kontrastarm. */
+:root,
+:root[data-theme='light'] {
+  /* Light · edit / Prep-Rot — Weiß auf Rot ~6.2:1 AA, Rot-Text auf hell ~6.8:1 AA */
+  --mode-accent:       #c1121f;
+  --mode-accent-hover: #a80f1a;
+  --mode-accent-on:    #ffffff;
+  --mode-accent-text:  #b3121f;
+  --mode-accent-soft:  rgba(193, 18, 31, 0.12);
+}
+:root[data-mode='play'],
+:root[data-theme='light'][data-mode='play'] {
+  /* Light · play / Live-Amber — dunkleres Amber, damit die Fläche auf Weiß
+     kontrastiert (Weiß darauf ~5.0:1 AA); Amber-Text auf hell ~5.0:1 AA */
+  --mode-accent:       #b45309;
+  --mode-accent-hover: #92400e;
+  --mode-accent-on:    #ffffff;
+  --mode-accent-text:  #b45309;
+  --mode-accent-soft:  rgba(180, 83, 9, 0.14);
+}
+:root[data-theme='dark'] {
+  /* Dark · edit / Prep-Rot (AC-Vorgabe) */
+  --mode-accent:       #e5484d;
+  --mode-accent-hover: #ef5a5f;
+  --mode-accent-on:    #ffffff;
+  --mode-accent-text:  #f0888b;
+  --mode-accent-soft:  rgba(229, 72, 77, 0.16);
+}
+:root[data-theme='dark'][data-mode='play'] {
+  /* Dark · play / Live-Amber (AC-Vorgabe) — dunkler Vordergrund auf Amber */
+  --mode-accent:       #eaa53c;
+  --mode-accent-hover: #f2b451;
+  --mode-accent-on:    #241a05;
+  --mode-accent-text:  #f2bd63;
+  --mode-accent-soft:  rgba(234, 165, 60, 0.16);
+}
+
 [data-theme='dark'] {
   /* Dark mode — Bastion warm-dark */
   --color-text:           #e7e2d8;

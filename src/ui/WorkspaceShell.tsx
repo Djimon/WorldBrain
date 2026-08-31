@@ -35,7 +35,7 @@ import { MapFolderTree } from './MapFolderTree';
 import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
-import { Button, Field, Panel, Segmented } from './primitives';
+import { Button, Field, Panel, Segmented, StatusChip } from './primitives';
 import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext';
 import { WebRtcTransport } from '../services/webrtc-transport';
 import { currentAppId } from '../services/app-id-service';
@@ -48,6 +48,7 @@ import { createPlayClientStore, type PlayClientStoreImpl } from '../services/pla
 import { listCampaigns, createCampaign, type Campaign } from '../services/campaign-service';
 import { PlayModeView } from './PlayModeView';
 import { PlayerJoinView } from './PlayerJoinView';
+import { useModeBrand } from '../branding/brand';
 import { CampaignRosterPanel } from './CampaignRosterPanel';
 import { ModuleLibrary } from './ModuleLibrary';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
@@ -926,6 +927,15 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   }
 
   const modeContextValue = { mode, sessionRole, activeSessionId };
+  // M17-S03 (#382): modus-gebundene Marke (Decision 2: Modus→Marke, nie Rolle→Marke).
+  const modeLabel = useModeBrand(mode);
+
+  // M17-S03 (#382): den aktiven Shell-Modus als zweite Achse (neben data-theme)
+  // auf documentElement spiegeln — die Modus-Akzent-Tokens in tokens.css hängen
+  // an `:root[data-mode='…']`. So wechselt der Akzent Rot⟷Amber ohne Reload.
+  useEffect(() => {
+    document.documentElement.setAttribute('data-mode', mode);
+  }, [mode]);
   const inPlayCockpit = mode === 'play' && activeArea === 'session';
 
   // #374 D30: Player-Store erzeugen sobald Player-Kontext feststeht (leerer
@@ -1011,8 +1021,21 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           </button>
         </nav>
         <div className="workspace-shell__content">
+          {/* M17-S03 (#382): Kopf-Akzentstreifen — trägt die Modus-Farbe
+              (Prep-Rot / Live-Amber) aus --mode-accent, rein dekorativ. */}
+          <div className="workspace-shell__mode-stripe" aria-hidden="true" />
           <header className="workspace-shell__header">
             <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
+            {/* Modus-Marke — nicht-farbliche Modus-Kennzeichnung #1 (Decision 2/4). */}
+            <StatusChip tone="accent" aria-label={t('modeBrandLabel', 'Aktiver Modus: {{brand}}', { brand: modeLabel })}>
+              {modeLabel}
+            </StatusChip>
+            {/* Live-Modus-Schloss — nicht-farbliche Modus-Kennzeichnung #2 (Decision 4). */}
+            {mode === 'play' && (
+              <StatusChip tone="warning" aria-label={t('modeLockedLabel', 'Live-Modus (gesperrt)')}>
+                🔒
+              </StatusChip>
+            )}
             <span className="workspace-shell__area-name">{activeAreaLabel}</span>
             <div className="workspace-shell__header-controls">
               <Segmented

@@ -9,7 +9,7 @@ type ButtonTone = 'neutral' | 'accent' | 'danger';
 type ButtonVariant = 'solid' | 'outline' | 'ghost' | 'glass';
 type ButtonSize = 'md' | 'compact' | 'icon';
 type ButtonShape = 'default' | 'circle';
-type StatusTone = 'muted' | 'success' | 'warning' | 'failure';
+type StatusTone = 'muted' | 'success' | 'warning' | 'failure' | 'accent';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   tone?: ButtonTone;

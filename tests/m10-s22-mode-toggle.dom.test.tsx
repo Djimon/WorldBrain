@@ -137,6 +137,8 @@ vi.mock('../src/ui/primitives', () => ({
   Button: (props: Record<string, unknown>) => React.createElement('button', props),
   Panel: (props: Record<string, unknown>) => React.createElement('div', props),
   Field: (props: Record<string, unknown>) => React.createElement('input', props),
+  StatusChip: ({ children, ...props }: { children?: React.ReactNode } & Record<string, unknown>) =>
+    React.createElement('span', props, children),
   // Realistischer Mock: role="group" + aria-label + einzelne Buttons pro
   // Segment (Text = label, aria-pressed spiegelt value). Genau das Kontrakt-
   // Verhalten von Segmented, das die Tests via getByRole finden.

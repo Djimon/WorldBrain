@@ -23,13 +23,13 @@
 
 /* ── Solid tones (default variant) ── */
 .ui-button[data-tone='accent'] {
-  border-color: var(--color-accent-strong);
-  color: var(--color-on-accent);
-  background: var(--color-accent);
+  border-color: var(--mode-accent);
+  color: var(--mode-accent-on);
+  background: var(--mode-accent);
 }
 .ui-button[data-tone='accent']:hover {
-  border-color: var(--color-accent-strong);
-  background: var(--color-accent-strong);
+  border-color: var(--mode-accent-hover);
+  background: var(--mode-accent-hover);
 }
 
 .ui-button[data-tone='danger'] {
@@ -49,12 +49,12 @@
   background: var(--color-surface-alt);
 }
 .ui-button[data-variant='outline'][data-tone='accent'] {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  border-color: var(--mode-accent);
+  color: var(--mode-accent-text);
 }
 .ui-button[data-variant='outline'][data-tone='accent']:hover {
-  color: var(--color-on-accent);
-  background: var(--color-accent);
+  color: var(--mode-accent-on);
+  background: var(--mode-accent);
 }
 .ui-button[data-variant='outline'][data-tone='danger'] {
   border-color: var(--color-status-failure);
@@ -71,7 +71,7 @@
   background: transparent;
 }
 .ui-button[data-variant='ghost'][data-tone='neutral'] { color: var(--color-text-muted); }
-.ui-button[data-variant='ghost'][data-tone='accent'] { color: var(--color-accent); }
+.ui-button[data-variant='ghost'][data-tone='accent'] { color: var(--mode-accent-text); }
 .ui-button[data-variant='ghost'][data-tone='danger'] { color: var(--color-status-failure); }
 .ui-button[data-variant='ghost']:hover {
   border-color: transparent;
@@ -89,13 +89,13 @@
 
 /* ── Pressed / active toggle state (aria-pressed; wins over tone & variant) ── */
 .ui-button[aria-pressed='true'] {
-  border-color: var(--color-accent);
-  color: var(--color-on-accent);
-  background: var(--color-accent);
+  border-color: var(--mode-accent);
+  color: var(--mode-accent-on);
+  background: var(--mode-accent);
 }
 .ui-button[aria-pressed='true']:hover {
-  border-color: var(--color-accent-strong);
-  background: var(--color-accent-strong);
+  border-color: var(--mode-accent-hover);
+  background: var(--mode-accent-hover);
 }
 
 /* ── Sizes & shape ── */
@@ -155,8 +155,8 @@
 }
 .ui-segmented[data-variant='glass'] .ui-button[aria-pressed='true'] {
   border-color: transparent;
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--mode-accent);
+  color: var(--mode-accent-on);
 }
 
 .ui-panel {
@@ -186,7 +186,7 @@
 }
 
 .ui-tabs__tab[aria-selected='true'] {
-  border-color: var(--color-accent);
+  border-color: var(--mode-accent);
   color: var(--color-text);
 }
 
@@ -224,9 +224,9 @@
   background: var(--color-surface);
   font: inherit;
 }
-/* App-wide field standard: border-only focus (accent border, no ring). */
+/* App-wide field standard: border-only focus (mode-accent border, no ring). */
 .ui-field__control:focus {
-  border-color: var(--color-accent);
+  border-color: var(--mode-accent);
   outline: none;
 }
 
@@ -259,6 +259,13 @@
   color: var(--color-status-failure);
 }
 
+/* M17-S03 (#382): Modus-Akzent-Tone — die Modus-Label-Pill (S02) trägt die
+   Modus-Farbe (Prep-Rot / Live-Amber) aus dem Token, kein Komponenten-Hex. */
+.ui-status-chip[data-tone='accent'] {
+  border-color: color-mix(in srgb, var(--mode-accent) 40%, transparent);
+  color: var(--mode-accent-text);
+}
+
 /* ── Chip — a pill label/tag/mention (distinct from the tone-semantic
    StatusChip). soft = surface-active fill; filled = accent-tinted. ── */
 .ui-chip {
@@ -274,11 +281,11 @@
   white-space: nowrap;
 }
 .ui-chip[data-tone='accent'] {
-  color: var(--color-accent);
+  color: var(--mode-accent-text);
 }
 .ui-chip[data-variant='filled'] {
-  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
-  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--mode-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--mode-accent) 18%, transparent);
 }
 .ui-chip[data-variant='outline'] {
   border-color: var(--color-border);
