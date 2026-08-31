@@ -180,10 +180,10 @@ export function PlayerCharacterSheet({
           />
           <div className="u-row u-gap-2">
             <Button tone="accent" onClick={() => void handleSaveSummary()}>
-              {t('save', 'Speichern')}
+              {t('save', { ns: 'common' })}
             </Button>
             <Button onClick={() => setEditing(false)}>
-              {t('cancel', 'Abbrechen')}
+              {t('cancel', { ns: 'common' })}
             </Button>
           </div>
         </div>

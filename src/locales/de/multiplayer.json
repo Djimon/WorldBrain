@@ -1,6 +1,4 @@
 {
-  "save": "Speichern",
-  "cancel": "Abbrechen",
   "lobby": {
     "title": "Lobby",
     "loadError": "Roster konnte nicht geladen werden.",

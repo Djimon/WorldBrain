@@ -1,6 +1,4 @@
 {
-  "save": "Save",
-  "cancel": "Cancel",
   "lobby": {
     "title": "Lobby",
     "loadError": "Could not load the roster.",
