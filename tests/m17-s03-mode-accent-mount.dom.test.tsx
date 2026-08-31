@@ -9,18 +9,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (k: string, d?: string | Record<string, unknown>) => {
-      if (d === undefined) return k;
-      if (typeof d === 'string') return d;
-      if (typeof d === 'object' && 'defaultValue' in d) return String(d.defaultValue);
-      return k;
-    },
-    i18n: { language: 'de', changeLanguage: vi.fn() },
-  }),
-}));
+// ECHTES i18n (kein react-i18next-Mock) — damit die Marken-Keys aus der Registry
+// (#381, common-Namespace) real zu „Beyond Worlds"/„RealmForge"/„Adventure Nexus"
+// auflösen und der Test den echten gerenderten Text prüfen kann (#382/#383).
+import '../src/i18n';
 
 vi.mock('../src/services/DatabaseContext', () => ({
   useDatabase: () => ({ execute: vi.fn().mockResolvedValue(undefined), select: vi.fn().mockResolvedValue([]) }),
@@ -100,10 +92,13 @@ describe('M17-S03 mode-accent switches on real mode toggle (mount)', () => {
   const editSeg = () => screen.getByRole('button', { name: 'Bearbeiten' });
   const asDm = () => screen.getByRole('button', { name: /Als DM/i });
 
-  it('edit mode sets data-mode=edit and shows the RealmForge brand', async () => {
+  it('edit mode: data-mode=edit, platform Beyond Worlds + RealmForge brand shown', async () => {
     const Shell = await getShell();
     render(React.createElement(Shell));
     await waitFor(() => expect(document.documentElement.getAttribute('data-mode')).toBe('edit'));
+    // #383: die Plattform-Marke ist dauerhaft sichtbar.
+    expect(screen.getByText('Beyond Worlds')).toBeTruthy();
+    // #382/#383: Modus-Label = RealmForge im edit-Modus.
     expect(screen.getByText('RealmForge')).toBeTruthy();
   });
 
@@ -117,6 +112,8 @@ describe('M17-S03 mode-accent switches on real mode toggle (mount)', () => {
     fireEvent.click(asDm());
 
     await waitFor(() => expect(document.documentElement.getAttribute('data-mode')).toBe('play'));
+    // Plattform bleibt; Modus-Label wechselt RealmForge→Adventure Nexus (Decision 2).
+    expect(screen.getByText('Beyond Worlds')).toBeTruthy();
     expect(screen.getByText('Adventure Nexus')).toBeTruthy();
     // Non-color mode cue #2 (Decision 4): das Live-Schloss erscheint.
     expect(screen.getByText('🔒')).toBeTruthy();

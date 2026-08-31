@@ -94,6 +94,20 @@
   flex-shrink: 0;
 }
 
+/* M17-S02 (#383): Produkt-Identitätsleiste — Plattform-Marke + Modus-Label. */
+.workspace-shell__identity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.workspace-shell__brand-platform {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 .workspace-shell__header-controls {
   margin-left: auto;
   display: flex;

@@ -48,7 +48,6 @@ import { createPlayClientStore, type PlayClientStoreImpl } from '../services/pla
 import { listCampaigns, createCampaign, type Campaign } from '../services/campaign-service';
 import { PlayModeView } from './PlayModeView';
 import { PlayerJoinView } from './PlayerJoinView';
-import { useModeBrand } from '../branding/brand';
 import { CampaignRosterPanel } from './CampaignRosterPanel';
 import { ModuleLibrary } from './ModuleLibrary';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
@@ -927,8 +926,6 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   }
 
   const modeContextValue = { mode, sessionRole, activeSessionId };
-  // M17-S03 (#382): modus-gebundene Marke (Decision 2: Modus→Marke, nie Rolle→Marke).
-  const modeLabel = useModeBrand(mode);
 
   // M17-S03 (#382): den aktiven Shell-Modus als zweite Achse (neben data-theme)
   // auf documentElement spiegeln — die Modus-Akzent-Tokens in tokens.css hängen
@@ -1025,17 +1022,26 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
               (Prep-Rot / Live-Amber) aus --mode-accent, rein dekorativ. */}
           <div className="workspace-shell__mode-stripe" aria-hidden="true" />
           <header className="workspace-shell__header">
-            <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
-            {/* Modus-Marke — nicht-farbliche Modus-Kennzeichnung #1 (Decision 2/4). */}
-            <StatusChip tone="accent" aria-label={t('modeBrandLabel', 'Aktiver Modus: {{brand}}', { brand: modeLabel })}>
-              {modeLabel}
-            </StatusChip>
-            {/* Live-Modus-Schloss — nicht-farbliche Modus-Kennzeichnung #2 (Decision 4). */}
-            {mode === 'play' && (
-              <StatusChip tone="warning" aria-label={t('modeLockedLabel', 'Live-Modus (gesperrt)')}>
-                🔒
+            {/* M17-S02 (#383): Produkt-Identitätsleiste — Plattform-Marke „Beyond
+                Worlds" (ruhige Kennung) + aktives Modus-Label. Marken-Strings aus
+                der Registry (#381, common-Namespace), Chrome aus Primitives/Tokens. */}
+            <div className="workspace-shell__identity" role="group"
+              aria-label={t('modeIdentityAria', 'Produkt-Identität')}>
+              <span className="workspace-shell__brand-platform">{t('brand.platform', { ns: 'common' })}</span>
+              {/* Modus-Marke — Quelle ist `mode` (Decision 2: Modus→Marke, NIE
+                  Rolle→Marke), Marken-Keys aus der Registry (#381). Nicht-farbliche
+                  Modus-Kennzeichnung #1 (Decision 4). */}
+              <StatusChip tone="accent" aria-label={t('modeBrandAria', 'Aktiver Modus')}>
+                {t(mode === 'play' ? 'brand.mode.play' : 'brand.mode.edit', { ns: 'common' })}
               </StatusChip>
-            )}
+              {/* Live-Modus-Schloss — nicht-farbliche Modus-Kennzeichnung #2 (Decision 4). */}
+              {mode === 'play' && (
+                <StatusChip tone="warning" aria-label={t('modeLockedAria', 'Live-Modus (gesperrt)')}>
+                  🔒
+                </StatusChip>
+              )}
+            </div>
+            <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
             <span className="workspace-shell__area-name">{activeAreaLabel}</span>
             <div className="workspace-shell__header-controls">
               <Segmented

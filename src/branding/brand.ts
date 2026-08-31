@@ -32,14 +32,3 @@ export function useBrand(): Brand {
     engine: t('brand.engine', 'RuleLoom'),
   };
 }
-
-/**
- * Marke für den AKTIVEN Shell-Modus. Epic Decision 2: **Modus → Marke, NIEMALS
- * Rolle → Marke** — ein DM, der im Live-Modus mitspielt (GM-Self-Join), sieht
- * „Adventure Nexus", nicht die Prep-Marke. Der Rollen-Unterschied lebt allein in
- * den Rechten, nicht im Modus-Namen. Diese Zuordnung existiert nur HIER.
- */
-export function useModeBrand(mode: 'edit' | 'play'): string {
-  const brand = useBrand();
-  return mode === 'play' ? brand.playMode : brand.editMode;
-}
