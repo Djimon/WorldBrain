@@ -18,29 +18,47 @@ export interface LoopbackPair {
   hostSide: SessionTransport;
 }
 
+// M10-#387: modelliert die echte WebRtcTransport-Semantik treu — MEHRERE
+// onMessage-Listener (jede Nachricht an alle) + bounded Receive-Replay-Puffer
+// (späte Subscriber bekommen bereits eingetroffene Nachrichten nachgespielt).
+// Single-Handler hätte den Host-Handler-Konflikt (token-sync/join-sync) im Test
+// verdeckt, so wie es der ursprüngliche Loopback tat.
 interface Channel {
-  handler: ((msg: TransportMessage) => void) | null;
+  handlers: Array<(msg: TransportMessage) => void>;
+  inbox: TransportMessage[];
 }
+
+const MAX_INBOX = 64;
 
 function makeSide(peerChannel: Channel, selfChannel: Channel): SessionTransport {
   return {
     async connect() { /* Loopback: nichts zu tun. */ },
-    async close() { selfChannel.handler = null; },
+    async close() { selfChannel.handlers = []; selfChannel.inbox = []; },
     async send(msg) {
       // Fire-and-forget an die andere Seite. Bewusst asynchron via microtask,
       // damit send/onMessage nicht synchron re-entrieren.
-      const target = peerChannel.handler;
-      if (target !== null) queueMicrotask(() => target(msg));
+      queueMicrotask(() => {
+        if (peerChannel.inbox.length >= MAX_INBOX) peerChannel.inbox.shift();
+        peerChannel.inbox.push(msg);
+        for (const h of [...peerChannel.handlers]) h(msg);
+      });
     },
-    onMessage(cb) { selfChannel.handler = cb; },
+    onMessage(cb) {
+      selfChannel.handlers.push(cb);
+      for (const m of selfChannel.inbox) cb(m);
+      return () => {
+        const i = selfChannel.handlers.indexOf(cb);
+        if (i !== -1) selfChannel.handlers.splice(i, 1);
+      };
+    },
   };
 }
 
 export function createLoopbackTransport(): LoopbackPair {
-  const clientChannel: Channel = { handler: null };
-  const hostChannel: Channel = { handler: null };
+  const clientChannel: Channel = { handlers: [], inbox: [] };
+  const hostChannel: Channel = { handlers: [], inbox: [] };
   return {
-    // clientSide.send → hostChannel.handler; clientSide.onMessage horcht auf clientChannel
+    // clientSide.send → hostChannel; clientSide.onMessage horcht auf clientChannel
     clientSide: makeSide(hostChannel, clientChannel),
     hostSide: makeSide(clientChannel, hostChannel),
   };

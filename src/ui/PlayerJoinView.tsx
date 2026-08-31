@@ -73,6 +73,11 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
   const [connectState, setConnectState] = useState<ConnectState>('idle');
   // Transport-Ref: bleibt über Renders erhalten damit close() beim Unmount klappt.
   const transportRef = useRef<WebRtcTransport | null>(null);
+  // #387: Disposer für den Join-Handshake-Listener — nach erfolgreichem Join
+  // abmelden, damit nur noch die Store-Bridge am Transport hängt.
+  const joinDisposeRef = useRef<(() => void) | null>(null);
+  // #387: welche Aktion der „Erneut versuchen"-Button wiederholen soll.
+  const lastActionRef = useRef<'join' | 'reconnect'>('join');
   // #371 Fix 5: expliziter Reconnect (kein stiller Auto-Reconnect).
   const [storedTokenExists, setStoredTokenExists] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -99,11 +104,17 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
     buildRequest: () => TransportMessage,
     onResponse: (payload: JoinResponsePayload) => void,
   ): Promise<void> {
+    // #387: alten Transport vor einem neuen Versuch schließen — sonst leaken
+    // Broker-Sockets bei jedem Retry.
+    const previous = transportRef.current;
+    if (previous !== null) void previous.close();
+    joinDisposeRef.current?.();
     const transport = new WebRtcTransport({ campaignId: roomId });
     transportRef.current = transport;
-    // Host-Antwort entgegennehmen (Single-Handler-Transport; die Shell hängt nach
-    // erfolgreichem Join ihren Store-Handler an — bis dahin horchen wir hier).
-    transport.onMessage((msg: TransportMessage) => {
+    // Host-Antwort entgegennehmen. Multi-Listener-Transport (#387): die Shell hängt
+    // nach dem Join zusätzlich ihre Store-Bridge an; dieser Handler wird nach
+    // erfolgreichem Join via joinDisposeRef abgemeldet.
+    joinDisposeRef.current = transport.onMessage((msg: TransportMessage) => {
       if (msg.type === JOIN_RESPONSE) onResponse(msg.payload as unknown as JoinResponsePayload);
     });
     await transport.connect();
@@ -136,6 +147,7 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
       return;
     }
     const rawCode = parsed.code !== '' ? parsed.code : code.trim();
+    lastActionRef.current = 'join';
     setBusy(true);
     setConnectState('connecting');
     try {
@@ -184,6 +196,11 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
     });
     setStoredTokenExists(true);
     setJoinedName(name);
+    // Join-Handshake-Listener abmelden — ab jetzt hört nur noch die Store-Bridge
+    // (die Shell hängt sie via onJoined an; der Snapshot wird ihr per Receive-
+    // Replay nachgespielt, falls er vorher ankam).
+    joinDisposeRef.current?.();
+    joinDisposeRef.current = null;
     onJoined?.({
       token: payload.token,
       playerId: payload.playerId,
@@ -206,6 +223,7 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
       setError(t('join.errorReconnectNoLink', 'Frühere Sitzung ohne Verbindungsinfo — bitte über den Einladungslink neu beitreten.'));
       return;
     }
+    lastActionRef.current = 'reconnect';
     setChecking(true);
     setConnectState('connecting');
     try {
@@ -240,6 +258,8 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
       return;
     }
     setJoinedName(stored.displayName);
+    joinDisposeRef.current?.();
+    joinDisposeRef.current = null;
     onJoined?.({
       token: payload.token,
       playerId: payload.playerId,
@@ -248,11 +268,19 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
     });
   }
 
+  /** „Erneut versuchen" wiederholt die ZULETZT versuchte Aktion (Join oder
+   *  Reconnect) — nicht blind Join (#387 Review-Finding). */
+  function retry() {
+    if (lastActionRef.current === 'reconnect') void runReconnect();
+    else void handleJoin();
+  }
+
   // Transport beim Unmount aufräumen — sonst bleiben Broker-Sockets offen.
   useEffect(() => {
     return () => {
       const active = transportRef.current;
       if (active !== null) void active.close();
+      joinDisposeRef.current?.();
     };
   }, []);
 
@@ -312,7 +340,7 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
           <StatusChip tone="failure" role="status">
             {t('join.stateFailed', 'Verbindung fehlgeschlagen — ist der Host online?')}
           </StatusChip>
-          <Button size="compact" onClick={() => void handleJoin()}>
+          <Button size="compact" onClick={() => retry()}>
             {t('join.retry', 'Erneut versuchen')}
           </Button>
         </div>

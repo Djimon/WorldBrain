@@ -7,13 +7,12 @@
 // eine Karte präsentiert und wenn der Host-Transport steht (initialer Zustand).
 import type { DatabaseLike } from './entity-service';
 import type { SessionTransport, TransportMessage } from './session-transport';
+import { SYSTEM_TOKEN } from './session-transport';
 import { computeSnapshot, type HostViewItem } from './host-push-service';
 import { getPresentedMapId } from './presented-map-service';
 import { getMap, getAssetUrl } from './map-service';
 import { listLayers } from './map-layer-service';
 import { listTokens } from './map-token-service';
-
-const SYSTEM_TOKEN = 'system-dm';
 
 /**
  * Baut + sendet den Snapshot der aktuell präsentierten Karte an die Spieler.

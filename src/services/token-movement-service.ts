@@ -10,10 +10,8 @@
 // Die Bewegung wird als normales `token`-Update-Delta live an alle gepusht.
 import type { Delta } from './play-sync-protocol';
 import type { SessionTransport, TransportMessage } from './session-transport';
+import { SYSTEM_TOKEN } from './session-transport';
 import type { PlayClientStore } from './play-client-store';
-
-// Systemweit-Token für DM-/Host-Broadcasts (wie im Visibility-Broadcaster).
-const SYSTEM_TOKEN = 'system-dm';
 
 export type PlayerStatus = 'active' | 'kicked' | 'inactive' | string;
 

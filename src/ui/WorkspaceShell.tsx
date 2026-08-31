@@ -941,7 +941,8 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // Bewegungen) fließen dann in den DB-losen Client.
   useEffect(() => {
     if (playerStore === null || playerTransport === null) return;
-    attachClientStoreToTransport(playerTransport, playerStore);
+    const dispose = attachClientStoreToTransport(playerTransport, playerStore);
+    return () => dispose();
   }, [playerStore, playerTransport]);
 
   // #373 M10-R2 + S11: Host-Push verdrahten + Broker-Signaling attachen.

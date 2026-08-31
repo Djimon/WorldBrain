@@ -18,14 +18,9 @@
 // autorisieren → antworten. Der Client entscheidet nie selbst über Zugehörigkeit.
 import type { DatabaseLike } from './entity-service';
 import type { SessionTransport, TransportMessage, JoinResponsePayload } from './session-transport';
-import { JOIN_REQUEST, RECONNECT_REQUEST, JOIN_RESPONSE } from './session-transport';
+import { JOIN_REQUEST, RECONNECT_REQUEST, JOIN_RESPONSE, SYSTEM_TOKEN } from './session-transport';
 import { joinWithCode, resolveCampaignForCode, resolvePlayerByToken } from './session-identity-service';
 import { pushPresentedMapSnapshot } from './presented-map-push';
-
-// System-Marker im Envelope-`token`-Feld für host-erzeugte Antworten (der Spieler
-// ist zum Antwortzeitpunkt noch nicht per Player-Token adressierbar). Gleiches
-// Muster wie Visibility-/Token-Broadcasts.
-const SYSTEM_TOKEN = 'system-dm';
 
 interface JoinRequestPayload {
   code?: unknown;

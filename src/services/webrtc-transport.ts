@@ -61,7 +61,15 @@ export interface SignalingAttachOpts {
 export class WebRtcTransport implements SessionTransport {
   private pc: RTCPeerConnection | null = null;
   private channel: RTCDataChannel | null = null;
-  private handler: ((msg: TransportMessage) => void) | null = null;
+  // M10-#387: MEHRERE Empfänger (Host: token-sync + join-sync; Player: Join-
+  // Handshake + Store-Bridge). Single-Handler ließ den zweiten den ersten
+  // überschreiben → toter Handler. `inbox` ist ein bounded Receive-Replay-Puffer:
+  // ein SPÄTER dazukommender Listener (z.B. die Store-Bridge nach dem Join)
+  // bekommt die bereits eingetroffenen Nachrichten (z.B. den Initial-Snapshot)
+  // nachgespielt, statt sie zu verlieren.
+  private handlers: Array<(msg: TransportMessage) => void> = [];
+  private inbox: TransportMessage[] = [];
+  private static readonly MAX_INBOX = 64;
   private signalingHandle: AdapterHandle | null = null;
   // M10-#387: Ausgangs-Puffer. `onConnected` feuert beim Broker-Rendezvous —
   // VOR der DataChannel-Öffnung; ein früher send() (z.B. join_request) muss
@@ -94,7 +102,8 @@ export class WebRtcTransport implements SessionTransport {
     if (this.signalingHandle !== null) await this.signalingHandle.close();
     this.channel = null;
     this.pc = null;
-    this.handler = null;
+    this.handlers = [];
+    this.inbox = [];
     this.signalingHandle = null;
     this.outbox = []; // nie geöffneter Kanal → gepufferte Nachrichten verwerfen
 
@@ -214,8 +223,24 @@ export class WebRtcTransport implements SessionTransport {
     for (const msg of pending) ch.send(JSON.stringify(msg));
   }
 
-  onMessage(cb: (msg: TransportMessage) => void): void {
-    this.handler = cb;
+  onMessage(cb: (msg: TransportMessage) => void): () => void {
+    this.handlers.push(cb);
+    // Receive-Replay: bereits eingetroffene Nachrichten an den neuen Listener
+    // nachspielen (z.B. Store-Bridge bekommt den Join-Snapshot, der VOR ihrem
+    // Attach ankam). Idempotente Consumer (applySnapshot/applyDelta) vertragen das.
+    for (const msg of this.inbox) cb(msg);
+    return () => {
+      const i = this.handlers.indexOf(cb);
+      if (i !== -1) this.handlers.splice(i, 1);
+    };
+  }
+
+  /** Eingehende Nachricht puffern (bounded) + an ALLE Listener verteilen. */
+  private dispatchIncoming(msg: TransportMessage): void {
+    if (this.inbox.length >= WebRtcTransport.MAX_INBOX) this.inbox.shift();
+    this.inbox.push(msg);
+    // Kopie, falls ein Handler sich während der Iteration ab-/anmeldet.
+    for (const h of [...this.handlers]) h(msg);
   }
 
   /**
@@ -251,7 +276,7 @@ export class WebRtcTransport implements SessionTransport {
       // invite_codes, Token gegen session_players), nicht hier. Alle anderen
       // Nachrichten bleiben voll gegated (Decision 8, secure-by-default).
       if (PRE_AUTH_MESSAGE_TYPES.has(parsed.type)) {
-        this.handler?.(parsed);
+        this.dispatchIncoming(parsed);
         return;
       }
       // S02 Decision 8: pro Nachricht Token-Validierung. Wenn ein Authenticator
@@ -259,13 +284,13 @@ export class WebRtcTransport implements SessionTransport {
       const auth = this.options.authenticate;
       if (auth) {
         void Promise.resolve(auth(parsed.token)).then((ok) => {
-          if (ok) this.handler?.(parsed);
+          if (ok) this.dispatchIncoming(parsed);
           /* not ok → Nachricht verworfen; kein Kanal-Feedback (Client soll
              nicht wissen, ob Token existiert oder gekickt ist) */
         }).catch(() => { /* fail-closed: verwerfen */ });
         return;
       }
-      this.handler?.(parsed);
+      this.dispatchIncoming(parsed);
     };
   }
 }

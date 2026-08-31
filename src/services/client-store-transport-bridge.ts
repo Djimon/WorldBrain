@@ -17,8 +17,10 @@ import type { Delta, Snapshot } from './play-sync-protocol';
 export function attachClientStoreToTransport(
   transport: Pick<SessionTransport, 'onMessage'>,
   store: PlayClientStore,
-): void {
-  transport.onMessage((msg: TransportMessage) => {
+): () => void {
+  // #387: Disposer zurückgeben — der Transport ist jetzt Multi-Listener, ohne
+  // Abmelden würde ein Effekt-Re-Run einen zweiten Store-Handler akkumulieren.
+  return transport.onMessage((msg: TransportMessage) => {
     if (msg.type === 'snapshot') {
       store.applySnapshot(msg.payload as unknown as Snapshot);
     } else if (msg.type === 'delta') {

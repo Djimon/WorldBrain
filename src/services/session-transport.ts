@@ -38,6 +38,11 @@ export const PRE_AUTH_MESSAGE_TYPES: ReadonlySet<string> = new Set([JOIN_REQUEST
  *  nicht-leeres Feld). Für die Auth irrelevant — das Gate überspringt sie. */
 export const HANDSHAKE_TOKEN = 'handshake';
 
+/** System-Marker im Envelope-`token`-Feld für host-erzeugte Broadcasts/Antworten
+ *  (DM/System-Sender; der Empfänger ist noch nicht per Player-Token adressierbar).
+ *  EINE Quelle für host-join-sync, presented-map-push, token-movement, visibility. */
+export const SYSTEM_TOKEN = 'system-dm';
+
 /** Antwort des Hosts auf join_request/reconnect_request (#387). Bei Erfolg trägt
  *  sie das (neue bzw. bestätigte) Player-Token + player_id; sonst einen Grund. */
 export type JoinResponsePayload =
@@ -51,8 +56,13 @@ export interface SessionTransport {
   close(): Promise<void>;
   /** Sendet eine bereits schema-konforme Nachricht. */
   send(msg: TransportMessage): Promise<void>;
-  /** Registriert einen Empfänger für host-seitig validierte Eingaben. */
-  onMessage(cb: (msg: TransportMessage) => void): void;
+  /**
+   * Registriert einen Empfänger für host-seitig validierte Eingaben.
+   * MEHRERE Listener sind erlaubt (z.B. Host: token-sync + join-sync am selben
+   * Transport; Player: Join-Handshake + Client-Store-Bridge) — jede Nachricht
+   * geht an ALLE. Gibt einen Disposer zum Abmelden zurück (#387).
+   */
+  onMessage(cb: (msg: TransportMessage) => void): () => void;
 }
 
 /**

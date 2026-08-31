@@ -8,6 +8,10 @@ import { describe, expect, it } from 'vitest';
 import type { DatabaseLike } from '../src/services/entity-service';
 import { applyMapSchema } from '../core_data/map-schema';
 import { createToken } from '../src/services/map-token-service';
+import { createLoopbackTransport } from '../src/services/loopback-transport';
+import { createPlayClientStore } from '../src/services/play-client-store';
+import { attachClientStoreToTransport } from '../src/services/client-store-transport-bridge';
+import { attachHostTokenSync, sendMoveIntent } from '../src/services/host-token-sync';
 
 function makeAsyncDb(db: DatabaseSync): DatabaseLike {
   return {
@@ -244,5 +248,86 @@ describe('#387 PlayerJoinView DB-guard', () => {
   it('PlayerJoinView does not import DatabaseLike', () => {
     const source = readFileSync('src/ui/PlayerJoinView.tsx', 'utf-8');
     expect(source).not.toMatch(/import.*DatabaseLike/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. Review-Severes #1/#2 — gegen den ECHTEN Transport (createLoopbackTransport:
+//    Multi-Listener + Receive-Replay, treu zum WebRtcTransport). Der Inline-
+//    Loopback oben verdeckte beide Bugs (Listener-Array ohne Single-Handler-
+//    Semantik). Diese Tests fangen sie.
+// ---------------------------------------------------------------------------
+
+describe('#387 real-transport regression (Review #1/#2)', () => {
+  async function getHostJoinSync() {
+    return import('../src/services/host-join-sync');
+  }
+  async function getIdentity() {
+    return import('../src/services/session-identity-service');
+  }
+
+  it('#1 host: attachHostJoinSync does NOT kill attachHostTokenSync — both handlers stay live', async () => {
+    const { asyncDb, db } = createHostDb();
+    applyMapSchema(db);
+    db.prepare("INSERT INTO maps (id, title, image_width_px, image_height_px) VALUES ('m1','M',100,100)").run();
+    try {
+      const identity = await getIdentity();
+      const { attachHostJoinSync } = await getHostJoinSync();
+      const { clientSide, hostSide } = createLoopbackTransport();
+
+      const code = await identity.generateInviteCode(asyncDb, { campaignId: 'c1' });
+      const { id: tokenId } = await createToken(asyncDb, { map_id: 'm1', x: 0, y: 0 });
+
+      // Reihenfolge wie in WorkspaceShell: token-sync ZUERST, join-sync DANACH
+      // (genau die Registrierung, die den token-sync-Handler tötete).
+      attachHostTokenSync({ transport: hostSide, database: asyncDb, campaignId: 'c1' });
+      attachHostJoinSync({ transport: hostSide, database: asyncDb, campaignId: 'c1' });
+
+      const received: Array<{ type: string; payload: unknown }> = [];
+      clientSide.onMessage((m) => received.push(m));
+
+      await clientSide.send({ type: 'join_request', token: 'handshake', payload: { code, displayName: 'Alice' } });
+      await new Promise<void>((r) => setTimeout(r, 40));
+      const joinResp = received.find((m) => m.type === 'join_response');
+      expect(joinResp).toBeTruthy();
+      const { token, playerId } = joinResp!.payload as { token: string; playerId: string };
+
+      sendMoveIntent(clientSide, { campaignId: 'c1', senderPlayerId: playerId, tokenId, x: 42, y: 7, token });
+      await new Promise<void>((r) => setTimeout(r, 40));
+      // token-sync ist NICHT tot → der Move wird autorisiert und als Delta gebroadcastet.
+      expect(received.find((m) => m.type === 'delta')).toBeTruthy();
+    } finally {
+      db.close();
+    }
+  });
+
+  it('#2 player: a late-attached client store still receives the join snapshot (receive-replay)', async () => {
+    const { asyncDb, db } = createHostDb();
+    try {
+      const identity = await getIdentity();
+      const { attachHostJoinSync } = await getHostJoinSync();
+      const { clientSide, hostSide } = createLoopbackTransport();
+
+      const code = await identity.generateInviteCode(asyncDb, { campaignId: 'c1' });
+      attachHostJoinSync({ transport: hostSide, database: asyncDb, campaignId: 'c1' });
+
+      // Player hört zunächst NUR auf die join_response (wie PlayerJoinView) — noch
+      // KEIN Store. Der Host schickt join_response + Snapshot direkt hintereinander.
+      const received: Array<{ type: string }> = [];
+      clientSide.onMessage((m) => received.push(m));
+      await clientSide.send({ type: 'join_request', token: 'handshake', payload: { code, displayName: 'Alice' } });
+      await new Promise<void>((r) => setTimeout(r, 40));
+      expect(received.find((m) => m.type === 'join_response')).toBeTruthy();
+
+      // Store-Bridge SPÄT anhängen (wie die Shell erst 2 Effekt-Zyklen später).
+      const store = createPlayClientStore({});
+      expect(store.isOffline()).toBe(true);
+      attachClientStoreToTransport(clientSide, store);
+      await new Promise<void>((r) => setTimeout(r, 10));
+      // Ohne Receive-Replay wäre der Snapshot verloren → Store bliebe offline.
+      expect(store.isOffline()).toBe(false);
+    } finally {
+      db.close();
+    }
   });
 });
