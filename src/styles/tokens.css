@@ -93,15 +93,25 @@
   --mode-accent-soft:  rgba(234, 165, 60, 0.16);
 }
 
-/* ── Teal-Theme (#385): per-mode, Single-Appearance (dark). Überschreibt den
-     Default-Akzent, sobald data-theme='teal' — Prep bleibt Rot, Live wird Teal.
-     (Quelle-of-Truth der Werte gespiegelt in src/styles/theme-registry.ts.) ── */
+/* ── Teal-Theme (#385/#388-Vorgriff): per-mode, Single-Appearance (dark).
+     Überschreibt bei data-theme='teal' den Modus-Akzent (Prep bleibt Rot, Live
+     wird Teal) UND die Marken-Akzent-Tokens, damit kein „Rest-Rot" verbleibt:
+     Rot bleibt ausschließlich bei Danger/Löschen (--color-status-failure).
+     (Werte-Referenz in src/styles/theme-registry.ts.) ── */
 :root[data-theme='teal'] {
   --mode-accent:       #e5484d;
   --mode-accent-hover: #ef5a5f;
   --mode-accent-on:    #ffffff;
   --mode-accent-text:  #f0888b;
   --mode-accent-soft:  rgba(229, 72, 77, 0.16);
+  /* Marken-Akzent + aktive Fläche → Teal (kaskadiert an alle --color-accent*-
+     Nutzer: Auswahl-Rahmen, aktive Items, Typ-Labels, Map-Pins/Tokens, Focus …). */
+  --color-accent:        #19b8a6;
+  --color-accent-strong: #2ad0bd;
+  --color-accent-soft:   #0e2b27;
+  --color-surface-active: #0e2b27;
+  --color-focus-glow:    rgba(25, 184, 166, 0.15);
+  /* --color-status-* / --color-error-soft bleiben UNANGETASTET → Danger/Löschen bleibt rot. */
 }
 :root[data-theme='teal'][data-mode='play'] {
   --mode-accent:       #19b8a6;
