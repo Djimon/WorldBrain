@@ -348,7 +348,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   }, [activeArea]);
 
   async function handleMapImport() {
-    const selected = await openDialog({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
+    const selected = await openDialog({ filters: [{ name: t('fileFilterImages'), extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
     if (typeof selected !== 'string') return;
     setMapImporting(true);
     try {
@@ -364,7 +364,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
 
   async function handleAddImageLayer() {
     if (!selectedMapId) return;
-    const selected = await openDialog({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
+    const selected = await openDialog({ filters: [{ name: t('fileFilterImages'), extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
     if (typeof selected !== 'string') return;
     const name = selected.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? 'Bild-Layer';
     await importImageLayer(database, { map_id: selectedMapId, srcPath: selected, projectDir: projectDir ?? '', name });
@@ -388,7 +388,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // #298: token art upload — opens the Tauri dialog, copies the image via the
   // shared asset flow, returns the asset id for the TokenEditor to store.
   async function handlePickTokenArt(): Promise<string | null> {
-    const selected = await openDialog({ filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
+    const selected = await openDialog({ filters: [{ name: t('fileFilterImages'), extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
     if (typeof selected !== 'string') return null;
     return copyMapAsset(selected, projectDir ?? '', `token-${crypto.randomUUID()}`);
   }
@@ -466,7 +466,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             <GlobalSearch database={database} onNavigate={navigateToEntity} />
             {savedViews.length > 0 && (
               <div>
-                <h3>Gespeicherte Ansichten</h3>
+                <h3>{t('savedViews')}</h3>
                 <ul>
                   {savedViews.map((v) => (
                     <li key={v.id}>
@@ -571,7 +571,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                 />
               ) : (
                 <div className="workspace-shell__empty-center">
-                  Karte aus der Liste wählen oder importieren
+                  {t('mapsEmptySelect')}
                 </div>
               )}
             </div>
@@ -616,18 +616,18 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
               <div className="workspace-shell__col">
                 <div className="workspace-shell__cal-header">
                   <strong>{activeCalendar.title}</strong>
-                  <span className="workspace-shell__cal-meta">{activeCalendar.year_length_days} Tage/Jahr · {activeCalendar.months.length} Monate · {activeCalendar.week.length} Wochentage</span>
+                  <span className="workspace-shell__cal-meta">{t('calMeta', { days: activeCalendar.year_length_days, months: activeCalendar.months.length, weekdays: activeCalendar.week.length })}</span>
                   {deletePrompt ? (
                     <span className="workspace-shell__cal-actions">
-                      <span>Kalender „{activeCalendar.title}" löschen — bist du sicher?</span>
-                      <Button tone="danger" variant="outline" onClick={removeActiveCalendar}>Ja, löschen</Button>
-                      <Button onClick={() => setDeletePrompt(false)}>Abbrechen</Button>
+                      <span>{t('calDeleteConfirm', { title: activeCalendar.title })}</span>
+                      <Button tone="danger" variant="outline" onClick={removeActiveCalendar}>{t('calDeleteYes')}</Button>
+                      <Button onClick={() => setDeletePrompt(false)}>{t('cancel', { ns: 'common' })}</Button>
                     </span>
                   ) : (
                     <span className="workspace-shell__cal-actions">
-                      <Button onClick={() => setShowPicker(true)}>Kalenderauswahl</Button>
+                      <Button onClick={() => setShowPicker(true)}>{t('calPick')}</Button>
                       <Button onClick={() => setWizardCal(activeCalendar)}>{t('changeCalendar')}</Button>
-                      <Button tone="danger" variant="outline" onClick={() => setDeletePrompt(true)}>Löschen</Button>
+                      <Button tone="danger" variant="outline" onClick={() => setDeletePrompt(true)}>{t('delete', { ns: 'common' })}</Button>
                     </span>
                   )}
                 </div>
@@ -649,13 +649,13 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                   {calendarNewDay !== null && (
                     <div className="cal-inline-event-editor">
                       <div className="cal-inline-event-editor__header">
-                        <span>Neues Event — {formatCalendarDate(activeCalendar, calendarNewDay)}</span>
+                        <span>{t('calNewEvent', { date: formatCalendarDate(activeCalendar, calendarNewDay) })}</span>
                       </div>
                       <div className="cal-inline-event-editor__new-form">
                         <input
                           type="text"
-                          aria-label="Titel"
-                          placeholder="Titel"
+                          aria-label={t('calEventTitle')}
+                          placeholder={t('calEventTitle')}
                           autoFocus
                           value={calendarNewTitle}
                           onChange={(e) => setCalendarNewTitle(e.target.value)}
@@ -684,23 +684,23 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                               .catch(console.error);
                           }}
                         >
-                          Erstellen
+                          {t('create', { ns: 'common' })}
                         </Button>
-                        <Button onClick={() => setCalendarNewDay(null)}>Abbrechen</Button>
+                        <Button onClick={() => setCalendarNewDay(null)}>{t('cancel', { ns: 'common' })}</Button>
                       </div>
                     </div>
                   )}
                   {calendarEditingEventId && (
                     <div className="cal-inline-event-editor">
                       <div className="cal-inline-event-editor__header">
-                        <span>Event bearbeiten</span>
+                        <span>{t('calEditEvent')}</span>
                         <Button
                           onClick={() => {
                             setCalendarEditingEventId(null);
                             setCalendarRefreshToken((n) => n + 1);
                           }}
                         >
-                          Schließen
+                          {t('close', { ns: 'common' })}
                         </Button>
                       </div>
                       <EntityDetailView
@@ -730,21 +730,21 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
               </div>
             ) : (
               <div className="cal-start">
-                <h2 className="cal-start__title">Kalender</h2>
+                <h2 className="cal-start__title">{t('calendar')}</h2>
                 <div className="cal-start__row">
-                  <select className="cal-form__select cal-start__select" aria-label="Kalender auswählen"
+                  <select className="cal-form__select cal-start__select" aria-label={t('calSelectAria')}
                     value={startSelId} disabled={calendarList.length === 0}
                     onChange={(e) => setStartSelId(e.target.value)}>
                     {calendarList.length === 0
-                      ? <option value="">Noch keine Kalender</option>
+                      ? <option value="">{t('calNoneYet')}</option>
                       : calendarList.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                   </select>
-                  <Button tone="accent" disabled={!startSelId} onClick={() => activateCalendar(startSelId)}>Aktivieren</Button>
-                  <Button disabled={!startSelId} onClick={() => editCalendarById(startSelId)}>Bearbeiten</Button>
+                  <Button tone="accent" disabled={!startSelId} onClick={() => activateCalendar(startSelId)}>{t('calActivate')}</Button>
+                  <Button disabled={!startSelId} onClick={() => editCalendarById(startSelId)}>{t('edit', { ns: 'common' })}</Button>
                 </div>
-                <Button className="cal-start__new" onClick={() => setWizardCal('new')}>+ Neuen Kalender erstellen</Button>
+                <Button className="cal-start__new" onClick={() => setWizardCal('new')}>{t('calCreateNew')}</Button>
                 {activeCalendar && (
-                  <Button className="cal-start__new" onClick={() => setShowPicker(false)}>← Zurück zur Ansicht</Button>
+                  <Button className="cal-start__new" onClick={() => setShowPicker(false)}>{t('calBackToView')}</Button>
                 )}
               </div>
             )}
@@ -762,7 +762,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
         if (showPrintSheet) {
           return (
             <div className="workspace-area">
-              <button onClick={() => setShowPrintSheet(false)}>← Zurück</button>
+              <button onClick={() => setShowPrintSheet(false)}>← {t('back', { ns: 'common' })}</button>
               <PrintSheetComposer database={database} initialCards={selectedCardIds} />
             </div>
           );
@@ -783,8 +783,8 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
         return (
           <div className="workspace-area">
             <div className="workspace-area__toolbar">
-              <button onClick={() => setShowCardCreation(true)}>Neue Card</button>
-              <button onClick={() => setShowPrintSheet(true)}>Drucken</button>
+              <button onClick={() => setShowCardCreation(true)}>{t('cardNew')}</button>
+              <button onClick={() => setShowPrintSheet(true)}>{t('cardPrint')}</button>
             </div>
             <CardList database={database} />
           </div>
@@ -803,15 +803,15 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             {/* #189: rule import */}
             <div className="workspace-area__toolbar">
               <label>
-                Regeln importieren
+                {t('ruleImport')}
                 <input type="file" accept=".json" onChange={handleRuleImport} />
               </label>
             </div>
             {/* #189: rule evaluations */}
             <div>
-              <button onClick={() => runEvaluation('mystery')}>Mystery Breaker prüfen</button>
-              <button onClick={() => runEvaluation('role')}>Rollenabdeckung analysieren</button>
-              <button onClick={() => runEvaluation('quest')}>Quest-Blockaden prüfen</button>
+              <button onClick={() => runEvaluation('mystery')}>{t('ruleEvalMystery')}</button>
+              <button onClick={() => runEvaluation('role')}>{t('ruleEvalRole')}</button>
+              <button onClick={() => runEvaluation('quest')}>{t('ruleEvalQuest')}</button>
               {evalResult && <pre>{evalResult}</pre>}
             </div>
             <hr />
@@ -820,7 +820,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             <hr />
             {selectedScreenId ? (
               <>
-                <button onClick={() => setSelectedScreenId(null)}>← Screens</button>
+                <button onClick={() => setSelectedScreenId(null)}>{t('dmScreensBack')}</button>
                 <DmScreen screenId={selectedScreenId} database={database} />
               </>
             ) : (
@@ -855,7 +855,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       case 'project':
         return (
           <div className="workspace-area">
-            <h2>Projekt</h2>
+            <h2>{t('project')}</h2>
             {/* M17-S04 (#385): Theme-Auswahl im Einstellungs-Bereich (nicht im
                 Header) — eigener Bedienpfad, getrennt vom Dark/Light-Umschalter. */}
             <section className="u-stack u-gap-2">
@@ -873,7 +873,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             <hr />
             <UpdateNotification />
             <hr />
-            <button onClick={() => onProjectClose?.()}>Projekt schließen</button>
+            <button onClick={() => onProjectClose?.()}>{t('closeProject')}</button>
           </div>
         );
       case 'play-settings':
@@ -1117,7 +1117,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   return (
     <AppModeContext.Provider value={modeContextValue}>
       <div className="workspace-shell">
-        <nav className="workspace-shell__sidebar" aria-label="Workspace navigation">
+        <nav className="workspace-shell__sidebar" aria-label={t('sidebarNavAria')}>
           {visibleAreas.map(({ id, icon }) => (
             <button
               key={id}
@@ -1222,7 +1222,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                   {t('modeRolePlayer', 'Als Player')}
                 </Button>
                 <Button variant="outline" onClick={() => setShowRoleSelect(false)}>
-                  {t('cancel', 'Abbrechen')}
+                  {t('cancel', { ns: 'common' })}
                 </Button>
               </div>
             </Panel>

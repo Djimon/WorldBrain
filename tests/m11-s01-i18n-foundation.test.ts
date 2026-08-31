@@ -78,7 +78,8 @@ describe('M11-S01 i18n foundation', () => {
     it('configured fallback language is "en"', async () => {
       const { default: i18n } = await import('../src/i18n');
       const options = i18n.options;
-      expect(options.fallbackLng).toBe('en');
+      // i18next normalisiert fallbackLng zu einem Array (['en']).
+      expect(options.fallbackLng).toEqual(['en']);
     });
   });
 
@@ -93,6 +94,30 @@ describe('M11-S01 i18n foundation', () => {
       const { default: i18n } = await import('../src/i18n');
       await expect(i18n.changeLanguage('de')).resolves.not.toThrow();
       await i18n.changeLanguage('en'); // restore
+    });
+  });
+
+  // #399: parity guard — every key present in one language must exist in the
+  // other, so a translated UI never silently falls back to the wrong language.
+  describe('locale key parity (en ↔ de)', () => {
+    function flatKeys(obj: unknown, prefix = ''): string[] {
+      if (obj === null || typeof obj !== 'object') return [];
+      const out: string[] = [];
+      for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+        const key = prefix ? `${prefix}.${k}` : k;
+        if (v !== null && typeof v === 'object' && !Array.isArray(v)) out.push(...flatKeys(v, key));
+        else out.push(key);
+      }
+      return out;
+    }
+
+    it.each(REQUIRED_NAMESPACES)('%s.json has identical key sets in en and de', (ns) => {
+      const en = JSON.parse(readFileSync(`${LOCALES_ROOT}/en/${ns}.json`, 'utf-8'));
+      const de = JSON.parse(readFileSync(`${LOCALES_ROOT}/de/${ns}.json`, 'utf-8'));
+      const enKeys = flatKeys(en).sort();
+      const deKeys = flatKeys(de).sort();
+      expect(enKeys.filter((k) => !deKeys.includes(k)), `keys in en/${ns} missing from de/${ns}`).toEqual([]);
+      expect(deKeys.filter((k) => !enKeys.includes(k)), `keys in de/${ns} missing from en/${ns}`).toEqual([]);
     });
   });
 });
