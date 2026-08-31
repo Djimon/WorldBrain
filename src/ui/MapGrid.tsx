@@ -469,7 +469,7 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
           <div className="grid-controls-panel__footer">
             <span className="grid-controls-panel__hint">{t('grid.cellsMarked', { count: activeCellCount })}</span>
             <Button tone="danger" variant="outline" size="compact" onClick={onClear}>
-              {t('all')}
+              {t('all', { ns: 'common' })}
             </Button>
           </div>
           </div>

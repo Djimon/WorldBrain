@@ -195,7 +195,7 @@ export function PlayerCharacterSheet({
               size="compact"
               onClick={() => { setEditSummary(charSummary); setEditing(true); }}
             >
-              {t('pc.editSummary', 'Bearbeiten')}
+              {t('edit', { ns: 'common' })}
             </Button>
           )}
         </div>

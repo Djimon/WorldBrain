@@ -8,13 +8,23 @@
   "elapsedSeconds": "Elapsed seconds",
   "endEncounter": "End Encounter",
   "nextRound": "Next Round",
-  "allStatuses": "All",
+  "encounter": {
+    "start": "Start encounter",
+    "end": "End encounter",
+    "ended": "Encounter ended",
+    "endedRounds": "Encounter ended — {{rounds}} rounds ({{secs}}s)",
+    "filterLocation": "Filter location"
+  },
+  "entityNotes": {
+    "title": "Session Notes",
+    "noteLabel": "Note",
+    "applyToWorld": "Apply to world"
+  },
   "snapshot": {
     "title": "Snapshots",
     "create": "Create snapshot",
     "name": "Snapshot name",
     "restore": "Restore",
-    "delete": "Delete",
     "confirmRestore": "Current changes will be lost — continue?",
     "confirmDelete": "Delete snapshot “{{name}}”?"
   },
@@ -57,7 +67,6 @@
     "title": "Title",
     "systemPlugin": "System plugin",
     "noPlugin": "No system",
-    "create": "Create",
     "empty": "No sessions yet",
     "resume": "Resume",
     "archive": "Archive"
@@ -134,6 +143,7 @@
       "erasEmpty": "No eras yet. \"+ Era\" creates a named period with a fixed start and end date. Eras may overlap and leave gaps. Applied on save.",
       "daysPerYear": "{{n}} days/year",
       "weeks": "{{n}} weeks",
+      "remainderDays": " + {{count}} days",
       "remainderDays_one": " + {{count}} day",
       "remainderDays_other": " + {{count}} days",
       "monthsCount": "{{n}} months",

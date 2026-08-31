@@ -209,7 +209,7 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
   }
 
   if (!scene) {
-    return <div className="soundboard-board">{t('audioSoundboardLoading', 'Lade…')}</div>;
+    return <div className="soundboard-board">{t('loading', { ns: 'common' })}</div>;
   }
 
   return (
@@ -217,7 +217,7 @@ export function SoundboardBoard({ database, sceneId, localEngine, youtubeEngine,
       {playbackError && (
         <div className="soundboard-board__error" role="alert">
           <span>{t('audioPlaybackError', 'Wiedergabe fehlgeschlagen')}: {playbackError}</span>
-          <button type="button" className="soundboard-board__error-dismiss" aria-label={t('audioSceneCancel', 'Abbrechen')} onClick={() => setPlaybackError(null)}>✕</button>
+          <button type="button" className="soundboard-board__error-dismiss" aria-label={t('cancel', { ns: 'common' })} onClick={() => setPlaybackError(null)}>✕</button>
         </div>
       )}
       {scene.channels.map((channel) => (

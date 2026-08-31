@@ -83,8 +83,8 @@ export function SnapshotManager({ projectId, onRestored, projectDir, snapshotsDi
             <button aria-label={t('snapshot.restore')} onClick={() => setDialog({ type: 'restore', snapshot: snap })}>
               {t('snapshot.restore')}
             </button>
-            <button aria-label={t('snapshot.delete')} onClick={() => setDialog({ type: 'delete', snapshot: snap })}>
-              {t('snapshot.delete')}
+            <button aria-label={t('delete', { ns: 'common' })} onClick={() => setDialog({ type: 'delete', snapshot: snap })}>
+              {t('delete', { ns: 'common' })}
             </button>
           </li>
         ))}

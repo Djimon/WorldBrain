@@ -45,7 +45,7 @@ export function BacklinksTab({ entityId, database, onNavigate }: Props) {
     }).catch(console.error).finally(() => setLoading(false));
   }, [database, entityId]);
 
-  if (loading) return <div className="backlinks__empty">{t('backlinks.loading', 'Lade…')}</div>;
+  if (loading) return <div className="backlinks__empty">{t('loading', { ns: 'common' })}</div>;
   if (links.length === 0) return <div className="backlinks__empty">{t('backlinks.empty', 'Keine Verlinkungen.')}</div>;
 
   return (

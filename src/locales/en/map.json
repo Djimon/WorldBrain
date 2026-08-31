@@ -10,9 +10,7 @@
     "playerKnown": "Player (if known)"
   },
   "addMarker": "Add Marker",
-  "deleteMarker": "Delete",
   "kindFilter": "Kind",
-  "all": "All",
   "open": "Open",
   "collapse": "Collapse",
   "emptyImage": "No map image — import a map to begin.",
@@ -146,5 +144,56 @@
   "cellMenu": {
     "title": "Cell state",
     "empty": "Empty"
+  },
+  "layerPanel": {
+    "type": {
+      "image": "Image",
+      "fog": "Fog",
+      "token": "Token"
+    },
+    "addImage": "+ Map Layer",
+    "addFog": "+ Fog Layer",
+    "toggleDetails": "Details",
+    "hiddenIndicator": "Hidden",
+    "name": "Name",
+    "namePlaceholder": "Layer name",
+    "opacity": "Opacity",
+    "hide": "Hide",
+    "show": "Show",
+    "playerVisible": "Player-visible",
+    "fogEditing": "Finish painting",
+    "fogEdit": "Paint",
+    "moveDone": "Finish moving",
+    "move": "Move",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "confirmDelete": "Really delete layer?",
+    "confirmYes": "Yes, delete"
+  },
+  "fog": {
+    "shape": "Shape",
+    "brush": "Brush",
+    "square": "Rectangle",
+    "region": "Region",
+    "gridStamp": "Grid stamp",
+    "stampSize": "Stamp size",
+    "cells": "cells",
+    "mode": "Mode",
+    "reveal": "Reveal",
+    "cover": "Cover",
+    "brushSize": "Brush size",
+    "feather": "Feather"
+  },
+  "mapFolderTree": {
+    "confirmDeleteTitle": "Delete folder?",
+    "confirmDeleteBody": "The folder will be deleted. Maps inside only lose their folder assignment; they are not deleted.",
+    "header": "Maps",
+    "importing": "Importing…",
+    "importMap": "Import map"
+  },
+  "mapsSidebarTabs": {
+    "label": "Maps and layers",
+    "maps": "Maps",
+    "layers": "Layers"
   }
 }

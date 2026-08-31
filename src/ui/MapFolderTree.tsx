@@ -38,7 +38,7 @@ export interface MapFolderTreeProps {
 }
 
 export function MapFolderTree({ database, maps, selectedMapId, onSelectMap, onImportMap, importing, onMapsChanged }: MapFolderTreeProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation('map');
   const [folders, setFolders] = useState<MapFolderRow[]>([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -113,10 +113,10 @@ export function MapFolderTree({ database, maps, selectedMapId, onSelectMap, onIm
           <p className="map-folder-tree__confirm-text">{t('mapFolderTree.confirmDeleteBody', 'Der Ordner wird gelöscht. Enthaltene Karten verlieren nur ihre Ordnerzuordnung, sie werden nicht gelöscht.')}</p>
           <div className="map-folder-tree__confirm-actions">
             <button type="button" className="map-folder-tree__confirm-yes" onClick={handleConfirmDelete}>
-              {t('mapFolderTree.confirmDeleteAction', 'Bestätigen')}
+              {t('confirm', { ns: 'common' })}
             </button>
             <button type="button" className="map-folder-tree__confirm-no" onClick={() => setConfirmDeleteId(null)}>
-              {t('mapFolderTree.cancel', 'Abbrechen')}
+              {t('cancel', { ns: 'common' })}
             </button>
           </div>
         </div>

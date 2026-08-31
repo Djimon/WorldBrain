@@ -357,7 +357,7 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
             <Button tone="accent" size="compact" onClick={() => onNavigate(selectedId)}>
               {t('graphOpenEntity', 'Öffnen')}
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => setSelectedId(null)} aria-label={t('graphCloseDetail', 'Schließen')}>×</Button>
+            <Button variant="ghost" size="icon" onClick={() => setSelectedId(null)} aria-label={t('close', { ns: 'common' })}>×</Button>
           </div>
           <div className="gv-detail__body">
             <EntityDetailView entityId={selectedId} database={database} onNavigateToEntity={setSelectedId} overviewOnly />

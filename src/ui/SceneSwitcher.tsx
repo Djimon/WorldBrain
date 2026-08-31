@@ -124,10 +124,10 @@ export function SceneSwitcher({ database, activeSceneId, onSelectScene, onScenes
           <p>{t('audioSceneConfirmDeleteBody', 'Die Szene wird mit allen Kanälen und Clips gelöscht.')}</p>
           <div className="scene-switcher__confirm-actions">
             <Button tone="accent" onClick={() => void handleConfirmDelete()}>
-              {t('audioSceneConfirmDeleteAction', 'Löschen')}
+              {t('delete', { ns: 'common' })}
             </Button>
             <Button onClick={() => setConfirmDeleteId(null)}>
-              {t('audioSceneCancel', 'Abbrechen')}
+              {t('cancel', { ns: 'common' })}
             </Button>
           </div>
         </div>
@@ -148,10 +148,10 @@ export function SceneSwitcher({ database, activeSceneId, onSelectScene, onScenes
                   onChange={(e) => setRenameValue(e.target.value)}
                 />
                 <Button tone="accent" onClick={() => void handleRenameCommit()}>
-                  {t('audioSceneRenameSave', 'Speichern')}
+                  {t('save', { ns: 'common' })}
                 </Button>
                 <Button onClick={() => setRenamingId(null)}>
-                  {t('audioSceneCancel', 'Abbrechen')}
+                  {t('cancel', { ns: 'common' })}
                 </Button>
               </>
             ) : (
@@ -168,7 +168,7 @@ export function SceneSwitcher({ database, activeSceneId, onSelectScene, onScenes
                 <button type="button" aria-label={t('audioSceneMoveDown', 'Nach unten')} title={t('audioSceneMoveDown', 'Nach unten')} disabled={i === scenes.length - 1} onClick={() => void handleMove(scene.id, 1)}>↓</button>
                 <button type="button" aria-label={t('audioSceneRename', 'Umbenennen')} title={t('audioSceneRename', 'Umbenennen')} onClick={() => { setRenamingId(scene.id); setRenameValue(scene.name); }}>✎</button>
                 <button type="button" aria-label={t('audioSceneDuplicate', 'Duplizieren')} title={t('audioSceneDuplicate', 'Duplizieren')} onClick={() => void handleDuplicate(scene.id, scene.name)}>⧉</button>
-                <button type="button" aria-label={t('audioSceneDelete', 'Löschen')} title={t('audioSceneDelete', 'Löschen')} onClick={() => setConfirmDeleteId(scene.id)}>🗑</button>
+                <button type="button" aria-label={t('delete', { ns: 'common' })} title={t('delete', { ns: 'common' })} onClick={() => setConfirmDeleteId(scene.id)}>🗑</button>
               </>
             )}
           </li>
@@ -216,7 +216,7 @@ export function SceneSwitcher({ database, activeSceneId, onSelectScene, onScenes
           </ul>
           <div className="scene-switcher__export-actions">
             <Button onClick={() => setExportDialogOpen(false)}>
-              {t('audioSceneCancel', 'Abbrechen')}
+              {t('cancel', { ns: 'common' })}
             </Button>
             <Button tone="danger" onClick={() => void handleExportConfirm()}>
               {t('audioExport', 'Export')}

@@ -37,7 +37,7 @@ export interface LayerPanelProps {
 }
 
 export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, editingFogLayerId, onEditFogLayer, reloadKey = 0, onLayersChanged, movingLayerId, onMoveLayer, onLayerDeleted }: LayerPanelProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation('map');
   const layerTypeLabel: Record<string, string> = {
     image: t('layerPanel.type.image', 'Bild'),
     fog: t('layerPanel.type.fog', 'Fog'),
@@ -193,10 +193,10 @@ export function LayerPanel({ database, mapId, onAddImageLayer, onAddFogLayer, ed
                   <span className="layer-panel__delete-confirm">
                     {t('layerPanel.confirmDelete', 'Layer wirklich löschen?')}
                     <Button tone="danger" size="compact" onClick={() => commitDelete(layer.id)}>{t('layerPanel.confirmYes', 'Ja, löschen')}</Button>
-                    <Button size="compact" onClick={() => setDeleteConfirmId(null)}>{t('layerPanel.confirmNo', 'Abbrechen')}</Button>
+                    <Button size="compact" onClick={() => setDeleteConfirmId(null)}>{t('cancel', { ns: 'common' })}</Button>
                   </span>
                 ) : (
-                  <Button tone="danger" variant="outline" size="compact" onClick={() => setDeleteConfirmId(layer.id)}>{t('layerPanel.delete', 'Löschen')}</Button>
+                  <Button tone="danger" variant="outline" size="compact" onClick={() => setDeleteConfirmId(layer.id)}>{t('delete', { ns: 'common' })}</Button>
                 )}
               </div>
             )}

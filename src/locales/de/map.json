@@ -10,9 +10,7 @@
     "playerKnown": "Für den Spieler (wenn bekannt)"
   },
   "addMarker": "Marker hinzufügen",
-  "deleteMarker": "Löschen",
   "kindFilter": "Art",
-  "all": "Alle",
   "open": "Öffnen",
   "collapse": "Einklappen",
   "emptyImage": "Kein Kartenbild — Karte importieren um zu beginnen.",
@@ -146,5 +144,56 @@
   "cellMenu": {
     "title": "Zell-Zustand",
     "empty": "Leer"
+  },
+  "layerPanel": {
+    "type": {
+      "image": "Bild",
+      "fog": "Fog",
+      "token": "Token"
+    },
+    "addImage": "+ Map Layer",
+    "addFog": "+ Fog Layer",
+    "toggleDetails": "Details",
+    "hiddenIndicator": "Ausgeblendet",
+    "name": "Name",
+    "namePlaceholder": "Ebenenname",
+    "opacity": "Deckkraft",
+    "hide": "Ausblenden",
+    "show": "Einblenden",
+    "playerVisible": "Spielersichtbar",
+    "fogEditing": "Malen beenden",
+    "fogEdit": "Bemalen",
+    "moveDone": "Verschieben beenden",
+    "move": "Verschieben",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
+    "confirmDelete": "Layer wirklich löschen?",
+    "confirmYes": "Ja, löschen"
+  },
+  "fog": {
+    "shape": "Form",
+    "brush": "Pinsel",
+    "square": "Rechteck",
+    "region": "Bereich",
+    "gridStamp": "Grid-Stempel",
+    "stampSize": "Stempelgröße",
+    "cells": "Zellen",
+    "mode": "Modus",
+    "reveal": "Aufdecken",
+    "cover": "Verdecken",
+    "brushSize": "Pinselgröße",
+    "feather": "Weichzeichnung"
+  },
+  "mapFolderTree": {
+    "confirmDeleteTitle": "Ordner löschen?",
+    "confirmDeleteBody": "Der Ordner wird gelöscht. Enthaltene Karten verlieren nur ihre Ordnerzuordnung, sie werden nicht gelöscht.",
+    "header": "Karten",
+    "importing": "Importiere…",
+    "importMap": "Karte importieren"
+  },
+  "mapsSidebarTabs": {
+    "label": "Karten und Ebenen",
+    "maps": "Karten",
+    "layers": "Ebenen"
   }
 }

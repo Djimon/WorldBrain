@@ -183,7 +183,7 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
               onChange={(e) => onMixerChange({ eq_high: Number(e.target.value) })} />
           </label>
           <Button onClick={() => setMixerExpanded(false)}>
-            {t('audioSettingsClose', 'Schließen')}
+            {t('close', { ns: 'common' })}
           </Button>
         </Panel>
       )}
@@ -218,7 +218,7 @@ export function ChannelRow({ channel, activeClipIds, onTriggerClip, onEditClip, 
               onChange={(e) => onMixerChange({ transition_seconds: Number(e.target.value) })} />
           </label>
           <Button onClick={() => setSettingsOpen(false)}>
-            {t('audioSettingsClose', 'Schließen')}
+            {t('close', { ns: 'common' })}
           </Button>
         </Panel>
       )}

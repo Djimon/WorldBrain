@@ -225,7 +225,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
     load();
   }
 
-  if (loading) return <div className="entity-detail__loading">{t('loading')}</div>;
+  if (loading) return <div className="entity-detail__loading">{t('loading', { ns: 'common' })}</div>;
   if (!result) return <div className="entity-detail__error" role="alert">{t('loadingError')}</div>;
   if (!result.found) return <div className="entity-detail__error" role="alert">{t('notFound', { id: entityId })}</div>;
 

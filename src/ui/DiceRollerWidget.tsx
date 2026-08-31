@@ -60,7 +60,7 @@ export function DiceRollerWidget({
             value={visibility}
             onChange={(e) => setVisibility(e.target.value as DiceVisibility)}
           >
-            <option value="all">{t('dice.visAll', 'Alle')}</option>
+            <option value="all">{t('all', { ns: 'common' })}</option>
             <option value="dm_only">{t('dice.visDm', 'Nur DM')}</option>
             <option value="private">{t('dice.visPrivate', 'Privat')}</option>
           </select>

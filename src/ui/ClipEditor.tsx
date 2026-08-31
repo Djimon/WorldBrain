@@ -117,7 +117,7 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
   }
 
   if (!loaded) {
-    return <div className="clip-editor">{t('audioSoundboardLoading', 'Lade…')}</div>;
+    return <div className="clip-editor">{t('loading', { ns: 'common' })}</div>;
   }
 
   if (confirmDelete) {
@@ -126,10 +126,10 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
         <p>{t('audioClipConfirmDeleteBody', 'Der Clip wird gelöscht.')}</p>
         <div className="clip-editor__actions">
           <Button tone="accent" onClick={() => void handleConfirmDelete()}>
-            {t('audioClipConfirmDeleteAction', 'Löschen')}
+            {t('delete', { ns: 'common' })}
           </Button>
           <Button onClick={() => setConfirmDelete(false)}>
-            {t('audioSceneCancel', 'Abbrechen')}
+            {t('cancel', { ns: 'common' })}
           </Button>
         </div>
       </div>
@@ -227,14 +227,14 @@ export function ClipEditor({ database, projectDir, channelId, presetId, onClose,
 
       <div className="clip-editor__actions">
         <Button tone="accent" disabled={!sourceRef.trim()} onClick={() => void handleSave()}>
-          {t('audioClipSave', 'Speichern')}
+          {t('save', { ns: 'common' })}
         </Button>
         <Button onClick={onClose}>
-          {t('audioSceneCancel', 'Abbrechen')}
+          {t('cancel', { ns: 'common' })}
         </Button>
         {presetId !== null && (
           <Button onClick={() => setConfirmDelete(true)}>
-            {t('audioClipDelete', 'Löschen')}
+            {t('delete', { ns: 'common' })}
           </Button>
         )}
       </div>

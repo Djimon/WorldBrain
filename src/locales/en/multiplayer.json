@@ -77,7 +77,6 @@
   "dice": {
     "expression": "Expression",
     "visibility": "Visibility",
-    "visAll": "All",
     "visDm": "DM only",
     "visPrivate": "Private",
     "rolling": "Rolling…",
@@ -115,7 +114,6 @@
     "sheetTitle": "Character sheet",
     "unnamed": "(unnamed)",
     "noSummary": "(no description)",
-    "editSummary": "Edit",
     "actionsTitle": "Actions",
     "actionsHint": "Actions post to the combat log (rule resolution follows in combat sub-epic M10b).",
     "actionAttack": "{{name}} attacks.",

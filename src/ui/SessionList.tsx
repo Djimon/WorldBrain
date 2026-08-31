@@ -78,7 +78,7 @@ export function SessionList({ projectId, projectDir, onResumeSession }: SessionL
             </select>
           </label>
           <Button tone="accent" onClick={handleCreate}>
-            {t('sessionList.create', 'Erstellen')}
+            {t('create', { ns: 'common' })}
           </Button>
         </div>
       )}

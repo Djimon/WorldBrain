@@ -26,7 +26,7 @@ export function GraphFilterPanel({ types, hidden, onToggle, onSetAll }: GraphFil
         <div className="gv-filter-pane" role="group" aria-label={t('graphFilter', 'Filter')}>
           <div className="gv-filter-pane__head">
             <strong className="gv-filter-pane__title">{t('graphFilterRelationTypes', 'Relationstypen')}</strong>
-            <Button variant="ghost" size="compact" onClick={() => onSetAll([])}>{t('graphFilterAll', 'Alle')}</Button>
+            <Button variant="ghost" size="compact" onClick={() => onSetAll([])}>{t('all', { ns: 'common' })}</Button>
             <Button variant="ghost" size="compact" onClick={() => onSetAll([...types])}>{t('graphFilterNone', 'Keine')}</Button>
             {types.length === 0 && <span className="gv-muted">{t('graphFilterEmpty', 'Keine Relationstypen im Graph')}</span>}
           </div>

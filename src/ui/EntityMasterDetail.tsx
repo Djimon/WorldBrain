@@ -101,7 +101,7 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
                 if (e.key === 'Escape') { setCreating(false); setNewTitle(''); }
               }}
             />
-            <Button tone="accent" size="compact" onClick={() => void handleCreate()}>{t('create')}</Button>
+            <Button tone="accent" size="compact" onClick={() => void handleCreate()}>{t('create', { ns: 'common' })}</Button>
             <Button variant="ghost" size="compact" onClick={() => { setCreating(false); setNewTitle(''); }}>✕</Button>
           </div>
         )}

@@ -157,11 +157,11 @@ function FolderNode({
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}>
                 <button type="button" onClick={() => { onRenameStart(node.path); onToggleMenu(null); }}>
-                  {t('nestedTree.editFolder', 'Bearbeiten')}
+                  {t('edit', { ns: 'common' })}
                 </button>
                 {onDeleteFolder && (
                   <button type="button" onClick={() => { onDeleteFolder(node); onToggleMenu(null); }}>
-                    {t('nestedTree.deleteFolder', 'Löschen')}
+                    {t('delete', { ns: 'common' })}
                   </button>
                 )}
               </div>
@@ -199,9 +199,9 @@ function FolderNode({
             </>
           )}
           <button type="button" className="map-pin-tree__rename-commit-btn map-pin-tree__rename-commit-btn--save"
-            onClick={onRenameCommit}>{t('nestedTree.save', 'Speichern')}</button>
+            onClick={onRenameCommit}>{t('save', { ns: 'common' })}</button>
           <button type="button" className="map-pin-tree__rename-commit-btn"
-            onClick={onRenameCancel}>{t('nestedTree.cancel', 'Abbrechen')}</button>
+            onClick={onRenameCancel}>{t('cancel', { ns: 'common' })}</button>
         </div>
       )}
       {isOpen && (

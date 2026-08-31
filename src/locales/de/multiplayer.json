@@ -77,7 +77,6 @@
   "dice": {
     "expression": "Ausdruck",
     "visibility": "Sichtbarkeit",
-    "visAll": "Alle",
     "visDm": "Nur DM",
     "visPrivate": "Privat",
     "rolling": "Würfle…",
@@ -115,7 +114,6 @@
     "sheetTitle": "Charakterbogen",
     "unnamed": "(unbenannt)",
     "noSummary": "(keine Kurzbeschreibung)",
-    "editSummary": "Bearbeiten",
     "actionsTitle": "Aktionen",
     "actionsHint": "Aktionen posten in den Kampflog (Regel-Auflösung folgt im Kampf-Sub-Epic M10b).",
     "actionAttack": "{{name}} greift an.",

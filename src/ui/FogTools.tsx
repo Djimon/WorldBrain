@@ -36,7 +36,7 @@ export function FogTools({
   onBrushSizeChange, onFeatherChange, onModeChange, onShapeChange,
   gridActive = false, gridType, stampLevel, onStampLevelChange,
 }: FogToolsProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation('map');
   return (
     <div className="fog-tools">
       <Segmented

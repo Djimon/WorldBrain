@@ -775,7 +775,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       {/* Left toolbar — im Player-Modus (readOnly) nur Navigation, keine Edit-Tools (M10-S23) */}
       <div className="map-toolbar">
         <div className="map-toolbar__group">
-          <Button size="icon" aria-pressed={mode === 'navigate'} onClick={() => setMode('navigate')} title={t('all')}>🗺</Button>
+          <Button size="icon" aria-pressed={mode === 'navigate'} onClick={() => setMode('navigate')} title={t('all', { ns: 'common' })}>🗺</Button>
           {!readOnly && (<>
           {/* Pin tool group — flyout with the pin-icon grid (reuses .pin-icon-picker
               from "Pin bearbeiten"), pre-selects the icon for the next placed pin. */}

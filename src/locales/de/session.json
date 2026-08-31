@@ -8,13 +8,23 @@
   "elapsedSeconds": "Vergangene Sekunden",
   "endEncounter": "Begegnung beenden",
   "nextRound": "Nächste Runde",
-  "allStatuses": "Alle",
+  "encounter": {
+    "start": "Encounter starten",
+    "end": "Encounter beenden",
+    "ended": "Encounter beendet",
+    "endedRounds": "Encounter beendet — {{rounds}} Runden ({{secs}}s)",
+    "filterLocation": "Ort filtern"
+  },
+  "entityNotes": {
+    "title": "Session Notes",
+    "noteLabel": "Notiz",
+    "applyToWorld": "In Welt übernehmen"
+  },
   "snapshot": {
     "title": "Speicherstände",
     "create": "Snapshot erstellen",
     "name": "Snapshot-Name",
     "restore": "Wiederherstellen",
-    "delete": "Löschen",
     "confirmRestore": "Aktuelle Änderungen gehen verloren — fortfahren?",
     "confirmDelete": "Speicherstand „{{name}}“ wirklich löschen?"
   },
@@ -57,7 +67,6 @@
     "title": "Titel",
     "systemPlugin": "System-Plugin",
     "noPlugin": "Kein System",
-    "create": "Erstellen",
     "empty": "Keine Sessions vorhanden",
     "resume": "Fortsetzen",
     "archive": "Archivieren"
@@ -134,6 +143,7 @@
       "erasEmpty": "Noch keine Ären. „+ Ära\" legt einen benannten Zeitraum mit festem Start- und Enddatum an. Ären dürfen sich überschneiden und Lücken lassen. Übernahme beim Speichern.",
       "daysPerYear": "{{n}} Tage/Jahr",
       "weeks": "{{n}} Wochen",
+      "remainderDays": " + {{count}} Tage",
       "remainderDays_one": " + {{count}} Tag",
       "remainderDays_other": " + {{count}} Tage",
       "monthsCount": "{{n}} Monate",

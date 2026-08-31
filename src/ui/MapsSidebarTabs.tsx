@@ -27,7 +27,7 @@ export interface MapsSidebarTabsProps {
 type Tab = 'maps' | 'layers';
 
 export function MapsSidebarTabs({ selectedMapId, mapsTabContent, layersTabContent, collapsed = false, onToggleCollapse }: MapsSidebarTabsProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation('map');
   const [activeTab, setActiveTab] = useState<Tab>('maps');
   const prevMapId = useRef<string | null>(null);
 

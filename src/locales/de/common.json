@@ -17,6 +17,26 @@
   "yes": "Ja",
   "no": "Nein",
   "all": "Alle",
+  "emojiPickerSearch": "Emoji suchen",
+  "engineBrandAria": "Regel-Engine",
+  "pluginManagerTitle": "Plugin Manager",
+  "themePickerLabel": "Theme",
+  "themesFolderOpen": "Themes-Ordner öffnen",
+  "appearanceForced": "Erscheinung vom Theme vorgegeben",
+  "appearanceToLight": "Helle Erscheinung",
+  "appearanceToDark": "Dunkle Erscheinung",
+  "nestedTree": {
+    "folderMenu": "Ordner-Menü",
+    "folderColor": "Ordnerfarbe",
+    "resetColor": "Standardfarbe",
+    "newFolder": "Neuer Ordner",
+    "folderName": "Ordnername…",
+    "search": "Suchen…",
+    "empty": "Keine Einträge."
+  },
+  "splitView": {
+    "divider": "Grenze verschieben"
+  },
   "brand": {
     "platform": "Beyond Worlds",
     "mode": {

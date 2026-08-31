@@ -71,7 +71,7 @@ export function AudioSoundboardWindow({ dbPath, projectDir }: AudioSoundboardWin
   }, [dbPath]);
 
   if (mode.kind === 'loading') {
-    return <div className="audio-soundboard-window">{t('audioSoundboardLoading', 'Lade…')}</div>;
+    return <div className="audio-soundboard-window">{t('loading', { ns: 'common' })}</div>;
   }
 
   if (mode.kind === 'no-project') {
