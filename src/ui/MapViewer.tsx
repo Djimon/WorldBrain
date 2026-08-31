@@ -25,11 +25,12 @@ import type { VarDef } from './ConditionBuilder';
 import { Button, ListRow, Tabs } from './primitives';
 import { useReadOnly } from './useReadOnly';
 
-const VISIBILITY_OPTIONS: { key: string; label: string }[] = [
-  { key: 'public', label: 'Öffentlich' },
-  { key: 'gm_only', label: 'Nur DM' },
-  { key: 'player_known', label: 'Für den Spieler (wenn Entity bekannt)' },
-  { key: 'hidden_until_condition', label: 'Bedingung…' },
+// Labels resolve via t() at render time (module-level, so no t in scope here).
+const VISIBILITY_OPTIONS: { key: string; labelKey: string }[] = [
+  { key: 'public', labelKey: 'visibility.public' },
+  { key: 'gm_only', labelKey: 'visibility.gm_only' },
+  { key: 'player_known', labelKey: 'visibility.player_known' },
+  { key: 'hidden_until_condition', labelKey: 'visibility.condition' },
 ];
 
 type Mode = 'navigate' | 'pin' | 'move-pin' | 'grid' | 'measure' | 'radius' | 'fog' | 'move-layer' | 'token';
@@ -64,22 +65,23 @@ function parsePinGeometry(json: string): { x: number; y: number; notes?: string;
   try { return JSON.parse(json) as { x: number; y: number; notes?: string; condition?: unknown }; } catch { return { x: 0, y: 0 }; }
 }
 
+// labelKey resolves via t() at the render site (title=), not at module load.
 const PIN_ICONS = [
-  { key: 'pin',         emoji: '📍', label: 'Pin' },
-  { key: 'danger',      emoji: '☠️', label: 'Gefahr' },
-  { key: 'treasure',    emoji: '💰', label: 'Schatz' },
-  { key: 'note',        emoji: '📝', label: 'Notiz' },
-  { key: 'question',    emoji: '❓', label: 'Frage' },
-  { key: 'exclamation', emoji: '❗', label: 'Wichtig' },
-  { key: 'combat',      emoji: '⚔️', label: 'Kampf' },
-  { key: 'mountain',    emoji: '🏔️', label: 'Berg' },
-  { key: 'forest',      emoji: '🌲', label: 'Wald' },
-  { key: 'cave',        emoji: '🕳️', label: 'Höhle' },
-  { key: 'npc',         emoji: '👤', label: 'NPC/Person' },
-  { key: 'shop',        emoji: '🛒', label: 'Händler' },
-  { key: 'inn',         emoji: '🛏️', label: 'Taverne/Rast' },
-  { key: 'town',        emoji: '🏘️', label: 'Stadt/Dorf' },
-  { key: 'poi',         emoji: '⭐', label: 'Sehenswert' },
+  { key: 'pin',         emoji: '📍', labelKey: 'pinIcon.pin' },
+  { key: 'danger',      emoji: '☠️', labelKey: 'pinIcon.danger' },
+  { key: 'treasure',    emoji: '💰', labelKey: 'pinIcon.treasure' },
+  { key: 'note',        emoji: '📝', labelKey: 'pinIcon.note' },
+  { key: 'question',    emoji: '❓', labelKey: 'pinIcon.question' },
+  { key: 'exclamation', emoji: '❗', labelKey: 'pinIcon.exclamation' },
+  { key: 'combat',      emoji: '⚔️', labelKey: 'pinIcon.combat' },
+  { key: 'mountain',    emoji: '🏔️', labelKey: 'pinIcon.mountain' },
+  { key: 'forest',      emoji: '🌲', labelKey: 'pinIcon.forest' },
+  { key: 'cave',        emoji: '🕳️', labelKey: 'pinIcon.cave' },
+  { key: 'npc',         emoji: '👤', labelKey: 'pinIcon.npc' },
+  { key: 'shop',        emoji: '🛒', labelKey: 'pinIcon.shop' },
+  { key: 'inn',         emoji: '🛏️', labelKey: 'pinIcon.inn' },
+  { key: 'town',        emoji: '🏘️', labelKey: 'pinIcon.town' },
+  { key: 'poi',         emoji: '⭐', labelKey: 'pinIcon.poi' },
 ] as const;
 
 type PinIconKey = typeof PIN_ICONS[number]['key'];
@@ -88,13 +90,14 @@ type PinIconKey = typeof PIN_ICONS[number]['key'];
 // (was duplicated inline in both). Selection = accent outline + tint, not a
 // solid fill, so it stays a bespoke grid cell rather than <Button>.
 function PinIconGrid({ value, onSelect }: { value: PinIconKey; onSelect: (key: PinIconKey) => void }) {
+  const { t } = useTranslation('map');
   return (
     <div className="pin-icon-picker">
       {PIN_ICONS.map((ic) => (
         <button
           key={ic.key}
           type="button"
-          title={ic.label}
+          title={t(ic.labelKey)}
           aria-pressed={value === ic.key}
           className={`pin-icon-btn${value === ic.key ? ' active' : ''}`}
           onClick={() => onSelect(ic.key)}
@@ -744,7 +747,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const pinPx = PIN_SIZE_PX[gridSettings.pinSize] ?? 26;
   const pinItems = markers
     .filter((m) => m.kind !== 'folder-anchor')
-    .map((m) => ({ id: m.id, groupPath: (m.group_name ?? '').trim(), label: m.label_text ?? '(kein Name)' }));
+    .map((m) => ({ id: m.id, groupPath: (m.group_name ?? '').trim(), label: m.label_text ?? t('pin.noName') }));
   const pinFolderPaths = markers
     .filter((m) => m.kind === 'folder-anchor')
     .map((m) => (m.group_name ?? m.label_text ?? '').trim())
@@ -765,7 +768,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     .map((v) => ({ id: v.id, label: v.label, type: v.type as VarDef['type'] }));
   const cursor = (mode === 'pin' || mode === 'token') ? 'crosshair' : mode === 'grid' ? 'cell' : (mode === 'measure' || mode === 'radius' || mode === 'fog') ? 'crosshair' : mode === 'move-layer' ? 'move' : dragging ? 'grabbing' : 'grab';
 
-  if (!imgSrc) return <div className="map-empty">Kein Kartenbild — Karte importieren um zu beginnen.</div>;
+  if (!imgSrc) return <div className="map-empty">{t('emptyImage')}</div>;
 
   return (
     <div className="map-viewer__body">
@@ -780,7 +783,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             <Button
               size="icon"
               aria-pressed={mode === 'pin'}
-              title="Pin setzen"
+              title={t('tool.pin')}
               onClick={() => {
                 setMode((m) => (m === 'pin' ? 'navigate' : 'pin'));
                 const rect = pinGroupRef.current?.getBoundingClientRect();
@@ -811,7 +814,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                 <Button
                   size="icon"
                   aria-pressed={mode === 'grid'}
-                  title="Grid malen"
+                  title={t('tool.gridPaint')}
                   onClick={() => {
                     setMode((m) => m === 'grid' ? 'navigate' : 'grid');
                     const rect = gridGroupRef.current?.getBoundingClientRect();
@@ -835,7 +838,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                   onClick={() => { setActiveCellStateId(0); setMode('grid'); setGridFlyout(false); }}
                 >
                   <span className="map-tool-flyout__icon">🧹</span>
-                  <span className="map-tool-flyout__label">Radiergummi</span>
+                  <span className="map-tool-flyout__label">{t('tool.eraser')}</span>
                 </button>
                 <div className="map-tool-divider" />
                 {gridSettings.cellStates.map((st) => (
@@ -858,7 +861,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             <Button
               size="icon"
               aria-pressed={mode === 'measure' || mode === 'radius'}
-              title="Messwerkzeuge"
+              title={t('tool.measure')}
               onClick={() => {
                 const rect = measureGroupRef.current?.getBoundingClientRect();
                 if (rect) setFlyoutPos({ top: rect.top, left: rect.right + 4 });
@@ -871,15 +874,15 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             {measureFlyout && flyoutPos && (
               <div className="map-tool-flyout" style={{ top: flyoutPos.top, left: flyoutPos.left }} onMouseDown={(e) => e.stopPropagation()}>
                 {([
-                  { key: 'measure' as const, icon: '📏', label: 'Lineal' },
-                  { key: 'radius'  as const, icon: '⭕', label: 'Radius' },
-                ] as const).map((t) => (
-                  <button key={t.key}
-                    className={`map-tool-flyout__item${mode === t.key ? ' active' : ''}`}
-                    onClick={() => { setMode(t.key); setLastMeasureTool(t.key); setRulerP1(null); setRulerP2(null); setMeasureFlyout(false); }}
+                  { key: 'measure' as const, icon: '📏', labelKey: 'tool.ruler' },
+                  { key: 'radius'  as const, icon: '⭕', labelKey: 'tool.radius' },
+                ] as const).map((opt) => (
+                  <button key={opt.key}
+                    className={`map-tool-flyout__item${mode === opt.key ? ' active' : ''}`}
+                    onClick={() => { setMode(opt.key); setLastMeasureTool(opt.key); setRulerP1(null); setRulerP2(null); setMeasureFlyout(false); }}
                   >
-                    <span className="map-tool-flyout__icon">{t.icon}</span>
-                    <span className="map-tool-flyout__label">{t.label}</span>
+                    <span className="map-tool-flyout__icon">{opt.icon}</span>
+                    <span className="map-tool-flyout__label">{t(opt.labelKey)}</span>
                   </button>
                 ))}
               </div>
@@ -913,9 +916,9 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       >
         {/* Zoom controls — top right overlay */}
         <div className="map-viewer__overlay-tr">
-          <Button size="icon" onClick={() => setScale((s) => Math.min(10, s * 1.25))} title="Zoom +">＋</Button>
-          <Button size="icon" onClick={() => setScale((s) => Math.max(0.1, s * 0.8))} title="Zoom −">-</Button>
-          <Button size="icon" onClick={resetView} title="Reset">⌂</Button>
+          <Button size="icon" onClick={() => setScale((s) => Math.min(10, s * 1.25))} title={t('zoomIn')}>＋</Button>
+          <Button size="icon" onClick={() => setScale((s) => Math.max(0.1, s * 0.8))} title={t('zoomOut')}>-</Button>
+          <Button size="icon" onClick={resetView} title={t('resetView')}>⌂</Button>
         </div>
 
         {/* Fog paint toolbar — only while the selected fog layer still exists
@@ -940,7 +943,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                 key={layer.id}
                 data-layer-id={layer.id}
                 src={getAssetUrl(layer.asset_id ?? '')}
-                alt={layer.name || 'Karte'}
+                alt={layer.name || t('mapImageAlt')}
                 draggable={false}
                 style={{
                   display: 'block',
@@ -1036,12 +1039,12 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                 }}
               >
                 <span className="map-pin__icon">{getPinEmoji(m.style_json)}</span>
-                {visScope === 'gm_only' && <span className="map-pin__vis-badge" title="Nur DM">🔒</span>}
-                {visScope === 'hidden_until_condition' && <span className="map-pin__vis-badge" title="Bedingung">⏳</span>}
-                {visScope === 'player_known' && <span className="map-pin__vis-badge" title="Für den Spieler (wenn bekannt)">👁</span>}
+                {visScope === 'gm_only' && <span className="map-pin__vis-badge" title={t('visibility.gm_only')}>🔒</span>}
+                {visScope === 'hidden_until_condition' && <span className="map-pin__vis-badge" title={t('visBadge.condition')}>⏳</span>}
+                {visScope === 'player_known' && <span className="map-pin__vis-badge" title={t('visBadge.playerKnown')}>👁</span>}
                 {m.label_text && <span className="map-pin__label">{m.label_text}</span>}
                 {isSelected && (
-                  <button className="map-pin__move-btn" title="Pin verschieben"
+                  <button className="map-pin__move-btn" title={t('pin.move')}
                     onClick={(e) => {
                       e.stopPropagation();
                       setMovingPinId(m.id);
@@ -1117,14 +1120,14 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
         )}
 
         {showCoordinates && coords && <div className="map-viewer__coords">{coords.x} × {coords.y}</div>}
-        {mode === 'pin' && <div className="map-viewer__hint">Klick auf Karte → Pin setzen</div>}
-        {mode === 'token' && <div className="map-viewer__hint">{t('token.placeHint', 'Klick auf Karte → Token setzen')}</div>}
-        {mode === 'move-pin' && <div className="map-viewer__hint">Klick auf Karte → Pin hierhin verschieben · ESC abbrechen</div>}
-        {mode === 'grid' && <div className="map-viewer__hint">Linksklick/halten: malen · Rechtsklick: Zustand · {cells.size} Zellen</div>}
-        {mode === 'measure' && !rulerP1 && <div className="map-viewer__hint">Startpunkt klicken…</div>}
-        {mode === 'measure' && rulerP1 && !rulerP2 && <div className="map-viewer__hint">Endpunkt klicken…</div>}
-        {mode === 'radius' && !rulerP1 && <div className="map-viewer__hint">Mittelpunkt klicken…</div>}
-        {mode === 'radius' && rulerP1 && !rulerP2 && <div className="map-viewer__hint">Radius ziehen…</div>}
+        {mode === 'pin' && <div className="map-viewer__hint">{t('hint.pin')}</div>}
+        {mode === 'token' && <div className="map-viewer__hint">{t('token.placeHint')}</div>}
+        {mode === 'move-pin' && <div className="map-viewer__hint">{t('hint.movePin')}</div>}
+        {mode === 'grid' && <div className="map-viewer__hint">{t('hint.gridPaint', { count: cells.size })}</div>}
+        {mode === 'measure' && !rulerP1 && <div className="map-viewer__hint">{t('hint.measureStart')}</div>}
+        {mode === 'measure' && rulerP1 && !rulerP2 && <div className="map-viewer__hint">{t('hint.measureEnd')}</div>}
+        {mode === 'radius' && !rulerP1 && <div className="map-viewer__hint">{t('hint.radiusCenter')}</div>}
+        {mode === 'radius' && rulerP1 && !rulerP2 && <div className="map-viewer__hint">{t('hint.radiusDrag')}</div>}
       </div>
 
       {/* Right sidebar — PINS / TOKEN tabs; pin tree resizable + collapsible */}
@@ -1168,7 +1171,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                   onClick={() => { setSelectedTokenId(tk.id); setEditingToken(tk); }}>
                   {tk.label || t('mapSideTabs.unnamedToken', 'Token')}
                 </button>
-                <button type="button" className="map-token-list__del" title={t('delete', 'Löschen')}
+                <button type="button" className="map-token-list__del" title={t('delete', { ns: 'common' })}
                   onClick={() => {
                     if (editingToken?.id === tk.id) setEditingToken(null);
                     setSelectedTokenId((cur) => (cur === tk.id ? null : cur));
@@ -1186,10 +1189,10 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             >
               <p>{t('pinFolder.confirmDeleteBody', 'Der Ordner wird gelöscht. Enthaltene Pins verlieren nur ihre Ordnerzuordnung, sie werden nicht gelöscht.')}</p>
               <button type="button" onClick={() => void handleDeleteFolderConfirmed()}>
-                {t('pinFolder.confirmDeleteAction', 'Bestätigen')}
+                {t('confirm', { ns: 'common' })}
               </button>
               <button type="button" onClick={() => setConfirmDeleteFolderPath(null)}>
-                {t('pinFolder.cancel', 'Abbrechen')}
+                {t('cancel', { ns: 'common' })}
               </button>
             </div>
           </div>
@@ -1204,7 +1207,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                 return (
                   <>
                     <span className="map-pin-emoji">{getPinEmoji(m.style_json)}</span>
-                    <span className="map-pin-tree__label">{m.label_text || '(kein Name)'}</span>
+                    <span className="map-pin-tree__label">{m.label_text || t('pin.noName')}</span>
                     {linked && <span className="map-pin-tree__sub">{linked.title}</span>}
                   </>
                 );
@@ -1227,7 +1230,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                   visibility_json: '"public"', style_json: '{}',
                 }).then(reloadMarkers);
               }}
-              header={<span>Pins ({markers.filter((m) => m.kind !== 'folder-anchor').length})</span>}
+              header={<span>{t('pinTree.header', { count: markers.filter((m) => m.kind !== 'folder-anchor').length })}</span>}
               searchable
               onResizeStart={handlePinResizeStart}
               onDeleteFolder={(node) => setConfirmDeleteFolderPath(node.path)}
@@ -1243,25 +1246,25 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
       {editingPin && (
         <div className="map-pin-editor">
           <div className="map-pin-editor__header">
-            <span>Pin bearbeiten</span>
+            <span>{t('pinEditor.title')}</span>
             <button onClick={() => setEditingPin(null)}>✕</button>
           </div>
           <div className="map-pin-editor__body">
             <PinIconGrid value={editIcon} onSelect={setEditIcon} />
-            <label className="map-pin-editor__label">Name</label>
+            <label className="map-pin-editor__label">{t('pinEditor.name')}</label>
             <input className="map-pin-editor__name-input" value={editLabel} onChange={(e) => setEditLabel(e.target.value)} />
-            <label className="map-pin-editor__label">Notizen</label>
+            <label className="map-pin-editor__label">{t('pinEditor.notes')}</label>
             <textarea className="map-pin-editor__textarea" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
-            <label className="map-pin-editor__label">Sichtbarkeit</label>
+            <label className="map-pin-editor__label">{t('pinEditor.visibility')}</label>
             <select className="map-pin-editor__name-input" value={editVisibility}
               onChange={(e) => setEditVisibility(e.target.value)}>
-              {VISIBILITY_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+              {VISIBILITY_OPTIONS.map((o) => <option key={o.key} value={o.key}>{t(o.labelKey)}</option>)}
             </select>
             {editVisibility === 'hidden_until_condition' && (
               <ConditionBuilder variables={sessionVarDefs} initialCondition={editCondition}
                 onChange={setEditCondition} />
             )}
-            <label className="map-pin-editor__label">Entity-Links</label>
+            <label className="map-pin-editor__label">{t('pinEditor.entityLinks')}</label>
             <div className="pin-entity-links">
               {/* primary entity */}
               {editEntityId && (() => {
@@ -1270,8 +1273,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                   <div className="pin-entity-chip">
                     <span className="pin-entity-chip__type">{en.type}</span>
                     <span className="pin-entity-chip__name">{en.title}</span>
-                    <button className="pin-entity-chip__nav" title="Öffnen" onClick={() => { onNavigateToEntity?.(en.id); setEditingPin(null); }}>→</button>
-                    <button className="pin-entity-chip__del" title="Entfernen" onClick={() => setEditEntityId('')}>×</button>
+                    <button className="pin-entity-chip__nav" title={t('open')} onClick={() => { onNavigateToEntity?.(en.id); setEditingPin(null); }}>→</button>
+                    <button className="pin-entity-chip__del" title={t('remove', { ns: 'common' })} onClick={() => setEditEntityId('')}>×</button>
                   </div>
                 ) : null;
               })()}
@@ -1283,8 +1286,8 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                   <div key={eid} className="pin-entity-chip">
                     <span className="pin-entity-chip__type">{en.type}</span>
                     <span className="pin-entity-chip__name">{en.title}</span>
-                    <button className="pin-entity-chip__nav" title="Öffnen" onClick={() => { onNavigateToEntity?.(eid); setEditingPin(null); }}>→</button>
-                    <button className="pin-entity-chip__del" title="Entfernen" onClick={() => setEditEntityIds((prev) => prev.filter((x) => x !== eid))}>×</button>
+                    <button className="pin-entity-chip__nav" title={t('open')} onClick={() => { onNavigateToEntity?.(eid); setEditingPin(null); }}>→</button>
+                    <button className="pin-entity-chip__del" title={t('remove', { ns: 'common' })} onClick={() => setEditEntityIds((prev) => prev.filter((x) => x !== eid))}>×</button>
                   </div>
                 );
               })}
@@ -1300,20 +1303,20 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                     }}
                     onBlur={() => setShowEntityPicker(false)}
                     defaultValue="">
-                    <option value="" disabled>— Entity auswählen —</option>
+                    <option value="" disabled>{t('pinEditor.selectEntity')}</option>
                     {entities
                       .filter((en) => en.id !== editEntityId && !editEntityIds.includes(en.id))
                       .map((en) => <option key={en.id} value={en.id}>{en.title} ({en.type})</option>)}
                   </select>
                 </div>
               ) : (
-                <Button tone="accent" variant="outline" size="compact" onClick={() => setShowEntityPicker(true)}>+ Entity verlinken</Button>
+                <Button tone="accent" variant="outline" size="compact" onClick={() => setShowEntityPicker(true)}>{t('pinEditor.linkEntity')}</Button>
               )}
             </div>
           </div>
           <div className="map-pin-editor__footer">
-            <Button tone="accent" onClick={() => void savePin()}>Speichern</Button>
-            <Button tone="danger" variant="outline" onClick={() => void deletePin(editingPin.id)}>Löschen</Button>
+            <Button tone="accent" onClick={() => void savePin()}>{t('save', { ns: 'common' })}</Button>
+            <Button tone="danger" variant="outline" onClick={() => void deletePin(editingPin.id)}>{t('delete', { ns: 'common' })}</Button>
           </div>
         </div>
       )}

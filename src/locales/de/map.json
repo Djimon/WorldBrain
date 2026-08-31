@@ -5,14 +5,92 @@
     "player_known": "Für den Spieler (wenn Entity bekannt)",
     "condition": "Bedingung…"
   },
+  "visBadge": {
+    "condition": "Bedingung",
+    "playerKnown": "Für den Spieler (wenn bekannt)"
+  },
   "addMarker": "Marker hinzufügen",
   "deleteMarker": "Löschen",
   "kindFilter": "Art",
   "all": "Alle",
+  "open": "Öffnen",
+  "collapse": "Einklappen",
+  "emptyImage": "Kein Kartenbild — Karte importieren um zu beginnen.",
+  "resetView": "Reset",
+  "mapImageAlt": "Karte",
+  "zoomIn": "Zoom +",
+  "zoomOut": "Zoom −",
   "kinds": {
     "pin": "Punkt",
     "polygon": "Form",
     "label": "Beschriftung"
+  },
+  "pinIcon": {
+    "pin": "Pin",
+    "danger": "Gefahr",
+    "treasure": "Schatz",
+    "note": "Notiz",
+    "question": "Frage",
+    "exclamation": "Wichtig",
+    "combat": "Kampf",
+    "mountain": "Berg",
+    "forest": "Wald",
+    "cave": "Höhle",
+    "npc": "NPC/Person",
+    "shop": "Händler",
+    "inn": "Taverne/Rast",
+    "town": "Stadt/Dorf",
+    "poi": "Sehenswert"
+  },
+  "tool": {
+    "pin": "Pin setzen",
+    "gridPaint": "Grid malen",
+    "eraser": "Radiergummi",
+    "measure": "Messwerkzeuge",
+    "ruler": "Lineal",
+    "radius": "Radius"
+  },
+  "hint": {
+    "pin": "Klick auf Karte → Pin setzen",
+    "movePin": "Klick auf Karte → Pin hierhin verschieben · ESC abbrechen",
+    "gridPaint": "Linksklick/halten: malen · Rechtsklick: Zustand · {{count}} Zellen",
+    "measureStart": "Startpunkt klicken…",
+    "measureEnd": "Endpunkt klicken…",
+    "radiusCenter": "Mittelpunkt klicken…",
+    "radiusDrag": "Radius ziehen…"
+  },
+  "pin": {
+    "move": "Pin verschieben",
+    "noName": "(kein Name)"
+  },
+  "pinTree": {
+    "header": "Pins ({{count}})"
+  },
+  "pinEditor": {
+    "title": "Pin bearbeiten",
+    "name": "Name",
+    "notes": "Notizen",
+    "visibility": "Sichtbarkeit",
+    "entityLinks": "Entity-Links",
+    "selectEntity": "— Entity auswählen —",
+    "linkEntity": "+ Entity verlinken"
+  },
+  "token": {
+    "place": "Token setzen",
+    "placeHint": "Klick auf Karte → Token setzen"
+  },
+  "mapSideTabs": {
+    "label": "Pins und Token",
+    "pins": "Pins",
+    "tokens": "Token",
+    "noTokens": "Keine Tokens. Token-Werkzeug + Klick auf die Karte.",
+    "tokenCircle": "Token (Kreis)",
+    "tokenPlain": "Plain (Bild)",
+    "unnamedToken": "Token"
+  },
+  "pinFolder": {
+    "confirmDeleteTitle": "Ordner löschen?",
+    "confirmDeleteBody": "Der Ordner wird gelöscht. Enthaltene Pins verlieren nur ihre Ordnerzuordnung, sie werden nicht gelöscht."
   },
   "grid": {
     "controls": "Rastersteuerung",

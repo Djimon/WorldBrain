@@ -5,14 +5,92 @@
     "player_known": "Player (if entity known)",
     "condition": "Condition…"
   },
+  "visBadge": {
+    "condition": "Condition",
+    "playerKnown": "Player (if known)"
+  },
   "addMarker": "Add Marker",
   "deleteMarker": "Delete",
   "kindFilter": "Kind",
   "all": "All",
+  "open": "Open",
+  "collapse": "Collapse",
+  "emptyImage": "No map image — import a map to begin.",
+  "resetView": "Reset view",
+  "mapImageAlt": "Map",
+  "zoomIn": "Zoom in",
+  "zoomOut": "Zoom out",
   "kinds": {
     "pin": "Point",
     "polygon": "Shape",
     "label": "Caption"
+  },
+  "pinIcon": {
+    "pin": "Pin",
+    "danger": "Danger",
+    "treasure": "Treasure",
+    "note": "Note",
+    "question": "Question",
+    "exclamation": "Important",
+    "combat": "Combat",
+    "mountain": "Mountain",
+    "forest": "Forest",
+    "cave": "Cave",
+    "npc": "NPC/Person",
+    "shop": "Merchant",
+    "inn": "Tavern/Rest",
+    "town": "Town/Village",
+    "poi": "Landmark"
+  },
+  "tool": {
+    "pin": "Place pin",
+    "gridPaint": "Paint grid",
+    "eraser": "Eraser",
+    "measure": "Measuring tools",
+    "ruler": "Ruler",
+    "radius": "Radius"
+  },
+  "hint": {
+    "pin": "Click the map → place pin",
+    "movePin": "Click the map → move pin here · ESC to cancel",
+    "gridPaint": "Left-click/hold: paint · Right-click: state · {{count}} cells",
+    "measureStart": "Click start point…",
+    "measureEnd": "Click end point…",
+    "radiusCenter": "Click center point…",
+    "radiusDrag": "Drag radius…"
+  },
+  "pin": {
+    "move": "Move pin",
+    "noName": "(no name)"
+  },
+  "pinTree": {
+    "header": "Pins ({{count}})"
+  },
+  "pinEditor": {
+    "title": "Edit pin",
+    "name": "Name",
+    "notes": "Notes",
+    "visibility": "Visibility",
+    "entityLinks": "Entity links",
+    "selectEntity": "— Select entity —",
+    "linkEntity": "+ Link entity"
+  },
+  "token": {
+    "place": "Place token",
+    "placeHint": "Click the map → place token"
+  },
+  "mapSideTabs": {
+    "label": "Pins and tokens",
+    "pins": "Pins",
+    "tokens": "Tokens",
+    "noTokens": "No tokens. Token tool + click the map.",
+    "tokenCircle": "Token (circle)",
+    "tokenPlain": "Plain (image)",
+    "unnamedToken": "Token"
+  },
+  "pinFolder": {
+    "confirmDeleteTitle": "Delete folder?",
+    "confirmDeleteBody": "The folder will be deleted. Pins inside only lose their folder assignment; they are not deleted."
   },
   "grid": {
     "controls": "Grid controls",
