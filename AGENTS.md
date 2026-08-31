@@ -61,6 +61,7 @@ Conflicting requirements · missing decision · unclear architecture · wrong/co
 - Complex PowerShell scriptblocks — use `gh api`, `git`, `npm` directly
 - Implementing against a different API than what the AC specifies — if the AC says "Tauri dialog", the implementation uses the Tauri dialog. Runtime constraints (async, WebView sandbox) that conflict with the test setup → `NEEDS_DECISION`, not a silent workaround.
 - Shim or compat layers whose real-API path returns empty data — a stub that compiles is still a stub. If bridging sync tests to an async API is impossible without data loss, surface it as `NEEDS_DECISION` before committing.
+- **i18n-Verstöße** — hardcodierte nutzer-sichtbare Strings (inkl. `title=`/`aria-label=`/`placeholder=`/`alt=`), **oder** `t('key','default')` ohne existierenden Locale-Key (rendert still Deutsch, nie EN), **oder** Generika-Wörter außerhalb `common` dupliziert. Siehe `docs/i18n-guide.md`; per `npm run lint` (i18n-Gates) erzwungen. Deutsch gehört **nicht** ins Datenmodell/Seed-Defaults (Englisch).
 
 ---
 
@@ -129,7 +130,7 @@ if you have to build **new UI or edit old**: strictly follow: `docs/UIConsolidat
 
 ### 4. Review Agent
 
-Review against: Story AC · architecture · `ANTI_PATTERNS.md` (any instance = automatic Severe) · scope creep · hidden assumptions. UI changes **also** against `docs/UIConsolidation/DEV-UI-GUIDE.md`. Findings first, severity-ordered, with file/line refs.
+Review against: Story AC · architecture · `ANTI_PATTERNS.md` (any instance = automatic Severe) · scope creep · hidden assumptions. UI changes **also** against `docs/UIConsolidation/DEV-UI-GUIDE.md` und `docs/i18n-guide.md` (i18n: jeder `t('key')` hat einen echten Locale-Key en+de, Generika nur aus `common`, kein Deutsch im Datenmodell). Findings first, severity-ordered, with file/line refs.
 
 **AC coverage ≠ test coverage:** test-green is not "done" — mirror of the Implementation North Star. Verify every AC line is met, not only the tested ones. Required-but-untested AC gaps are findings, not silent omissions.
 
@@ -169,6 +170,7 @@ Plugin ids and directory names: `snake_case` with underscores (`dnd5e_srd`), nev
 - Centralize config; no scattered config
 - Early guard returns ordered by cost/risk
 - No over-engineering the current slice
+- **Lokalisierung von Anfang an (`docs/i18n-guide.md`).** Jeder nutzer-sichtbare String über `t(...)` **mit** einem in `en`+`de` existierenden Locale-Key (ein `t('key','default')` ohne Key rendert still Deutsch); `title=`/`aria-label=`/`placeholder=` nicht vergessen; Generika (`save`/`cancel`/`delete`/…) nur aus `common`; kein Deutsch in Seed-/DB-Defaults. `npm run lint` erzwingt beides (`check-i18n-missing-keys.mjs` + en↔de-Parität).
 - **Read the truth source before typing against it — never invent APIs from memory.** Before writing an `import` from a third-party library not already established in the repo, read the installed types first: `cat node_modules/<pkg>/package.json` (version + exports) and `head node_modules/<pkg>/dist/*.d.ts` (real signatures). Same rule for anything external — DB schemas (read `core_data/*-schema.ts`), config files, JSON contracts. A self-authored `module-shims.d.ts` is an anti-pattern: it makes `tsc` validate against your invention, not reality — green types, dead runtime. If a shim is unavoidable (throwaway spike with intentionally-unbundled deps), it must be a **verbatim copy** from the real `.d.ts` with the source cited in a comment (`// from @pkg/dist/index.d.ts v0.25.3`), never a guess. On runtime errors like "X is not a function/iterable" from a third-party lib, first reflex is re-read the types — not retry, not guess.
 
 ---
