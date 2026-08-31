@@ -13,5 +13,35 @@
     "pin": "Punkt",
     "polygon": "Form",
     "label": "Beschriftung"
+  },
+  "grid": {
+    "controls": "Rastersteuerung",
+    "color": "Farbe",
+    "opacity": "Deckkraft",
+    "size": "Rastergröße",
+    "lineWidth": "Linienbreite",
+    "snapping": "Einrasten",
+    "on": "AN",
+    "off": "AUS",
+    "type": "Rastertyp",
+    "typeSquare": "Quadrat",
+    "typeHex": "Hex-flach",
+    "lineType": "Linienart",
+    "visible": "Sichtbar",
+    "shown": "Sichtbar",
+    "hidden": "Versteckt",
+    "pinSize": "Pin-Größe",
+    "cellStates": "Zell-Zustände",
+    "addState": "+ Neu",
+    "newStateName": "Neu",
+    "scale": "Maßstab (1 Kästchen =)",
+    "unitPlaceholder": "km / m / Meilen",
+    "ruler": "Lineal",
+    "thickness": "Dicke",
+    "cellsMarked": "{{count}} Zellen markiert"
+  },
+  "cellMenu": {
+    "title": "Zell-Zustand",
+    "empty": "Leer"
   }
 }

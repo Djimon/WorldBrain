@@ -299,20 +299,20 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
 
   return (
     <div className="grid-controls-wrap" ref={btnRef}>
-      <Button size="icon" aria-pressed={open} onClick={toggleOpen} title="Grid Controls">⊞</Button>
+      <Button size="icon" aria-pressed={open} onClick={toggleOpen} title={t('grid.controls')}>⊞</Button>
 
       {open && (
         <div className="grid-controls-panel"
           style={{ position: 'fixed', top: panelPos.top, left: panelPos.left, ['--gc-top' as string]: `${panelPos.top}px` }}>
           <div className="grid-controls-panel__header">
-            <span>Grid Controls</span>
+            <span>{t('grid.controls')}</span>
             <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>✕</Button>
           </div>
 
           <div className="grid-controls-panel__body">
           <div className="grid-controls-panel__row">
             <div className="grid-controls-panel__col">
-              <label>Color</label>
+              <label>{t('grid.color')}</label>
               <div className="grid-controls-panel__colors">
                 {PRESETS.map((p) => (
                   <button key={p.color} className={`grid-color-swatch${settings.lineColor === p.color ? ' active' : ''}`}
@@ -323,7 +323,7 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
               </div>
             </div>
             <div className="grid-controls-panel__col">
-              <label>Opacity</label>
+              <label>{t('grid.opacity')}</label>
               <input type="range" min={0} max={1} step={0.05} value={settings.lineOpacity}
                 onChange={(e) => set('lineOpacity', Number(e.target.value))} />
             </div>
@@ -331,7 +331,7 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
 
           <div className="grid-controls-panel__row">
             <div className="grid-controls-panel__col">
-              <label>Grid Size</label>
+              <label>{t('grid.size')}</label>
               <div className="grid-controls-panel__number-input">
                 <input type="number" min={10} max={200} value={settings.cellSize}
                   onChange={(e) => set('cellSize', Number(e.target.value))} />
@@ -339,7 +339,7 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
               </div>
             </div>
             <div className="grid-controls-panel__col">
-              <label>Line Width</label>
+              <label>{t('grid.lineWidth')}</label>
               <div className="grid-controls-panel__number-input">
                 <input type="number" min={0.5} max={5} step={0.5} value={settings.lineWidth}
                   onChange={(e) => set('lineWidth', Number(e.target.value))} />
@@ -347,33 +347,33 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
               </div>
             </div>
             <div className="grid-controls-panel__col">
-              <label>Snapping</label>
+              <label>{t('grid.snapping')}</label>
               <Button size="compact" aria-pressed={settings.snapping}
                 onClick={() => set('snapping', !settings.snapping)}>
-                {settings.snapping ? 'ON' : 'OFF'}
+                {settings.snapping ? t('grid.on') : t('grid.off')}
               </Button>
             </div>
           </div>
 
           <div className="grid-controls-panel__row">
             <div className="grid-controls-panel__col">
-              <label>Grid Type{isGridChanging && ' …'}</label>
+              <label>{t('grid.type')}{isGridChanging && ' …'}</label>
               <Segmented
-                label="Grid Type"
+                label={t('grid.type')}
                 size="compact"
                 disabled={isGridChanging}
                 value={settings.type}
                 onChange={(id) => setGridType(id as 'square' | 'hex-flat')}
                 options={[
-                  { id: 'square', label: '⬜', title: 'square' },
-                  { id: 'hex-flat', label: '⬢', title: 'hex-flat' },
+                  { id: 'square', label: '⬜', title: t('grid.typeSquare') },
+                  { id: 'hex-flat', label: '⬢', title: t('grid.typeHex') },
                 ]}
               />
             </div>
             <div className="grid-controls-panel__col">
-              <label>Line Type</label>
+              <label>{t('grid.lineType')}</label>
               <Segmented
-                label="Line Type"
+                label={t('grid.lineType')}
                 size="compact"
                 value={settings.lineDash}
                 onChange={(id) => set('lineDash', id as 'solid' | 'dashed' | 'dotted')}
@@ -388,16 +388,16 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
 
           <div className="grid-controls-panel__row">
             <div className="grid-controls-panel__col">
-              <label>Visible</label>
+              <label>{t('grid.visible')}</label>
               <Button size="compact" aria-pressed={settings.visible}
                 onClick={() => set('visible', !settings.visible)}>
-                {settings.visible ? 'Sichtbar' : 'Versteckt'}
+                {settings.visible ? t('grid.shown') : t('grid.hidden')}
               </Button>
             </div>
             <div className="grid-controls-panel__col">
-              <label>Pin-Größe</label>
+              <label>{t('grid.pinSize')}</label>
               <Segmented
-                label="Pin-Größe"
+                label={t('grid.pinSize')}
                 size="compact"
                 value={settings.pinSize}
                 onChange={(id) => set('pinSize', id as 'S' | 'M' | 'L')}
@@ -411,11 +411,11 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
           </div>
 
           <div className="grid-controls-panel__section-title u-row u-justify-between">
-            <span>Zell-Zustände</span>
+            <span>{t('grid.cellStates')}</span>
             <Button tone="accent" variant="outline" size="compact" onClick={() => {
               const maxId = settings.cellStates.reduce((m, s) => Math.max(m, s.id), 0);
-              set('cellStates', [...settings.cellStates, { id: maxId + 1, name: 'Neu', color: '#aaaaaa' }]);
-            }}>+ Neu</Button>
+              set('cellStates', [...settings.cellStates, { id: maxId + 1, name: t('grid.newStateName'), color: '#aaaaaa' }]);
+            }}>{t('grid.addState')}</Button>
           </div>
           {settings.cellStates.map((st, i) => (
             <div key={st.id} className="grid-controls-panel__row grid-controls-panel__state-row">
@@ -429,12 +429,12 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
                   const next = settings.cellStates.map((s, j) => j === i ? { ...s, name: e.target.value } : s);
                   set('cellStates', next);
                 }} />
-              <Button variant="ghost" size="compact" title="Löschen"
+              <Button variant="ghost" size="compact" title={t('delete', { ns: 'common' })}
                 onClick={() => set('cellStates', settings.cellStates.filter((_, j) => j !== i))}>✕</Button>
             </div>
           ))}
 
-          <div className="grid-controls-panel__section-title">Maßstab (1 Kästchen =)</div>
+          <div className="grid-controls-panel__section-title">{t('grid.scale')}</div>
           <div className="grid-controls-panel__row grid-controls-panel__row--pad">
             <div className="grid-controls-panel__number-input grid-controls-panel__number-input--measure u-flex-1">
               <input type="number" min={0.001} step={0.1} value={settings.measureValue}
@@ -442,22 +442,22 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
             </div>
             <input className="grid-state-name grid-measure-unit" value={settings.measureUnit}
               onChange={(e) => set('measureUnit', e.target.value)}
-              placeholder="km / m / miles" />
+              placeholder={t('grid.unitPlaceholder')} />
           </div>
 
-          <div className="grid-controls-panel__section-title">Lineal</div>
+          <div className="grid-controls-panel__section-title">{t('grid.ruler')}</div>
           <div className="grid-controls-panel__row grid-controls-panel__row--pad u-gap-2">
             <div className="grid-controls-panel__col">
-              <label>Farbe</label>
+              <label>{t('grid.color')}</label>
               <input type="color" value={settings.rulerColor} onChange={(e) => set('rulerColor', e.target.value)} className="grid-color-picker" />
             </div>
             <div className="grid-controls-panel__col">
-              <label>Opacity</label>
+              <label>{t('grid.opacity')}</label>
               <input type="range" min={0} max={1} step={0.05} value={settings.rulerOpacity}
                 onChange={(e) => set('rulerOpacity', Number(e.target.value))} className="grid-ruler-opacity" />
             </div>
             <div className="grid-controls-panel__col">
-              <label>Dicke</label>
+              <label>{t('grid.thickness')}</label>
               <div className="grid-controls-panel__number-input">
                 <input type="number" min={1} max={10} step={0.5} value={settings.rulerWidth}
                   onChange={(e) => set('rulerWidth', Number(e.target.value))} />
@@ -467,7 +467,7 @@ export function GridControlsPanel({ settings, onChange, activeCellCount, onClear
           </div>
 
           <div className="grid-controls-panel__footer">
-            <span className="grid-controls-panel__hint">{activeCellCount} Zellen markiert</span>
+            <span className="grid-controls-panel__hint">{t('grid.cellsMarked', { count: activeCellCount })}</span>
             <Button tone="danger" variant="outline" size="compact" onClick={onClear}>
               {t('all')}
             </Button>
@@ -505,16 +505,17 @@ interface CellContextMenuProps {
 }
 
 export function CellContextMenu({ x, y, cellKey, cellStates, onPick, onClose }: CellContextMenuProps) {
+  const { t } = useTranslation('map');
   return (
     <div
       className="map-context-menu"
       style={{ position: 'fixed', left: x, top: y, zIndex: 2000 }}
       onMouseLeave={onClose}
     >
-      <div className="map-context-menu__title">Zell-Zustand</div>
+      <div className="map-context-menu__title">{t('cellMenu.title')}</div>
       <button className="map-context-menu__item map-context-menu__item--off" onClick={() => onPick(cellKey, 0)}>
         <span className="map-context-menu__dot map-context-menu__dot--none" />
-        Leer
+        {t('cellMenu.empty')}
       </button>
       {cellStates.map((st) => (
         <button key={st.id} className="map-context-menu__item" onClick={() => onPick(cellKey, st.id)}>

@@ -13,5 +13,35 @@
     "pin": "Point",
     "polygon": "Shape",
     "label": "Caption"
+  },
+  "grid": {
+    "controls": "Grid controls",
+    "color": "Color",
+    "opacity": "Opacity",
+    "size": "Grid size",
+    "lineWidth": "Line width",
+    "snapping": "Snapping",
+    "on": "ON",
+    "off": "OFF",
+    "type": "Grid type",
+    "typeSquare": "square",
+    "typeHex": "hex-flat",
+    "lineType": "Line type",
+    "visible": "Visible",
+    "shown": "Shown",
+    "hidden": "Hidden",
+    "pinSize": "Pin size",
+    "cellStates": "Cell states",
+    "addState": "+ New",
+    "newStateName": "New",
+    "scale": "Scale (1 cell =)",
+    "unitPlaceholder": "km / m / miles",
+    "ruler": "Ruler",
+    "thickness": "Thickness",
+    "cellsMarked": "{{count}} cells marked"
+  },
+  "cellMenu": {
+    "title": "Cell state",
+    "empty": "Empty"
   }
 }
