@@ -7,16 +7,21 @@
      default-src 'none' erlaubt KEINE externen Requests (blockt u.a. url()-Beacons
      als Defense-in-depth zu #392); inline CSS/JS bleiben lauffähig (self-contained). -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
-<title>WorldBuilderX — Theme-Tester</title>
+<title>Beyond Worlds — Theme-Tester</title>
 <!--
-  Standalone Theme-Tester (#388). Komplett self-contained: kein Build, keine
-  Abhängigkeiten, kein Server — per Doppelklick im Browser öffnen. Zweck: dein
-  Theme-JSON testen, BEVOR du es unter <appDataDir>/themes/ ablegst.
+  Standalone Theme-Tester / -Ersteller (#388). Komplett self-contained: kein Build,
+  keine Abhängigkeiten, kein Server — per Doppelklick im Browser öffnen.
 
-  Die App-Komponenten unten sind HIER hart nachgebaut (nicht die echten importiert)
-  und ausschließlich über die Tokens gestylt — kein Hex im Mock. Die Basiswerte
-  (light + dark) sind unten in JS eingebettet (Kopie aus src/styles/tokens.css),
-  damit die Datei ohne die App funktioniert.
+  Zwei Wege, dasselbe Format (docs/adding-a-theme.md):
+    • Config-Editor — Dropdowns (appearance/modeSupport) + Color-Picker mit Alpha
+      pro Token. Erzeugt das Theme-JSON. „Überschreiben"-Häkchen = Token wird
+      gesetzt; ohne Häkchen erbt es die Basis-Palette (VS-Code-Modell).
+    • Raw JSON — JSON direkt einfügen/bearbeiten. „Anwenden" füllt den Editor.
+  Beide Tabs sind live zweiweg-synchron; der App-Mock links zeigt die Wirkung.
+
+  Der App-Mock ist HIER hart nachgebaut (nicht die echten Komponenten importiert)
+  und ausschließlich über Tokens gestylt — kein Hex im Mock. Die Basiswerte
+  (light + dark) sind unten in JS eingebettet (Kopie aus src/styles/tokens.css).
 -->
 <style>
   :root { color-scheme: light dark; }
@@ -34,17 +39,16 @@
   .seg button { border: none; background: var(--color-surface); color: var(--color-text-muted); padding: 4px 12px; cursor: pointer; font: inherit; }
   .seg button[aria-pressed="true"] { background: var(--mode-accent); color: var(--mode-accent-on); }
   .seg button:disabled { opacity: .4; cursor: not-allowed; }
-  .cols { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); gap: 16px; }
-  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+  /* Links Mock, rechts Editor. Mock darf in die Länge (Höhe) gehen. */
+  .cols { display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); gap: 16px; align-items: start; }
+  @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } }
   .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: var(--shadow-panel); overflow: hidden; }
   .card > h2 { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); margin: 0; padding: 8px 12px; border-bottom: 1px solid var(--color-border); }
 
   /* ── App-Mock ── */
-  .mock { }
   .mock__stripe { height: 3px; background: var(--mode-accent); }
   .mock__header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
-  .mock__brand { font-weight: 650; letter-spacing: .02em; }
-  .mock__brand small { color: var(--color-text-muted); font-weight: 500; }
+  .mock__brand { font-weight: 650; letter-spacing: .02em; color: var(--mode-accent-text); }
   .mock__mode-pill { padding: 1px 10px; border-radius: var(--radius-pill); background: var(--mode-accent-soft); color: var(--mode-accent-text); font-size: .75rem; font-weight: 600; }
   .mock__lock { margin-left: 2px; }
   .mock__spacer { flex: 1; }
@@ -94,36 +98,90 @@
   .play__token { position: absolute; top: 26px; left: 40px; width: 22px; height: 22px; border-radius: 50%; background: var(--mode-accent); border: 2px solid var(--mode-accent-on); }
   .play__pin { position: absolute; top: 16px; left: 130px; color: var(--color-layer-token); font-size: 20px; }
   .play__dice { position: absolute; right: 10px; bottom: 10px; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--color-scrim); color: var(--color-highlight); font-size: .72rem; }
+  .play__token { box-shadow: 0 2px 5px var(--color-shadow); }
 
-  /* ── Token-Übersicht ── */
-  .tok-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; padding: 10px; }
-  .tok { display: flex; align-items: center; gap: 7px; font-size: .72rem; min-width: 0; }
-  .tok__sw { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--color-swatch-outline); flex-shrink: 0; }
-  .tok__meta { min-width: 0; }
-  .tok__name { font-family: ui-monospace, Consolas, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tok__val { color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tok__group { grid-column: 1 / -1; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); margin-top: 4px; }
+  /* Header-Controls + Dropdown (Fokus-Ring über --color-focus-glow). */
+  .mock__select { padding: 4px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: .82rem; }
+  .mock__select:focus { outline: none; border-color: var(--mode-accent); box-shadow: 0 0 0 2px var(--color-focus-glow); }
+  .mock__fields { display: flex; gap: 10px; flex-wrap: wrap; }
+  .field input.is-focus { border-color: var(--mode-accent); box-shadow: 0 0 0 3px var(--color-focus-glow); }
+  .row[data-active] { background: var(--color-surface-active); }
 
-  /* ── JSON-Tester ── */
+  /* Extra-Token-Zeile UNTER dem Mock (verlängert ihn, statt Seitenpanel). */
+  .mock__extras { display: flex; flex-wrap: wrap; gap: 12px; padding: 10px 12px; border-top: 1px solid var(--color-border); background: var(--color-surface); }
+  .mock__tile { flex: 1 1 150px; min-width: 140px; display: flex; flex-direction: column; gap: 6px; }
+  .mock__aside-h { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-muted); }
+  .layers { display: flex; flex-direction: column; gap: 5px; font-size: .78rem; }
+  .layer { display: flex; align-items: center; gap: 7px; }
+  .layer .sw { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--color-swatch-outline); flex-shrink: 0; }
+  .sw--image { background: var(--color-layer-image); }
+  .sw--fog { background: var(--color-layer-fog); }
+  .sw--token { background: var(--color-layer-token); }
+  .tooltip { font-size: .75rem; padding: 6px 8px; background: var(--color-surface-alt); border: 1px solid var(--color-overlay-border); border-radius: var(--radius-sm); box-shadow: var(--shadow-panel); }
+  .note-error { font-size: .75rem; padding: 6px 8px; border-radius: var(--radius-sm); background: var(--color-error-soft); color: var(--color-status-failure); }
+  .brand { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .brand-link { font-size: .8rem; color: var(--color-accent); text-decoration: underline; cursor: pointer; }
+  .brand-badge { display: inline-block; font-size: .7rem; padding: 1px 8px; border-radius: var(--radius-pill); background: var(--color-accent-soft); color: var(--color-accent-strong); }
+  .print-box { font-size: .72rem; padding: 8px; border: 1px dashed var(--color-print-border); border-radius: var(--radius-sm); color: var(--color-text-muted); }
+  .hl { font-size: .72rem; padding: 4px 8px; border-radius: var(--radius-sm); background: var(--color-scrim); color: var(--color-highlight); align-self: flex-start; }
+
+  /* ── Editor (Tabs) ── */
+  .tabs { display: flex; align-items: center; gap: 2px; padding: 4px 8px; border-bottom: 1px solid var(--color-border); }
+  .tabs [role="tab"] { border: none; border-bottom: 2px solid transparent; background: transparent; color: var(--color-text-muted); padding: 7px 12px; cursor: pointer; font: inherit; font-size: .82rem; }
+  .tabs [role="tab"][aria-selected="true"] { color: var(--mode-accent-text); border-bottom-color: var(--mode-accent); }
+  .tabs__export { margin-left: auto; }
+
+  .editor { padding: 10px; display: flex; flex-direction: column; gap: 10px; max-height: 74vh; overflow: auto; }
+  .ed-msg { font-size: .78rem; min-height: 1.1em; }
+  .ed-msg[data-kind="err"] { color: var(--color-status-failure); }
+  .ed-msg[data-kind="ok"] { color: var(--color-status-success); }
+  .ed-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ed-field { display: flex; flex-direction: column; gap: 3px; font-size: .72rem; color: var(--color-text-muted); }
+  .ed-field input, .ed-field select { padding: 5px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); font: inherit; }
+  .ed-block { border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+  .ed-block > h3 { margin: 0; padding: 6px 10px; font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-muted); border-bottom: 1px solid var(--color-border); background: var(--color-surface); cursor: pointer; display: flex; align-items: center; gap: 7px; user-select: none; }
+  .ed-block > h3:hover { color: var(--color-text); }
+  .ed-block__caret { display: inline-block; transition: transform .12s; font-size: .8em; }
+  .ed-block[data-collapsed] > h3 { border-bottom: none; }
+  .ed-block[data-collapsed] .ed-block__caret { transform: rotate(-90deg); }
+  .ed-sub { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-muted); padding: 7px 10px 2px; }
+  .ed-rows { display: flex; flex-direction: column; }
+  .ed-row { display: grid; grid-template-columns: 16px minmax(0,1fr) auto auto; align-items: center; gap: 8px; padding: 3px 10px; }
+  .ed-row:hover { background: var(--color-surface-hover); }
+  .ed-row.is-changed { box-shadow: inset 2px 0 0 var(--mode-accent); }
+  .ed-row__name { font-family: ui-monospace, Consolas, monospace; font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ed-row--accent .ed-row__name { color: var(--color-text); }
+  .ed-status { font-size: .6rem; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: var(--radius-pill); white-space: nowrap; justify-self: end; }
+  .ed-status--themed { background: var(--mode-accent-soft); color: var(--mode-accent-text); }
+  .ed-status--inherit { color: var(--color-text-muted); border: 1px solid var(--color-border); }
+  .ed-legend { display: flex; gap: 12px; align-items: center; font-size: .7rem; color: var(--color-text-muted); flex-wrap: wrap; }
+  .ed-legend .ed-status { pointer-events: none; }
+  .cc { display: inline-flex; align-items: center; gap: 6px; }
+  .cc input[type=color] { width: 30px; height: 24px; padding: 0; border: 1px solid var(--color-border); border-radius: 4px; background: none; cursor: pointer; }
+  .cc__a { width: 66px; accent-color: var(--mode-accent); }
+  .cc__out { width: 116px; font-family: ui-monospace, Consolas, monospace; font-size: .7rem; padding: 3px 5px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); }
+
+  /* ── Raw JSON ── */
   .json { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-  .json textarea { width: 100%; min-height: 240px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 12px; padding: 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); }
-  .json__actions { display: flex; gap: 8px; align-items: center; }
+  .json textarea { width: 100%; min-height: 300px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 12px; padding: 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); }
+  .json__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .json__msg { font-size: .8rem; }
   .json__msg[data-kind="err"] { color: var(--color-status-failure); }
   .json__msg[data-kind="ok"] { color: var(--color-status-success); }
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>WorldBuilderX — Theme-Tester</h1>
-  <p class="sub">Dein Theme-JSON (Format aus <code>docs/adding-a-theme.md</code>) unten einfügen → „Anwenden". Der App-Mock und die Token-Übersicht aktualisieren sich live. Standalone, keine App nötig.</p>
+  <h1>Beyond Worlds — Theme-Tester &amp; -Ersteller</h1>
+  <p class="sub">Baue dein Theme im <strong>Config-Editor</strong> (Color-Picker + Alpha) oder füge fertiges JSON im <strong>Raw</strong>-Tab ein. Beide sind live synchron; der App-Mock zeigt die Wirkung. Ergebnis-JSON nach <code>&lt;appDataDir&gt;/themes/</code> legen. Standalone, keine App nötig.</p>
 
   <div class="toolbar">
-    <div class="seg" role="group" aria-label="Erscheinung">
+    <div class="seg" role="group" aria-label="Erscheinung (Vorschau)">
       <button id="app-dark" aria-pressed="true">Dark</button>
       <button id="app-light" aria-pressed="false">Light</button>
     </div>
-    <div class="seg" role="group" aria-label="Modus">
+    <div class="seg" role="group" aria-label="Modus (Vorschau)">
       <button id="mode-edit" aria-pressed="true">Bearbeiten</button>
       <button id="mode-play" aria-pressed="false">Spielen</button>
     </div>
@@ -136,10 +194,13 @@
       <h2>App-Vorschau (Mock)</h2>
       <div class="mock__stripe"></div>
       <div class="mock__header">
-        <span class="mock__brand">Beyond Worlds <small id="mock-modename">– RealmForge</small></span>
+        <span class="mock__brand" id="mock-brand">Beyond Worlds – RealmForge</span>
         <span class="mock__mode-pill" id="mock-modepill">Bearbeiten</span>
         <span class="mock__lock" id="mock-lock" hidden>🔒</span>
         <span class="mock__spacer"></span>
+        <select class="mock__select" aria-label="Kampagne"><option>Silberküste</option><option>Nordmark</option></select>
+        <button class="btn">Aktion</button>
+        <button class="btn btn--accent">Präsentieren</button>
       </div>
       <div class="mock__body">
         <nav class="mock__side">
@@ -157,8 +218,9 @@
           </div>
           <div class="rows">
             <div class="row" data-selected><span class="row__type">Ort</span><span class="row__title">Silberhafen</span><span class="row__sub">ausgewählt</span></div>
-            <div class="row"><span class="row__type">NSC</span><span class="row__title">Kapitän Mara</span><span class="row__sub">Kontakt</span></div>
+            <div class="row" data-active><span class="row__type">NSC</span><span class="row__title">Kapitän Mara</span><span class="row__sub">aktiv</span></div>
             <div class="row"><span class="row__type">Quest</span><span class="row__title">Der versunkene Turm</span><span class="row__sub">offen</span></div>
+            <div class="row"><span class="row__type">Fraktion</span><span class="row__title">Die Silberne Hand</span><span class="row__sub">neutral</span></div>
           </div>
           <div class="btns">
             <button class="btn btn--accent">Primär</button>
@@ -172,7 +234,10 @@
             <span class="chip chip--failure">Fehler</span>
             <span class="chip chip--muted">Neutral</span>
           </div>
-          <label class="field">Name<input value="Silberhafen" /></label>
+          <div class="mock__fields">
+            <label class="field">Name<input value="Silberhafen" /></label>
+            <label class="field">Fokus (aktiv)<input class="is-focus" value="Fokus-Ring" /></label>
+          </div>
           <div class="play">
             <div class="play__token"></div>
             <div class="play__pin">📍</div>
@@ -180,27 +245,52 @@
           </div>
         </div>
       </div>
-    </section>
-
-    <!-- rechte Spalte -->
-    <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
-      <section class="card">
-        <h2>JSON testen</h2>
-        <div class="json">
-          <textarea id="json-input" spellcheck="false" placeholder="Theme-JSON hier einfügen…"></textarea>
-          <div class="json__actions">
-            <button class="btn btn--accent" id="apply">Anwenden</button>
-            <button class="btn" id="reset">Zurücksetzen</button>
-            <button class="btn" id="sample">Beispiel laden</button>
-            <span class="json__msg" id="msg"></span>
+      <div class="mock__extras">
+        <div class="mock__tile">
+          <div class="mock__aside-h">Ebenen</div>
+          <div class="layers">
+            <span class="layer"><i class="sw sw--image"></i>Bild-Layer</span>
+            <span class="layer"><i class="sw sw--fog"></i>Nebel</span>
+            <span class="layer"><i class="sw sw--token"></i>Token</span>
           </div>
         </div>
-      </section>
-      <section class="card">
-        <h2>Themebare Tokens (aktuell aufgelöst)</h2>
-        <div class="tok-grid" id="tok-grid"></div>
-      </section>
-    </div>
+        <div class="mock__tile">
+          <div class="mock__aside-h">Overlay / Meldung</div>
+          <div class="tooltip">Tooltip / Overlay-Rand</div>
+          <div class="note-error">Fehler: Datei fehlt</div>
+        </div>
+        <div class="mock__tile">
+          <div class="mock__aside-h">Marke (modus-invariant)</div>
+          <div class="brand"><a class="brand-link">Marken-Link</a><span class="brand-badge">Badge</span></div>
+          <div class="print-box">Druck-Vorschau (gestrichelt)</div>
+        </div>
+        <div class="mock__tile">
+          <div class="mock__aside-h">Sonstiges</div>
+          <div class="hl">Highlight auf Scrim</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Editor -->
+    <section class="card">
+      <div class="tabs" role="tablist">
+        <button id="tab-config" role="tab" aria-selected="true">Config-Editor</button>
+        <button id="tab-raw" role="tab" aria-selected="false">Raw JSON</button>
+        <button id="export" class="btn tabs__export" title="Theme als JSON-Datei speichern">Theme exportieren ⬇</button>
+      </div>
+
+      <div id="panel-config" class="editor" role="tabpanel"></div>
+
+      <div id="panel-raw" class="json" role="tabpanel" hidden>
+        <textarea id="json-input" spellcheck="false" placeholder="Theme-JSON hier einfügen…"></textarea>
+        <div class="json__actions">
+          <button class="btn btn--accent" id="apply">Anwenden → Editor</button>
+          <button class="btn" id="reset">Zurücksetzen</button>
+          <button class="btn" id="sample">Beispiel laden</button>
+          <span class="json__msg" id="msg"></span>
+        </div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -214,9 +304,9 @@ var BASE_LIGHT = {
   '--color-background':'#f2f3f5','--color-border':'#d5d8dd',
   '--color-status-success':'#3c6f55','--color-status-warning':'#a06b1f','--color-status-failure':'#9f3a2e','--color-status-muted':'#6a6f75',
   '--color-on-accent':'#ffffff','--color-scrim':'rgb(0 0 0 / 0.6)','--color-overlay-border':'rgb(255 255 255 / 0.2)',
-  '--color-shadow':'#000','--color-highlight':'#fff',
+  '--color-shadow':'#000000','--color-highlight':'#ffffff',
   '--color-layer-image':'#6ea8fe','--color-layer-fog':'#b0b8c4','--color-layer-token':'#e0a15a',
-  '--color-swatch-outline':'#666','--color-print-border':'#ccc',
+  '--color-swatch-outline':'#666666','--color-print-border':'#cccccc',
   '--color-focus-glow':'rgba(47,111,145,0.15)','--color-error-soft':'rgba(180,60,60,0.12)','--color-shadow-panel':'rgba(15,18,22,0.12)'
 };
 var BASE_DARK_OVERRIDES = {
@@ -244,15 +334,52 @@ var COLOR_TOKENS = Object.keys(BASE_LIGHT);
 var ACCENT_MAP = { accent:'--mode-accent', hover:'--mode-accent-hover', on:'--mode-accent-on', text:'--mode-accent-text', soft:'--mode-accent-soft' };
 var ACCENT_FIELDS = ['accent','hover','on','text','soft'];
 
-// ── Zustand ──────────────────────────────────────────────────────────────────
-var appearance = 'dark', mode = 'edit', userTheme = null;
 var root = document.documentElement;
+var appearance = 'dark', mode = 'edit';   // Vorschau-Achsen
+var userTheme = null;                       // aktuell angewandtes Theme (= buildDTO(cfg))
+
+// ── Farb-Helfer: parse/format inkl. Alpha ────────────────────────────────────
+function clamp255(n){ n=Math.round(n); return n<0?0:(n>255?255:n); }
+function toHex2(n){ var s=clamp255(n).toString(16); return s.length<2?'0'+s:s; }
+function parseColor(str){
+  if(typeof str!=='string') return null;
+  str=str.trim();
+  var m=/^#([0-9a-fA-F]{3,8})$/.exec(str);
+  if(m){
+    var h=m[1];
+    if(h.length===3||h.length===4){
+      var r=parseInt(h[0]+h[0],16),g=parseInt(h[1]+h[1],16),b=parseInt(h[2]+h[2],16);
+      var a=h.length===4?parseInt(h[3]+h[3],16)/255:1;
+      return { hex:'#'+toHex2(r)+toHex2(g)+toHex2(b), alpha:a };
+    }
+    if(h.length===6||h.length===8){
+      var a=h.length===8?parseInt(h.slice(6,8),16)/255:1;
+      return { hex:('#'+h.slice(0,6)).toLowerCase(), alpha:a };
+    }
+    return null;
+  }
+  m=/^rgba?\(([^)]+)\)$/i.exec(str);
+  if(m){
+    var parts=m[1].replace(/\//g,' ').split(/[\s,]+/).filter(Boolean);
+    if(parts.length>=3){
+      var r=parseFloat(parts[0]),g=parseFloat(parts[1]),b=parseFloat(parts[2]);
+      var a=parts.length>=4?parseFloat(parts[3]):1;
+      if(!isNaN(r)&&!isNaN(g)&&!isNaN(b)) return { hex:'#'+toHex2(r)+toHex2(g)+toHex2(b), alpha:isNaN(a)?1:a };
+    }
+    return null;
+  }
+  return null;
+}
+function formatColor(hex, alpha){
+  if(alpha>=1) return hex;
+  var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return 'rgba('+r+','+g+','+b+','+(Math.round(alpha*100)/100)+')';
+}
 
 // ── Validierung (Spiegel von user-theme-loader.ts) ───────────────────────────
 function isObj(v){ return v && typeof v==='object' && !Array.isArray(v); }
 function isStr(v){ return typeof v==='string' && v.length>0; }
-// #392: nur echte Farbliterale zulassen — kein url()/expression()/;/@import/Kommentar
-// (verhindert Tracking-/Exfil-Beacons via url() aus einem Fremd-Theme).
+// #392: nur echte Farbliterale — kein url()/expression()/;/@import/Kommentar.
 var UNSAFE_VALUE_RE = /url\(|expression\(|@import|;|\/\*/i;
 function isSafeColor(v){ return isStr(v) && !UNSAFE_VALUE_RE.test(v); }
 function validAccentSet(v){ return isObj(v) && ACCENT_FIELDS.every(function(f){ return isSafeColor(v[f]); }); }
@@ -262,7 +389,7 @@ function validateBlock(block, modeSupport, where){
     if(!isObj(block.palette)) return "'"+where+".palette' ist kein Objekt";
     for(var k in block.palette){
       if(COLOR_TOKENS.indexOf(k)<0) return "'"+where+".palette' hat unbekannten Token '"+k+"'";
-      if(!isSafeColor(block.palette[k])) return "'"+where+".palette."+k+"' ist kein sicheres Farbliteral (kein url()/;/@import)";
+      if(!isSafeColor(block.palette[k])) return "'"+where+".palette."+k+"' ist kein sicheres Farbliteral";
     }
   }
   if(modeSupport==='per-mode'){
@@ -281,82 +408,253 @@ function validate(dto){
   if(['dark','light','both'].indexOf(dto.appearance)<0) return "ungültige 'appearance' (dark|light|both)";
   if(['unified','per-mode'].indexOf(dto.modeSupport)<0) return "ungültiges 'modeSupport' (unified|per-mode)";
   var req = dto.appearance==='both' ? ['dark','light'] : [dto.appearance];
-  for(var i=0;i<req.length;i++){ var err = validateBlock(dto[req[i]], dto.modeSupport, req[i]); if(err) return err; }
+  for(var i=0;i<req.length;i++){ var err=validateBlock(dto[req[i]], dto.modeSupport, req[i]); if(err) return err; }
   return null;
 }
 
-// ── Auflösen + Anwenden ──────────────────────────────────────────────────────
-function mapAccents(a){ var o={}; ACCENT_FIELDS.forEach(function(f){ o[ACCENT_MAP[f]] = a[f]; }); return o; }
-function effectiveAppearance(){
-  if(userTheme && userTheme.appearance!=='both') return userTheme.appearance; // single-appearance erzwingt
-  return appearance;
+// ── Config-Modell (Single Source of Truth) ───────────────────────────────────
+function baseFor(app){ var o={}; for(var k in BASE_LIGHT) o[k]=BASE_LIGHT[k]; if(app==='dark') for(var k in BASE_DARK_OVERRIDES) o[k]=BASE_DARK_OVERRIDES[k]; return o; }
+function seedBlock(app){
+  return {
+    on:{}, val:baseFor(app),
+    accents:{
+      unified: Object.assign({}, DEFAULT_ACCENTS[app].edit),
+      edit:    Object.assign({}, DEFAULT_ACCENTS[app].edit),
+      play:    Object.assign({}, DEFAULT_ACCENTS[app].play)
+    }
+  };
 }
+function seedCfg(){ return { id:'my-theme', label:'My Theme', appearance:'both', modeSupport:'per-mode', dark:seedBlock('dark'), light:seedBlock('light') }; }
+var cfg = seedCfg();
+// Einklapp-Zustand der Erscheinungs-Sektionen (überlebt renderConfig-Neuaufbauten).
+var collapsed = { dark:false, light:false };
+
+function reqBlocks(){ return cfg.appearance==='both' ? ['dark','light'] : [cfg.appearance]; }
+function buildDTO(){
+  var dto = { id:cfg.id, label:cfg.label, appearance:cfg.appearance, modeSupport:cfg.modeSupport };
+  reqBlocks().forEach(function(b){
+    var blk={}, pal={}, any=false;
+    COLOR_TOKENS.forEach(function(tok){ if(cfg[b].on[tok]){ pal[tok]=cfg[b].val[tok]; any=true; } });
+    if(any) blk.palette=pal;
+    if(cfg.modeSupport==='unified') blk.accents=Object.assign({}, cfg[b].accents.unified);
+    else blk.accents={ edit:Object.assign({},cfg[b].accents.edit), play:Object.assign({},cfg[b].accents.play) };
+    dto[b]=blk;
+  });
+  return dto;
+}
+function populateCfgFromDTO(dto){
+  var next=seedCfg();
+  next.id=dto.id; next.label=dto.label; next.appearance=dto.appearance; next.modeSupport=dto.modeSupport;
+  ['dark','light'].forEach(function(b){
+    var block=dto[b]; if(!isObj(block)) return;
+    if(isObj(block.palette)) for(var k in block.palette){ if(COLOR_TOKENS.indexOf(k)>=0){ next[b].on[k]=true; next[b].val[k]=block.palette[k]; } }
+    if(dto.modeSupport==='unified'){ if(validAccentSet(block.accents)){ next[b].accents.unified=Object.assign({},block.accents); } }
+    else if(isObj(block.accents)){ if(validAccentSet(block.accents.edit)) next[b].accents.edit=Object.assign({},block.accents.edit); if(validAccentSet(block.accents.play)) next[b].accents.play=Object.assign({},block.accents.play); }
+  });
+  cfg=next;
+}
+
+// ── Auflösen + Anwenden (App-Mock) ───────────────────────────────────────────
+function mapAccents(a){ var o={}; ACCENT_FIELDS.forEach(function(f){ o[ACCENT_MAP[f]]=a[f]; }); return o; }
+function effectiveAppearance(){ return (userTheme && userTheme.appearance!=='both') ? userTheme.appearance : appearance; }
 function resolve(){
-  var app = effectiveAppearance();
-  var colors = {}; for(var k in BASE_LIGHT) colors[k]=BASE_LIGHT[k];
+  var app=effectiveAppearance();
+  var colors={}; for(var k in BASE_LIGHT) colors[k]=BASE_LIGHT[k];
   if(app==='dark') for(var k in BASE_DARK_OVERRIDES) colors[k]=BASE_DARK_OVERRIDES[k];
-  var accents = DEFAULT_ACCENTS[app][mode];
+  var accents=DEFAULT_ACCENTS[app][mode];
   if(userTheme){
-    var block = userTheme[app];
+    var block=userTheme[app];
     if(block){
       if(block.palette) for(var k in block.palette) colors[k]=block.palette[k];
-      var acc = userTheme.modeSupport==='unified' ? block.accents : block.accents[mode];
-      if(acc) accents = acc;
+      var acc=userTheme.modeSupport==='unified'?block.accents:(block.accents?block.accents[mode]:null);
+      if(acc) accents=acc;
     }
   }
   for(var g in GEOMETRY) root.style.setProperty(g, GEOMETRY[g]);
   for(var c in colors) root.style.setProperty(c, colors[c]);
-  var ma = mapAccents(accents); for(var m in ma) root.style.setProperty(m, ma[m]);
-  return { colors: colors, accents: ma, app: app };
-}
-
-// ── UI-Sync ──────────────────────────────────────────────────────────────────
-function renderTokens(state){
-  var grid = document.getElementById('tok-grid'); grid.innerHTML='';
-  function group(name){ var d=document.createElement('div'); d.className='tok__group'; d.textContent=name; grid.appendChild(d); }
-  function swatch(name,value){
-    var t=document.createElement('div'); t.className='tok';
-    var sw=document.createElement('div'); sw.className='tok__sw'; sw.style.background=value;
-    var meta=document.createElement('div'); meta.className='tok__meta';
-    var nm=document.createElement('div'); nm.className='tok__name'; nm.textContent=name;
-    var vl=document.createElement('div'); vl.className='tok__val'; vl.textContent=value;
-    meta.appendChild(nm); meta.appendChild(vl); t.appendChild(sw); t.appendChild(meta); grid.appendChild(t);
-  }
-  group('Mode-Accents ('+state.app+' / '+mode+')');
-  ACCENT_FIELDS.forEach(function(f){ var n=ACCENT_MAP[f]; swatch(n, state.accents[n]); });
-  group('Palette ('+state.app+')');
-  COLOR_TOKENS.forEach(function(n){ swatch(n, state.colors[n]); });
+  var ma=mapAccents(accents); for(var m in ma) root.style.setProperty(m, ma[m]);
 }
 function syncControls(){
   var forced = userTheme && userTheme.appearance!=='both';
-  document.getElementById('app-dark').disabled = forced;
-  document.getElementById('app-light').disabled = forced;
-  document.getElementById('forced-note').textContent = forced ? ('Theme erzwingt '+userTheme.appearance+' — Umschalter aus') : '';
-  var app = effectiveAppearance();
+  document.getElementById('app-dark').disabled=forced;
+  document.getElementById('app-light').disabled=forced;
+  document.getElementById('forced-note').textContent = forced ? ('Theme erzwingt '+userTheme.appearance+' — Vorschau-Umschalter aus') : '';
+  var app=effectiveAppearance();
   document.getElementById('app-dark').setAttribute('aria-pressed', String(app==='dark'));
   document.getElementById('app-light').setAttribute('aria-pressed', String(app==='light'));
   document.getElementById('mode-edit').setAttribute('aria-pressed', String(mode==='edit'));
   document.getElementById('mode-play').setAttribute('aria-pressed', String(mode==='play'));
-  document.getElementById('mock-modename').textContent = mode==='play' ? '– Adventure Nexus' : '– RealmForge';
+  document.getElementById('mock-brand').textContent = 'Beyond Worlds – ' + (mode==='play' ? 'Adventure Nexus' : 'RealmForge');
   document.getElementById('mock-modepill').textContent = mode==='play' ? 'Spielen' : 'Bearbeiten';
   document.getElementById('mock-lock').hidden = mode!=='play';
 }
-function refresh(){ syncControls(); renderTokens(resolve()); }
+function previewOnly(){ syncControls(); resolve(); }
 
-// ── Events ────────────────────────────────────────────────────────────────────
-document.getElementById('app-dark').onclick = function(){ appearance='dark'; refresh(); };
-document.getElementById('app-light').onclick = function(){ appearance='light'; refresh(); };
-document.getElementById('mode-edit').onclick = function(){ mode='edit'; refresh(); };
-document.getElementById('mode-play').onclick = function(){ mode='play'; refresh(); };
-function setMsg(text, kind){ var m=document.getElementById('msg'); m.textContent=text||''; m.setAttribute('data-kind', kind||''); }
-document.getElementById('apply').onclick = function(){
-  var text = document.getElementById('json-input').value;
-  var dto; try { dto = JSON.parse(text); } catch(e){ userTheme=null; setMsg('JSON-Fehler: '+e.message,'err'); refresh(); return; }
-  var err = validate(dto);
-  if(err){ userTheme=null; setMsg('Ungültig: '+err,'err'); refresh(); return; }
-  userTheme = dto; setMsg("OK — Theme '"+dto.label+"' angewandt.",'ok'); refresh();
+// commit = cfg → userTheme → Mock + Raw-JSON synchron halten + Validitäts-Hinweis
+function commit(){
+  userTheme = buildDTO();
+  document.getElementById('json-input').value = JSON.stringify(userTheme, null, 2);
+  var err = validate(userTheme);
+  setEdMsg(err ? ('Achtung: '+err) : ("OK — '"+cfg.label+"' ist gültig."), err?'err':'ok');
+  previewOnly();
+}
+function setEdMsg(t,k){ var m=document.getElementById('ed-msg'); if(!m) return; m.textContent=t||''; m.setAttribute('data-kind',k||''); }
+
+// ── Color-Control (Picker + Alpha + Text) ────────────────────────────────────
+function makeColorControl(value, onChange){
+  var pc = parseColor(value) || { hex:'#000000', alpha:1 };
+  var wrap=document.createElement('div'); wrap.className='cc';
+  var color=document.createElement('input'); color.type='color'; color.value=pc.hex;
+  var alpha=document.createElement('input'); alpha.type='range'; alpha.min='0'; alpha.max='100'; alpha.step='1'; alpha.value=String(Math.round(pc.alpha*100)); alpha.className='cc__a'; alpha.title='Alpha';
+  var out=document.createElement('input'); out.type='text'; out.className='cc__out'; out.value=value; out.spellcheck=false;
+  wrap.appendChild(color); wrap.appendChild(alpha); wrap.appendChild(out);
+  function emit(){ var v=formatColor(color.value, (+alpha.value)/100); out.value=v; onChange(v); }
+  color.addEventListener('input', emit);
+  alpha.addEventListener('input', emit);
+  out.addEventListener('change', function(){ var p=parseColor(out.value); if(p){ color.value=p.hex; alpha.value=String(Math.round(p.alpha*100)); onChange(out.value); } else { out.value=formatColor(color.value,(+alpha.value)/100); } });
+  return wrap;
+}
+
+// ── Config-Editor rendern ────────────────────────────────────────────────────
+function el(tag, cls, txt){ var e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e; }
+function statusEl(){ return el('span','ed-status'); }
+function setStatus(row, status, changed, changedLabel, baseLabel){
+  status.textContent = changed ? changedLabel : baseLabel;
+  status.className = 'ed-status ' + (changed ? 'ed-status--themed' : 'ed-status--inherit');
+  row.classList.toggle('is-changed', changed);
+}
+function paletteRow(blockKey, tok){
+  var row=el('div','ed-row');
+  var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!cfg[blockKey].on[tok]; cb.title='überschreiben';
+  var name=el('div','ed-row__name',tok);
+  var status=statusEl();
+  function refresh(){ setStatus(row, status, !!cfg[blockKey].on[tok], 'themed', 'erbt'); }
+  var ctrl=makeColorControl(cfg[blockKey].val[tok], function(v){ cfg[blockKey].val[tok]=v; if(!cb.checked){ cb.checked=true; cfg[blockKey].on[tok]=true; } refresh(); commit(); });
+  cb.addEventListener('change', function(){ cfg[blockKey].on[tok]=cb.checked; refresh(); commit(); });
+  refresh();
+  row.appendChild(cb); row.appendChild(name); row.appendChild(status); row.appendChild(ctrl);
+  return row;
+}
+function accentRow(blockKey, setKey, field){
+  var row=el('div','ed-row ed-row--accent');
+  // "Standard" = identisch zum Default-Theme-Accent; "geändert" = abweichend.
+  // unified erbt vom edit-Default (so geseedet).
+  var defVal=DEFAULT_ACCENTS[blockKey][setKey==='unified'?'edit':setKey][field];
+  var status=statusEl();
+  function refresh(){ setStatus(row, status, cfg[blockKey].accents[setKey][field]!==defVal, 'geändert', 'Standard'); }
+  var ctrl=makeColorControl(cfg[blockKey].accents[setKey][field], function(v){ cfg[blockKey].accents[setKey][field]=v; refresh(); commit(); });
+  refresh();
+  row.appendChild(el('span'));
+  row.appendChild(el('div','ed-row__name',field));
+  row.appendChild(status);
+  row.appendChild(ctrl);
+  return row;
+}
+function accentGroup(blockKey, setKey, title){
+  var frag=document.createDocumentFragment();
+  if(title) frag.appendChild(el('div','ed-sub',title));
+  var rows=el('div','ed-rows');
+  ACCENT_FIELDS.forEach(function(f){ rows.appendChild(accentRow(blockKey,setKey,f)); });
+  frag.appendChild(rows);
+  return frag;
+}
+function blockSection(blockKey){
+  var sec=el('div','ed-block');
+  if(collapsed[blockKey]) sec.setAttribute('data-collapsed','');
+  // Klappbarer Header (Caret + Erscheinungs-Name).
+  var h=el('h3'); h.setAttribute('role','button'); h.setAttribute('tabindex','0');
+  h.setAttribute('aria-expanded', String(!collapsed[blockKey]));
+  h.appendChild(el('span','ed-block__caret','▾'));
+  h.appendChild(el('span', null, blockKey==='dark'?'Dark':'Light'));
+  var body=el('div','ed-block__body'); body.hidden=!!collapsed[blockKey];
+  // Accents
+  body.appendChild(el('div','ed-sub','Mode-Accents'));
+  if(cfg.modeSupport==='unified'){ body.appendChild(accentGroup(blockKey,'unified',null)); }
+  else { body.appendChild(accentGroup(blockKey,'edit','edit')); body.appendChild(accentGroup(blockKey,'play','play')); }
+  // Palette
+  body.appendChild(el('div','ed-sub','Palette (Häkchen = überschreiben, sonst erbt Basis)'));
+  var rows=el('div','ed-rows');
+  COLOR_TOKENS.forEach(function(tok){ rows.appendChild(paletteRow(blockKey,tok)); });
+  body.appendChild(rows);
+  function toggle(){
+    collapsed[blockKey]=!collapsed[blockKey];
+    body.hidden=collapsed[blockKey];
+    h.setAttribute('aria-expanded', String(!collapsed[blockKey]));
+    if(collapsed[blockKey]) sec.setAttribute('data-collapsed',''); else sec.removeAttribute('data-collapsed');
+  }
+  h.addEventListener('click', toggle);
+  h.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
+  sec.appendChild(h); sec.appendChild(body);
+  return sec;
+}
+function renderConfig(){
+  var panel=document.getElementById('panel-config'); panel.innerHTML='';
+  var msg=el('div','ed-msg'); msg.id='ed-msg'; panel.appendChild(msg);
+
+  var meta=el('div','ed-meta');
+  var idF=el('label','ed-field','id'); var idIn=document.createElement('input'); idIn.value=cfg.id; idIn.addEventListener('input',function(){ cfg.id=idIn.value.trim(); commit(); }); idF.appendChild(idIn);
+  var lbF=el('label','ed-field','label'); var lbIn=document.createElement('input'); lbIn.value=cfg.label; lbIn.addEventListener('input',function(){ cfg.label=lbIn.value; commit(); }); lbF.appendChild(lbIn);
+  meta.appendChild(idF); meta.appendChild(lbF);
+
+  var appF=el('label','ed-field','appearance');
+  var appSel=document.createElement('select');
+  ['dark','light','both'].forEach(function(o){ var op=document.createElement('option'); op.value=o; op.textContent=o; if(cfg.appearance===o) op.selected=true; appSel.appendChild(op); });
+  appSel.addEventListener('change',function(){ cfg.appearance=appSel.value; renderConfig(); commit(); });
+  appF.appendChild(appSel);
+
+  var msF=el('label','ed-field','modeSupport');
+  var msSel=document.createElement('select');
+  ['unified','per-mode'].forEach(function(o){ var op=document.createElement('option'); op.value=o; op.textContent=o; if(cfg.modeSupport===o) op.selected=true; msSel.appendChild(op); });
+  msSel.addEventListener('change',function(){ cfg.modeSupport=msSel.value; renderConfig(); commit(); });
+  msF.appendChild(msSel);
+  meta.appendChild(appF); meta.appendChild(msF);
+  panel.appendChild(meta);
+
+  reqBlocks().forEach(function(b){ panel.appendChild(blockSection(b)); });
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+function selectTab(which){
+  var isCfg = which==='config';
+  document.getElementById('tab-config').setAttribute('aria-selected', String(isCfg));
+  document.getElementById('tab-raw').setAttribute('aria-selected', String(!isCfg));
+  document.getElementById('panel-config').hidden = !isCfg;
+  document.getElementById('panel-raw').hidden = isCfg;
+  if(isCfg) renderConfig(); // Config aus aktuellem cfg neu aufbauen
+}
+document.getElementById('tab-config').onclick=function(){
+  // Raw → Config beim Wechsel direkt umwandeln: valides JSON übernehmen, sonst cfg behalten.
+  var text=document.getElementById('json-input').value;
+  if(text.trim()){ try{ var dto=JSON.parse(text); if(!validate(dto)){ populateCfgFromDTO(dto); commit(); } }catch(e){} }
+  selectTab('config');
 };
-document.getElementById('reset').onclick = function(){ userTheme=null; document.getElementById('json-input').value=''; setMsg('Zurückgesetzt auf Default.',''); refresh(); };
+document.getElementById('tab-raw').onclick=function(){ document.getElementById('json-input').value=JSON.stringify(buildDTO(),null,2); selectTab('raw'); };
+document.getElementById('export').onclick=function(){
+  var json=JSON.stringify(buildDTO(),null,2);
+  var name=(/^[a-z0-9-]+$/.test(cfg.id)?cfg.id:'theme')+'.json';
+  var blob=new Blob([json],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download=name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+// ── Vorschau-Achsen ────────────────────────────────────────────────────────────
+document.getElementById('app-dark').onclick=function(){ appearance='dark'; previewOnly(); };
+document.getElementById('app-light').onclick=function(){ appearance='light'; previewOnly(); };
+document.getElementById('mode-edit').onclick=function(){ mode='edit'; previewOnly(); };
+document.getElementById('mode-play').onclick=function(){ mode='play'; previewOnly(); };
+
+// ── Raw JSON ───────────────────────────────────────────────────────────────────
+function setMsg(t,k){ var m=document.getElementById('msg'); m.textContent=t||''; m.setAttribute('data-kind',k||''); }
+document.getElementById('apply').onclick=function(){
+  var text=document.getElementById('json-input').value;
+  var dto; try{ dto=JSON.parse(text); }catch(e){ setMsg('JSON-Fehler: '+e.message,'err'); return; }
+  var err=validate(dto);
+  if(err){ setMsg('Ungültig: '+err,'err'); return; }
+  populateCfgFromDTO(dto); commit(); setMsg("OK — '"+dto.label+"' in den Editor geladen.",'ok'); selectTab('config');
+};
+document.getElementById('reset').onclick=function(){ cfg=seedCfg(); commit(); document.getElementById('json-input').value=JSON.stringify(buildDTO(),null,2); setMsg('Auf Default zurückgesetzt.',''); selectTab('config'); };
 var SAMPLE = {
   id:'amethyst', label:'Amethyst', appearance:'both', modeSupport:'per-mode',
   dark:{ palette:{ '--color-background':'#160a26','--color-surface':'#241236','--color-text':'#e9e0f5','--color-accent':'#a855f7' },
@@ -366,9 +664,11 @@ var SAMPLE = {
     accents:{ edit:{accent:'#c1121f',hover:'#a80f1a',on:'#ffffff',text:'#b3121f',soft:'rgba(193,18,31,0.12)'},
               play:{accent:'#7c3aed',hover:'#6d28d9',on:'#ffffff',text:'#7c3aed',soft:'rgba(124,58,237,0.14)'} } }
 };
-document.getElementById('sample').onclick = function(){ document.getElementById('json-input').value = JSON.stringify(SAMPLE, null, 2); };
+document.getElementById('sample').onclick=function(){ document.getElementById('json-input').value=JSON.stringify(SAMPLE,null,2); setMsg('Beispiel eingefügt — „Anwenden → Editor" drücken.',''); };
 
-refresh();
+// ── Start ──────────────────────────────────────────────────────────────────────
+renderConfig();
+commit();
 </script>
 </body>
 </html>
