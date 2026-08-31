@@ -1164,11 +1164,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                 Nicht-farbliche Modus-Kennzeichnung #1 (Decision 4) = der Klartext-Name. */}
             <div className="workspace-shell__identity" role="group"
               aria-label={t('modeIdentityAria', 'Produkt-Identität')}>
-              <span className="workspace-shell__wordmark">
-                <span className="workspace-shell__wordmark-platform">{brandPlatform}</span>
-                <span className="workspace-shell__wordmark-sep" aria-hidden="true"> – </span>
-                <span className="workspace-shell__wordmark-mode">{brandModeMark}</span>
-              </span>
+              <span className="workspace-shell__wordmark">{brandPlatform} – {brandModeMark}</span>
               {/* Live-Modus-Schloss — nicht-farbliche Modus-Kennzeichnung #2 (Decision 4). */}
               {mode === 'play' && (
                 <StatusChip tone="warning" aria-label={t('modeLockedAria', 'Live-Modus (gesperrt)')}>

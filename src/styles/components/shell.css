@@ -102,24 +102,15 @@
 }
 /* M17-S07 (#389): EINE zusammengeführte Wortmarke — einheitliche Typo/Basis-
    Farbe; nur der Modus-Teil trägt dezent den Modus-Akzent. Kein Pill-Style. */
+/* #389 + Feedback: EINE Wortmarke = ein String, eine Klasse. Komplett einfarbig
+   im Modus-Akzent (Plattform, Bindestrich und Modus-Teil gleich groß + gleiche
+   Farbe); der Text selbst (RealmForge/Adventure Nexus) folgt `mode`. */
 .workspace-shell__wordmark {
-  display: inline-flex;
-  align-items: baseline;
   font-size: 0.95rem;
   font-weight: 650;
   letter-spacing: 0.01em;
-  color: var(--color-text);
-  white-space: nowrap;
-}
-.workspace-shell__wordmark-platform {
-  color: var(--color-text);
-}
-.workspace-shell__wordmark-sep {
-  color: var(--color-text-muted);
-  white-space: pre;
-}
-.workspace-shell__wordmark-mode {
   color: var(--mode-accent-text);
+  white-space: nowrap;
 }
 
 /* M17-S04 (#385): Theme-Picker-Option mit Live-Akzent-Swatch (Farbe via --swatch). */
