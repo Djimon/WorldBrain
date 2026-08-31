@@ -433,7 +433,7 @@ export function NestedTree({
         <div style={{
           position: 'fixed', left: drag.ghostX + 14, top: drag.ghostY - 10,
           background: 'var(--color-surface)',
-          border: `1px solid ${drag.dropPath !== null ? 'var(--color-accent)' : 'var(--color-border)'}`,
+          border: `1px solid ${drag.dropPath !== null ? 'var(--mode-accent)' : 'var(--color-border)'}`,
           borderRadius: 4, padding: '3px 10px', fontSize: '0.82rem',
           color: 'var(--color-text)', opacity: 0.92, pointerEvents: 'none',
           zIndex: 9999, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,0,0,0.5)',

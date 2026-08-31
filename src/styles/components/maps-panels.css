@@ -27,7 +27,7 @@
   cursor: col-resize;
   background: transparent;
 }
-.maps-sidebar__resize-handle:hover { background: var(--color-accent); opacity: 0.4; }
+.maps-sidebar__resize-handle:hover { background: var(--mode-accent); opacity: 0.4; }
 
 /* Maps sidebar tabs (#297): Karten / Ebenen */
 .maps-sidebar-tabs {
@@ -163,7 +163,7 @@
   color: var(--color-text);
   font-size: 0.85rem;
 }
-.layer-panel__name-field input:focus { border-color: var(--color-accent); outline: none; }
+.layer-panel__name-field input:focus { border-color: var(--mode-accent); outline: none; }
 
 /* ── Fog paint toolbar (#276) ─────────────────────────────────────────────── */
 .fog-tools {
@@ -222,7 +222,7 @@
   background: var(--color-surface);
   color: var(--color-text);
 }
-.map-folder-tree__confirm-no:hover { border-color: var(--color-accent); }
+.map-folder-tree__confirm-no:hover { border-color: var(--mode-accent); }
 
 .map-folder-tree__map-title {
   flex: 1;

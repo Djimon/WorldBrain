@@ -951,7 +951,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
                   top: layer.offset_y,
                   pointerEvents: moving ? 'auto' : 'none',
                   cursor: moving ? 'move' : undefined,
-                  outline: moving ? '2px dashed var(--color-accent)' : undefined,
+                  outline: moving ? '2px dashed var(--mode-accent)' : undefined,
                 }}
                 onLoad={idx === 0 ? (e) => { const i = e.currentTarget; setImgSize({ w: i.naturalWidth, h: i.naturalHeight }); } : undefined}
                 onPointerDown={moving ? (e) => handleLayerDragStart(layer, e) : undefined}
@@ -1161,7 +1161,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
               <ListRow as="div" interactive={false} key={tk.id} selected={selectedTokenId === tk.id} className="map-token-list__row">
                 <span
                   className={`map-token-list__swatch map-token-list__swatch--${tk.render_style}`}
-                  style={tk.render_style === 'token' ? { background: tk.ring_color || 'var(--color-accent)' } : undefined}
+                  style={tk.render_style === 'token' ? { background: tk.ring_color || 'var(--mode-accent)' } : undefined}
                   title={tk.render_style === 'token' ? t('mapSideTabs.tokenCircle', 'Token (Kreis)') : t('mapSideTabs.tokenPlain', 'Plain (Bild)')}
                 />
                 <button type="button" className="map-token-list__name"

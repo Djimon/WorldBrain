@@ -21,8 +21,8 @@
   margin-left: calc(var(--space-4) / -2);
   margin-top: calc(var(--space-4) / -2);
   border-radius: var(--radius-pill);
-  background: var(--color-accent);
-  border: 2px solid var(--color-on-accent);
+  background: var(--mode-accent);
+  border: 2px solid var(--mode-accent-on);
   pointer-events: none;
 }
 

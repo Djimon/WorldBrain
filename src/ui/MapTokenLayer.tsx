@@ -51,7 +51,7 @@ export interface MapTokenProps {
   onCounterStep?: (index: number, delta: number) => void;
 }
 
-const DEFAULT_RING = 'var(--color-accent, #6ea8fe)';
+const DEFAULT_RING = 'var(--mode-accent, #6ea8fe)';
 
 export function tokenName(token: MapTokenRow): string {
   return token.label || 'Token';
@@ -64,7 +64,7 @@ function CounterBadge({ counter, index, selected, onCounterStep }: {
   const [hover, setHover] = useState(false);
   const showStepper = hover || selected;
   const swallow = (e: React.SyntheticEvent) => e.stopPropagation();
-  const bg = counter.color || 'var(--color-accent, #6ea8fe)';
+  const bg = counter.color || 'var(--mode-accent, #6ea8fe)';
   return (
     <div className="map-token__counter" title={counter.label || undefined}
       style={{ background: bg }}

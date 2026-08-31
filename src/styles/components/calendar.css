@@ -81,7 +81,7 @@
 
 .cal-form__input:focus {
   outline: none;
-  border-color: var(--color-accent);
+  border-color: var(--mode-accent);
 }
 
 .cal-form__select {

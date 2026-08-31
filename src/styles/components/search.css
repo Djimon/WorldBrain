@@ -33,7 +33,7 @@
 
 .gsearch__input:focus {
   outline: none;
-  border-color: var(--color-accent);
+  border-color: var(--mode-accent);
 }
 
 .gsearch__facets {
@@ -81,7 +81,7 @@
 
 .gsearch__result-type {
   font-size: 0.75rem;
-  color: var(--color-accent);
+  color: var(--mode-accent-text);
   grid-column: 2;
   grid-row: 1;
   align-self: center;

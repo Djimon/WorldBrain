@@ -29,6 +29,6 @@
 
 .split-view__divider:hover,
 .split-view__divider:focus-visible {
-  background: var(--color-accent);
+  background: var(--mode-accent);
   outline: none;
 }

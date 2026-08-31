@@ -54,8 +54,8 @@
 .scene-switcher__select:hover { background: var(--color-surface-hover); }
 
 .scene-switcher__select[aria-pressed='true'] {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--mode-accent);
+  color: var(--mode-accent-on);
 }
 
 /* icon buttons only — exclude text .btn (Speichern/Abbrechen in rename mode),
@@ -183,7 +183,7 @@
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-status-failure);
   border-radius: var(--radius-sm);
-  background: var(--color-accent-soft);
+  background: var(--color-error-soft);
   color: var(--color-text);
   font-size: 0.8rem;
 }
@@ -226,19 +226,19 @@
   border-radius: 50%;
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
-  color: var(--color-accent);
+  color: var(--mode-accent-text);
   font-size: 1rem;
   flex-shrink: 0;
   cursor: pointer;
   transition: background 0.1s, border-color 0.1s;
 }
 
-.channel-row__status-icon:hover { background: var(--color-surface-hover); border-color: var(--color-accent); }
+.channel-row__status-icon:hover { background: var(--color-surface-hover); border-color: var(--mode-accent); }
 
 .channel-row__status-icon[aria-pressed='true'] {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--mode-accent);
+  border-color: var(--mode-accent);
+  color: var(--mode-accent-on);
 }
 
 .channel-row__waveform {
@@ -258,7 +258,7 @@
 }
 
 .channel-row__waveform.is-active .channel-row__bar {
-  background: var(--color-accent);
+  background: var(--mode-accent);
   animation: channel-row-bar-pulse 0.9s ease-in-out infinite;
 }
 
@@ -318,7 +318,7 @@
   text-align: right;
 }
 
-.channel-row input[type='range'] { width: 90px; accent-color: var(--color-accent); }
+.channel-row input[type='range'] { width: 90px; accent-color: var(--mode-accent); }
 .channel-row__volume input[type='range'] { width: 110px; }
 
 /* Inset (surface-alt) form — surface/border from <Panel>, wrap+align+gap from
@@ -374,7 +374,7 @@
 .clip-button:hover { transform: translateY(-1px); }
 
 .clip-button[aria-pressed='true'] {
-  box-shadow: 0 0 0 2px var(--color-accent);
+  box-shadow: 0 0 0 2px var(--mode-accent);
 }
 
 .clip-button__icon { font-size: 1.1rem; line-height: 1; }
@@ -397,7 +397,7 @@
   cursor: pointer;
 }
 
-.clip-button--empty:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.clip-button--empty:hover { border-color: var(--mode-accent); color: var(--mode-accent-text); }
 
 .clip-button__edit {
   position: absolute;
@@ -421,7 +421,7 @@
 .clip-button-wrap:hover .clip-button__edit,
 .clip-button__edit:focus-visible { opacity: 1; }
 
-.clip-button__edit:hover { color: var(--color-text); border-color: var(--color-accent); }
+.clip-button__edit:hover { color: var(--color-text); border-color: var(--mode-accent); }
 
 /* Clip editor */
 
@@ -460,7 +460,7 @@
   color: var(--color-text);
 }
 
-.clip-editor input[type='range'] { accent-color: var(--color-accent); }
+.clip-editor input[type='range'] { accent-color: var(--mode-accent); }
 
 .clip-editor__source-file {
   display: flex;

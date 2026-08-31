@@ -40,8 +40,8 @@
 }
 
 .workspace-shell__sidebar button[aria-pressed='true'] {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--mode-accent);
+  color: var(--mode-accent-on);
 }
 
 .workspace-shell__sidebar-spacer {
@@ -139,7 +139,7 @@
   cursor: pointer;
 }
 .language-switcher:hover {
-  border-color: var(--color-accent);
+  border-color: var(--mode-accent);
 }
 
 .theme-toggle {
@@ -152,7 +152,7 @@
   line-height: 1.4;
 }
 .theme-toggle:hover {
-  border-color: var(--color-accent);
+  border-color: var(--mode-accent);
 }
 
 .workspace-shell__project-name {
@@ -219,8 +219,8 @@
 }
 
 .workspace-area__sidebar ul li button[aria-pressed='true'] {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--mode-accent);
+  color: var(--mode-accent-on);
 }
 
 .workspace-area__main {
@@ -292,7 +292,7 @@
 }
 
 .welcome-screen__project-btn:hover {
-  border-color: var(--color-accent);
+  border-color: var(--mode-accent);
   box-shadow: 0 0 0 2px var(--color-focus-glow);
 }
 
@@ -337,7 +337,7 @@
 
 .new-project__field input:focus {
   outline: none;
-  border-color: var(--color-accent);
+  border-color: var(--mode-accent);
 }
 
 .new-project__error {

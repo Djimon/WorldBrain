@@ -47,7 +47,7 @@ input {
 .app-shell__eyebrow,
 .app-shell__label {
   margin: 0 0 var(--space-1);
-  color: var(--color-accent);
+  color: var(--mode-accent-text);
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0;
@@ -100,7 +100,7 @@ input {
 }
 
 .app-shell__nav .ui-tabs__tab[aria-selected='true'] {
-  border-left-color: var(--color-accent);
+  border-left-color: var(--mode-accent);
 }
 
 .app-shell__workspace {

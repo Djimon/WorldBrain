@@ -59,8 +59,8 @@
 }
 
 .icon-picker__icon[aria-pressed='true'] {
-  border-color: var(--color-accent);
-  background: var(--color-accent-soft);
+  border-color: var(--mode-accent);
+  background: var(--mode-accent-soft);
 }
 
 .icon-picker__glyph svg { display: block; width: 18px; height: 18px; }
@@ -86,7 +86,7 @@
   color: var(--color-text);
   font-size: 0.85rem;
 }
-.emoji-picker__search:focus { border-color: var(--color-accent); outline: none; }
+.emoji-picker__search:focus { border-color: var(--mode-accent); outline: none; }
 
 .emoji-picker__tabs {
   display: flex;
@@ -153,8 +153,8 @@
 .emoji-picker__emoji:hover { background: var(--color-surface-alt); }
 
 .emoji-picker__emoji[aria-pressed='true'] {
-  border-color: var(--color-accent);
-  background: var(--color-accent-soft);
+  border-color: var(--mode-accent);
+  background: var(--mode-accent-soft);
 }
 
 .clip-editor__actions {

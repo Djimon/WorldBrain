@@ -17,7 +17,7 @@
 }
 
 .ui-button:hover {
-  border-color: var(--color-accent);
+  border-color: var(--mode-accent);
   background: var(--color-surface-alt);
 }
 
@@ -276,7 +276,7 @@
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
   color: var(--color-text);
-  background: var(--color-surface-active);
+  background: var(--mode-accent-soft);
   font-size: 0.75rem;
   white-space: nowrap;
 }
@@ -299,14 +299,14 @@
   cursor: pointer;
 }
 .ui-chip[data-interactive]:not([data-selected]):hover {
-  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
-  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  border-color: color-mix(in srgb, var(--mode-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--mode-accent) 30%, transparent);
 }
 /* Toggle-selected (facet) — wins over tone/variant, so it goes last. */
 .ui-chip[data-selected] {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  border-color: var(--mode-accent);
+  background: var(--mode-accent);
+  color: var(--mode-accent-on);
 }
 
 .ui-table-surface,
@@ -362,11 +362,11 @@
 }
 /* Selected — left accent bar + accent tint (the canonical pin-tree-style marker). */
 .ui-list-row[data-selected] {
-  border-left-color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  border-left-color: var(--mode-accent);
+  background: color-mix(in srgb, var(--mode-accent) 15%, transparent);
 }
 .ui-list-row[data-selected][data-interactive]:hover {
-  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  background: color-mix(in srgb, var(--mode-accent) 22%, transparent);
 }
 /* Card variant — a bordered surface tile (e.g. backlinks). */
 .ui-list-row[data-variant='card'] {
@@ -375,6 +375,6 @@
   background: var(--color-surface);
 }
 .ui-list-row[data-variant='card'][data-interactive]:hover {
-  border-color: var(--color-accent);
+  border-color: var(--mode-accent);
   background: var(--color-surface-hover);
 }

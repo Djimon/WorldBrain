@@ -13,8 +13,8 @@
   --gv-border-soft: color-mix(in srgb, var(--color-border) 60%, transparent);
   --gv-border-faint: color-mix(in srgb, var(--color-border) 30%, transparent);
   --gv-text: var(--color-text);
-  --gv-accent: var(--color-accent);
-  --gv-on-accent: var(--color-on-accent);
+  --gv-accent: var(--mode-accent);
+  --gv-on-accent: var(--mode-accent-on);
   --gv-danger: var(--color-status-failure);
 }
 
