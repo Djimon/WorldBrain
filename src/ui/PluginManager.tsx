@@ -1,12 +1,23 @@
+import { useTranslation } from 'react-i18next';
 import { getPluginRegistry } from '../services/plugin-loader';
+import { StatusChip } from './primitives';
 
 export function PluginManager() {
+  const { t } = useTranslation();
   const registry = getPluginRegistry();
   const entries = Object.values(registry);
 
   return (
     <div>
-      <h2>Plugin Manager</h2>
+      {/* M17-S05 (#384): USP-Fläche — die Engine-Marke (einzelner Registry-Key
+          aus #381) am Kopf der Regelsystem-/Plugin-Verwaltung. Die Engine-Marke
+          ist KEIN Shell-Modus und erscheint NICHT im Modus-Umschalter. */}
+      <header className="u-row u-gap-2">
+        <StatusChip tone="accent" aria-label={t('engineBrandAria', 'Regel-Engine')}>
+          {t('brand.engine', { ns: 'common' })}
+        </StatusChip>
+        <h2>{t('pluginManagerTitle', 'Plugin Manager')}</h2>
+      </header>
       <ul>
         {entries.map((entry) => (
           <li key={entry.manifest.id}>
