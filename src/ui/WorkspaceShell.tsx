@@ -35,6 +35,7 @@ import { MapFolderTree } from './MapFolderTree';
 import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
+import { ThemePicker } from './ThemePicker';
 import { Button, Field, Panel, Segmented, StatusChip } from './primitives';
 import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext';
 import { WebRtcTransport } from '../services/webrtc-transport';
@@ -860,6 +861,13 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
         return (
           <div className="workspace-area">
             <h2>Projekt</h2>
+            {/* M17-S04 (#385): Theme-Auswahl im Einstellungs-Bereich (nicht im
+                Header) — eigener Bedienpfad, getrennt vom Dark/Light-Umschalter. */}
+            <section className="u-stack u-gap-2">
+              <h3>{t('themeSectionLabel', 'Darstellung')}</h3>
+              <ThemePicker />
+            </section>
+            <hr />
             {/* #183: no window.location.reload() — close project and reopen via welcome screen */}
             <SnapshotManager
               projectId={projectId}

@@ -65,6 +65,7 @@ describe('M17-S03 Accessibility: mode not only via color', () => {
 describe('M17-S03 Default-Theme appearanceSupport: both', () => {
   it('light appearance tokens exist (separate from dark)', () => {
     const source = readFileSync('src/styles/tokens.css', 'utf-8');
-    expect(source).toMatch(/prefers-color-scheme.*light|data-theme.*light/i);
+    // #385: Erscheinung ist als eigene Achse `data-appearance` entkoppelt.
+    expect(source).toMatch(/prefers-color-scheme.*light|data-(theme|appearance).*light/i);
   });
 });

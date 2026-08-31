@@ -1,31 +1,58 @@
 import { useEffect, useState } from 'react';
-import { applyTheme, getStoredTheme, THEME_ORDER, type Theme } from '../theme';
+import { useTranslation } from 'react-i18next';
+import {
+  getStoredAppearance,
+  getStoredThemeId,
+  setAppearance,
+  THEME_CHANGE_EVENT,
+} from '../theme';
+import { getTheme, forcedAppearance, type Appearance } from '../styles/theme-registry';
 
-const LABEL: Record<Theme, string> = { light: '☀️', dark: '🌙', toxic: '🧪' };
-const NEXT_TITLE: Record<Theme, string> = {
-  light: 'Dark mode',
-  dark: 'Light mode',
-  toxic: 'Light mode', // toxic is out of the cycle; a click exits to light
-};
-
+// M17-S04 (#385): der Umschalter steuert NUR die Erscheinung (dark/light), NIE das
+// Theme (Entkopplung, Decision 5). Bei einem Single-Appearance-Theme (z.B. Teal =
+// dark) erzwingt das Theme seine Erscheinung → der Umschalter ist deaktiviert.
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>(getStoredTheme);
+  const { t } = useTranslation();
+  const [appearance, setAppearanceState] = useState<Appearance>(getStoredAppearance);
+  const [themeId, setThemeIdState] = useState<string>(getStoredThemeId);
 
+  // Auf Theme-Wechsel (durch den ThemePicker) reagieren, damit sich der
+  // Deaktiviert-Zustand live aktualisiert.
   useEffect(() => {
-    localStorage.setItem('theme', theme);
-    applyTheme(theme);
-  }, [theme]);
+    const onChange = () => {
+      setThemeIdState(getStoredThemeId());
+      setAppearanceState(getStoredAppearance());
+    };
+    window.addEventListener(THEME_CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(THEME_CHANGE_EVENT, onChange);
+  }, []);
 
-  const next = () => setTheme((t) => THEME_ORDER[(THEME_ORDER.indexOf(t) + 1) % THEME_ORDER.length]);
+  const forced = forcedAppearance(getTheme(themeId)); // null = frei wählbar
+  const disabled = forced !== null;
+  const shown = forced ?? appearance;
+
+  function toggle() {
+    if (disabled) return;
+    const next: Appearance = appearance === 'dark' ? 'light' : 'dark';
+    setAppearanceState(next);
+    setAppearance(next);
+  }
+
+  const title = disabled
+    ? t('appearanceForced', 'Erscheinung vom Theme vorgegeben')
+    : shown === 'dark'
+      ? t('appearanceToLight', 'Helle Erscheinung')
+      : t('appearanceToDark', 'Dunkle Erscheinung');
 
   return (
     <button
       className="theme-toggle"
-      aria-label={NEXT_TITLE[theme]}
-      title={NEXT_TITLE[theme]}
-      onClick={next}
+      aria-label={title}
+      title={title}
+      disabled={disabled}
+      onClick={toggle}
     >
-      {LABEL[theme]}
+      {shown === 'dark' ? '🌙' : '☀️'}
     </button>
   );
 }

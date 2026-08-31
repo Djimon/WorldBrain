@@ -49,17 +49,18 @@
   --shadow-panel: 0 12px 28px rgba(15, 18, 22, 0.12);
 }
 
-/* ── M17-S03 (#382): Modus-Akzent-Token-System (Default-Theme) ──
-   Zwei orthogonale Achsen auf :root (documentElement):
-     Modus     — data-mode: edit = Prep/RealmForge (Rot) · play = Live/Adventure Nexus (Amber)
-     Erscheinung — kein/​data-theme='light' = Light · data-theme='dark' = Dark
-   Default ohne data-mode = edit (Prep). Fünf semantische Tokens; die
-   Light-Werte sind SEPARAT autorisiert (WCAG AA auf hellem Grund), NICHT aus
-   dem Dark-Hue abgeleitet. `--mode-accent-on` (Vordergrund auf gefülltem Akzent)
-   ist bewusst pro Farbe verschieden — Weiß auf Amber wäre zu kontrastarm. */
+/* ── M17-S03/S04 (#382/#385): Modus-Akzent-Token-System ──
+   DREI orthogonale Achsen auf :root (documentElement), NIE vermischt (Decision 5):
+     Modus       — data-mode:       edit = Prep (Rot) · play = Live (Amber/Teal)
+     Erscheinung — data-appearance: light · dark   (reine Anzeige-Präferenz)
+     Theme       — data-theme:      default (kein Akzent-Override) · teal (Live=Teal, dark-only)
+   Default ohne data-mode = edit. Light-Werte SEPARAT autorisiert (WCAG AA),
+   NICHT aus dem Dark-Hue abgeleitet. `--mode-accent-on` pro Farbe verschieden. */
+
+/* Default-Theme · Light-Erscheinung */
 :root,
-:root[data-theme='light'] {
-  /* Light · edit / Prep-Rot — Weiß auf Rot ~6.2:1 AA, Rot-Text auf hell ~6.8:1 AA */
+:root[data-appearance='light'] {
+  /* edit / Prep-Rot — Weiß auf Rot ~6.2:1 AA, Rot-Text auf hell ~6.8:1 AA */
   --mode-accent:       #c1121f;
   --mode-accent-hover: #a80f1a;
   --mode-accent-on:    #ffffff;
@@ -67,25 +68,24 @@
   --mode-accent-soft:  rgba(193, 18, 31, 0.12);
 }
 :root[data-mode='play'],
-:root[data-theme='light'][data-mode='play'] {
-  /* Light · play / Live-Amber — dunkleres Amber, damit die Fläche auf Weiß
-     kontrastiert (Weiß darauf ~5.0:1 AA); Amber-Text auf hell ~5.0:1 AA */
+:root[data-appearance='light'][data-mode='play'] {
+  /* play / Live-Amber — dunkleres Amber (Weiß darauf ~5.0:1 AA) */
   --mode-accent:       #b45309;
   --mode-accent-hover: #92400e;
   --mode-accent-on:    #ffffff;
   --mode-accent-text:  #b45309;
   --mode-accent-soft:  rgba(180, 83, 9, 0.14);
 }
-:root[data-theme='dark'] {
-  /* Dark · edit / Prep-Rot (AC-Vorgabe) */
+
+/* Default-Theme · Dark-Erscheinung (AC-Vorgabe #382) */
+:root[data-appearance='dark'] {
   --mode-accent:       #e5484d;
   --mode-accent-hover: #ef5a5f;
   --mode-accent-on:    #ffffff;
   --mode-accent-text:  #f0888b;
   --mode-accent-soft:  rgba(229, 72, 77, 0.16);
 }
-:root[data-theme='dark'][data-mode='play'] {
-  /* Dark · play / Live-Amber (AC-Vorgabe) — dunkler Vordergrund auf Amber */
+:root[data-appearance='dark'][data-mode='play'] {
   --mode-accent:       #eaa53c;
   --mode-accent-hover: #f2b451;
   --mode-accent-on:    #241a05;
@@ -93,8 +93,26 @@
   --mode-accent-soft:  rgba(234, 165, 60, 0.16);
 }
 
-[data-theme='dark'] {
-  /* Dark mode — Bastion warm-dark */
+/* ── Teal-Theme (#385): per-mode, Single-Appearance (dark). Überschreibt den
+     Default-Akzent, sobald data-theme='teal' — Prep bleibt Rot, Live wird Teal.
+     (Quelle-of-Truth der Werte gespiegelt in src/styles/theme-registry.ts.) ── */
+:root[data-theme='teal'] {
+  --mode-accent:       #e5484d;
+  --mode-accent-hover: #ef5a5f;
+  --mode-accent-on:    #ffffff;
+  --mode-accent-text:  #f0888b;
+  --mode-accent-soft:  rgba(229, 72, 77, 0.16);
+}
+:root[data-theme='teal'][data-mode='play'] {
+  --mode-accent:       #19b8a6;
+  --mode-accent-hover: #2ad0bd;
+  --mode-accent-on:    #04342c;
+  --mode-accent-text:  #4fd8c8;
+  --mode-accent-soft:  rgba(25, 184, 166, 0.16);
+}
+
+[data-appearance='dark'] {
+  /* Dark appearance — Bastion warm-dark */
   --color-text:           #e7e2d8;
   --color-text-muted:     #a9b2ba;
   --color-accent:         #c04b4b;
