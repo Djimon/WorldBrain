@@ -119,3 +119,34 @@ export async function validateToken(db: DatabaseLike, token: string): Promise<bo
   );
   return rows.length > 0;
 }
+
+/**
+ * Löst einen Einladungscode auf seine Campaign auf, ohne einen Join auszulösen.
+ * Gibt `null` für einen unbekannten/invalidierten Code zurück. Der Host-Join-
+ * Handler (#387) nutzt das als Vorab-Validierung, damit ungültige Codes eine
+ * `join_response{ok:false}` erzeugen, OHNE `joinWithCode`s Throw abfangen zu
+ * müssen (AP-006: kein try/catch um DB-Operationen).
+ */
+export async function resolveCampaignForCode(db: DatabaseLike, code: string): Promise<string | null> {
+  const rows = await db.select<{ campaign_id: string }>(
+    "SELECT campaign_id FROM invite_codes WHERE code = ? AND status = 'active'",
+    [code],
+  );
+  return rows[0]?.campaign_id ?? null;
+}
+
+/**
+ * Löst ein aktives Token auf sein Mitglied (player_id) auf — für den transport-
+ * basierten Reconnect (#387): der Spieler sendet nur sein Token, der Host findet
+ * das aktive `session_players`-Mitglied und schickt eine neue `join_response`.
+ * `null`, wenn das Token unbekannt oder das Mitglied gekickt/inaktiv ist.
+ */
+export async function resolvePlayerByToken(db: DatabaseLike, token: string): Promise<{ playerId: string } | null> {
+  const tokenHash = await hashToken(token);
+  const rows = await db.select<{ player_id: string }>(
+    "SELECT player_id FROM session_players WHERE token_hash = ? AND status = 'active'",
+    [tokenHash],
+  );
+  const row = rows[0];
+  return row ? { playerId: row.player_id } : null;
+}

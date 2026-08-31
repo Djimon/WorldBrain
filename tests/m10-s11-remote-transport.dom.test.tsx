@@ -1,39 +1,40 @@
 // @vitest-environment jsdom
-// M10-S11 (#367): Integrationstest — echter Mount statt Source-Grep.
-// Prüft dass PlayerJoinView den Broker-Adapter wirklich anschließt und
-// die ConnectStates (connecting → connected / failed) von den echten
-// Adapter-Callbacks getrieben werden, nicht als Fassade um lokale DB-Writes.
+// M10-S11 (#367) + #387: Integrationstest — echter Mount statt Source-Grep.
+// Prüft dass PlayerJoinView den Broker-Adapter wirklich anschließt und die
+// ConnectStates (connecting → connected / failed) von den echten Adapter-
+// Callbacks getrieben werden. Seit #387 ist der Beitritt ein DB-LOSER
+// Transport-Handshake: nach `onConnected` sendet die View `join_request`, und
+// erst die `join_response` des Hosts (über onMessage) schaltet auf „Beigetreten".
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
-
-// --- Mock joinWithCode: liefert deterministischen Token, kein DB-I/O ---
-vi.mock('../src/services/session-identity-service', () => ({
-  joinWithCode: vi.fn(async () => ({ token: 'tok-1', playerId: 'p-1' })),
-}));
+import { JOIN_RESPONSE } from '../src/services/session-transport';
+import type { TransportMessage } from '../src/services/session-transport';
 
 // --- Mock reconnect-service: Token-Persistenz + Stored-Token-Check no-op ---
 vi.mock('../src/services/reconnect-service', () => ({
   persistToken: vi.fn(async () => {}),
+  getStoredToken: vi.fn(async () => null),
   listStoredTokens: vi.fn(async () => []),
   clearStoredToken: vi.fn(async () => {}),
-  ping: vi.fn(async () => false),
-  reconnect: vi.fn(async () => ({ success: false, reason: 'no_host' as const })),
 }));
 
-// --- Mock WebRtcTransport: Instanz-Level; attachSignaling triggert nach
-//     kurzem Delay onConnected — dadurch prüfen wir die Bindung von
-//     ConnectState an die echten Adapter-Callbacks.
+// --- Mock WebRtcTransport: Instanz-Level. attachSignaling triggert Test-
+//     spezifisch onConnected/onError; onMessage fängt den Handler, damit der
+//     Test die Host-`join_response` simulieren kann (#387-Handshake).
 let attachSignalingImpl: (opts: {
   appId: string; roomId: string; peerLabel: 'A' | 'B';
   onConnected?: () => void;
   onError?: (err: Error) => void;
 }) => Promise<void>;
+let capturedOnMessage: ((msg: TransportMessage) => void) | null = null;
 
 vi.mock('../src/services/webrtc-transport', () => ({
   WebRtcTransport: class {
     async connect() { /* no-op */ }
     async close() { /* no-op */ }
+    async send() { /* no-op — join_request wird nicht real übertragen */ }
+    onMessage(cb: (msg: TransportMessage) => void) { capturedOnMessage = cb; }
     async attachSignaling(opts: Parameters<typeof attachSignalingImpl>[0]) {
       return attachSignalingImpl(opts);
     }
@@ -43,13 +44,9 @@ vi.mock('../src/services/webrtc-transport', () => ({
 
 import { PlayerJoinView } from '../src/ui/PlayerJoinView';
 
-const database = {
-  select: vi.fn(async () => [] as unknown[]),
-  execute: vi.fn(async () => {}),
-} as unknown as Parameters<typeof PlayerJoinView>[0]['database'];
-
 describe('M10-S11 PlayerJoinView integration', () => {
   beforeEach(() => {
+    capturedOnMessage = null;
     attachSignalingImpl = async (opts) => {
       // Default: kein Callback — Test-spezifisch überschrieben.
       void opts;
@@ -57,13 +54,13 @@ describe('M10-S11 PlayerJoinView integration', () => {
   });
   afterEach(() => cleanup());
 
-  it('connecting → connected when adapter fires onConnected', async () => {
+  it('connecting → connected (join_request sent) → joined on host join_response', async () => {
     let firedOnConnected: (() => void) | null = null;
     attachSignalingImpl = async (opts) => {
       firedOnConnected = opts.onConnected ?? null;
     };
 
-    render(<PlayerJoinView database={database} />);
+    render(<PlayerJoinView />);
 
     const codeInput = screen.getByPlaceholderText(/ABCD-EFGH/i);
     const nameInput = screen.getByPlaceholderText(/Alice/i);
@@ -77,11 +74,20 @@ describe('M10-S11 PlayerJoinView integration', () => {
       expect(screen.getByText(/Verbinde… \(bis 20 s\)/i)).toBeInTheDocument();
     });
 
-    // Adapter-Callback feuert → connected-State erwartet.
-    // Der connected-Zustand wechselt die UI zur post-join-View („Beigetreten"),
-    // die den Namen zeigt — das ist die sichtbare „connected"-Manifestation.
+    // Adapter-Callback feuert → View sendet join_request, zeigt „Verbunden".
     expect(firedOnConnected).not.toBeNull();
     firedOnConnected?.();
+    await waitFor(() => {
+      expect(screen.getByText(/^Verbunden$/i)).toBeInTheDocument();
+    });
+
+    // #387: erst die host-autoritative join_response schaltet auf „Beigetreten".
+    expect(capturedOnMessage).not.toBeNull();
+    capturedOnMessage?.({
+      type: JOIN_RESPONSE,
+      token: 'system-dm',
+      payload: { ok: true, token: 'tok-1', playerId: 'p-1' },
+    });
     // Post-join-View ist Panel mit aria-label="Beigetreten" — robust gegen
     // i18n-Interpolation im Fallback-Modus.
     await waitFor(() => {
@@ -95,7 +101,7 @@ describe('M10-S11 PlayerJoinView integration', () => {
       firedOnError = opts.onError ?? null;
     };
 
-    render(<PlayerJoinView database={database} />);
+    render(<PlayerJoinView />);
     fireEvent.change(screen.getByPlaceholderText(/ABCD-EFGH/i), {
       target: { value: 'wbrain://join?code=X&campaign=C1&ns=NS1' },
     });
@@ -115,7 +121,7 @@ describe('M10-S11 PlayerJoinView integration', () => {
     const calls: number[] = [];
     attachSignalingImpl = async () => { calls.push(1); };
 
-    render(<PlayerJoinView database={database} />);
+    render(<PlayerJoinView />);
     fireEvent.change(screen.getByPlaceholderText(/ABCD-EFGH/i), {
       target: { value: 'wbrain://join?code=X&campaign=C1' }, // kein ns
     });

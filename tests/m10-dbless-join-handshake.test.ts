@@ -6,6 +6,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { DatabaseLike } from '../src/services/entity-service';
+import { applyMapSchema } from '../core_data/map-schema';
+import { createToken } from '../src/services/map-token-service';
 
 function makeAsyncDb(db: DatabaseSync): DatabaseLike {
   return {
@@ -41,12 +43,14 @@ function createLoopbackPair() {
   const hostListeners: Array<(m: Msg) => void> = [];
   const playerListeners: Array<(m: Msg) => void> = [];
 
+  // send() liefert Promise<void> gemäß dem SessionTransport-Vertrag — der Host-
+  // Broadcast (broadcastMovement/pushPresentedMapSnapshot) nutzt `.catch()`.
   const hostTransport = {
-    send(m: Msg) { playerInbox.push(m); for (const l of playerListeners) l(m); },
+    send(m: Msg): Promise<void> { playerInbox.push(m); for (const l of playerListeners) l(m); return Promise.resolve(); },
     onMessage(fn: (m: Msg) => void) { hostListeners.push(fn); },
   };
   const playerTransport = {
-    send(m: Msg) { hostInbox.push(m); for (const l of hostListeners) l(m); },
+    send(m: Msg): Promise<void> { hostInbox.push(m); for (const l of hostListeners) l(m); return Promise.resolve(); },
     onMessage(fn: (m: Msg) => void) { playerListeners.push(fn); },
   };
 
@@ -159,6 +163,10 @@ describe('#387 Auth after join', () => {
 
   it('after handshake, player token-move intent is authorized by host', async () => {
     const { asyncDb, db } = createHostDb();
+    // map_tokens liegt im Map-Schema (nicht im Runtime-Schema) — der Move
+    // persistiert die Ground Truth dort, bevor er gebroadcastet wird.
+    applyMapSchema(db);
+    db.prepare("INSERT INTO maps (id, title, image_width_px, image_height_px) VALUES ('m1','M',100,100)").run();
     try {
       const identity = await getIdentity();
       const hostSync = await getHostJoinSync();
@@ -166,6 +174,7 @@ describe('#387 Auth after join', () => {
       const { hostTransport, playerTransport, playerInbox } = createLoopbackPair();
 
       const code = await identity.generateInviteCode(asyncDb, { campaignId: 'c1' });
+      const { id: tokenId } = await createToken(asyncDb, { map_id: 'm1', x: 0, y: 0 });
 
       hostSync.attachHostJoinSync({
         transport: hostTransport as never,
@@ -187,17 +196,15 @@ describe('#387 Auth after join', () => {
       const joinResp = playerInbox.find((m) => m.type === 'join_response');
       const { token, playerId } = joinResp!.payload as { token: string; playerId: string };
 
-      playerTransport.send({
-        type: 'client_action',
+      // Move-Intent über den ECHTEN Contract (sendMoveIntent → client_action mit
+      // actionKind:'move_own_token'), nicht hand-gerollt — so wie #386 ihn nutzt.
+      tokenSync.sendMoveIntent(playerTransport as never, {
+        campaignId: 'c1',
+        senderPlayerId: playerId,
+        tokenId,
+        x: 100,
+        y: 200,
         token,
-        payload: {
-          kind: 'token_move',
-          campaignId: 'c1',
-          senderPlayerId: playerId,
-          tokenId: 'tok-1',
-          x: 100,
-          y: 200,
-        },
       });
       await new Promise<void>((r) => setTimeout(r, 50));
 

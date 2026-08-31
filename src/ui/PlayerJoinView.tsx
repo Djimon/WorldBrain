@@ -1,31 +1,34 @@
-// M10-S05 (#354): „Campaign beitreten" — Auto-Join (D24) im Play-Modus.
-// Ein Feld für Einladungslink/-Code + Anzeigename — der Link trägt die
-// Rendezvous-Info selbst (Signaling-Details in S11/S12). Gültiger Code
-// → sofort aktives Mitglied via session-identity-service, dann Übergang
-// zur Charaktererstellung (S08 baut die Weiterleitung aus).
+// M10-S05 (#354) + #387: „Campaign beitreten" — Auto-Join (D24) im Play-Modus,
+// jetzt als DB-LOSER Transport-Handshake (D29). Der Player-Client hat KEINE
+// Datenbank: Beitritt/Reconnect laufen als Nachrichten über den verbundenen
+// Broker-Transport, nicht als lokale `joinWithCode`/`reconnect`-DB-Calls.
+//
+// Ablauf: Link/Code + Name → Transport per Signaling verbinden (Broker) → sobald
+// verbunden `join_request { code, displayName }` senden → der HOST validiert
+// gegen SEINE DB und antwortet `join_response { ok, token, playerId }` (+ Initial-
+// Snapshot). Bei ok:true reichen wir den verbundenen Transport via onJoined hoch;
+// die Shell speist damit den DB-losen Client-Store (D29-Feed).
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { DatabaseLike } from '../services/entity-service';
-import { joinWithCode } from '../services/session-identity-service';
 import { WebRtcTransport } from '../services/webrtc-transport';
+import {
+  JOIN_REQUEST,
+  RECONNECT_REQUEST,
+  JOIN_RESPONSE,
+  HANDSHAKE_TOKEN,
+} from '../services/session-transport';
+import type { TransportMessage, JoinResponsePayload } from '../services/session-transport';
 import {
   clearStoredToken,
   listStoredTokens,
   persistToken,
-  ping as pingHost,
-  reconnect as reconnectSession,
 } from '../services/reconnect-service';
+import type { StoredToken } from '../services/reconnect-service';
 import { Button, Field, Panel, StatusChip } from './primitives';
 
-// M10-S05/S10: Token-Persistenz + Reconnect leben in reconnect-service.
-// Wir speichern den zuletzt aktiven Token für diesen Client und stellen ihn
-// beim Mount wieder her, sofern reconnect() ihn (server- oder client-seitig)
-// noch akzeptiert. Gekickte Tokens werden verworfen.
-
 export interface PlayerJoinViewProps {
-  database: DatabaseLike;
   /** Callback nach erfolgreichem Join (Token verfügbar) → S08 nimmt hier auf.
-   *  `transport` (#386): der verbundene Broker-Transport wird hochgereicht,
+   *  `transport` (#386/#387): der verbundene Broker-Transport wird hochgereicht,
    *  damit die Shell den DB-losen Client-Store daran anschließt (D29-Feed)
    *  und der Player Token-Bewegungs-Intents senden kann. */
   onJoined?: (result: { token: string; playerId: string; displayName: string; transport?: WebRtcTransport }) => void;
@@ -60,7 +63,7 @@ export function parseInviteLink(input: string): { code: string; campaign: string
   }
 }
 
-export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
+export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
   const { t } = useTranslation('multiplayer');
   const [code, setCode] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -70,95 +73,82 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
   const [connectState, setConnectState] = useState<ConnectState>('idle');
   // Transport-Ref: bleibt über Renders erhalten damit close() beim Unmount klappt.
   const transportRef = useRef<WebRtcTransport | null>(null);
-  // D10: Ping-basierte Online-Erkennung + Retry-Button; kein Heartbeat.
-  const [hostOnline, setHostOnline] = useState<boolean | null>(null);
+  // #371 Fix 5: expliziter Reconnect (kein stiller Auto-Reconnect).
+  const [storedTokenExists, setStoredTokenExists] = useState(false);
   const [checking, setChecking] = useState(false);
 
-  async function runReconnect() {
-    setChecking(true);
-    try {
-      const online = await pingHost(database);
-      setHostOnline(online);
-      if (!online) return;
-      const stored = (await listStoredTokens())[0];
-      if (!stored) return;
-      const result = await reconnectSession({ token: stored.token, database });
-      if (result.success) {
-        setJoinedName(stored.displayName);
-        onJoined?.({
-          token: stored.token,
-          playerId: stored.playerId ?? '',
-          displayName: stored.displayName,
-        });
-      } else if (result.reason === 'kicked') {
-        // Nur bei bestätigt gekicktem Token Slate leeren — bei no_host bleibt
-        // der Token erhalten, damit ein späterer Retry noch reconnecten kann.
-        await clearStoredToken(stored.token);
-      }
-    } catch { /* fail-open */ } finally { setChecking(false); }
-  }
-
-  // #371 Fix 5: Auto-Reconnect ist NICHT mehr still — der Spieler muss ihn
-  // explizit auslösen (Button „Wieder verbinden"). Sonst joint bei einer
-  // zweiten lokalen Instanz eine Alt-Sitzung ohne Zutun des Users.
-  const [storedTokenExists, setStoredTokenExists] = useState(false);
   useEffect(() => {
     let cancelled = false;
     void listStoredTokens().then((toks) => {
       if (!cancelled) setStoredTokenExists(toks.length > 0);
     });
     return () => { cancelled = true; };
-  }, [database]);
+  }, []);
 
   const canSubmit = code.trim() !== '' && displayName.trim() !== '' && !busy;
 
+  /**
+   * Baut den Broker-Transport, verbindet ihn per Signaling und schickt — sobald
+   * der DataChannel offen ist — die Handshake-Nachricht. Die `join_response` des
+   * Hosts läuft über `onMessage` in `onResponse`. Gemeinsame Basis von Join und
+   * Reconnect (beide sind DB-los, nur die gesendete Nachricht unterscheidet sich).
+   */
+  async function connectAndHandshake(
+    appId: string,
+    roomId: string,
+    buildRequest: () => TransportMessage,
+    onResponse: (payload: JoinResponsePayload) => void,
+  ): Promise<void> {
+    const transport = new WebRtcTransport({ campaignId: roomId });
+    transportRef.current = transport;
+    // Host-Antwort entgegennehmen (Single-Handler-Transport; die Shell hängt nach
+    // erfolgreichem Join ihren Store-Handler an — bis dahin horchen wir hier).
+    transport.onMessage((msg: TransportMessage) => {
+      if (msg.type === JOIN_RESPONSE) onResponse(msg.payload as unknown as JoinResponsePayload);
+    });
+    await transport.connect();
+    await transport.attachSignaling({
+      appId,
+      roomId,
+      peerLabel: 'B', // Joiner ist B (Answerer); Host ist A (Initiator).
+      onConnected: () => {
+        setConnectState('connected');
+        void transport.send(buildRequest()).catch((err) => {
+          setError(`${t('join.errorBroker', 'Verbindung zum Host fehlgeschlagen.')} — ${err instanceof Error ? err.message : String(err)}`);
+          setConnectState('failed');
+        });
+      },
+      onError: (err) => {
+        setError(`${t('join.errorBroker', 'Verbindung zum Host fehlgeschlagen.')} — ${err.message}`);
+        setConnectState('failed');
+      },
+    });
+  }
+
   async function handleJoin() {
     setError(null);
+    const parsed = parseInviteLink(code);
+    const name = displayName.trim();
+    if (parsed.appId === '') {
+      // Kein `ns` im Link → alter/kaputter Link (kein Broker-Namespace).
+      setError(t('join.errorMissingNs', 'Einladungslink unvollständig (fehlender Broker-Namespace).'));
+      setConnectState('failed');
+      return;
+    }
+    const rawCode = parsed.code !== '' ? parsed.code : code.trim();
     setBusy(true);
     setConnectState('connecting');
     try {
-      const parsed = parseInviteLink(code);
-      const name = displayName.trim();
-      // 1) Lokaler Token-Auth (kein Broker beteiligt).
-      const result = await joinWithCode(database, {
-        code: parsed.code !== '' ? parsed.code : code.trim(),
-        displayName: name,
-      });
-      await persistToken({
-        hostLabel: '',
-        code: code.trim(),
-        token: result.token,
-        displayName: name,
-        campaignName: parsed.campaign,
-        playerId: result.playerId,
-      });
-      // 2) S11: echter Broker-Handshake. `ns` aus dem Link = appId (per-Host
-      //    Namespace, unerratbar). ConnectState wird von den Adapter-
-      //    Callbacks getrieben — kein Fassaden-connected mehr.
-      if (parsed.appId !== '') {
-        const transport = new WebRtcTransport({ campaignId: parsed.campaign });
-        transportRef.current = transport;
-        await transport.connect();
-        await transport.attachSignaling({
-          appId: parsed.appId,
-          roomId: parsed.campaign,
-          peerLabel: 'B', // Joiner ist B (Answerer); Host ist A (Initiator).
-          onConnected: () => {
-            setConnectState('connected');
-            setJoinedName(name);
-            // #386: den verbundenen Transport hochreichen → Shell speist Store.
-            onJoined?.({ ...result, displayName: name, transport: transportRef.current ?? undefined });
-          },
-          onError: (err) => {
-            setError(`${t('join.errorBroker', 'Verbindung zum Host fehlgeschlagen.')} — ${err.message}`);
-            setConnectState('failed');
-          },
-        });
-      } else {
-        // Kein `ns` im Link → alter/kaputter Link. Warnung, Token bleibt gültig.
-        setError(t('join.errorMissingNs', 'Einladungslink unvollständig (fehlender Broker-Namespace).'));
-        setConnectState('failed');
-      }
+      await connectAndHandshake(
+        parsed.appId,
+        parsed.campaign,
+        () => ({
+          type: JOIN_REQUEST,
+          token: HANDSHAKE_TOKEN,
+          payload: { code: rawCode, displayName: name },
+        }),
+        (payload) => { void applyJoinResponse(payload, name, parsed, rawCode); },
+      );
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
       setError(`${t('join.errorInvalid', 'Ungültiger Einladungscode oder Host nicht erreichbar.')} — ${raw}`);
@@ -168,17 +158,103 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
     }
   }
 
+  /** Verarbeitet die Host-Antwort auf einen `join_request`. */
+  async function applyJoinResponse(
+    payload: JoinResponsePayload,
+    name: string,
+    parsed: { code: string; campaign: string; appId: string },
+    rawCode: string,
+  ): Promise<void> {
+    if (!payload.ok) {
+      setError(t('join.errorRejected', 'Beitritt abgelehnt — ungültiger Einladungscode.'));
+      setConnectState('failed');
+      return;
+    }
+    // Token client-lokal für Reconnect vormerken (D10 — KEINE Welt-DB, nur die
+    // Host-Referenz + Broker-Namespace, damit ein späterer Reconnect signalisieren kann).
+    await persistToken({
+      hostLabel: '',
+      code: rawCode,
+      token: payload.token,
+      displayName: name,
+      campaignName: parsed.campaign,
+      playerId: payload.playerId,
+      appId: parsed.appId,
+      roomId: parsed.campaign,
+    });
+    setStoredTokenExists(true);
+    setJoinedName(name);
+    onJoined?.({
+      token: payload.token,
+      playerId: payload.playerId,
+      displayName: name,
+      transport: transportRef.current ?? undefined,
+    });
+  }
+
+  /**
+   * #371 Fix 5 / #387: expliziter, DB-loser Reconnect. Baut den Transport aus den
+   * gespeicherten Broker-Daten (appId/roomId) neu auf und schickt ein
+   * `reconnect_request { token }`; der Host bestätigt oder lehnt ab.
+   */
+  async function runReconnect() {
+    setError(null);
+    const stored = (await listStoredTokens())[0];
+    if (!stored) return;
+    if (stored.appId === undefined || stored.appId === '' || stored.roomId === undefined || stored.roomId === '') {
+      // Alt-Token ohne Broker-Info (vor #387) — kein DB-loser Reconnect möglich.
+      setError(t('join.errorReconnectNoLink', 'Frühere Sitzung ohne Verbindungsinfo — bitte über den Einladungslink neu beitreten.'));
+      return;
+    }
+    setChecking(true);
+    setConnectState('connecting');
+    try {
+      await connectAndHandshake(
+        stored.appId,
+        stored.roomId,
+        () => ({
+          type: RECONNECT_REQUEST,
+          token: HANDSHAKE_TOKEN,
+          payload: { token: stored.token },
+        }),
+        (payload) => { void applyReconnectResponse(payload, stored); },
+      );
+    } catch (e) {
+      // Host nicht erreichbar → Token BLEIBT erhalten (späterer Retry, D10).
+      const raw = e instanceof Error ? e.message : String(e);
+      setError(`${t('join.errorBroker', 'Verbindung zum Host fehlgeschlagen.')} — ${raw}`);
+      setConnectState('failed');
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  /** Verarbeitet die Host-Antwort auf einen `reconnect_request`. */
+  async function applyReconnectResponse(payload: JoinResponsePayload, stored: StoredToken): Promise<void> {
+    if (!payload.ok) {
+      // Host hat aktiv abgelehnt (gekickt/unbekannt) → Alt-Token verwerfen.
+      await clearStoredToken(stored.token);
+      setStoredTokenExists(false);
+      setError(t('join.errorReconnectFailed', 'Frühere Sitzung ist nicht mehr gültig.'));
+      setConnectState('failed');
+      return;
+    }
+    setJoinedName(stored.displayName);
+    onJoined?.({
+      token: payload.token,
+      playerId: payload.playerId,
+      displayName: stored.displayName,
+      transport: transportRef.current ?? undefined,
+    });
+  }
+
   // Transport beim Unmount aufräumen — sonst bleiben Broker-Sockets offen.
   useEffect(() => {
     return () => {
-      const t = transportRef.current;
-      if (t !== null) void t.close();
+      const active = transportRef.current;
+      if (active !== null) void active.close();
     };
   }, []);
-
-  function retry() {
-    void handleJoin();
-  }
 
   if (joinedName !== null) {
     return (
@@ -189,23 +265,6 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
           {t('join.joinedMsg', 'Willkommen, {{name}}! Du bist der Campaign beigetreten.', { name: joinedName })}
         </StatusChip>
         <p>{t('join.nextStep', 'Nächster Schritt: Charaktererstellung.')}</p>
-      </Panel>
-    );
-  }
-
-  // D10: „Host offline"-Zustand mit Retry-Button, wenn Ping fehlschlägt UND
-  // ein persistierter Token existiert (der Retry würde reconnecten).
-  if (hostOnline === false) {
-    return (
-      <Panel className="player-join-view u-stack u-gap-3" role="status"
-        aria-label={t('join.offlineTitle', 'Host offline')}>
-        <h2>{t('join.offlineTitle', 'Host offline')}</h2>
-        <StatusChip tone="failure">
-          {t('join.offlineMsg', 'Der Host ist gerade nicht erreichbar. Erneut versuchen, sobald verfügbar.')}
-        </StatusChip>
-        <Button tone="accent" onClick={() => void runReconnect()} disabled={checking}>
-          {checking ? t('join.retrying', 'Prüfe…') : t('join.retry', '🔄 Erneut verbinden')}
-        </Button>
       </Panel>
     );
   }
@@ -253,7 +312,7 @@ export function PlayerJoinView({ database, onJoined }: PlayerJoinViewProps) {
           <StatusChip tone="failure" role="status">
             {t('join.stateFailed', 'Verbindung fehlgeschlagen — ist der Host online?')}
           </StatusChip>
-          <Button size="compact" onClick={() => retry()}>
+          <Button size="compact" onClick={() => void handleJoin()}>
             {t('join.retry', 'Erneut versuchen')}
           </Button>
         </div>

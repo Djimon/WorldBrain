@@ -16,6 +16,34 @@ export interface TransportMessage {
   token: string;
 }
 
+// M10-#387: Join/Auth als Transport-Handshake. Diese Typ-Konstanten sind die
+// EINE Quelle für Host- (host-join-sync) und Player-Seite (PlayerJoinView) sowie
+// die pre-auth-Ausnahme im Transport-Gate (webrtc-transport).
+export const JOIN_REQUEST = 'join_request';
+export const RECONNECT_REQUEST = 'reconnect_request';
+export const JOIN_RESPONSE = 'join_response';
+
+/**
+ * Pre-auth Handshake-Typen. Ein Handshake ist per Definition pre-auth — der
+ * Absender hat noch (join) bzw. wieder (reconnect) kein gültiges Player-Token,
+ * kann das per-Nachricht Token-Gate (Decision 8) also nicht passieren. Diese
+ * Typen sind vom Gate ausgenommen und werden stattdessen HOST-AUTORITATIV von
+ * `host-join-sync` validiert (Code gegen `invite_codes`, Token gegen
+ * `session_players`). ALLE anderen Nachrichten bleiben voll gegated.
+ */
+export const PRE_AUTH_MESSAGE_TYPES: ReadonlySet<string> = new Set([JOIN_REQUEST, RECONNECT_REQUEST]);
+
+/** Envelope-`token`-Platzhalter für pre-auth Handshake-Nachrichten (der Absender
+ *  hat noch kein echtes Token; `validateIncomingMessage` verlangt aber ein
+ *  nicht-leeres Feld). Für die Auth irrelevant — das Gate überspringt sie. */
+export const HANDSHAKE_TOKEN = 'handshake';
+
+/** Antwort des Hosts auf join_request/reconnect_request (#387). Bei Erfolg trägt
+ *  sie das (neue bzw. bestätigte) Player-Token + player_id; sonst einen Grund. */
+export type JoinResponsePayload =
+  | { ok: true; token: string; playerId: string }
+  | { ok: false; error: string };
+
 export interface SessionTransport {
   /** Öffnet die Peer-Verbindung (Host: DataChannel bereitstellen). */
   connect(): Promise<void>;

@@ -78,3 +78,24 @@ describe('M10-S01 Incoming message validation', () => {
     expect(source).toMatch(/validat|schema|parse|safeParse|MessageSchema/i);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 5. #387: send() buffers until the DataChannel is open (onConnected fires at
+//    broker rendezvous, BEFORE the channel opens — a proactive send like
+//    join_request must NOT throw, it must be delivered once the channel opens).
+// ---------------------------------------------------------------------------
+
+describe('M10-#387 send buffers until channel open', () => {
+  it('send() no longer throws "not connected" — it buffers into an outbox', () => {
+    const source = readFileSync('src/services/webrtc-transport.ts', 'utf-8');
+    // Regression guard: der frühere `throw new Error('Transport not connected')`
+    // in send() brach jeden pre-open Handshake-Send. Er darf nicht zurückkehren.
+    expect(source).not.toMatch(/async send\([^)]*\)[^{]*\{\s*if[^}]*throw new Error\('Transport not connected'\)/s);
+    expect(source).toMatch(/outbox/);
+  });
+
+  it('a buffered outbox is flushed on channel onopen', () => {
+    const source = readFileSync('src/services/webrtc-transport.ts', 'utf-8');
+    expect(source).toMatch(/onopen\s*=\s*\(\)\s*=>\s*this\.flushOutbox/);
+  });
+});

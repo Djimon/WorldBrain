@@ -20,9 +20,12 @@ describe('M10-S05 Source guards', () => {
     expect(source).not.toMatch(/server.*url|serverUrl|server-url/i);
   });
 
-  it('PlayerJoinView calls joinWithCode (auto-join)', () => {
+  it('PlayerJoinView auto-joins via transport handshake, not a local joinWithCode (#387 DB-less)', () => {
     const source = readFileSync('src/ui/PlayerJoinView.tsx', 'utf-8');
-    expect(source).toMatch(/joinWithCode/);
+    // #387/D29: DB-loser Client — Auto-Join (D24) läuft als join_request über den
+    // Transport, NICHT als lokaler joinWithCode-DB-Call. Der Host validiert.
+    expect(source).toMatch(/join_request|JOIN_REQUEST/);
+    expect(source).not.toMatch(/joinWithCode\s*\(/);
   });
 
   it('PlayerJoinView shows no pending state', () => {

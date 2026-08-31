@@ -41,6 +41,7 @@ import { WebRtcTransport } from '../services/webrtc-transport';
 import { currentAppId } from '../services/app-id-service';
 import { attachVisibilityBroadcaster } from '../services/player-content-filter-service';
 import { attachHostTokenSync } from '../services/host-token-sync';
+import { attachHostJoinSync } from '../services/host-join-sync';
 import { attachClientStoreToTransport } from '../services/client-store-transport-bridge';
 import { pushPresentedMapSnapshot } from '../services/presented-map-push';
 import { createPlayClientStore, type PlayClientStoreImpl } from '../services/play-client-store';
@@ -967,6 +968,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     // M10-#386 (D18, host-authoritative): eingehende Token-Bewegungs-Intents
     // der Spieler autorisieren + Ground-Truth persistieren + an alle broadcasten.
     attachHostTokenSync({ transport, database, campaignId });
+    // M10-#387 (D24/D29): DB-loser Join/Reconnect-Handshake — Spieler-Requests
+    // gegen die Host-DB validieren, Mitglied anlegen + Token + Initial-Snapshot.
+    attachHostJoinSync({ transport, database, campaignId });
     // M10-#386: Initial-Snapshot der präsentierten Karte + Tokens senden, sobald
     // der Host-Transport steht — sonst bekäme der DB-lose Player-Store nie die
     // Szene (computeSnapshot wurde vorher nie gesendet). present() re-pusht bei
@@ -1088,9 +1092,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                 transport={playerTransport ?? undefined}
               />
             ) : (
-              // M10-S05: Player-Rolle startet mit dem Beitritts-Flow.
+              // M10-S05 (#387): Player-Rolle startet mit dem DB-losen Beitritts-
+              // Flow — kein `database`-Prop mehr (Join läuft als Transport-Handshake).
               <PlayerJoinView
-                database={database}
                 onJoined={async ({ playerId, displayName, transport }) => {
                   setPlayerContext({ playerId, displayName });
                   setPlayerTransport(transport ?? null); // #386 D29-Feed

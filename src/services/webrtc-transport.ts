@@ -11,7 +11,7 @@
 // STUN (Google + Cloudflare + Trystero-intern) reicht für NAT-Traversal;
 // KEIN TURN in V1 → ~10-20% strenge Symmetric-NATs scheitern mit `onError`.
 
-import { validateIncomingMessage } from './session-transport';
+import { validateIncomingMessage, PRE_AUTH_MESSAGE_TYPES } from './session-transport';
 import type { SessionTransport, TransportMessage } from './session-transport';
 import type { DatabaseLike } from './entity-service';
 import { validateToken } from './session-identity-service';
@@ -63,6 +63,13 @@ export class WebRtcTransport implements SessionTransport {
   private channel: RTCDataChannel | null = null;
   private handler: ((msg: TransportMessage) => void) | null = null;
   private signalingHandle: AdapterHandle | null = null;
+  // M10-#387: Ausgangs-Puffer. `onConnected` feuert beim Broker-Rendezvous —
+  // VOR der DataChannel-Öffnung; ein früher send() (z.B. join_request) muss
+  // warten bis der Kanal offen ist, statt zu werfen. Gepufferte Nachrichten
+  // werden bei `onopen` in Reihenfolge geflusht (bounded gegen einen nie
+  // öffnenden Kanal).
+  private outbox: TransportMessage[] = [];
+  private static readonly MAX_OUTBOX = 64;
 
   constructor(private readonly options: WebRtcTransportOptions) {}
 
@@ -89,6 +96,8 @@ export class WebRtcTransport implements SessionTransport {
     this.pc = null;
     this.handler = null;
     this.signalingHandle = null;
+    this.outbox = []; // nie geöffneter Kanal → gepufferte Nachrichten verwerfen
+
   }
 
   /**
@@ -186,10 +195,23 @@ export class WebRtcTransport implements SessionTransport {
   }
 
   async send(msg: TransportMessage): Promise<void> {
-    if (this.channel === null || this.channel.readyState !== 'open') {
-      throw new Error('Transport not connected');
+    if (this.channel !== null && this.channel.readyState === 'open') {
+      this.channel.send(JSON.stringify(msg));
+      return;
     }
-    this.channel.send(JSON.stringify(msg));
+    // Kanal (noch) nicht offen → puffern statt werfen. `send()` verspricht laut
+    // SessionTransport-Vertrag Zustellung, nicht Sofort-Übertragung; der Flush
+    // bei `onopen` löst das Versprechen ein. Bounded: bei Überlauf ältestes raus.
+    if (this.outbox.length >= WebRtcTransport.MAX_OUTBOX) this.outbox.shift();
+    this.outbox.push(msg);
+  }
+
+  /** Gepufferte Nachrichten in Reihenfolge über den offenen Kanal senden. */
+  private flushOutbox(ch: RTCDataChannel): void {
+    if (ch.readyState !== 'open' || this.outbox.length === 0) return;
+    const pending = this.outbox;
+    this.outbox = [];
+    for (const msg of pending) ch.send(JSON.stringify(msg));
   }
 
   onMessage(cb: (msg: TransportMessage) => void): void {
@@ -210,6 +232,10 @@ export class WebRtcTransport implements SessionTransport {
   }
 
   private wireChannel(ch: RTCDataChannel): void {
+    // Sobald der Kanal offen ist, gepufferte Nachrichten flushen (#387). Falls er
+    // beim Verdrahten schon offen ist (Race), sofort flushen.
+    ch.onopen = () => this.flushOutbox(ch);
+    if (ch.readyState === 'open') this.flushOutbox(ch);
     ch.onmessage = (ev: MessageEvent) => {
       // Jede eingehende Nachricht wird VOR der Verarbeitung schema-validiert
       // (AC). Ungültige Payloads werden verworfen, ohne den Handler zu rufen.
@@ -217,6 +243,15 @@ export class WebRtcTransport implements SessionTransport {
       try {
         parsed = validateIncomingMessage(JSON.parse(ev.data as string) as unknown);
       } catch {
+        return;
+      }
+      // M10-#387: pre-auth Handshake-Nachrichten (join_request/reconnect_request)
+      // umgehen das Token-Gate — der Absender hat noch/wieder kein gültiges Token.
+      // Sie werden host-autoritativ von host-join-sync validiert (Code gegen
+      // invite_codes, Token gegen session_players), nicht hier. Alle anderen
+      // Nachrichten bleiben voll gegated (Decision 8, secure-by-default).
+      if (PRE_AUTH_MESSAGE_TYPES.has(parsed.type)) {
+        this.handler?.(parsed);
         return;
       }
       // S02 Decision 8: pro Nachricht Token-Validierung. Wenn ein Authenticator

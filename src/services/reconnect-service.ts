@@ -19,6 +19,11 @@ export interface StoredToken {
   /** Für die Player-Client-Seite: die serverseitige player_id, damit der
    *  Reconnect direkt in die Bogen-Sicht (S08) schalten kann. */
   playerId?: string;
+  /** M10-#387: Broker-Namespace (appId aus dem Einladungslink) + Raum (campaignId),
+   *  damit der DB-lose Reconnect den Transport erneut per Signaling aufbauen und
+   *  ein `reconnect_request` schicken kann — es gibt keine lokale DB mehr. */
+  appId?: string;
+  roomId?: string;
   lastOnlineAt?: string;
 }
 
