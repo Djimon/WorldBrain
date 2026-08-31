@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './i18n';
 import { App } from './App';
 import { AudioSoundboardWindow } from './ui/AudioSoundboardWindow';
-import { initTheme } from './theme';
+import { initTheme, bootstrapUserThemes } from './theme';
 
 // Apply the persisted theme before first render (no flash) and keep this window
 // in sync with theme changes from other windows. Runs for EVERY window — the
@@ -11,6 +11,11 @@ import { initTheme } from './theme';
 // thing that themes them (previously only 'dark' was handled, so a 'toxic'
 // preference stripped data-theme and left detached windows on light).
 initTheme();
+// #393: importierbare User-Themes ebenfalls für JEDES Fenster registrieren (auch
+// die abgedockten Soundboard-/Player-Fenster mit eigenem JS-Kontext) und danach
+// das gespeicherte Theme erneut anwenden — sonst degradiert ein aktives User-Theme
+// dort still auf die Default-Palette.
+void bootstrapUserThemes();
 
 const rootElement = document.getElementById('root');
 

@@ -6,10 +6,13 @@
 // DOM-Attributen (Decision 5). Ein Dark/Light-Wechsel ändert NIE das Theme und
 // umgekehrt. Ein Single-Appearance-Theme (z.B. Teal = dark) erzwingt seine
 // Erscheinung; der Dark/Light-Umschalter ist dann wirkungslos.
+import { appDataDir, join } from '@tauri-apps/api/path';
 import { getTheme, forcedAppearance, type Appearance, type ShellMode } from './styles/theme-registry';
+import { scanUserThemes } from './services/user-theme-loader';
 
 const APPEARANCE_KEY = 'appearance';
 const THEME_KEY = 'theme';
+const THEMES_SUBDIR = 'themes';
 
 /** Attribut, in dem der Applier die Namen der aktuell inline gesetzten User-Theme-
  *  Vars merkt — damit ein Theme-Wechsel sie sauber wieder abräumen kann (#388). */
@@ -114,6 +117,23 @@ export function applyStoredTheme(): void {
   applyThemeId(themeId);
   applyAppearance(effectiveAppearance(themeId, getStoredAppearance()));
   applyThemeVars();
+}
+
+/**
+ * #393 — importierbare User-Themes für DIESES Fenster registrieren und danach das
+ * gespeicherte Theme erneut anwenden. Wird pro Fenster im Bootstrap aufgerufen
+ * (main.tsx), damit AUCH abgedockte Fenster (Soundboard/Player) ein aktives
+ * User-Theme identisch rendern — jedes Fenster hat seinen eigenen JS-Kontext mit
+ * eigener (anfangs leerer) Registry. Ohne Tauri (Test/Browser) ein No-op.
+ */
+export async function bootstrapUserThemes(): Promise<void> {
+  try {
+    const themesDir = await join(await appDataDir(), THEMES_SUBDIR);
+    const scan = await scanUserThemes(themesDir);
+    if (scan.registered.length > 0) applyStoredTheme();
+  } catch {
+    // kein Tauri / kein appDataDir → nur Built-in-Themes (kein Fehler).
+  }
 }
 
 /** Call once per window at startup: apply the stored state now (no flash) and
