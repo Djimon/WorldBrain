@@ -1,7 +1,7 @@
 {
   "name": "worldbuilderx",
   "version": "0.0.27",
-  "build": 23,
+  "build": 24,
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
