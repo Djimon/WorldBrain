@@ -42,8 +42,8 @@ interface DraftEra {
 }
 
 export function CalendarWizard({ onComplete, database, initial, onCancel }: Props) {
-  const { t } = useTranslation('nav');
-  const [title, setTitle] = useState(initial?.title ?? t('calendar'));
+  const { t } = useTranslation('session');
+  const [title, setTitle] = useState(initial?.title ?? t('calendar.defaultTitle'));
   const [preset, setPreset] = useState(DEFAULT_PRESET.id);
   const [months, setMonths] = useState(
     initial?.months?.length ? initial.months.map((m) => ({ ...m })) : DEFAULT_PRESET.months.map((m) => ({ ...m })),
@@ -144,43 +144,43 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
   return (
     <div className="cal-form">
       <div className="cal-form__header">
-        <h2 className="cal-form__title">Kalender konfigurieren</h2>
+        <h2 className="cal-form__title">{t('calendar.wizard.title')}</h2>
         <Button tone="accent" onClick={() => void handleSave()} disabled={saving}>
-          {saving ? 'Speichern…' : 'Kalender speichern'}
+          {saving ? t('calendar.wizard.saving') : t('calendar.wizard.save')}
         </Button>
         {onCancel && (
-          <Button onClick={onCancel} disabled={saving}>Abbrechen</Button>
+          <Button onClick={onCancel} disabled={saving}>{t('cancel', { ns: 'common' })}</Button>
         )}
       </div>
 
       {/* Live-Summe: aktualisiert sich bei jeder Monats-/Wochentag-Änderung */}
       <div className="cal-form__summary">
-        <span className="cal-form__summary-item"><strong>{totalDays}</strong> Tage/Jahr</span>
+        <span className="cal-form__summary-item">{t('calendar.wizard.daysPerYear', { n: totalDays })}</span>
         <span className="cal-form__summary-sep">·</span>
         <span className="cal-form__summary-item">
-          <strong>{fullWeeks}</strong> Wochen{remDays > 0 ? ` + ${remDays} ${remDays === 1 ? 'Tag' : 'Tage'}` : ''}
+          {t('calendar.wizard.weeks', { n: fullWeeks })}{remDays > 0 ? t('calendar.wizard.remainderDays', { count: remDays }) : ''}
         </span>
         <span className="cal-form__summary-sep">·</span>
-        <span className="cal-form__summary-item">{months.length} Monate</span>
+        <span className="cal-form__summary-item">{t('calendar.wizard.monthsCount', { n: months.length })}</span>
         <span className="cal-form__summary-sep">·</span>
-        <span className="cal-form__summary-item">{week.length} Tage/Woche</span>
+        <span className="cal-form__summary-item">{t('calendar.wizard.daysPerWeek', { n: week.length })}</span>
       </div>
 
       <div className="cal-form__body">
         {/* Grundeinstellungen */}
         <Panel className="cal-section u-stack u-gap-3">
-          <h3 className="cal-section__title">Grundeinstellungen</h3>
+          <h3 className="cal-section__title">{t('calendar.wizard.basics')}</h3>
           <div className="cal-form__row">
-            <label className="cal-form__label">Name</label>
+            <label className="cal-form__label">{t('calendar.wizard.name')}</label>
             <input
               className="cal-form__input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="z.B. Vergessene Reiche Kalender"
+              placeholder={t('calendar.wizard.namePlaceholder')}
             />
           </div>
           <div className="cal-form__row">
-            <label className="cal-form__label">Vorlage</label>
+            <label className="cal-form__label">{t('calendar.wizard.preset')}</label>
             <select className="cal-form__select" value={preset} onChange={(e) => applyPreset(e.target.value)}>
               {CALENDAR_PRESETS.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -188,7 +188,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
             </select>
           </div>
           <div className="cal-form__row">
-            <label className="cal-form__label">Jahrestage</label>
+            <label className="cal-form__label">{t('calendar.wizard.yearDays')}</label>
             <input
               className="cal-form__input"
               type="number"
@@ -202,60 +202,60 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
                 setMonths((prev) => prev.map((m, i) => ({ ...m, days: base + (i < remainder ? 1 : 0) })));
               }}
             />
-            <span className="cal-wizard__hint">= {months.length} Monate × ~{months.length ? Math.round(totalDays / months.length) : 0}</span>
+            <span className="cal-wizard__hint">{t('calendar.wizard.yearDaysHint', { months: months.length, avg: months.length ? Math.round(totalDays / months.length) : 0 })}</span>
           </div>
           <div className="cal-form__row">
-            <label className="cal-form__label">Startdatum</label>
+            <label className="cal-form__label">{t('calendar.wizard.startDate')}</label>
             <span className="cal-datefield">
               <span className="cal-datefield__unit">
                 <input className="cal-form__input cal-month-days" type="number" value={start.day}
-                  onChange={(e) => setStart((s) => ({ ...s, day: Number(e.target.value) }))} aria-label="Starttag" />
-                <span className="cal-datefield__label">Tag</span>
+                  onChange={(e) => setStart((s) => ({ ...s, day: Number(e.target.value) }))} aria-label={t('calendar.wizard.startDayAria')} />
+                <span className="cal-datefield__label">{t('calendar.day')}</span>
               </span>
               <span className="cal-datefield__unit">
                 <input className="cal-form__input cal-month-days" type="number" value={start.month}
-                  onChange={(e) => setStart((s) => ({ ...s, month: Number(e.target.value) }))} aria-label="Startmonat" />
-                <span className="cal-datefield__label">Monat</span>
+                  onChange={(e) => setStart((s) => ({ ...s, month: Number(e.target.value) }))} aria-label={t('calendar.wizard.startMonthAria')} />
+                <span className="cal-datefield__label">{t('calendar.month')}</span>
               </span>
               <span className="cal-datefield__unit">
                 <input className="cal-form__input cal-year-input" type="number" value={start.year}
-                  onChange={(e) => setStart((s) => ({ ...s, year: Number(e.target.value) }))} aria-label="Startjahr" />
-                <span className="cal-datefield__label">Jahr</span>
+                  onChange={(e) => setStart((s) => ({ ...s, year: Number(e.target.value) }))} aria-label={t('calendar.wizard.startYearAria')} />
+                <span className="cal-datefield__label">{t('calendar.year')}</span>
               </span>
             </span>
-            <span className="cal-wizard__hint">„Die Welt beginnt an diesem Datum"</span>
+            <span className="cal-wizard__hint">{t('calendar.wizard.startHint')}</span>
           </div>
         </Panel>
 
         {/* Tabs — je Bereich volle Breite, kein Platz-Konkurrieren */}
         <Tabs
           className="cal-tabs"
-          label="Kalender-Bereiche"
+          label={t('calendar.wizard.sectionsLabel')}
           activeId={tab}
           onSelect={(id) => setTab(id as WizardTab)}
           options={[
-            { id: 'months', label: `Monate (${months.length})` },
-            { id: 'weekdays', label: `Wochentage (${week.length})` },
-            { id: 'eras', label: `Ären (${eras.length})` },
+            { id: 'months', label: t('calendar.wizard.monthsLabel', { n: months.length }) },
+            { id: 'weekdays', label: t('calendar.wizard.weekdaysLabel', { n: week.length }) },
+            { id: 'eras', label: t('calendar.wizard.erasLabel', { n: eras.length }) },
           ]}
         />
 
         {tab === 'months' && (
           <Panel className="cal-section u-stack u-gap-3">
             <div className="cal-section__head">
-              <h3 className="cal-section__title">Monate ({months.length})</h3>
-              <Button tone="accent" variant="outline" size="compact" onClick={addMonth}>+ Monat</Button>
+              <h3 className="cal-section__title">{t('calendar.wizard.monthsLabel', { n: months.length })}</h3>
+              <Button tone="accent" variant="outline" size="compact" onClick={addMonth}>{t('calendar.wizard.addMonth')}</Button>
             </div>
             <div className="cal-month-grid">
               {months.map((m, i) => (
                 <div key={i} className="cal-month-row">
                   <span className="cal-month-num">{i + 1}.</span>
                   <input className="cal-form__input cal-month-name" value={m.name}
-                    onChange={(e) => updateMonth(i, 'name', e.target.value)} placeholder="Monatsname" />
+                    onChange={(e) => updateMonth(i, 'name', e.target.value)} placeholder={t('calendar.wizard.monthNamePlaceholder')} />
                   <input className="cal-form__input cal-month-days" type="number" min={1} max={99} value={m.days}
                     onChange={(e) => updateMonth(i, 'days', e.target.value)} />
-                  <span className="cal-month-days-label">T</span>
-                  <Button variant="ghost" size="compact" onClick={() => removeMonth(i)} title="Entfernen">✕</Button>
+                  <span className="cal-month-days-label">{t('calendar.wizard.daysAbbrev')}</span>
+                  <Button variant="ghost" size="compact" onClick={() => removeMonth(i)} title={t('remove', { ns: 'common' })}>✕</Button>
                 </div>
               ))}
             </div>
@@ -265,16 +265,16 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
         {tab === 'weekdays' && (
           <Panel className="cal-section u-stack u-gap-3">
             <div className="cal-section__head">
-              <h3 className="cal-section__title">Wochentage ({week.length})</h3>
-              <Button tone="accent" variant="outline" size="compact" onClick={addWeekday}>+ Tag</Button>
+              <h3 className="cal-section__title">{t('calendar.wizard.weekdaysLabel', { n: week.length })}</h3>
+              <Button tone="accent" variant="outline" size="compact" onClick={addWeekday}>{t('calendar.wizard.addWeekday')}</Button>
             </div>
             <div className="cal-week-grid">
               {week.map((d, i) => (
                 <div key={i} className="cal-week-row">
                   <span className="cal-month-num">{i + 1}.</span>
                   <input className="cal-form__input" value={d}
-                    onChange={(e) => updateWeekday(i, e.target.value)} placeholder="Tagesname" />
-                  <Button variant="ghost" size="compact" onClick={() => removeWeekday(i)} title="Entfernen">✕</Button>
+                    onChange={(e) => updateWeekday(i, e.target.value)} placeholder={t('calendar.wizard.weekdayNamePlaceholder')} />
+                  <Button variant="ghost" size="compact" onClick={() => removeWeekday(i)} title={t('remove', { ns: 'common' })}>✕</Button>
                 </div>
               ))}
             </div>
@@ -284,39 +284,39 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
         {tab === 'eras' && (
           <Panel className="cal-section u-stack u-gap-3">
             <div className="cal-section__head">
-              <h3 className="cal-section__title">Ären ({eras.length})</h3>
-              <Button tone="accent" variant="outline" size="compact" onClick={addEra}>+ Ära</Button>
+              <h3 className="cal-section__title">{t('calendar.wizard.erasLabel', { n: eras.length })}</h3>
+              <Button tone="accent" variant="outline" size="compact" onClick={addEra}>{t('calendar.wizard.addEra')}</Button>
             </div>
             <div className="cal-era-grid">
               {eras.map((e, i) => (
                 <div key={e.id ?? `draft-${i}`} className="cal-era-row">
                   <div className="cal-era-row__top">
                     <input className="cal-form__input cal-era-name" value={e.name}
-                      onChange={(ev) => updateEra(i, { name: ev.target.value })} placeholder="Ära-Name (z.B. Ära der erfrüchtigen Könige)" />
+                      onChange={(ev) => updateEra(i, { name: ev.target.value })} placeholder={t('calendar.wizard.eraNamePlaceholder')} />
                     <input className="cal-form__input cal-era-abbr" value={e.abbr}
                       onChange={(ev) => updateEra(i, { abbr: ev.target.value })}
-                      placeholder="Kürzel" title="Kürzel — offizielle Jahreseinheit, z.B. E.K." />
-                    <Button variant="ghost" size="compact" onClick={() => removeEra(i)} title="Entfernen">✕</Button>
+                      placeholder={t('calendar.wizard.eraAbbrPlaceholder')} title={t('calendar.wizard.eraAbbrTitle')} />
+                    <Button variant="ghost" size="compact" onClick={() => removeEra(i)} title={t('remove', { ns: 'common' })}>✕</Button>
                   </div>
                   <div className="cal-era-row__dates">
-                    <span className="cal-era-label">Start</span>
+                    <span className="cal-era-label">{t('calendar.wizard.eraStart')}</span>
                     <CalendarDateInput months={months} value={{ year: e.start_year, month: e.start_month, day: e.start_day }}
                       onChange={(v) => updateEra(i, { start_year: v.year, start_month: v.month, start_day: v.day })} />
-                    <span className="cal-era-label">Ende</span>
+                    <span className="cal-era-label">{t('calendar.wizard.eraEnd')}</span>
                     <CalendarDateInput months={months} value={{ year: e.end_year, month: e.end_month, day: e.end_day }}
                       onChange={(v) => updateEra(i, { end_year: v.year, end_month: v.month, end_day: v.day })} />
                     <span className="cal-datefield__unit">
                       <input className="cal-form__input cal-month-days" type="number" value={e.year_number_at_start}
                         onChange={(ev) => updateEra(i, { year_number_at_start: Number(ev.target.value) })}
-                        aria-label="Jahr bei Start"
-                        title="Welche Jahreszahl trägt das Startjahr der Ära (0 = Startjahr ist Jahr 0)" />
-                      <span className="cal-datefield__label">Jahr b. Start</span>
+                        aria-label={t('calendar.wizard.yearAtStartAria')}
+                        title={t('calendar.wizard.yearAtStartTitle')} />
+                      <span className="cal-datefield__label">{t('calendar.wizard.yearAtStartLabel')}</span>
                     </span>
                   </div>
                 </div>
               ))}
               {eras.length === 0 && (
-                <p className="cal-hint">Noch keine Ären. „+ Ära" legt einen benannten Zeitraum mit festem Start- und Enddatum an. Ären dürfen sich überschneiden und Lücken lassen. Übernahme beim Speichern.</p>
+                <p className="cal-hint">{t('calendar.wizard.erasEmpty')}</p>
               )}
             </div>
           </Panel>

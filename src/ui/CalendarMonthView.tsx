@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
+import { useTranslation } from 'react-i18next';
 import { listEventEntities } from '../services/event-entity-service';
 import type { DatabaseLike } from '../services/entity-service';
 import { dateToCounter, erasForRange, eraRelativeYear, eraUnit } from '../../core_data/calendar-schema';
@@ -41,6 +42,7 @@ interface Props {
 }
 
 export function CalendarMonthView({ calendar, database, onCreateEvent, onEventClick, refreshToken }: Props) {
+  const { t } = useTranslation('session');
   const readOnly = useReadOnly(); // M10-S23: Player-Modus deaktiviert Event-Create-Click.
   const months = calendar.months.length > 0 ? calendar.months : [{ name: 'Month 1', days: calendar.year_length_days }];
   const startYear = calendar.start_year ?? 1;
@@ -123,69 +125,69 @@ export function CalendarMonthView({ calendar, database, onCreateEvent, onEventCl
     <div className="cal-month">
       <div className="cal-month__bar">
         <span className="cal-year-nav">
-          <button className="cal-month__nav" aria-label="Jahr" onClick={() => setYearPopoutOpen((o) => !o)}>Jahr</button>
+          <button className="cal-month__nav" aria-label={t('calendar.year')} onClick={() => setYearPopoutOpen((o) => !o)}>{t('calendar.year')}</button>
           {yearPopoutOpen && (
-            <div role="dialog" aria-label="Jahr-Navigation" className="cal-year-popout">
+            <div role="dialog" aria-label={t('calendar.monthView.yearNavDialog')} className="cal-year-popout">
               <div className="cal-year-popout__pills">
                 {recentYears.map((y) => (
-                  <button key={y} type="button" aria-label={`Jahr ${y}`} className="cal-year-popout__pill"
-                    onClick={() => setViewYear(y)}>Jahr {y}</button>
+                  <button key={y} type="button" aria-label={t('calendar.monthView.yearPill', { y })} className="cal-year-popout__pill"
+                    onClick={() => setViewYear(y)}>{t('calendar.monthView.yearPill', { y })}</button>
                 ))}
               </div>
               <div className="cal-year-popout__adjacent">
                 {[-5, -4, -3, -2, -1].map((offset) => (
-                  <button key={offset} type="button" aria-label={`Springe zu Jahr ${viewYear + offset}`}
+                  <button key={offset} type="button" aria-label={t('calendar.monthView.jumpToYear', { y: viewYear + offset })}
                     className="cal-year-popout__adj-pill" onClick={() => setViewYear(viewYear + offset)}>
                     {viewYear + offset}
                   </button>
                 ))}
                 <span className="cal-year-popout__active">{viewYear}</span>
                 {[1, 2, 3, 4, 5].map((offset) => (
-                  <button key={offset} type="button" aria-label={`Springe zu Jahr ${viewYear + offset}`}
+                  <button key={offset} type="button" aria-label={t('calendar.monthView.jumpToYear', { y: viewYear + offset })}
                     className="cal-year-popout__adj-pill" onClick={() => setViewYear(viewYear + offset)}>
                     {viewYear + offset}
                   </button>
                 ))}
               </div>
               <div className="cal-year-popout__goto">
-                <input type="number" role="spinbutton" aria-label="Jahr" className="cal-form__input"
+                <input type="number" role="spinbutton" aria-label={t('calendar.year')} className="cal-form__input"
                   value={yearInput} onChange={(e) => setYearInput(e.target.value)} />
                 <button type="button" disabled={yearInput === '' || Number.isNaN(Number(yearInput))}
                   onClick={() => setViewYear(Number(yearInput))}>
-                  Gehe zu Jahr
+                  {t('calendar.monthView.gotoYear')}
                 </button>
               </div>
             </div>
           )}
         </span>
-        <select className="cal-month__select" aria-label="Monat" value={currentMonth.name}
+        <select className="cal-month__select" aria-label={t('calendar.month')} value={currentMonth.name}
           onChange={(e) => {
             const idx = months.findIndex((m) => m.name === e.target.value);
             if (idx !== -1) setViewMonthIdx(idx);
           }}>
           {months.map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
         </select>
-        <button className="cal-month__nav" aria-label="today" onClick={today}>Today</button>
-        <button className="cal-month__nav" aria-label="< previous" onClick={() => step(-1)}>{'‹'}</button>
-        <button className="cal-month__nav" aria-label="next >" onClick={() => step(1)}>{'›'}</button>
+        <button className="cal-month__nav" aria-label={t('calendar.monthView.today')} onClick={today}>{t('calendar.monthView.today')}</button>
+        <button className="cal-month__nav" aria-label={t('calendar.monthView.prev')} onClick={() => step(-1)}>{'‹'}</button>
+        <button className="cal-month__nav" aria-label={t('calendar.monthView.next')} onClick={() => step(1)}>{'›'}</button>
         <span className="cal-month__spacer" />
         <h2 className="cal-month__name">{heading}</h2>
         {eras.length > 0 && (
           <span className="cal-month__day-actions">
             {eraMode && matchingEras.length > 1 && (
-              <select className="cal-form__select" aria-label="Bezugs-Ära"
+              <select className="cal-form__select" aria-label={t('calendar.monthView.refEraAria')}
                 value={refEra?.id ?? ''} onChange={(e) => setRefEraId(e.target.value)}>
                 {matchingEras.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
             )}
             <Segmented
-              label="Jahresmodus"
+              label={t('calendar.monthView.yearModeLabel')}
               size="compact"
               value={eraMode ? 'era' : 'global'}
               onChange={(id) => setEraMode(id === 'era')}
               options={[
-                { id: 'global', label: 'Global' },
-                { id: 'era', label: 'Ära' },
+                { id: 'global', label: t('calendar.monthView.global') },
+                { id: 'era', label: t('calendar.monthView.era') },
               ]}
             />
           </span>

@@ -7,6 +7,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
 import { CalendarMonthView } from '../src/ui/CalendarMonthView';
 
 const threeMonthCalendar = {
