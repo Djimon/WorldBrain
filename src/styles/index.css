@@ -12,6 +12,7 @@
 @import '../ui/graph.css' layer(components);
 @import './base.css' layer(components);
 @import './components/shell.css' layer(components);
+@import './components/settings.css' layer(components);
 @import './components/entities.css' layer(components);
 @import './components/search.css' layer(components);
 @import './components/calendar.css' layer(components);

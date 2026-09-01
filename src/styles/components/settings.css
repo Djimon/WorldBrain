@@ -1,0 +1,91 @@
+/* #410 (Settings UX-Sprint): Variant A — sidebar + detail. Only structural
+   one-offs live here; visual atoms (list rows, chips, panels, buttons) come from
+   the design-system primitives. All colours from tokens. */
+.settings {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.settings__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  flex: 0 0 auto;
+}
+.settings__title { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+
+.settings__body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 208px 1fr;
+  overflow: hidden;
+}
+
+/* sidebar (structure only; rows are <ListRow>) */
+.settings__nav {
+  border-right: 1px solid var(--color-border);
+  padding: var(--space-3) var(--space-2);
+  overflow-y: auto;
+}
+.settings__nav-title {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  padding: var(--space-1) var(--space-3) var(--space-2);
+}
+.settings__nav-icon { width: 17px; text-align: center; opacity: 0.85; }
+
+/* detail */
+.settings__detail { overflow-y: auto; padding: var(--space-5); }
+.settings__pane-title { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; }
+.settings__path { font-size: 0.78rem; color: var(--color-text-muted); margin-top: var(--space-1); word-break: break-all; }
+.settings__block-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+.settings__divider { height: 1px; background: var(--color-border); border: 0; }
+
+/* stat tiles (grid one-off; each tile is a <Panel>) */
+.settings__stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.settings__stat { padding: var(--space-2) var(--space-3); }
+.settings__stat-n { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.settings__stat-l { font-size: 0.7rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; font-weight: 600; }
+
+/* about key/value list */
+.settings__about { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-5); }
+.settings__about dt { font-size: 0.7rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 3px; }
+.settings__about dd { font-size: 0.875rem; }
+.settings__datafolder { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+/* coming-soon empty state */
+.settings__soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-4);
+  max-width: 46ch;
+  margin: 0 auto;
+}
+.settings__soon-emoji { font-size: 2.2rem; opacity: 0.5; }
+.settings__soon-body { color: var(--color-text-muted); font-size: 0.875rem; }
+
+@media (max-width: 640px) {
+  .settings__body { grid-template-columns: 1fr; }
+  .settings__nav { border-right: 0; border-bottom: 1px solid var(--color-border); }
+  .settings__stats { grid-template-columns: 1fr 1fr; }
+}
