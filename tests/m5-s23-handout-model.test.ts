@@ -9,6 +9,15 @@ async function getHandoutSchema() { return import('../core_data/handout-schema')
 async function getHandoutService() { return import('../src/services/handout-service'); }
 function openDb() { return new DatabaseSync(':memory:'); }
 
+// Async DatabaseLike wrapper around a sync node:sqlite handle for the service layer.
+function makeAsyncDb(raw: DatabaseSync) {
+  return {
+    execute: async (sql: string, args: unknown[] = []) => { raw.prepare(sql).run(...(args as never[])); },
+    select: async <T = Record<string, unknown>>(sql: string, args: unknown[] = []): Promise<T[]> =>
+      raw.prepare(sql).all(...(args as never[])) as T[],
+  };
+}
+
 describe('M5-S23 handout model', () => {
   describe('schema', () => {
     it('applyHandoutSchema creates handouts table', async () => {
@@ -62,7 +71,7 @@ describe('M5-S23 handout model', () => {
       const { applyHandoutSchema } = await getHandoutSchema();
       const { createHandout } = await getHandoutService();
       const db = openDb(); applyHandoutSchema(db);
-      const result = createHandout(db, { type: 'Letter', title: 'A Letter', audience: 'players', content: {} });
+      const result = await createHandout(makeAsyncDb(db), { type: 'Letter', title: 'A Letter', audience: 'players', content: {} });
       expect(result).toHaveProperty('id');
     });
 
@@ -70,9 +79,10 @@ describe('M5-S23 handout model', () => {
       const { applyHandoutSchema } = await getHandoutSchema();
       const { createHandout, listHandouts } = await getHandoutService();
       const db = openDb(); applyHandoutSchema(db);
-      createHandout(db, { type: 'Letter', title: 'Letter A', audience: 'players', content: {} });
-      createHandout(db, { type: 'Clue Sheet', title: 'Clues', audience: 'players', content: {} });
-      const result = listHandouts(db, { type: 'Letter' });
+      const adb = makeAsyncDb(db);
+      await createHandout(adb, { type: 'Letter', title: 'Letter A', audience: 'players', content: {} });
+      await createHandout(adb, { type: 'Clue Sheet', title: 'Clues', audience: 'players', content: {} });
+      const result = await listHandouts(adb, { type: 'Letter' });
       expect(result.length).toBe(1);
       expect(result[0].title).toBe('Letter A');
     });

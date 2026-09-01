@@ -22,21 +22,28 @@ describe('M7-S07 tauri build & auto-updater', () => {
       expect(() => readFileSync('src-tauri/tauri.conf.json', 'utf-8')).not.toThrow();
     });
 
-    it('tauri.conf.json has updater configuration', () => {
+    // #400: Der Auto-Updater wurde beim Abschluss von #140 auf nach 0.1-Beta
+    // verschoben (nicht ausgeliefert) — er braucht Signing-Keys + einen Release-
+    // Endpoint, die es noch nicht gibt. Zusätzlich sind diese drei Assertions
+    // Tauri-v1-geformt (`updater.active` existiert in Tauri v2 nicht mehr; die
+    // Config läge unter `plugins.updater` mit `pubkey`/`endpoints`). Sie bleiben
+    // als PENDING markiert (kein grün-frisieren, kein False-Fail), bis der Updater
+    // real gebaut wird — dann für Tauri v2 neu formulieren.
+    it.skip('tauri.conf.json has updater configuration (deferred post-0.1-beta, #140)', () => {
       const conf = JSON.parse(readFileSync('src-tauri/tauri.conf.json', 'utf-8'));
       const updater = conf?.tauri?.updater ?? conf?.plugins?.updater ?? conf?.updater;
       expect(updater).toBeTruthy();
     });
 
-    it('updater.active is true', () => {
+    it.skip('updater is enabled (Tauri-v2 shape, deferred, #140)', () => {
       const conf = JSON.parse(readFileSync('src-tauri/tauri.conf.json', 'utf-8'));
-      const updater = conf?.tauri?.updater ?? conf?.plugins?.updater ?? conf?.updater;
-      expect(updater?.active).toBe(true);
+      const updater = conf?.plugins?.updater;
+      expect(updater).toBeTruthy();
     });
 
-    it('updater has endpoints configured (placeholder is acceptable)', () => {
+    it.skip('updater has endpoints configured (deferred, #140)', () => {
       const conf = JSON.parse(readFileSync('src-tauri/tauri.conf.json', 'utf-8'));
-      const updater = conf?.tauri?.updater ?? conf?.plugins?.updater ?? conf?.updater;
+      const updater = conf?.plugins?.updater ?? conf?.updater;
       expect(updater?.endpoints ?? updater?.endpoint).toBeTruthy();
     });
   });
