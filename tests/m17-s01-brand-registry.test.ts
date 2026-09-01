@@ -11,9 +11,9 @@ describe('M17-S01 Brand registry module', () => {
     expect(source).toMatch(/export/);
   });
 
-  it('exports platform name key (Beyond Worlds)', () => {
+  it('exports platform name key (Worlds and Beyond)', () => {
     const source = readFileSync('src/branding/brand.ts', 'utf-8');
-    expect(source).toMatch(/brand\.platform|Beyond Worlds/);
+    expect(source).toMatch(/brand\.platform|Worlds and Beyond/);
   });
 
   it('exports edit mode brand key (RealmForge)', () => {
@@ -42,7 +42,7 @@ describe('M17-S01 No hardcoded brand strings outside registry', () => {
     it(`${file} does not hardcode brand names`, () => {
       try {
         const source = readFileSync(file, 'utf-8');
-        expect(source).not.toMatch(/"Beyond Worlds"|'Beyond Worlds'/);
+        expect(source).not.toMatch(/"Worlds and Beyond"|'Worlds and Beyond'/);
         expect(source).not.toMatch(/"RealmForge"|'RealmForge'/);
         expect(source).not.toMatch(/"Adventure Nexus"|'Adventure Nexus'/);
       } catch { /* file may not exist yet */ }
@@ -62,7 +62,7 @@ describe('M17-S01 i18n keys resolve to German defaults', () => {
   it('brand keys resolve through i18n to the expected brand names', async () => {
     const { default: i18n } = await import('../src/i18n');
     await i18n.changeLanguage('de');
-    expect(i18n.t('brand.platform', { ns: 'common' })).toBe('Beyond Worlds');
+    expect(i18n.t('brand.platform', { ns: 'common' })).toBe('Worlds and Beyond');
     expect(i18n.t('brand.mode.edit', { ns: 'common' })).toBe('RealmForge');
     expect(i18n.t('brand.mode.play', { ns: 'common' })).toBe('Adventure Nexus');
     expect(i18n.t('brand.engine', { ns: 'common' })).toBe('RuleLoom');

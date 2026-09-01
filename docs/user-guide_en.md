@@ -1,6 +1,6 @@
-# Beyond Worlds — Quick Start (0.1)
+# Worlds and Beyond — Quick Start (0.1)
 
-Beyond Worlds is your tool for pen-&-paper worlds: build first, then play.
+Worlds and Beyond is your tool for pen-&-paper worlds: build first, then play.
 
 At the top of the window you switch between two modes:
 

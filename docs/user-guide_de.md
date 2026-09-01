@@ -1,6 +1,6 @@
-# Beyond Worlds — Kurzanleitung (0.1)
+# Worlds and Beyond — Kurzanleitung (0.1)
 
-Beyond Worlds ist dein Werkzeug für Pen-&-Paper-Welten: erst bauen, dann spielen.
+Worlds and Beyond ist dein Werkzeug für Pen-&-Paper-Welten: erst bauen, dann spielen.
 
 Oben im Fenster schaltest du zwischen zwei Modi um:
 

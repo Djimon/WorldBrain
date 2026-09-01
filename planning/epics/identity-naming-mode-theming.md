@@ -1,8 +1,8 @@
-# EPIC: Beyond Worlds — Produkt-Identität, Namen & Modus-Theming
+# EPIC: Worlds and Beyond — Produkt-Identität, Namen & Modus-Theming
 
 ## Kontext (für Leser ohne Vorwissen)
 
-WorldBuilderX ist eine **Tauri-v2-Desktop-App** (React + TypeScript, läuft im OS-WebView; Windows = WebView2/Chromium) zum Bauen und Bespielen von Pen-&-Paper-Rollenspielwelten. Die App hat **zwei sich gegenseitig ausschließende Shell-Modi**, zwischen denen ein globaler Top-Bar-Umschalter kippt (das „Bearbeiten ⟷ Spielen"-Toggle, geliefert im Multiplayer-Milestone „M10 - Multiplayer & Player Identity"):
+Worlds and Beyond ist eine **Tauri-v2-Desktop-App** (React + TypeScript, läuft im OS-WebView; Windows = WebView2/Chromium) zum Bauen und Bespielen von Pen-&-Paper-Rollenspielwelten. Die App hat **zwei sich gegenseitig ausschließende Shell-Modi**, zwischen denen ein globaler Top-Bar-Umschalter kippt (das „Bearbeiten ⟷ Spielen"-Toggle, geliefert im Multiplayer-Milestone „M10 - Multiplayer & Player Identity"):
 
 - **Prep/Autor-Modus** — der Spielleiter (DM) baut die Welt allein: Entities, Karten, Timeline, Kampagnen-Struktur.
 - **Live/Session-Modus** — die Gruppe bespielt die Welt am Tisch: World State, Runtime, Gruppen/Spieler, virtueller Spieltisch.
@@ -20,7 +20,7 @@ Der Nutzer erlebt **eine** Plattform-Marke und sieht im Header **je nach aktivem
 ## Decisions
 
 1. **Namensarchitektur — drei sichtbare Ebenen:**
-   - **Plattform = „Beyond Worlds"** — die *eine* App-Marke. Erscheint in Splash, Fenstertitel, About, und als kleine, dauerhafte Kennung im Header.
+   - **Plattform = „Worlds and Beyond"** — die *eine* App-Marke. Erscheint in Splash, Fenstertitel, About, und als kleine, dauerhafte Kennung im Header.
    - **Zwei Modus-Marken im Header:**
      - **„RealmForge"** = der Prep/Autor-Modus.
      - **„Adventure Nexus"** = der Live/Session-Modus.
@@ -40,7 +40,7 @@ Der Nutzer erlebt **eine** Plattform-Marke und sieht im Header **je nach aktivem
 
 6. **Engine-Name ist Platzhalter, aber kein Blocker.** Der frühere Arbeitstitel „WorldAnvil" wird **nicht** verwendet (es existiert ein gleichnamiges reales Worldbuilding-Produkt → Kollision). Kandidaten: **„RuleLoom"** oder **„CodexLoom"**. Der finale Name ist noch offen; die Implementierung nutzt **einen einzigen Konstanten-/Übersetzungs-Key** mit Platzhalter-Wert, sodass ein späterer Namenswechsel eine Ein-Zeilen-Änderung ist.
 
-7. **Alle Marken-/UI-Strings über `useTranslation` mit inline-deutschem Default** (`t('brand.platform','Beyond Worlds')`), zentral registriert — **keine** verstreuten Hardcode-Strings. (Konsistenz mit der bestehenden i18n-Regel des Projekts.)
+7. **Alle Marken-/UI-Strings über `useTranslation` mit inline-deutschem Default** (`t('brand.platform','Worlds and Beyond')`), zentral registriert — **keine** verstreuten Hardcode-Strings. (Konsistenz mit der bestehenden i18n-Regel des Projekts.)
 
 ## Farb-Configs (konkret)
 
@@ -116,7 +116,7 @@ Ein Theme (auch ein Custom-Theme) deklariert zwei **unabhängige** Fähigkeits-A
 **Ziel:** Alle Produkt-Namen leben an genau einer Stelle, übersetzbar, ohne verstreute Hardcode-Strings.
 
 **AC:**
-- Ein zentrales Modul (z.B. `src/branding/brand.ts` + i18n-Keys) exportiert: Plattformname (`"Beyond Worlds"`), die zwei Modus-Marken (`"RealmForge"`, `"Adventure Nexus"`), und die Engine-Marke als **einzelner** Key mit Platzhalter-Wert (`"RuleLoom"` als Vorbelegung; austauschbar in einer Zeile).
+- Ein zentrales Modul (z.B. `src/branding/brand.ts` + i18n-Keys) exportiert: Plattformname (`"Worlds and Beyond"`), die zwei Modus-Marken (`"RealmForge"`, `"Adventure Nexus"`), und die Engine-Marke als **einzelner** Key mit Platzhalter-Wert (`"RuleLoom"` als Vorbelegung; austauschbar in einer Zeile).
 - Jeder Wert wird über `useTranslation` mit inline-deutschem Default bezogen (`t('brand.mode.prep','RealmForge')` usw.).
 - Keine dieser Zeichenketten erscheint hardcodiert an einer anderen Stelle im Code (Grep-Nachweis: die Marken-Strings existieren nur in der Registry/Übersetzungsdatei).
 - Kein `## header`-Missbrauch, keine Magic-Strings wo eine Konstante passt.
@@ -128,7 +128,7 @@ Ein Theme (auch ein Custom-Theme) deklariert zwei **unabhängige** Fähigkeits-A
 **Ziel:** Der Header zeigt dauerhaft die Plattform-Marke und daneben die Marke des **aktiven Modus**.
 
 **AC:**
-- Der Header zeigt: `Beyond Worlds` (kleine, ruhige Kennung) **+** das aktive Modus-Label — `RealmForge` im Prep/Autor-Modus, `Adventure Nexus` im Live/Session-Modus.
+- Der Header zeigt: `Worlds and Beyond` (kleine, ruhige Kennung) **+** das aktive Modus-Label — `RealmForge` im Prep/Autor-Modus, `Adventure Nexus` im Live/Session-Modus.
 - Das Label wird **aus dem aktiven Shell-Modus** abgeleitet: `useAppMode().mode` aus `src/ui/AppModeContext.tsx` (`edit` → `RealmForge`, `play` → `Adventure Nexus`). **Niemals** aus `sessionRole` (Decision 2) — ein DM im Live-Modus (`mode==='play'`) sieht `Adventure Nexus`. Mount im Header von `src/ui/WorkspaceShell.tsx`.
 - Aufgebaut aus `src/ui/primitives.tsx` (`Panel`/Header-Container, `StatusChip`/Label-Pill); keine rohen ungestylten `<div>`/`<span>` für Marken-Chrome; Tokens aus `src/styles/tokens.css`, kein Hex hardcodiert.
 - Alle sichtbaren Strings über `useTranslation` (S01-Registry).

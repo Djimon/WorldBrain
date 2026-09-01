@@ -26,7 +26,7 @@ export function WelcomeScreen({ configPath = 'app-config.json', onCreateProject,
 
   return (
     <div className="welcome-screen">
-      <h1>{t('brand.platform', { ns: 'common', defaultValue: 'Beyond Worlds' })}</h1>
+      <h1>{t('brand.platform', { ns: 'common', defaultValue: 'Worlds and Beyond' })}</h1>
 
       {isStale && (
         <p role="status" className="welcome-screen__status">

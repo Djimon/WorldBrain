@@ -1,4 +1,4 @@
-# WorldBuilderX — Component Library Index (consolidation map)
+# Worlds and Beyond — Component Library Index (consolidation map)
 
 > The consolidated deliverable. For each canonical component: its role, the canonical class/primitive
 > that should own it, and every hand-rolled duplicate across the six audited views with `file:line`

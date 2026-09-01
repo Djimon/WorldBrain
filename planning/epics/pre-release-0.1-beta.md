@@ -2,7 +2,7 @@
 
 ## Kontext (für Leser ohne Vorwissen)
 
-WorldBuilderX ist eine **Tauri-v2-Desktop-App** (React + TypeScript, OS-WebView) zum Bauen und Bespielen von Pen-&-Paper-Rollenspielwelten, mit zwei sich ausschließenden Shell-Modi (**Bearbeiten/Edit** ⟷ **Spielen/Play**).
+Worlds and Beyond ist eine **Tauri-v2-Desktop-App** (React + TypeScript, OS-WebView) zum Bauen und Bespielen von Pen-&-Paper-Rollenspielwelten, mit zwei sich ausschließenden Shell-Modi (**Bearbeiten/Edit** ⟷ **Spielen/Play**).
 
 Dieses Epic ist **kein neues Feature**, sondern der **Sammel-Anker für die letzte Meile bis zur ersten veröffentlichten Beta (0.1)**: eine Handvoll Quickfixes, ein i18n-Durchlauf, das einmalige Grün-Ziehen der Test-Suite, das Härten des Release-Builds (Feature-Scope-Lock) und zwei UX-Durchläufe. Es bündelt die Stories im **GitHub-Milestone „pre-release" (#21)**.
 
@@ -26,7 +26,7 @@ Alles außerhalb dieser Liste ist im Release-Build ein Kandidat für **echtes En
    Begründung für „Quickfixes/Repo zuerst": #4 (Scope-Lock) wird ein Umbau — vorher soll das Repo sauber sein (grüne Tests, gefixte Quickfixes, konsistente i18n). **#6 (Settings-UX) kommt vor #4.**
    *(Platzierung von #5 „Play-Mode Live-UX (2 Rechner/2 Netze)" nicht final festgelegt — sinnvoll als Release-Readiness-Validierung nahe #7; offen bis Orchestrator-Bestätigung.)*
 
-2. **Fenstertitel (#0) = Header-Wortmarke.** Der OS-Fenstertitel zeigt **Platform + Mode** exakt wie der In-App-Header (`Beyond Worlds – RealmForge` im Edit, `Beyond Worlds – Adventure Nexus` im Play). „Mode" ist die **modus-gebundene Marke** (RealmForge/Adventure Nexus), **kein** umschaltbarer Klartext; „Bearbeiten/Spielen" sind nur Button-Labels. Gehört fachlich zum Epic `identity-naming-mode-theming.md` (Decision 1 „…erscheint in Fenstertitel", Decision 2 „Modus→Marke").
+2. **Fenstertitel (#0) = Header-Wortmarke.** Der OS-Fenstertitel zeigt **Platform + Mode** exakt wie der In-App-Header (`Worlds and Beyond – RealmForge` im Edit, `Worlds and Beyond – Adventure Nexus` im Play). „Mode" ist die **modus-gebundene Marke** (RealmForge/Adventure Nexus), **kein** umschaltbarer Klartext; „Bearbeiten/Spielen" sind nur Button-Labels. Gehört fachlich zum Epic `identity-naming-mode-theming.md` (Decision 1 „…erscheint in Fenstertitel", Decision 2 „Modus→Marke").
 
 3. **Eine Campaign = eine Gruppe (#2).** Es gibt **kein** Roster-/Gruppen-Konzept. Das „Campaign-Mitglieder"-Panel im Edit-Modus (`CampaignRosterPanel`) wird **ersatzlos gelöscht** (nicht nur ausgeblendet). Einladungscode/verbundene Spieler leben in der Play-Lobby (`LobbyPanel`), die bleibt. **Kein** Gruppen-/Roster-UI woanders neu aufbauen.
 

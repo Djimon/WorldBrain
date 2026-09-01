@@ -38,7 +38,7 @@ weil es die Kosten niedrig hält und trotzdem jeden joinen lässt" (Unity-Doku).
   Signaling-Server.** Clunky, aber null Infra.
 - **Gratis-Relay: Epic Online Services (EOS)** → technisch ideal (kostenloser Relay + NAT-Traversal +
   Lobbies, deckt symmetrisches NAT). **⚠️ ABER: EOS-ToS beschränkt auf „video games and game-related
-  applications" — „not for applications not related to video games."** WorldBuilderX ist ein
+  applications" — „not for applications not related to video games."** Worlds and Beyond ist ein
   Kreativ-/Vorbereitungs-Tool, kein Video-Game → **wahrscheinlich NICHT lizenzberechtigt** (Grauzone
   „game-related" höchstens). Für ein kommerzielles Produkt zu riskant (Epic kann Zugang kündigen →
   Multiplayer tot; GameSpy-Lehre + ToS-Risiko). **EOS daher raus.** Quelle: https://onlineservices.epicgames.com/licensing

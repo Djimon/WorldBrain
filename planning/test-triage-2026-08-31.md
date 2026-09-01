@@ -19,7 +19,7 @@ geliefert/geschlossene Features → Fail = Test veraltet, nicht Feature kaputt.
 | Datei | Fails | Issue | Grund |
 |---|---|---|---|
 | m17-s01-brand-registry.test.ts | 6 | #381 (open, ready) | `src/branding/brand.ts` existiert nicht — M17 ungebaut. |
-| m17-s02-header-identity.dom.test.tsx | 4 | #383 (open, ready) | Header-Identitätsleiste (`brand.platform`/„Beyond Worlds") ungebaut. |
+| m17-s02-header-identity.dom.test.tsx | 4 | #383 (open, ready) | Header-Identitätsleiste (`brand.platform`/„Worlds and Beyond") ungebaut. |
 | m17-s03-mode-accent-tokens.test.ts | 8 | #382 (open, p1) | `--mode-accent`-Token-System fehlt. |
 | m17-s04-theme-registry.test.ts | 10 | #385 (open, ready) | Modul `src/styles/theme-registry` fehlt. |
 | m17-s05-engine-brand.dom.test.tsx | 3 | #384 (open, ready) | Engine-Marke (`brand.engine`/„RuleLoom") ungebaut. |

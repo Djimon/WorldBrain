@@ -6,7 +6,7 @@
 
 ## Kontext (für Leser ohne Vorwissen)
 
-WorldBuilderX ist eine **Tauri-v2-Desktop-App**; der Renderer ist ein **Vite/Rollup-Bundle**
+Worlds and Beyond ist eine **Tauri-v2-Desktop-App**; der Renderer ist ein **Vite/Rollup-Bundle**
 (`npm run build` = `tsc --noEmit && vite build` → `../dist`, das Tauri via `frontendDist`
 + `beforeBuildCommand` in die install-exe packt). Aktuell existiert **kein**
 Feature-Flag-/Config-Mechanismus (Grep: keine `featureFlag`/`FEATURE_`/`isFeatureEnabled`).
@@ -96,7 +96,7 @@ Docs/Planning/.md) gehört nicht in den Release; `theme-tester.html` wird gesond
   Release (config-gated). **Kein** Override-Flag — bewusst einfach gehalten (Nutzerwunsch).
 - **D6 — Feature-Config = `features.json` im Repo-Root** (zero-dependency, laien-editierbar:
   `"cards": false`). Vite liest sie zur Build-Zeit → `define`-Konstanten → Tree-Shaking.
-- **D7 — Nutzerdaten in `Dokumente\WorldBuilderX\`** (NICHT `%AppData%`, NICHT Install-Ordner):
+- **D7 — Nutzerdaten in `Dokumente\WorldsAndBeyond\`** (NICHT `%AppData%`, NICHT Install-Ordner):
   sichtbar, user-schreibbar, intuitiv; `projects/`, `plugins/`, `themes/` (+ theme-tester)
   leben dort, von der App bei First-Run angelegt/geseedet. Install-Ordner (Program Files) bleibt
   read-only/clean. Passt zu den bereits vorhandenen `fs:allow-document-*`-Capabilities.
@@ -106,7 +106,7 @@ Docs/Planning/.md) gehört nicht in den Release; `theme-tester.html` wird gesond
 - **D9 — `features.json` bleibt flach** (kein per-Modus), Modus-Zugehörigkeit lebt im Code.
 - **D10 — Ausgelieferte Docs = EIN neues, kurzes User-How-To** (Kapitel „Für DMs" / „Für
   Player", je aktives Feature knapp erklärt) — als Resource gebündelt. `theme-tester.html`
-  wird in den `themes/`-Ordner (unter `Dokumente\WorldBuilderX\themes\`) gelegt.
+  wird in den `themes/`-Ordner (unter `Dokumente\WorldsAndBeyond\themes\`) gelegt.
 
 ## Cut-Liste bestätigt ✅
 
@@ -186,7 +186,7 @@ chronicle · cards · **plugins-UI (Substrat bleibt!)** · rules — raus in bei
   `-declaration-registry` / `-schema-loader` / `entity-type-schemas`) bleibt verdrahtet für
   Kern-Typen. Edit-`session`-Pointer entfernen. Bundle-Verifikation. **Play-Seite erst nach
   S7.** Depends S1+S2.
-- **S4 — Nutzerdaten → `Dokumente\WorldBuilderX\` + First-Run-Seeding.** `projects/` `plugins/`
+- **S4 — Nutzerdaten → `Dokumente\WorldsAndBeyond\` + First-Run-Seeding.** `projects/` `plugins/`
   `themes/` bei First-Run anlegen; `theme-tester.html` nach `themes/` seeden; ggf. Migration
   bestehender Ablage. Nutzt vorhandene `fs:allow-document-*`-Capabilities. `type: story`
   (Persistence/Boot).

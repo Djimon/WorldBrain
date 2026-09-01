@@ -10,7 +10,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 // ECHTES i18n (kein react-i18next-Mock) — damit die Marken-Keys aus der Registry
-// (#381, common-Namespace) real zu „Beyond Worlds"/„RealmForge"/„Adventure Nexus"
+// (#381, common-Namespace) real zu „Worlds and Beyond"/„RealmForge"/„Adventure Nexus"
 // auflösen und der Test den echten gerenderten Text prüfen kann (#382/#383).
 import '../src/i18n';
 
@@ -92,13 +92,13 @@ describe('M17-S03 mode-accent switches on real mode toggle (mount)', () => {
   const editSeg = () => screen.getByRole('button', { name: 'Bearbeiten' });
   const asDm = () => screen.getByRole('button', { name: /Als DM/i });
 
-  it('edit mode: data-mode=edit, platform Beyond Worlds + RealmForge brand shown', async () => {
+  it('edit mode: data-mode=edit, platform Worlds and Beyond + RealmForge brand shown', async () => {
     const Shell = await getShell();
     render(React.createElement(Shell));
     await waitFor(() => expect(document.documentElement.getAttribute('data-mode')).toBe('edit'));
-    // #389: EINE einfarbige Wortmarke „Beyond Worlds – RealmForge" (ein Element).
+    // #389: EINE einfarbige Wortmarke „Worlds and Beyond – RealmForge" (ein Element).
     const wm = document.querySelector('.workspace-shell__wordmark');
-    expect(wm?.textContent).toContain('Beyond Worlds');
+    expect(wm?.textContent).toContain('Worlds and Beyond');
     expect(wm?.textContent).toContain('RealmForge');
   });
 
@@ -114,7 +114,7 @@ describe('M17-S03 mode-accent switches on real mode toggle (mount)', () => {
     await waitFor(() => expect(document.documentElement.getAttribute('data-mode')).toBe('play'));
     // Plattform bleibt; Modus-Teil wechselt RealmForge→Adventure Nexus (Decision 2).
     const wm = document.querySelector('.workspace-shell__wordmark');
-    expect(wm?.textContent).toContain('Beyond Worlds');
+    expect(wm?.textContent).toContain('Worlds and Beyond');
     expect(wm?.textContent).toContain('Adventure Nexus');
     // Non-color mode cue #2 (Decision 4): das Live-Schloss erscheint.
     expect(screen.getByText('🔒')).toBeTruthy();

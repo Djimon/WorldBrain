@@ -1,6 +1,6 @@
 # Locale Files
 
-WorldBuilderX uses [react-i18next](https://react.i18next.com/) for internationalization.
+Worlds and Beyond uses [react-i18next](https://react.i18next.com/) for internationalization.
 
 ## Directory Structure
 
@@ -29,7 +29,7 @@ Keys are dot-separated strings, e.g. `entity:type.character`.
 1. Create a new folder under `appDataDir/locales/<lang>/` (e.g. `appDataDir/locales/fr/`).
 2. Copy the namespace JSON files from `src/locales/en/` into that folder.
 3. Translate the values — **do not change the keys**.
-4. Restart the app. WorldBuilderX scans `appDataDir/locales/` on startup and registers any found `<lang>/<namespace>.json` files.
+4. Restart the app. Worlds and Beyond scans `appDataDir/locales/` on startup and registers any found `<lang>/<namespace>.json` files.
 5. The new language appears in Settings → Language selector.
 
 **Tip:** The JSON files are plain text and can be edited in VS Code or any text editor without rebuilding the app.

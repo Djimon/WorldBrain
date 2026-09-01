@@ -7,7 +7,7 @@
      default-src 'none' erlaubt KEINE externen Requests (blockt u.a. url()-Beacons
      als Defense-in-depth zu #392); inline CSS/JS bleiben lauffähig (self-contained). -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
-<title>Beyond Worlds — Theme-Tester</title>
+<title>Worlds and Beyond — Theme-Tester</title>
 <!--
   Standalone Theme-Tester / -Ersteller (#388). Komplett self-contained: kein Build,
   keine Abhängigkeiten, kein Server — per Doppelklick im Browser öffnen.
@@ -173,7 +173,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Beyond Worlds — Theme-Tester &amp; -Ersteller</h1>
+  <h1>Worlds and Beyond — Theme-Tester &amp; -Ersteller</h1>
   <p class="sub">Baue dein Theme im <strong>Config-Editor</strong> (Color-Picker + Alpha) oder füge fertiges JSON im <strong>Raw</strong>-Tab ein. Beide sind live synchron; der App-Mock zeigt die Wirkung. Ergebnis-JSON nach <code>&lt;appDataDir&gt;/themes/</code> legen. Standalone, keine App nötig.</p>
 
   <div class="toolbar">
@@ -194,7 +194,7 @@
       <h2>App-Vorschau (Mock)</h2>
       <div class="mock__stripe"></div>
       <div class="mock__header">
-        <span class="mock__brand" id="mock-brand">Beyond Worlds – RealmForge</span>
+        <span class="mock__brand" id="mock-brand">Worlds and Beyond – RealmForge</span>
         <span class="mock__mode-pill" id="mock-modepill">Bearbeiten</span>
         <span class="mock__lock" id="mock-lock" hidden>🔒</span>
         <span class="mock__spacer"></span>
@@ -484,7 +484,7 @@ function syncControls(){
   document.getElementById('app-light').setAttribute('aria-pressed', String(app==='light'));
   document.getElementById('mode-edit').setAttribute('aria-pressed', String(mode==='edit'));
   document.getElementById('mode-play').setAttribute('aria-pressed', String(mode==='play'));
-  document.getElementById('mock-brand').textContent = 'Beyond Worlds – ' + (mode==='play' ? 'Adventure Nexus' : 'RealmForge');
+  document.getElementById('mock-brand').textContent = 'Worlds and Beyond – ' + (mode==='play' ? 'Adventure Nexus' : 'RealmForge');
   document.getElementById('mock-modepill').textContent = mode==='play' ? 'Spielen' : 'Bearbeiten';
   document.getElementById('mock-lock').hidden = mode!=='play';
 }

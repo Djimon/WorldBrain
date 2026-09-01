@@ -1,7 +1,7 @@
 {
-  "productName": "WorldBuilderX",
+  "productName": "Worlds and Beyond",
   "version": "../package.json",
-  "identifier": "com.worldbuilderx.desktop",
+  "identifier": "WorldsAndBeyond",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -12,7 +12,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Beyond Worlds",
+        "title": "Worlds and Beyond",
         "width": 1280,
         "height": 800,
         "minWidth": 960,

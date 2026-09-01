@@ -1,4 +1,4 @@
-# WorldBuilderX Roadmap
+# Worlds and Beyond Roadmap
 
 This roadmap is intentionally high-level. Epics live in Markdown; Stories should become GitHub Issues once the repository is available.
 

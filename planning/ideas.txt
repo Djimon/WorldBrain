@@ -1,6 +1,6 @@
 Name-ideas:
 Aetherforge								(Firma/Gruppe/Company)
-└── Beyond Worlds						(Plattform)
+└── Worlds and Beyond						(Plattform)
     ├── RealmForge						(DM-Tools)
     │   ├── Entities / Lore
     │   ├── Relations

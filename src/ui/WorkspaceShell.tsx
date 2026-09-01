@@ -1035,8 +1035,8 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     applyThemeVars();
   }, [mode]);
 
-  // M17-S07 (#389): OS window title depends on the mode — "Beyond Worlds – RealmForge"
-  // (edit) or "Beyond Worlds – Adventure Nexus" (play). In non-Tauri environments
+  // M17-S07 (#389): OS window title depends on the mode — "Worlds and Beyond – RealmForge"
+  // (edit) or "Worlds and Beyond – Adventure Nexus" (play). In non-Tauri environments
   // (tests/browser) getCurrentWindow is not available → guarded; the title is
   // cosmetic, a failure must not disrupt the app.
   useEffect(() => {

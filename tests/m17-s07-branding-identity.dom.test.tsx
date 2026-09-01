@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// M17-S07 (#389): Header-Identität zusammenführen (EINE Wortmarke „Beyond Worlds
+// M17-S07 (#389): Header-Identität zusammenführen (EINE Wortmarke „Worlds and Beyond
 // – RealmForge/Adventure Nexus") + modus-abhängiger OS-Fenstertitel.
 // Integrationstest durch den ECHTEN WorkspaceShell-Mount (analog m17-s03-mount);
 // setTitle ist gemockt und wird auf den korrekten Titel geprüft.
@@ -87,7 +87,7 @@ describe('M17-S07 merged wordmark through real WorkspaceShell mount', () => {
     // Beide Marken stecken in EINEM Wortmarken-Element (zusammengeführt).
     // #389 (einfarbig, ein String/eine Klasse): Plattform + Modus-Teil in EINEM
     // Wortmarken-Element zusammengeführt.
-    expect(wm!.textContent).toContain('Beyond Worlds');
+    expect(wm!.textContent).toContain('Worlds and Beyond');
     expect(wm!.textContent).toContain('RealmForge');
   });
 
@@ -99,10 +99,10 @@ describe('M17-S07 merged wordmark through real WorkspaceShell mount', () => {
     expect(document.querySelector('.workspace-shell__area-name')).toBeTruthy();
   });
 
-  it('sets OS window title to "Beyond Worlds – RealmForge" in edit mode', async () => {
+  it('sets OS window title to "Worlds and Beyond – RealmForge" in edit mode', async () => {
     const Shell = await getShell();
     render(React.createElement(Shell));
-    await waitFor(() => expect(setTitle).toHaveBeenCalledWith('Beyond Worlds – RealmForge'));
+    await waitFor(() => expect(setTitle).toHaveBeenCalledWith('Worlds and Beyond – RealmForge'));
   });
 
   it('switching to play flips the wordmark mode part AND the window title', async () => {
@@ -117,8 +117,8 @@ describe('M17-S07 merged wordmark through real WorkspaceShell mount', () => {
     await waitFor(() => expect(document.documentElement.getAttribute('data-mode')).toBe('play'));
     const wm = document.querySelector('.workspace-shell__wordmark');
     expect(wm!.textContent).toContain('Adventure Nexus');
-    expect(wm!.textContent).toContain('Beyond Worlds');
-    await waitFor(() => expect(setTitle).toHaveBeenCalledWith('Beyond Worlds – Adventure Nexus'));
+    expect(wm!.textContent).toContain('Worlds and Beyond');
+    await waitFor(() => expect(setTitle).toHaveBeenCalledWith('Worlds and Beyond – Adventure Nexus'));
   });
 });
 
@@ -135,15 +135,15 @@ describe('M17-S07 styling guards (CSS source)', () => {
     expect(proj).toMatch(/color:\s*var\(--color-text-muted\)/);
   });
 
-  it('static window title preset is "Beyond Worlds"', () => {
+  it('static window title preset is "Worlds and Beyond"', () => {
     const conf = readFileSync('src-tauri/tauri.conf.json', 'utf-8');
-    expect(conf).toMatch(/"title":\s*"Beyond Worlds"/);
+    expect(conf).toMatch(/"title":\s*"Worlds and Beyond"/);
   });
 
   it('#401: main-window capability grants set-title', () => {
     // Ohne core:window:allow-set-title lehnt die Tauri-v2-ACL das set_title-
     // Command ab → die setTitle-Promise (WorkspaceShell) rejectet und der
-    // OS-Fenstertitel bleibt auf dem statischen Preset "Beyond Worlds".
+    // OS-Fenstertitel bleibt auf dem statischen Preset "Worlds and Beyond".
     // core:window:default enthält nur Getter (allow-title = lesen), NICHT den Setter.
     const cap = JSON.parse(readFileSync('src-tauri/capabilities/default.json', 'utf-8'));
     expect(cap.permissions).toContain('core:window:allow-set-title');

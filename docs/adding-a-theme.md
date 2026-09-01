@@ -17,7 +17,7 @@ Lege eine Datei `<name>.json` hier ab (eine Datei = ein Theme):
 Der App-Datenordner ist unter Windows:
 
 ```
-%APPDATA%\com.worldbuilderx.desktop\themes\
+%APPDATA%\WorldsAndBeyond\themes\
 ```
 
 (Existiert der Ordner `themes` noch nicht, einfach anlegen.) Danach die App **neu starten**.

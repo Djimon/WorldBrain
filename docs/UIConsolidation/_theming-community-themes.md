@@ -2,7 +2,7 @@
 
 > Companion to `_css-architecture-methodology.md`. That doc covers structure; THIS one is specifically
 > about the end goal you named: users switch themes instantly, and *the community can build and share
-> themes* — the Obsidian model. Researched Aug 2026. Good news up front: **WorldBuilderX is closer to
+> themes* — the Obsidian model. Researched Aug 2026. Good news up front: **Worlds and Beyond is closer to
 > this than it looks, and Tauri/WebView2 (Chromium/Edge) lets us use the newest CSS for it.**
 
 ## 1. What actually makes themes "community-buildable" — the 3 requirements
@@ -18,10 +18,10 @@ needs exactly three things. None of them is exotic:
    theme has to target `.map-token__counter-btn` to restyle a button, theming is broken — that's why the
    consolidation (one `Button`, one `ListRow`, etc.) is a *prerequisite* for community theming, not a nicety.
 3. **A switch that re-points variables at the root.** Toggle a class/attribute on `:root`/`<body>`; every
-   `var()` re-resolves instantly, no re-render, no JS touching components. WorldBuilderX **already has this**
+   `var()` re-resolves instantly, no re-render, no JS touching components. Worlds and Beyond **already has this**
    (`[data-theme='dark']` + `ThemeToggle.tsx`). A theme is just another value of that attribute.
 
-**The blocker for us is #1 and #2, not #3.** Right now a theme author *cannot* restyle WorldBuilderX by
+**The blocker for us is #1 and #2, not #3.** Right now a theme author *cannot* restyle Worlds and Beyond by
 setting variables, because ~40 `#fff`, `#c0392b`, `rgba(0,0,0,.6)` etc. are baked into components and the
 same widget exists as 5 unrelated classes. Fix that (the consolidation) and community theming falls out.
 
@@ -42,7 +42,7 @@ COMPONENT (opt-in)       --button-bg: var(--color-accent)      ← a surgical th
 - **Advanced theme**: author repoints semantic tokens (e.g. make `--color-surface` warmer than the palette).
 - **Surgical theme/snippet**: author overrides one component token. Obsidian's whole snippet ecosystem is this.
 
-## 3. Concrete recommendation for WorldBuilderX
+## 3. Concrete recommendation for Worlds and Beyond
 
 **A. Add the primitive palette layer under the existing semantic tokens** (non-breaking — semantic names stay):
 ```css

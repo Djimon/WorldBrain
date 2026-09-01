@@ -2,7 +2,7 @@
 
 ## Goal
 
-Der Play-Modus macht WorldBuilderX am Spieltisch nutzbar. Sessions sind persistierte Logbücher einer Kampagne — zeitlich unbegrenzt, immer vom letzten Stand fortgeführt. M0–M7 bauen die Welt. M8 spielt sie.
+Der Play-Modus macht Worlds and Beyond am Spieltisch nutzbar. Sessions sind persistierte Logbücher einer Kampagne — zeitlich unbegrenzt, immer vom letzten Stand fortgeführt. M0–M7 bauen die Welt. M8 spielt sie.
 
 ## Decisions
 

@@ -1,4 +1,4 @@
-# WorldBuilderX — Claude Code Instructions
+# Worlds and Beyond — Claude Code Instructions
 
 See `AGENTS.md` for all project rules, workflow, and engineering principles.
 

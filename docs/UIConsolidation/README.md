@@ -1,6 +1,6 @@
 # UI Consolidation — Index
 
-Structured audit of WorldBuilderX's UI to replace the "every implementer writes their own CSS in one
+Structured audit of Worlds and Beyond's UI to replace the "every implementer writes their own CSS in one
 4,584-line file" reality with a real component library + tokenized CSS, and to enable the long-term goal:
 fast, community-buildable themes. **This is analysis + mapping only — no source was edited.**
 

@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
-// M17-S02: Header-Identitätsleiste (Beyond Worlds + modus-gebundenes Label)
+// M17-S02: Header-Identitätsleiste (Worlds and Beyond + modus-gebundenes Label)
 // See: https://github.com/Djimon/WorldBrain/issues/383
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('M17-S02 Header identity bar source guards', () => {
-  it('WorkspaceShell header renders platform brand (Beyond Worlds)', () => {
+  it('WorkspaceShell header renders platform brand (Worlds and Beyond)', () => {
     const source = readFileSync('src/ui/WorkspaceShell.tsx', 'utf-8');
-    expect(source).toMatch(/brand\.platform|Beyond Worlds/);
+    expect(source).toMatch(/brand\.platform|Worlds and Beyond/);
   });
 
   it('header renders mode label based on useAppMode().mode', () => {

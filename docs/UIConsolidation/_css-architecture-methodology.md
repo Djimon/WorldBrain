@@ -1,4 +1,4 @@
-# CSS Architecture — State of the Art, applied to WorldBuilderX
+# CSS Architecture — State of the Art, applied to Worlds and Beyond
 
 > Research companion to the view audits. Written for OUR situation: one 4,584-line `style.css`,
 > an orphaned `primitives.tsx` design system, colors half-tokenized. This defines the target
@@ -21,7 +21,7 @@ Modern design-system practice (W3C DTCG 2025.10, Style Dictionary, every serious
 entire payoff: a theme is then just re-pointing the semantic layer (or swapping the primitive
 palette) — components never change.
 
-### Where WorldBuilderX is today
+### Where Worlds and Beyond is today
 `tokens.css` already has a **semantic** layer (`--color-accent`, `--color-surface`…) and does dark
 mode the right way (`[data-theme='dark']` redefines the semantic values). That's good and should stay.
 **What's missing is the primitive layer below it.** Right now dark mode hand-writes 15 new hex values.

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://worldbuilderx.local/schemas/base/project.schema.json",
-  "title": "WorldBuilderX Base Project Metadata",
+  "$id": "https://worldsandbeyond.local/schemas/base/project.schema.json",
+  "title": "Worlds and Beyond Base Project Metadata",
   "type": "object",
   "additionalProperties": false,
   "required": [

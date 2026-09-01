@@ -1,10 +1,10 @@
-# WorldBuilderX
+# Worlds and Beyond
 
 ![Status](https://img.shields.io/badge/Status-In%20Development-F5C542) ![Platform](https://img.shields.io/badge/Platform-Windows-5C5C5C) ![Stack](https://img.shields.io/badge/Stack-Tauri%20v2%20%7C%20React%20%7C%20TypeScript-2B90D9?logo=react&logoColor=white) ![License](https://img.shields.io/badge/License-Proprietary-red)
 
 > A local-first desktop app for game masters and writers to build, organize, and run fictional worlds — with full rules support, live session tools, and optional co-op multiplayer.
 
-WorldBuilderX keeps your world data as plain JSON on disk — readable, portable, and git-friendly. You own your files. No cloud, no subscriptions, no lock-in.
+Worlds and Beyond keeps your world data as plain JSON on disk — readable, portable, and git-friendly. You own your files. No cloud, no subscriptions, no lock-in.
 
 ---
 
@@ -21,7 +21,7 @@ WorldBuilderX keeps your world data as plain JSON on disk — readable, portable
 
 ## Getting started
 
-WorldBuilderX runs on **Windows** (x64). Requires Node.js 24, Rust, and Tauri CLI v2.
+Worlds and Beyond runs on **Windows** (x64). Requires Node.js 24, Rust, and Tauri CLI v2.
 
 ```sh
 npm ci

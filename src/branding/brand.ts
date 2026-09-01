@@ -26,7 +26,7 @@ export interface Brand {
 export function useBrand(): Brand {
   const { t } = useTranslation('common');
   return {
-    platform: t('brand.platform', 'Beyond Worlds'),
+    platform: t('brand.platform', 'Worlds and Beyond'),
     editMode: t('brand.mode.edit', 'RealmForge'),
     playMode: t('brand.mode.play', 'Adventure Nexus'),
     engine: t('brand.engine', 'RuleLoom'),

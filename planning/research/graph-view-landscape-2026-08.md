@@ -41,7 +41,7 @@ Aus der LLM-Graph-Recherche (Agent C): Die Ästhetik ist ein gelöstes, konvergi
 
 - **Uniformes Datenmodell:** SPO/Entity-Relationship-Tripel **mit Provenienz** (`{source, predicate, target, confidence, EXTRACTED|INFERRED}`) + **Entity-Dedup/Standardisierung** *vor* dem Graphen. (graphify, ai-knowledge-graph, aimaster konvergieren.)
 - **„Schön" = Community-Detection + Färbung** (Leiden/Louvain) → Nodes nach Community gefärbt, Kanten nach Confidence. Plus **vorberechnete Layout-Positionen** im JSON mitliefern → Client rendert sofort ohne Kalt-Physik (ml-knowledge-graph).
-- **Die Lücke = unsere Chance:** Fast **kein** LLM-Graph-Tool liefert einen *wirklich schönen, echt-3D, hochskaligen* View — die AI-Tools bleiben bei 2D-pyvis; die schönen Renderer kommen von der Obsidian-*Plugin*-Seite. WorldBuilderX kann **beides koppeln**: graphify-artiges Extraktions-/Provenienz-/Community-Datenmodell **+** ein Pixi-oder-Three-Renderer. Unser vorhandener Pixi+3D-Kugel+Galaxy-Cluster-Stand ist bereits auf Best-in-Class-Render-Niveau.
+- **Die Lücke = unsere Chance:** Fast **kein** LLM-Graph-Tool liefert einen *wirklich schönen, echt-3D, hochskaligen* View — die AI-Tools bleiben bei 2D-pyvis; die schönen Renderer kommen von der Obsidian-*Plugin*-Seite. Worlds and Beyond kann **beides koppeln**: graphify-artiges Extraktions-/Provenienz-/Community-Datenmodell **+** ein Pixi-oder-Three-Renderer. Unser vorhandener Pixi+3D-Kugel+Galaxy-Cluster-Stand ist bereits auf Best-in-Class-Render-Niveau.
 
 ---
 

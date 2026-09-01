@@ -156,7 +156,7 @@ Generalize to N bands so other systems (Blades' 6/4-5/1-3, PbtA 10+/7-9/6−) re
 
 ### P7 — **Damage-instance modification (weakness/resistance with type + exceptions)** — plugin-boundary decision
 **Why:** Weakness/Resistance operate on a *damage packet* (has amount + type), not a character scalar. This is outside "deterministic scalar from the character's own fields."
-**Recommendation:** Decide scope explicitly. If WorldBuilderX only ever renders sheets (not resolves damage), model weaknesses/resistances as **read-only declared data** (`{type, value, kind: weakness|resistance, except:[…]}`) shown on the sheet, and let the GM apply them — no engine change. If you ever want the engine to *apply* damage, you need a new evaluation context (a damage-instance object with a type tag) that the current scalar-only engine doesn't have. Recommend: **declared data now, defer the engine.** Same call applies to MAP if you don't model in-turn attack sequences.
+**Recommendation:** Decide scope explicitly. If Worlds and Beyond only ever renders sheets (not resolves damage), model weaknesses/resistances as **read-only declared data** (`{type, value, kind: weakness|resistance, except:[…]}`) shown on the sheet, and let the GM apply them — no engine change. If you ever want the engine to *apply* damage, you need a new evaluation context (a damage-instance object with a type tag) that the current scalar-only engine doesn't have. Recommend: **declared data now, defer the engine.** Same call applies to MAP if you don't model in-turn attack sequences.
 
 ---
 

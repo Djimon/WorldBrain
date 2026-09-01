@@ -1,4 +1,4 @@
-# WorldBuilderX — Global UI System: Ziel, Ist-Stand, Plan
+# Worlds and Beyond — Global UI System: Ziel, Ist-Stand, Plan
 
 > **Zweck dieses Dokuments:** Es beschreibt — ohne Vorwissen aus irgendeiner Konversation —
 > was das übergeordnete Ziel der UI-Konsolidierung ist, wo wir gerade stehen, und welche drei

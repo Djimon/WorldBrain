@@ -1,8 +1,8 @@
 [package]
 name = "worldbuilderx"
 version = "0.0.27"
-description = "WorldBuilderX desktop shell"
-authors = ["WorldBuilderX Contributors"]
+description = "Worlds and Beyond desktop shell"
+authors = ["Worlds and Beyond Contributors"]
 license = "UNLICENSED"
 edition = "2021"
 

@@ -11,7 +11,7 @@ const tauriConfigPath = join(tauriRoot, 'tauri.conf.json');
 const tauriCargoPath = join(tauriRoot, 'Cargo.toml');
 const rendererRoot = join(repoRoot, 'src');
 
-const expectedAppName = 'WorldBuilderX';
+const expectedAppName = 'Worlds and Beyond';
 const forbiddenRuntimeMarkers = Object.freeze([
   '@electron',
   'electron',
@@ -136,11 +136,11 @@ test('M0-S04 loads built renderer output for production-style Tauri verification
   );
 });
 
-test('M0-S04 identifies the desktop app and default window as WorldBuilderX', () => {
+test('M0-S04 identifies the desktop app and default window as Worlds and Beyond', () => {
   const windows = getTauriWindows(tauriConfig);
 
   assert.equal(tauriConfig?.productName, expectedAppName);
-  assert.match(tauriConfig?.identifier ?? '', /^com\.worldbuilderx(?:\.|$)/u);
+  assert.match(tauriConfig?.identifier ?? '', /^WorldsAndBeyond$/u);
   assert.ok(windows.length > 0, 'Expected at least one Tauri window default');
 
   for (const windowConfig of windows) {

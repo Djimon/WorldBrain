@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://worldbuilderx.local/schemas/base/entity.schema.json",
-  "title": "WorldBuilderX Base Entity",
+  "$id": "https://worldsandbeyond.local/schemas/base/entity.schema.json",
+  "title": "Worlds and Beyond Base Entity",
   "type": "object",
   "additionalProperties": false,
   "required": [
