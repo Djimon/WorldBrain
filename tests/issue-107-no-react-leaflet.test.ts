@@ -1,10 +1,10 @@
 // @vitest-environment node
 // Issue #107: MapViewer/GridOverlay/MapEmbedBlock use react-leaflet — architecture decision requires Canvas 2D.
 //
-// #291: GridOverlay.tsx was found to be dead code (superseded by MapGrid.tsx/
-// GridLayer, never wired into MapViewer) and marked .deprecated rather than
-// deleted. Its assertions here still read the .deprecated path so the file
-// doesn't quietly regrow a react-leaflet import.
+// #291/#400: GridOverlay.tsx was dead code (superseded by MapGrid.tsx/GridLayer)
+// and has since been DELETED in the repo cleanup (commit d8e3030). Its two
+// .deprecated-path assertions are removed here; the react-leaflet guard on the
+// live map components (MapViewer/MapEmbedBlock/GridLayer/package.json) stays.
 
 import { describe, expect, it } from 'vitest';
 
@@ -15,11 +15,6 @@ function readSrc(path: string) { return fs.readFileSync(path, 'utf8'); }
 describe('issue-107 no react-leaflet in map components', () => {
   it('MapViewer.tsx does not import from react-leaflet', () => {
     const src = readSrc('src/ui/MapViewer.tsx');
-    expect(src).not.toMatch(/from ['"]react-leaflet['"]/);
-  });
-
-  it('GridOverlay.tsx does not import from react-leaflet', () => {
-    const src = readSrc('src/ui/GridOverlay.tsx.deprecated');
     expect(src).not.toMatch(/from ['"]react-leaflet['"]/);
   });
 
@@ -40,12 +35,6 @@ describe('issue-107 no react-leaflet in map components', () => {
   it('MapViewer.tsx uses a Canvas element, MapCanvas, or GridLayer component', () => {
     const src = readSrc('src/ui/MapViewer.tsx');
     expect(src).toMatch(/<canvas|MapCanvas|<Canvas|GridLayer/);
-  });
-
-  it('GridOverlay.tsx uses canvas draw calls or CSS positioning, not Leaflet SVGOverlay', () => {
-    const src = readSrc('src/ui/GridOverlay.tsx.deprecated');
-    expect(src).not.toMatch(/SVGOverlay|useMap\(\)|getBounds\(\)/);
-    expect(src).toMatch(/canvas|ctx\.|getContext|position.*absolute|drawLine|fillRect/i);
   });
 
   it('package.json does not list react-leaflet as a dependency', () => {

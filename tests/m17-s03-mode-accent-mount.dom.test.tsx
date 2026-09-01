@@ -96,10 +96,10 @@ describe('M17-S03 mode-accent switches on real mode toggle (mount)', () => {
     const Shell = await getShell();
     render(React.createElement(Shell));
     await waitFor(() => expect(document.documentElement.getAttribute('data-mode')).toBe('edit'));
-    // #383: die Plattform-Marke ist dauerhaft sichtbar.
-    expect(screen.getByText('Beyond Worlds')).toBeTruthy();
-    // #382/#383: Modus-Label = RealmForge im edit-Modus.
-    expect(screen.getByText('RealmForge')).toBeTruthy();
+    // #389: EINE einfarbige Wortmarke „Beyond Worlds – RealmForge" (ein Element).
+    const wm = document.querySelector('.workspace-shell__wordmark');
+    expect(wm?.textContent).toContain('Beyond Worlds');
+    expect(wm?.textContent).toContain('RealmForge');
   });
 
   it('switching to play flips data-mode=play and the brand to Adventure Nexus (accent axis red→amber)', async () => {
@@ -112,9 +112,10 @@ describe('M17-S03 mode-accent switches on real mode toggle (mount)', () => {
     fireEvent.click(asDm());
 
     await waitFor(() => expect(document.documentElement.getAttribute('data-mode')).toBe('play'));
-    // Plattform bleibt; Modus-Label wechselt RealmForge→Adventure Nexus (Decision 2).
-    expect(screen.getByText('Beyond Worlds')).toBeTruthy();
-    expect(screen.getByText('Adventure Nexus')).toBeTruthy();
+    // Plattform bleibt; Modus-Teil wechselt RealmForge→Adventure Nexus (Decision 2).
+    const wm = document.querySelector('.workspace-shell__wordmark');
+    expect(wm?.textContent).toContain('Beyond Worlds');
+    expect(wm?.textContent).toContain('Adventure Nexus');
     // Non-color mode cue #2 (Decision 4): das Live-Schloss erscheint.
     expect(screen.getByText('🔒')).toBeTruthy();
   });

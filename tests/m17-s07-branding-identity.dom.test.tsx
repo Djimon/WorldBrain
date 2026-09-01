@@ -85,10 +85,10 @@ describe('M17-S07 merged wordmark through real WorkspaceShell mount', () => {
     const wm = document.querySelector('.workspace-shell__wordmark');
     expect(wm).toBeTruthy();
     // Beide Marken stecken in EINEM Wortmarken-Element (zusammengeführt).
+    // #389 (einfarbig, ein String/eine Klasse): Plattform + Modus-Teil in EINEM
+    // Wortmarken-Element zusammengeführt.
     expect(wm!.textContent).toContain('Beyond Worlds');
     expect(wm!.textContent).toContain('RealmForge');
-    // nur der Modus-Teil ist ein eigenes, akzentgetragenes Element.
-    expect(wm!.querySelector('.workspace-shell__wordmark-mode')!.textContent).toBe('RealmForge');
   });
 
   it('project + area names still present but as secondary elements', async () => {
@@ -116,16 +116,17 @@ describe('M17-S07 merged wordmark through real WorkspaceShell mount', () => {
 
     await waitFor(() => expect(document.documentElement.getAttribute('data-mode')).toBe('play'));
     const wm = document.querySelector('.workspace-shell__wordmark');
-    expect(wm!.querySelector('.workspace-shell__wordmark-mode')!.textContent).toBe('Adventure Nexus');
+    expect(wm!.textContent).toContain('Adventure Nexus');
     expect(wm!.textContent).toContain('Beyond Worlds');
     await waitFor(() => expect(setTitle).toHaveBeenCalledWith('Beyond Worlds – Adventure Nexus'));
   });
 });
 
 describe('M17-S07 styling guards (CSS source)', () => {
-  it('only the mode part of the wordmark carries the accent token', () => {
+  it('the wordmark carries the mode-accent token (einfarbig, #389)', () => {
     const css = readFileSync('src/styles/components/shell.css', 'utf-8');
-    expect(css).toMatch(/\.workspace-shell__wordmark-mode\s*\{[^}]*--mode-accent-text/);
+    // Nach dem Rebrand ist die ganze Wortmarke EINE Klasse, einfarbig im Modus-Akzent.
+    expect(css).toMatch(/\.workspace-shell__wordmark\s*\{[^}]*--mode-accent-text/);
   });
 
   it('project + area names are demoted to muted secondary text', () => {
