@@ -1,4 +1,4 @@
-// M9-S02: Formel-Engine für System-Felder (EPIC-014)
+// M9-S02: formula engine for system fields (EPIC-014)
 // Parses a formula string into the condition-engine AST and evaluates it via the
 // shared numeric evaluator — no dynamic code execution. Computed schema fields
 // reference other entity fields by name.

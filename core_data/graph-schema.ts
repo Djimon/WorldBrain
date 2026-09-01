@@ -1,6 +1,6 @@
-// M16-S10 (#327): projekt-lokaler Cache für vorberechnete Graph-Layout-
-// Positionen. Schlüssel = structureHash(model). Bei Cache-Hit lädt der
-// Consumer direkt (kein Cold-Settle im Renderer).
+// M16-S10 (#327): project-local cache for precomputed graph-layout
+// positions. Key = structureHash(model). On a cache hit the
+// consumer loads directly (no cold settle in the renderer).
 import { DatabaseSync } from 'node:sqlite';
 
 type Db = InstanceType<typeof DatabaseSync>;

@@ -259,8 +259,8 @@
   color: var(--color-status-failure);
 }
 
-/* M17-S03 (#382): Modus-Akzent-Tone — die Modus-Label-Pill (S02) trägt die
-   Modus-Farbe (Prep-Rot / Live-Amber) aus dem Token, kein Komponenten-Hex. */
+/* M17-S03 (#382): mode-accent tone — the mode-label pill (S02) carries the
+   mode color (prep red / live amber) from the token, no component hex. */
 .ui-status-chip[data-tone='accent'] {
   border-color: color-mix(in srgb, var(--mode-accent) 40%, transparent);
   color: var(--mode-accent-text);

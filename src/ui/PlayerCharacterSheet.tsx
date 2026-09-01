@@ -1,14 +1,14 @@
-// M10-S08 (#357): Spieler-Charakterbogen (D13/D14).
-// Der Datensatz lebt als base_entities-Row (type='Character') mit
-// `is_player_character: true` im properties_json — plus campaign_id und
-// player_id als Bindung an genau eine (Campaign, Spieler)-Paarung (D10).
-// - Nach dem Join legt der Spieler HIER seinen Charakter an (Basisfelder;
-//   plugin-gesteuertes Schema kommt sobald campaigns.system_plugin_id gesetzt
-//   wird — Follow-up an M9-S03 #166).
-// - Der Bogen ist ausschließlich für den eigenen Spieler editierbar (D20).
-// - D13/D14 „Bogen = Aktionsquelle": Aktions-Buttons rufen `onPostAction` auf.
-//   Die konkrete Log-Persistenz + Regel-Auflösung leben im Kampf-Sub-Epic
-//   (M10b); dieses Sheet liefert den Auslöser + posted-Aktion an den Consumer.
+// M10-S08 (#357): player character sheet (D13/D14).
+// The record lives as a base_entities row (type='Character') with
+// `is_player_character: true` in properties_json — plus campaign_id and
+// player_id binding it to exactly one (campaign, player) pairing (D10).
+// - After the join the player creates their character HERE (basic fields;
+//   the plugin-driven schema comes once campaigns.system_plugin_id is set
+//   — follow-up to M9-S03 #166).
+// - The sheet is editable only by the player who owns it (D20).
+// - D13/D14 "sheet = action source": action buttons call `onPostAction`.
+//   The actual log persistence + rule resolution live in the combat sub-epic
+//   (M10b); this sheet provides the trigger + posted action to the consumer.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
@@ -22,10 +22,10 @@ import type { PlayClientStoreImpl } from '../services/play-client-store';
 import { Button, Field, Panel, StatusChip } from './primitives';
 
 export interface PlayerCharacterSheetProps {
-  /** DM-Pfad (Host-DB, volles CRUD). */
+  /** DM path (host DB, full CRUD). */
   database?: DatabaseLike;
-  /** #374 Client-Pfad (Membran D30): Bogen aus dem Store lesen, Edits laufen
-   *  später als ClientAction — für jetzt read-only. */
+  /** #374 client path (membrane D30): read the sheet from the store, edits will
+   *  later run as a ClientAction — read-only for now. */
   store?: PlayClientStoreImpl;
   campaignId: string;
   playerId: string;
@@ -47,7 +47,7 @@ export function PlayerCharacterSheet({
   const [error, setError] = useState<string | null>(null);
   const [lastAction, setLastAction] = useState<string | null>(null);
 
-  // Store-Pfad (Client): read-only aus dem transport-gespeisten Store.
+  // Store path (client): read-only from the transport-fed store.
   useEffect(() => {
     if (!store) return;
     const sync = () => {
@@ -64,7 +64,7 @@ export function PlayerCharacterSheet({
     return store.subscribe(sync);
   }, [store, campaignId, playerId]);
 
-  // DB-Pfad (DM/Host): volles CRUD.
+  // DB path (DM/Host): full CRUD.
   useEffect(() => {
     if (!database) return;
     let cancelled = false;
@@ -82,7 +82,7 @@ export function PlayerCharacterSheet({
   const readOnly = store !== undefined && database === undefined;
 
   async function handleCreate() {
-    if (!database) return; // Client-Pfad ist read-only.
+    if (!database) return; // client path is read-only.
     setError(null);
     setCreating(true);
     try {
@@ -102,7 +102,7 @@ export function PlayerCharacterSheet({
   }
 
   async function handleSaveSummary() {
-    if (character === null || !database) return; // Client-Pfad read-only.
+    if (character === null || !database) return; // client path read-only.
     setError(null);
     try {
       const nextSheet = { ...character.sheet, summary: editSummary };

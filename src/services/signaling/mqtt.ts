@@ -1,4 +1,4 @@
-// M10-S12 (#368): Trystero + MQTT — Fallback-Strategie (Spike bestätigt).
+// M10-S12 (#368): Trystero + MQTT — fallback strategy (Spike confirmed).
 import type { AdapterFactory } from './types';
 import { joinTrystero } from './nostr';
 

@@ -43,9 +43,9 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   await adapter.execute(`ALTER TABLE base_entities ADD COLUMN body_json TEXT NOT NULL DEFAULT '{"format":"portable_blocks_v1","blocks":[]}'`).catch(() => {});
   await adapter.execute(`ALTER TABLE base_entities ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'`).catch(() => {});
 
-  // M10-S20 (D23): campaign-scoped overrides. Fresh shape ist campaign_id NOT
-  // NULL + updated_at; auf alten DBs ziehen die ALTERs die Spalten nach (die
-  // Alt-Rows kriegen '' als campaign_id → Dev-DB wegwerfbar, Epic D23).
+  // M10-S20 (D23): campaign-scoped overrides. Fresh shape is campaign_id NOT
+  // NULL + updated_at; on old DBs the ALTERs backfill the columns (the
+  // old rows get '' as campaign_id → dev DB is throwaway, Epic D23).
   await adapter.execute(`
     CREATE TABLE IF NOT EXISTS campaign_entity_overrides (
       id TEXT PRIMARY KEY,
@@ -60,8 +60,8 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   `);
   await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN campaign_id TEXT NOT NULL DEFAULT ''`).catch(() => {});
   await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))`).catch(() => {});
-  // M10-S21 (#365): Promote-Reversibilität + Upsert-Key. ALTER für bestehende
-  // Dev-DBs (idempotent via catch), CREATE-Spalten oben für frische DBs.
+  // M10-S21 (#365): promote reversibility + upsert key. ALTER for existing
+  // dev DBs (idempotent via catch), CREATE columns above for fresh DBs.
   await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN promoted_at TEXT`).catch(() => {});
   await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN pre_promote_json TEXT`).catch(() => {});
   await adapter.execute(
@@ -113,9 +113,9 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN art_offset_x REAL NOT NULL DEFAULT 0`).catch(() => {});
   await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN art_offset_y REAL NOT NULL DEFAULT 0`).catch(() => {});
   await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN scale REAL NOT NULL DEFAULT 1`).catch(() => {});
-  // M15-S09 (#309): Single-counter → counters_json. Alle 4 Statements
-  // idempotent — .catch(() => {}) fängt „duplicate column", „no such
-  // column" beide Richtungen (fresh DB / alte DB).
+  // M15-S09 (#309): single-counter → counters_json. All 4 statements
+  // idempotent — .catch(() => {}) catches "duplicate column", "no such
+  // column" both directions (fresh DB / old DB).
   await adapter.execute(`ALTER TABLE map_tokens ADD COLUMN counters_json TEXT NOT NULL DEFAULT '[]'`).catch(() => {});
   await adapter.execute(`UPDATE map_tokens SET counters_json = json_array(json_object('label', COALESCE(counter_label,''), 'value', counter_value)) WHERE counter_value IS NOT NULL`).catch(() => {});
   await adapter.execute(`ALTER TABLE map_tokens DROP COLUMN counter_label`).catch(() => {});
@@ -123,7 +123,7 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   applySavedViewsSchema(db as unknown as Parameters<typeof applySavedViewsSchema>[0]);
   await applySearchSchema(adapter);
   applySessionSchema(db as unknown as Parameters<typeof applySessionSchema>[0]);
-  // M10-S20 (D23): Termin → Campaign-Bindung. Idempotent für alte DBs.
+  // M10-S20 (D23): session → campaign binding. Idempotent for old DBs.
   await adapter.execute(`ALTER TABLE sessions ADD COLUMN campaign_id TEXT`).catch(() => {});
   await applyRelationsSchema(adapter);
   // One-time (idempotent) cleanup: relations left dangling by deletes that

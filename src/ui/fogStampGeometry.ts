@@ -1,7 +1,7 @@
-// M15-S04 / #295: Grid-bewusster Fog-Stempel — reine Zellgeometrie.
-// Wiederverwendet das Koordinatenschema aus MapGrid.tsx (cellKeyFor:
-// "{col}:{row}", square = einfaches Raster, hex-flat = versetzte Spalten).
-// Kein neues Geometrie-System — nur die Radius-Aufzählung um eine Mittelzelle.
+// M15-S04 / #295: Grid-aware fog stamp — pure cell geometry.
+// Reuses the coordinate scheme from MapGrid.tsx (cellKeyFor:
+// "{col}:{row}", square = simple grid, hex-flat = staggered columns).
+// No new geometry system — just enumerating the radius around a center cell.
 import type { GridSettings } from './MapGrid';
 
 export type FogStampGridType = GridSettings['type'];
@@ -12,8 +12,8 @@ export interface CellCoord {
   row: number;
 }
 
-// AC 4: square r0..r4 -> 1/9/25/49/81 Zellen; hex r0..r4 -> 1/7/19/37/61
-// Zellen (zentrierte Hexagonalzahlen / Hex-Ring-Summe).
+// AC 4: square r0..r4 -> 1/9/25/49/81 cells; hex r0..r4 -> 1/7/19/37/61
+// cells (centered hexagonal numbers / hex-ring sum).
 export function stampCellCount(level: FogStampLevel, gridType: FogStampGridType): number {
   if (gridType === 'square') return (2 * level + 1) ** 2;
   return 3 * level * (level + 1) + 1;
@@ -48,9 +48,9 @@ function hexDiskOffsets(level: FogStampLevel): Cube[] {
   return cells;
 }
 
-// Alle Zellen, die der Stempel bei Stufe `level` abdeckt, zentriert auf
-// `center`. square = (2*level+1)x(2*level+1)-Block; hex-flat = Hex-Ring-Summe
-// (zentrierte Hexagonalzahl) im Offset-Koordinatenschema aus MapGrid.tsx.
+// All cells the stamp covers at step `level`, centered on
+// `center`. square = (2*level+1)x(2*level+1) block; hex-flat = hex-ring sum
+// (centered hexagonal number) in the offset coordinate scheme from MapGrid.tsx.
 export function stampCells(center: CellCoord, level: FogStampLevel, gridType: FogStampGridType): CellCoord[] {
   if (gridType === 'square') {
     const cells: CellCoord[] = [];

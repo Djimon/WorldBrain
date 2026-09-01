@@ -1,4 +1,4 @@
-// Lore-Entity: eigenständige undatierte Lore (#271)
+// Lore entity: standalone undated lore (#271)
 // D1: exactly one `Lore` entity type + properties.lore_kind — a soft,
 // DM-extensible string (never a DB enum). Seed suggestions only, mirroring
 // event_kind (EPIC-021) and category (M14-S15, #272) — same pattern, no new

@@ -76,8 +76,8 @@
   flex-direction: column;
 }
 
-/* M17-S03 (#382): Kopf-Akzentstreifen — die Modus-Farbe (Prep-Rot / Live-Amber)
-   aus dem Token; sofort sichtbarer Farb-Indikator des aktiven Shell-Modus. */
+/* M17-S03 (#382): Header accent stripe — the mode color (prep red / live amber)
+   from the token; immediately visible color indicator of the active shell mode. */
 .workspace-shell__mode-stripe {
   height: 3px;
   background: var(--mode-accent);
@@ -94,17 +94,17 @@
   flex-shrink: 0;
 }
 
-/* M17-S02 (#383): Produkt-Identitätsleiste — Plattform-Marke + Modus-Label. */
+/* M17-S02 (#383): Product identity bar — platform brand + mode label. */
 .workspace-shell__identity {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
 }
-/* M17-S07 (#389): EINE zusammengeführte Wortmarke — einheitliche Typo/Basis-
-   Farbe; nur der Modus-Teil trägt dezent den Modus-Akzent. Kein Pill-Style. */
-/* #389 + Feedback: EINE Wortmarke = ein String, eine Klasse. Komplett einfarbig
-   im Modus-Akzent (Plattform, Bindestrich und Modus-Teil gleich groß + gleiche
-   Farbe); der Text selbst (RealmForge/Adventure Nexus) folgt `mode`. */
+/* M17-S07 (#389): ONE merged wordmark — uniform typography/base
+   color; only the mode part subtly carries the mode accent. No pill style. */
+/* #389 + feedback: ONE wordmark = one string, one class. Entirely single-color
+   in the mode accent (platform, hyphen and mode part same size + same
+   color); the text itself (RealmForge/Adventure Nexus) follows `mode`. */
 .workspace-shell__wordmark {
   font-size: 0.95rem;
   font-weight: 650;
@@ -113,7 +113,7 @@
   white-space: nowrap;
 }
 
-/* M17-S04 (#385): Theme-Picker-Option mit Live-Akzent-Swatch (Farbe via --swatch). */
+/* M17-S04 (#385): theme-picker option with live accent swatch (color via --swatch). */
 .theme-picker__option {
   display: inline-flex;
   align-items: center;
@@ -160,7 +160,7 @@
   border-color: var(--mode-accent);
 }
 
-/* #389: sekundär — kleiner/gedämpft, damit die Wortmarke primär bleibt. */
+/* #389: secondary — smaller/dimmed, so the wordmark stays primary. */
 .workspace-shell__project-name {
   font-size: 0.85rem;
   font-weight: 600;

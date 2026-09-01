@@ -1,8 +1,8 @@
-// M10-S07 (#356): Visibility-Editor UI — additive per-Spieler/Gruppen-Overrides
-// zusätzlich zu den 4 bestehenden Base-Scopes (Decisions 5–7).
-// Base-Scope liegt als Spalte auf der Entity (visibility='public'|'gm_only'|
-// 'player_known'|'hidden_until_condition'), Overrides in
-// session_visibility_overrides (S20/S07-Schema).
+// M10-S07 (#356): visibility editor UI — additive per-player/group overrides
+// on top of the 4 existing base scopes (Decisions 5–7).
+// The base scope lives as a column on the entity (visibility='public'|'gm_only'|
+// 'player_known'|'hidden_until_condition'), overrides in
+// session_visibility_overrides (S20/S07 schema).
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
@@ -24,7 +24,7 @@ export interface VisibilityScopePickerProps {
   targetId: string;
   baseScope: BaseScope;
   onBaseScopeChange: (scope: BaseScope) => void;
-  /** Wenn undefined → erste Campaign aus DB automatisch, sonst diese pinnen. */
+  /** If undefined → first campaign from the DB automatically, otherwise pin this one. */
   campaignId?: string;
 }
 
@@ -74,7 +74,7 @@ export function VisibilityScopePicker({
       setPlayers(activePlayers);
       setGroups(gs);
       setOverrides(ovs);
-      // Anzeigename statt UUID: display_name pro player_id nachladen.
+      // Display name instead of UUID: load display_name per player_id.
       if (activePlayers.length > 0) {
         const ids = activePlayers.map((p) => p.player_id);
         const placeholders = ids.map(() => '?').join(',');

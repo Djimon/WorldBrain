@@ -1,46 +1,46 @@
-// M10-S12 (#368): Signaling-Adapter-Layer — Interface + Vertrag.
-// Ein Adapter versteckt einen konkreten Broker (Trystero-Nostr, MQTT, Torrent,
-// PeerJS-Cloud) hinter EINER Fassade — der Transport (#367) redet nur gegen
-// diese Fassade und wählt den Broker per `AdapterKey`.
+// M10-S12 (#368): Signaling adapter layer — interface + contract.
+// An adapter hides a concrete broker (Trystero-Nostr, MQTT, Torrent,
+// PeerJS-Cloud) behind ONE facade — the transport (#367) talks only against
+// this facade and picks the broker by `AdapterKey`.
 //
-// Namespacing kommt von außen (#367): `appId` = per-Host-Namespace,
-// `roomId` = Campaign-Name. Der Layer behandelt beide OPAK.
+// Namespacing comes from outside (#367): `appId` = per-host namespace,
+// `roomId` = campaign name. The layer treats both as OPAQUE.
 //
-// Manueller SDP-Copy/Paste wurde nie validiert (Spike #380) und ist gestrichen
-// — kein `requestUiPanel`, kein `ManualSdpPanel`, kein `manual-sdp`-Adapter.
+// Manual SDP copy/paste was never validated (Spike #380) and is removed
+// — no `requestUiPanel`, no `ManualSdpPanel`, no `manual-sdp` adapter.
 
 export type AdapterKey = 'nostr' | 'mqtt' | 'bittorrent' | 'peerjs';
 
 export interface AdapterFactoryOpts {
-  /** Broker-Namespace: kommt vom Host (`getHostSecret`-abgeleitet, #367). */
+  /** Broker namespace: comes from the host (derived from `getHostSecret`, #367). */
   appId: string;
-  /** Campaign-Name als Broker-Room. Der DM wählt ihn frei. */
+  /** Campaign name as the broker room. The DM chooses it freely. */
   roomId: string;
-  /** Rollen-Marker `A|B` (nur für Adapter, die Rollen brauchen — z.B. PeerJS). */
+  /** Role marker `A|B` (only for adapters that need roles — e.g. PeerJS). */
   peerLabel: 'A' | 'B';
-  /** Feuert wenn der erste Peer den Raum joined (Verbindung offen). */
+  /** Fires when the first peer joins the room (connection open). */
   onOpen: () => void;
-  /** Payload-Empfang vom anderen Peer. */
+  /** Payload reception from the other peer. */
   onMessage: (from: string, payload: unknown) => void;
-  /** Fatale/soft Fehler die der Aufrufer werten soll. */
+  /** Fatal/soft errors the caller should evaluate. */
   onError: (err: Error) => void;
-  /** Optional: broker-interne Diagnostik (selfId, Relay-Status, Retries). */
+  /** Optional: broker-internal diagnostics (selfId, relay status, retries). */
   onDiagnostic?: (msg: string) => void;
 }
 
 export interface AdapterHandle {
-  /** Payload broadcast an alle bekannten Peers im Raum. */
+  /** Payload broadcast to all known peers in the room. */
   send(payload: unknown): void;
-  /** Sauberer Shutdown — Adapter räumt Relay-Sockets/Peer-Refs auf. */
+  /** Clean shutdown — the adapter cleans up relay sockets/peer refs. */
   close(): Promise<void>;
 }
 
 export type AdapterFactory = (opts: AdapterFactoryOpts) => Promise<AdapterHandle>;
 
 /**
- * Feste, geordnete Strategie-Kette für den Fallback-Orchestrator.
- * BEIDE Peers MÜSSEN diese identische Reihenfolge laufen — sonst landen sie
- * auf verschiedenen Relays und finden sich nie.
- * PeerJS ist Backup jenseits der Trystero-Kette.
+ * Fixed, ordered strategy chain for the fallback orchestrator.
+ * BOTH peers MUST run this identical order — otherwise they land
+ * on different relays and never find each other.
+ * PeerJS is the backup beyond the Trystero chain.
  */
 export const STRATEGY_ORDER: AdapterKey[] = ['nostr', 'mqtt', 'bittorrent', 'peerjs'];

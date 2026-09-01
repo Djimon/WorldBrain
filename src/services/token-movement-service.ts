@@ -1,13 +1,13 @@
-// M10-S18 (#366, D18): Token-Bewegung im Multiplayer.
+// M10-S18 (#366, D18): Token movement in multiplayer.
 //
-// Host-seitige Autorisierungs- + Broadcast-Schicht (getrennt von der reinen
-// DB-Persistenz in map-token-service). V1-Regel (D18, entschieden 2026-08):
-// - Default OFFEN: JEDER aktive Spieler (status='active', D24) bewegt JEDEN
-//   Token. KEIN DM-Lock in V1 (spätere Kür).
-// - REIN VISUELL: keine erzwungene Grid-/Reichweiten-Prüfung — beliebige
-//   Koordinaten sind erlaubt, Regel-Einhaltung per Absprache.
-// - Nur gekickte/inaktive Spieler dürfen nicht bewegen (Token-Sperre).
-// Die Bewegung wird als normales `token`-Update-Delta live an alle gepusht.
+// Host-side authorization + broadcast layer (separate from the pure
+// DB persistence in map-token-service). V1 rule (D18, decided 2026-08):
+// - Default OPEN: EVERY active player (status='active', D24) moves EVERY
+//   token. NO DM lock in V1 (a later nice-to-have).
+// - PURELY VISUAL: no enforced grid/range check — arbitrary
+//   coordinates are allowed, rule compliance by agreement.
+// - Only kicked/inactive players are not allowed to move (token lock).
+// The movement is pushed live to everyone as a normal `token` update delta.
 import type { Delta } from './play-sync-protocol';
 import type { SessionTransport, TransportMessage } from './session-transport';
 import { SYSTEM_TOKEN } from './session-transport';
@@ -18,7 +18,7 @@ export type PlayerStatus = 'active' | 'kicked' | 'inactive' | string;
 export interface MoveTokenParams {
   tokenId: string;
   playerId: string;
-  /** Mitglieds-Status des Bewegers (D24). Nur 'active' darf bewegen. */
+  /** Membership status of the mover (D24). Only 'active' may move. */
   playerStatus: PlayerStatus;
   x: number;
   y: number;
@@ -26,25 +26,25 @@ export interface MoveTokenParams {
 
 export interface MoveTokenResult {
   success: boolean;
-  /** Warum abgelehnt (nur bei success=false). */
+  /** Why rejected (only when success=false). */
   reason?: 'not-active';
 }
 
 /**
- * Autorisiert eine Token-Bewegung. V1: jeder AKTIVE Spieler darf jeden Token
- * bewegen (Default offen, kein Lock). Kein Grid-/Reichweiten-Check — beliebige
- * Koordinaten sind gültig (rein visuell). Nur nicht-aktive (z.B. gekickte)
- * Spieler werden abgelehnt.
+ * Authorizes a token movement. V1: every ACTIVE player may move any token
+ * (default open, no lock). No grid/range check — arbitrary
+ * coordinates are valid (purely visual). Only non-active (e.g. kicked)
+ * players are rejected.
  */
 export function moveToken(params: MoveTokenParams): MoveTokenResult {
   if (params.playerStatus !== 'active') {
     return { success: false, reason: 'not-active' };
   }
-  // Rein visuell: x/y werden NICHT gegen Grid/Reichweite geprüft.
+  // Purely visual: x/y are NOT checked against grid/range.
   return { success: true };
 }
 
-/** Baut das Token-Bewegungs-Delta (kind:'token', op:'update'). */
+/** Builds the token-movement delta (kind:'token', op:'update'). */
 export function buildMovementDelta(
   params: { campaignId: string; tokenId: string; x: number; y: number; serverTime?: string },
 ): Delta {
@@ -60,11 +60,11 @@ export function buildMovementDelta(
 }
 
 /**
- * Live-Push (Host→alle): verteilt eine autorisierte Token-Bewegung über den
- * Host-Push-Pfad (SessionTransport, #373). Token-Bewegung ist NICHT
- * per-Spieler-gefiltert — sie ist für alle sichtbar (D18/D20), daher ein
- * einfacher Broadcast. Das Delta reist als TransportMessage
- * (type:'delta', payload=Delta). Gibt das gesendete Delta zurück.
+ * Live push (host→all): distributes an authorized token movement over the
+ * host push path (SessionTransport, #373). Token movement is NOT
+ * per-player filtered — it is visible to everyone (D18/D20), hence a
+ * simple broadcast. The delta travels as a TransportMessage
+ * (type:'delta', payload=Delta). Returns the sent delta.
  */
 export function broadcastMovement(
   params: { campaignId: string; tokenId: string; x: number; y: number; serverTime?: string },
@@ -76,15 +76,15 @@ export function broadcastMovement(
     token: SYSTEM_TOKEN,
     payload: delta as unknown as Record<string, unknown>,
   };
-  void transport.send(msg).catch(() => { /* offline → verwerfen (fire-and-forget) */ });
+  void transport.send(msg).catch(() => { /* offline → discard (fire-and-forget) */ });
   return delta;
 }
 
 /**
- * Client-Seite (D29, DB-los): wendet eine eingehende Token-Bewegungs-
- * TransportMessage auf den transport-gespeisten Store an. Nur `delta`-
- * Nachrichten mit kind:'token' werden angewandt; alles andere ignoriert.
- * Gibt true zurück, wenn eine Token-Bewegung angewandt wurde.
+ * Client side (D29, DB-less): applies an incoming token-movement
+ * TransportMessage to the transport-fed store. Only `delta`
+ * messages with kind:'token' are applied; everything else is ignored.
+ * Returns true if a token movement was applied.
  */
 export function applyMovementMessage(msg: TransportMessage, store: PlayClientStore): boolean {
   if (msg.type !== 'delta') return false;

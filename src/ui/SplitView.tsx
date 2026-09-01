@@ -1,22 +1,22 @@
-// M10-S19 (issue 364, D21): generischer In-App 2-Pane-Split-View mit verschiebbarer
-// Grenze. Beliebige 2 Ansichten nebeneinander (z.B. DM: Map ‖ Kampflog).
-// V1 = NUR In-App-Split; KEIN OS-Pop-out (ausdrücklich out of scope).
+// M10-S19 (issue 364, D21): generic in-app 2-pane split view with a movable
+// divider. Any 2 views side by side (e.g. DM: Map ‖ Combat log).
+// V1 = ONLY in-app split; NO OS pop-out (explicitly out of scope).
 //
-// Die Grenze wird per Maus-Drag (oder Tastatur auf dem Divider) verschoben;
-// die Ratio ist State und fließt als dynamisches flex-basis in die linke Pane.
-// Kein horizontales Body-Scrolling — Container clippt, Panes scrollen in sich
-// (siehe split-view.css).
+// The divider is moved by mouse drag (or keyboard on the divider);
+// the ratio is state and flows as a dynamic flex-basis into the left pane.
+// No horizontal body scrolling — the container clips, panes scroll internally
+// (see split-view.css).
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export interface SplitViewProps {
-  /** Linke/primäre Ansicht. */
+  /** Left/primary view. */
   primary: React.ReactNode;
-  /** Rechte/sekundäre Ansicht. */
+  /** Right/secondary view. */
   secondary: React.ReactNode;
-  /** Start-Ratio der linken Pane in Prozent (10–90). Default 50. */
+  /** Start ratio of the left pane in percent (10–90). Default 50. */
   initialRatio?: number;
-  /** Untere/obere Klammer für die Ratio in Prozent. Default 15/85. */
+  /** Lower/upper bound for the ratio in percent. Default 15/85. */
   minRatio?: number;
   maxRatio?: number;
   className?: string;

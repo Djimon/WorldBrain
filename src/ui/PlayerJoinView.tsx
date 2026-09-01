@@ -1,13 +1,13 @@
-// M10-S05 (#354) + #387: „Campaign beitreten" — Auto-Join (D24) im Play-Modus,
-// jetzt als DB-LOSER Transport-Handshake (D29). Der Player-Client hat KEINE
-// Datenbank: Beitritt/Reconnect laufen als Nachrichten über den verbundenen
-// Broker-Transport, nicht als lokale `joinWithCode`/`reconnect`-DB-Calls.
+// M10-S05 (#354) + #387: "Join campaign" — auto-join (D24) in play mode,
+// now as a DB-LESS transport handshake (D29). The player client has NO
+// database: join/reconnect run as messages over the connected
+// broker transport, not as local `joinWithCode`/`reconnect` DB calls.
 //
-// Ablauf: Link/Code + Name → Transport per Signaling verbinden (Broker) → sobald
-// verbunden `join_request { code, displayName }` senden → der HOST validiert
-// gegen SEINE DB und antwortet `join_response { ok, token, playerId }` (+ Initial-
-// Snapshot). Bei ok:true reichen wir den verbundenen Transport via onJoined hoch;
-// die Shell speist damit den DB-losen Client-Store (D29-Feed).
+// Flow: link/code + name → connect the transport via signaling (broker) → once
+// connected send `join_request { code, displayName }` → the HOST validates
+// against ITS DB and replies `join_response { ok, token, playerId }` (+ initial
+// snapshot). On ok:true we pass the connected transport up via onJoined;
+// the shell feeds the DB-less client store with it (D29 feed).
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WebRtcTransport } from '../services/webrtc-transport';
@@ -27,25 +27,25 @@ import type { StoredToken } from '../services/reconnect-service';
 import { Button, Field, Panel, StatusChip } from './primitives';
 
 export interface PlayerJoinViewProps {
-  /** Callback nach erfolgreichem Join (Token verfügbar) → S08 nimmt hier auf.
-   *  `transport` (#386/#387): der verbundene Broker-Transport wird hochgereicht,
-   *  damit die Shell den DB-losen Client-Store daran anschließt (D29-Feed)
-   *  und der Player Token-Bewegungs-Intents senden kann. */
+  /** Callback after a successful join (token available) → S08 picks up here.
+   *  `transport` (#386/#387): the connected broker transport is passed up,
+   *  so the shell attaches the DB-less client store to it (D29 feed)
+   *  and the player can send token movement intents. */
   onJoined?: (result: { token: string; playerId: string; displayName: string; transport?: WebRtcTransport }) => void;
 }
 
-// S11 (#367): Connect-Flow-States für die Broker-Verbindung.
-// idle       = User hat noch nichts gedrückt / gerade Formular offen
-// connecting = Adapter läuft (Cold-Announce über Nostr-Relays kann bis ~20s dauern)
-// connected  = onOpen gefeuert, Peer sitzt im Raum
-// failed     = alle Fallback-Strategien erschöpft ODER NAT-Traversal gescheitert
+// S11 (#367): connect-flow states for the broker connection.
+// idle       = user hasn't pressed anything yet / form currently open
+// connecting = adapter running (cold announce over Nostr relays can take up to ~20s)
+// connected  = onOpen fired, peer is in the room
+// failed     = all fallback strategies exhausted OR NAT traversal failed
 export type ConnectState = 'idle' | 'connecting' | 'connected' | 'failed';
 
 /**
- * Parst Einladungslinks der Form `wbrain://join?code=X&campaign=Y&ns=Z`.
- * `ns` = per-Host `appId` (Broker-Namespace, aus S11). Wenn kein `ns` im
- * Link ist, bleibt appId leer und der Adapter würde einen leeren Namespace
- * versuchen — dann konstruktiv scheitern.
+ * Parses invite links of the form `wbrain://join?code=X&campaign=Y&ns=Z`.
+ * `ns` = per-host `appId` (broker namespace, from S11). If there is no `ns` in
+ * the link, appId stays empty and the adapter would try an empty namespace
+ * — then fail by construction.
  */
 export function parseInviteLink(input: string): { code: string; campaign: string; appId: string } {
   const trimmed = input.trim();
@@ -58,7 +58,7 @@ export function parseInviteLink(input: string): { code: string; campaign: string
       appId: url.searchParams.get('ns') ?? '',
     };
   } catch {
-    // Nackter Code (kein URL-Format) — S05 akzeptiert das.
+    // Bare code (not URL format) — S05 accepts that.
     return { code: trimmed, campaign: '', appId: '' };
   }
 }
@@ -71,14 +71,14 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
   const [busy, setBusy] = useState(false);
   const [joinedName, setJoinedName] = useState<string | null>(null);
   const [connectState, setConnectState] = useState<ConnectState>('idle');
-  // Transport-Ref: bleibt über Renders erhalten damit close() beim Unmount klappt.
+  // Transport ref: persists across renders so close() works on unmount.
   const transportRef = useRef<WebRtcTransport | null>(null);
-  // #387: Disposer für den Join-Handshake-Listener — nach erfolgreichem Join
-  // abmelden, damit nur noch die Store-Bridge am Transport hängt.
+  // #387: disposer for the join-handshake listener — unsubscribe after a
+  // successful join, so only the store bridge remains attached to the transport.
   const joinDisposeRef = useRef<(() => void) | null>(null);
-  // #387: welche Aktion der „Erneut versuchen"-Button wiederholen soll.
+  // #387: which action the "Retry" button should repeat.
   const lastActionRef = useRef<'join' | 'reconnect'>('join');
-  // #371 Fix 5: expliziter Reconnect (kein stiller Auto-Reconnect).
+  // #371 Fix 5: explicit reconnect (no silent auto-reconnect).
   const [storedTokenExists, setStoredTokenExists] = useState(false);
   const [checking, setChecking] = useState(false);
 
@@ -93,10 +93,10 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
   const canSubmit = code.trim() !== '' && displayName.trim() !== '' && !busy;
 
   /**
-   * Baut den Broker-Transport, verbindet ihn per Signaling und schickt — sobald
-   * der DataChannel offen ist — die Handshake-Nachricht. Die `join_response` des
-   * Hosts läuft über `onMessage` in `onResponse`. Gemeinsame Basis von Join und
-   * Reconnect (beide sind DB-los, nur die gesendete Nachricht unterscheidet sich).
+   * Builds the broker transport, connects it via signaling and sends — once
+   * the DataChannel is open — the handshake message. The host's `join_response`
+   * runs through `onMessage` into `onResponse`. Shared basis of join and
+   * reconnect (both are DB-less, only the sent message differs).
    */
   async function connectAndHandshake(
     appId: string,
@@ -104,16 +104,16 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
     buildRequest: () => TransportMessage,
     onResponse: (payload: JoinResponsePayload) => void,
   ): Promise<void> {
-    // #387: alten Transport vor einem neuen Versuch schließen — sonst leaken
-    // Broker-Sockets bei jedem Retry.
+    // #387: close the old transport before a new attempt — otherwise broker
+    // sockets leak on every retry.
     const previous = transportRef.current;
     if (previous !== null) void previous.close();
     joinDisposeRef.current?.();
     const transport = new WebRtcTransport({ campaignId: roomId });
     transportRef.current = transport;
-    // Host-Antwort entgegennehmen. Multi-Listener-Transport (#387): die Shell hängt
-    // nach dem Join zusätzlich ihre Store-Bridge an; dieser Handler wird nach
-    // erfolgreichem Join via joinDisposeRef abgemeldet.
+    // Receive the host response. Multi-listener transport (#387): after the join the
+    // shell additionally attaches its store bridge; this handler is unsubscribed
+    // after a successful join via joinDisposeRef.
     joinDisposeRef.current = transport.onMessage((msg: TransportMessage) => {
       if (msg.type === JOIN_RESPONSE) onResponse(msg.payload as unknown as JoinResponsePayload);
     });
@@ -121,7 +121,7 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
     await transport.attachSignaling({
       appId,
       roomId,
-      peerLabel: 'B', // Joiner ist B (Answerer); Host ist A (Initiator).
+      peerLabel: 'B', // the joiner is B (answerer); the host is A (initiator).
       onConnected: () => {
         setConnectState('connected');
         void transport.send(buildRequest()).catch((err) => {
@@ -141,7 +141,7 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
     const parsed = parseInviteLink(code);
     const name = displayName.trim();
     if (parsed.appId === '') {
-      // Kein `ns` im Link → alter/kaputter Link (kein Broker-Namespace).
+      // No `ns` in the link → old/broken link (no broker namespace).
       setError(t('join.errorMissingNs', 'Einladungslink unvollständig (fehlender Broker-Namespace).'));
       setConnectState('failed');
       return;
@@ -170,7 +170,7 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
     }
   }
 
-  /** Verarbeitet die Host-Antwort auf einen `join_request`. */
+  /** Handles the host response to a `join_request`. */
   async function applyJoinResponse(
     payload: JoinResponsePayload,
     name: string,
@@ -182,8 +182,8 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
       setConnectState('failed');
       return;
     }
-    // Token client-lokal für Reconnect vormerken (D10 — KEINE Welt-DB, nur die
-    // Host-Referenz + Broker-Namespace, damit ein späterer Reconnect signalisieren kann).
+    // Note the token client-locally for reconnect (D10 — NO world DB, only the
+    // host reference + broker namespace, so a later reconnect can signal).
     await persistToken({
       hostLabel: '',
       code: rawCode,
@@ -196,9 +196,9 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
     });
     setStoredTokenExists(true);
     setJoinedName(name);
-    // Join-Handshake-Listener abmelden — ab jetzt hört nur noch die Store-Bridge
-    // (die Shell hängt sie via onJoined an; der Snapshot wird ihr per Receive-
-    // Replay nachgespielt, falls er vorher ankam).
+    // Unsubscribe the join-handshake listener — from now on only the store bridge
+    // listens (the shell attaches it via onJoined; the snapshot is replayed to it
+    // via receive replay, if it arrived earlier).
     joinDisposeRef.current?.();
     joinDisposeRef.current = null;
     onJoined?.({
@@ -210,16 +210,16 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
   }
 
   /**
-   * #371 Fix 5 / #387: expliziter, DB-loser Reconnect. Baut den Transport aus den
-   * gespeicherten Broker-Daten (appId/roomId) neu auf und schickt ein
-   * `reconnect_request { token }`; der Host bestätigt oder lehnt ab.
+   * #371 Fix 5 / #387: explicit, DB-less reconnect. Rebuilds the transport from the
+   * stored broker data (appId/roomId) and sends a
+   * `reconnect_request { token }`; the host confirms or rejects.
    */
   async function runReconnect() {
     setError(null);
     const stored = (await listStoredTokens())[0];
     if (!stored) return;
     if (stored.appId === undefined || stored.appId === '' || stored.roomId === undefined || stored.roomId === '') {
-      // Alt-Token ohne Broker-Info (vor #387) — kein DB-loser Reconnect möglich.
+      // Old token without broker info (before #387) — no DB-less reconnect possible.
       setError(t('join.errorReconnectNoLink', 'Frühere Sitzung ohne Verbindungsinfo — bitte über den Einladungslink neu beitreten.'));
       return;
     }
@@ -238,7 +238,7 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
         (payload) => { void applyReconnectResponse(payload, stored); },
       );
     } catch (e) {
-      // Host nicht erreichbar → Token BLEIBT erhalten (späterer Retry, D10).
+      // Host unreachable → the token is KEPT (later retry, D10).
       const raw = e instanceof Error ? e.message : String(e);
       setError(`${t('join.errorBroker', 'Verbindung zum Host fehlgeschlagen.')} — ${raw}`);
       setConnectState('failed');
@@ -247,10 +247,10 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
     }
   }
 
-  /** Verarbeitet die Host-Antwort auf einen `reconnect_request`. */
+  /** Handles the host response to a `reconnect_request`. */
   async function applyReconnectResponse(payload: JoinResponsePayload, stored: StoredToken): Promise<void> {
     if (!payload.ok) {
-      // Host hat aktiv abgelehnt (gekickt/unbekannt) → Alt-Token verwerfen.
+      // Host actively rejected (kicked/unknown) → discard the old token.
       await clearStoredToken(stored.token);
       setStoredTokenExists(false);
       setError(t('join.errorReconnectFailed', 'Frühere Sitzung ist nicht mehr gültig.'));
@@ -268,14 +268,14 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
     });
   }
 
-  /** „Erneut versuchen" wiederholt die ZULETZT versuchte Aktion (Join oder
-   *  Reconnect) — nicht blind Join (#387 Review-Finding). */
+  /** "Retry" repeats the LAST attempted action (join or
+   *  reconnect) — not blindly join (#387 review finding). */
   function retry() {
     if (lastActionRef.current === 'reconnect') void runReconnect();
     else void handleJoin();
   }
 
-  // Transport beim Unmount aufräumen — sonst bleiben Broker-Sockets offen.
+  // Clean up the transport on unmount — otherwise broker sockets stay open.
   useEffect(() => {
     return () => {
       const active = transportRef.current;
@@ -301,7 +301,7 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
     <Panel className="player-join-view u-stack u-gap-3" role="form"
       aria-label={t('join.title', 'Campaign beitreten')}>
       <h2>{t('join.title', 'Campaign beitreten')}</h2>
-      {/* #371 Fix 5: expliziter Reconnect statt still automatisch. */}
+      {/* #371 Fix 5: explicit reconnect instead of silently automatic. */}
       {storedTokenExists && (
         <div className="u-row u-gap-2">
           <StatusChip tone="muted">

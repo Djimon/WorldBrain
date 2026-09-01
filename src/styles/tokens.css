@@ -46,24 +46,24 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-pill: 999px;
-  /* #388: Composite-Schatten Farbe/Geometrie getrennt — die FARBE ist ein
-     eigener --color-*-Token (themebar), die Pixel (Offset/Blur) bleiben fix. */
+  /* #388: composite shadow color/geometry split — the COLOR is its own
+     --color-* token (themeable), the pixels (offset/blur) stay fixed. */
   --color-shadow-panel: rgba(15, 18, 22, 0.12);
   --shadow-panel: 0 12px 28px var(--color-shadow-panel);
 }
 
-/* ── M17-S03/S04 (#382/#385): Modus-Akzent-Token-System ──
-   DREI orthogonale Achsen auf :root (documentElement), NIE vermischt (Decision 5):
-     Modus       — data-mode:       edit = Prep (Rot) · play = Live (Amber/Teal)
-     Erscheinung — data-appearance: light · dark   (reine Anzeige-Präferenz)
-     Theme       — data-theme:      default (kein Akzent-Override) · teal (Live=Teal, dark-only)
-   Default ohne data-mode = edit. Light-Werte SEPARAT autorisiert (WCAG AA),
-   NICHT aus dem Dark-Hue abgeleitet. `--mode-accent-on` pro Farbe verschieden. */
+/* ── M17-S03/S04 (#382/#385): mode-accent token system ──
+   THREE orthogonal axes on :root (documentElement), NEVER mixed (Decision 5):
+     Mode        — data-mode:       edit = Prep (red) · play = Live (amber/teal)
+     Appearance  — data-appearance: light · dark   (pure display preference)
+     Theme       — data-theme:      default (no accent override) · teal (Live=Teal, dark-only)
+   Default without data-mode = edit. Light values authorized SEPARATELY (WCAG AA),
+   NOT derived from the dark hue. `--mode-accent-on` differs per color. */
 
-/* Default-Theme · Light-Erscheinung */
+/* Default theme · light appearance */
 :root,
 :root[data-appearance='light'] {
-  /* edit / Prep-Rot — Weiß auf Rot ~6.2:1 AA, Rot-Text auf hell ~6.8:1 AA */
+  /* edit / prep red — white on red ~6.2:1 AA, red text on light ~6.8:1 AA */
   --mode-accent:       #c1121f;
   --mode-accent-hover: #a80f1a;
   --mode-accent-on:    #ffffff;
@@ -72,7 +72,7 @@
 }
 :root[data-mode='play'],
 :root[data-appearance='light'][data-mode='play'] {
-  /* play / Live-Amber — dunkleres Amber (Weiß darauf ~5.0:1 AA) */
+  /* play / live amber — darker amber (white on it ~5.0:1 AA) */
   --mode-accent:       #b45309;
   --mode-accent-hover: #92400e;
   --mode-accent-on:    #ffffff;
@@ -80,7 +80,7 @@
   --mode-accent-soft:  rgba(180, 83, 9, 0.14);
 }
 
-/* Default-Theme · Dark-Erscheinung (AC-Vorgabe #382) */
+/* Default theme · dark appearance (AC requirement #382) */
 :root[data-appearance='dark'] {
   --mode-accent:       #e5484d;
   --mode-accent-hover: #ef5a5f;
@@ -96,12 +96,12 @@
   --mode-accent-soft:  rgba(234, 165, 60, 0.16);
 }
 
-/* ── Teal-Theme (#385): per-mode, Single-Appearance (dark). Überschreibt den
-     Modus-Akzent, sobald data-theme='teal' — Prep bleibt Rot, Live wird Teal.
-     HINWEIS (#388): Teal ist hier bewusst nur ein minimales, CSS-hartes Beispiel.
-     In #388 wird es zum daten-getriebenen Voll-Token-Referenz-Theme (importierbar,
-     kohärent je Modus, kein Rest-Rot). Kein weiteres Hardcoden hier.
-     (Werte-Referenz in src/styles/theme-registry.ts.) ── */
+/* ── Teal theme (#385): per-mode, single-appearance (dark). Overrides the
+     mode accent as soon as data-theme='teal' — prep stays red, live becomes teal.
+     NOTE (#388): teal is deliberately only a minimal, CSS-hardcoded example here.
+     In #388 it becomes the data-driven full-token reference theme (importable,
+     coherent per mode, no leftover red). No further hardcoding here.
+     (Value reference in src/styles/theme-registry.ts.) ── */
 :root[data-theme='teal'] {
   --mode-accent:       #e5484d;
   --mode-accent-hover: #ef5a5f;

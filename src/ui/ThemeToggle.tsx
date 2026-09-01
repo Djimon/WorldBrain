@@ -8,16 +8,16 @@ import {
 } from '../theme';
 import { getTheme, forcedAppearance, type Appearance } from '../styles/theme-registry';
 
-// M17-S04 (#385): der Umschalter steuert NUR die Erscheinung (dark/light), NIE das
-// Theme (Entkopplung, Decision 5). Bei einem Single-Appearance-Theme (z.B. Teal =
-// dark) erzwingt das Theme seine Erscheinung → der Umschalter ist deaktiviert.
+// M17-S04 (#385): the toggle controls ONLY the appearance (dark/light), NEVER the
+// theme (decoupling, Decision 5). For a single-appearance theme (e.g. Teal =
+// dark) the theme forces its appearance → the toggle is disabled.
 export function ThemeToggle() {
   const { t } = useTranslation();
   const [appearance, setAppearanceState] = useState<Appearance>(getStoredAppearance);
   const [themeId, setThemeIdState] = useState<string>(getStoredThemeId);
 
-  // Auf Theme-Wechsel (durch den ThemePicker) reagieren, damit sich der
-  // Deaktiviert-Zustand live aktualisiert.
+  // React to a theme change (via the ThemePicker) so the disabled state
+  // updates live.
   useEffect(() => {
     const onChange = () => {
       setThemeIdState(getStoredThemeId());
@@ -27,7 +27,7 @@ export function ThemeToggle() {
     return () => window.removeEventListener(THEME_CHANGE_EVENT, onChange);
   }, []);
 
-  const forced = forcedAppearance(getTheme(themeId)); // null = frei wählbar
+  const forced = forcedAppearance(getTheme(themeId)); // null = freely selectable
   const disabled = forced !== null;
   const shown = forced ?? appearance;
 

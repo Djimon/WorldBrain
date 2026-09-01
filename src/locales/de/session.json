@@ -21,7 +21,7 @@
     "applyToWorld": "In Welt übernehmen"
   },
   "snapshot": {
-    "title": "Speicherstände",
+    "title": "Backup",
     "create": "Snapshot erstellen",
     "name": "Snapshot-Name",
     "restore": "Wiederherstellen",

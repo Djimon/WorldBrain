@@ -1,13 +1,13 @@
-// M10-D29 (#372): Sync-Vertrag zwischen Host (R2) und Client (R3).
-// Reine Typen — keine Logik, kein DB-Zugriff. Host und Client binden ihre
-// Impl-Module (play-host-broker, play-client-store) an DIESE Typen; damit
-// bleibt die Membran zwischen beiden Seiten stabil.
+// M10-D29 (#372): Sync contract between host (R2) and client (R3).
+// Pure types — no logic, no DB access. Host and client bind their
+// impl modules (play-host-broker, play-client-store) to THESE types; this keeps
+// the membrane between the two sides stable.
 //
-// Bewusst KEIN DB-Import — der Client kennt keine lokale Persistenz-Schicht
-// (D30-Membran). Der Host serialisiert seine authoritative Sicht in diese
-// Nachrichten und schickt sie durch den Transport.
+// Deliberately NO DB import — the client knows no local persistence layer
+// (D30 membrane). The host serializes its authoritative view into these
+// messages and sends them through the transport.
 
-/** Fachliche Kategorien der übertragenen Daten (Play-Cockpit-Subset D15). */
+/** Domain categories of the transmitted data (play-cockpit subset D15). */
 export type SyncEntityKind =
   | 'entity'
   | 'map'
@@ -20,8 +20,8 @@ export type SyncEntityKind =
   | 'session_time'
   | 'player_character';
 
-/** Ein Datenobjekt in der Sync-Membran — vom Host bereits gefiltert
- *  (S07-Visibility, S17-Kalender-Gate); Payload ist bewusst opake. */
+/** A data object in the sync membrane — already filtered by the host
+ *  (S07 visibility, S17 calendar gate); the payload is deliberately opaque. */
 export interface SyncEntity {
   kind: SyncEntityKind;
   id: string;
@@ -29,8 +29,8 @@ export interface SyncEntity {
 }
 
 /**
- * Snapshot: initialer, für EINEN Empfänger host-gefilterter Datensatz.
- * Enthält nur, was der Spieler zum Zeitpunkt des Joins/Reconnects sehen darf.
+ * Snapshot: initial data set, host-filtered for ONE recipient.
+ * Contains only what the player may see at the time of join/reconnect.
  */
 export interface Snapshot {
   type: 'snapshot';
@@ -41,10 +41,10 @@ export interface Snapshot {
 }
 
 /**
- * Delta: inkrementelle Änderung (Add/Update/Remove) EINES freigegebenen
- * Objekts. `kind` beschreibt die Fach-Kategorie; `op` die Änderung.
- * Sondertypen (Token-Bewegung, Kampflog-Eintrag, Session-Zeit-Vorstellung,
- * Whiteboard-Placement) sind normale add/update-Deltas mit passendem `kind`.
+ * Delta: incremental change (add/update/remove) of ONE released
+ * object. `kind` describes the domain category; `op` the change.
+ * Special types (token movement, combat-log entry, session-time advance,
+ * whiteboard placement) are ordinary add/update deltas with the matching `kind`.
  */
 export type DeltaOp = 'add' | 'update' | 'remove';
 
@@ -59,9 +59,9 @@ export interface Delta {
 }
 
 /**
- * ClientAction: Spieler→Host-Intent (Würfeln, eigene Token-Bewegung, eigener
- * Bogen-Edit). Der Host ist autoritativ — er validiert, führt aus und
- * antwortet mit `Delta`s an die berechtigten Empfänger.
+ * ClientAction: player→host intent (rolling dice, moving one's own token, editing
+ * one's own sheet). The host is authoritative — it validates, executes and
+ * responds with `Delta`s to the authorized recipients.
  */
 export type ClientActionKind =
   | 'roll_dice'
@@ -79,5 +79,5 @@ export interface ClientAction {
   clientTime: string;
 }
 
-/** Jede Nachricht in der Membran ist genau eine dieser drei. */
+/** Every message in the membrane is exactly one of these three. */
 export type SyncMessage = Snapshot | Delta | ClientAction;

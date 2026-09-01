@@ -1,8 +1,8 @@
-// M13-S08 (#243): Loader für House-Rule-Overlay-Plugins.
-// Validiert Manifest-Format (kind='overlay', overlays=<base_system_id>,
-// overrides: Array von {target, op, value}). Ziel-ID-Existenz-Check läuft
-// separat im overlay-conflict-service (validateModuleTargets) — das braucht
-// die Base-System-Registry.
+// M13-S08 (#243): Loader for house-rule overlay plugins.
+// Validates the manifest format (kind='overlay', overlays=<base_system_id>,
+// overrides: array of {target, op, value}). The target-ID existence check runs
+// separately in overlay-conflict-service (validateModuleTargets) — that needs
+// the base-system registry.
 
 export interface OverlayManifest {
   id: string;

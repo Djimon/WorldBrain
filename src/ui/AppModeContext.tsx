@@ -1,7 +1,7 @@
-// M10-S22 (#342): App-Mode-Kontext (D25). Kapselt Bearbeiten/Spielen-Modus,
-// Rolle (DM/Player) und die aktive Session/Campaign so, dass beliebige
-// Komponenten (v.a. das Read-only-Gating aus S23) sie ohne prop-drilling
-// lesen können.
+// M10-S22 (#342): App-Mode context (D25). Encapsulates edit/play mode,
+// role (DM/Player) and the active session/campaign so that arbitrary
+// components (esp. the read-only gating from S23) can read them without
+// prop-drilling.
 import { createContext, useContext } from 'react';
 
 export type AppMode = 'edit' | 'play';

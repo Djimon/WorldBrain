@@ -1,73 +1,73 @@
-// M10-S01 (#350) + M10-S02 (#351): Transport-Interface (rebuild).
-// Renderer redet ausschließlich gegen dieses Interface — die konkrete
-// Implementierung ist WebRTC-DataChannel (webrtc-transport.ts). Es gibt
-// KEINEN HTTP/WS-Server (D-Aktueller-Stand Pkt. 1).
+// M10-S01 (#350) + M10-S02 (#351): Transport interface (rebuild).
+// The renderer talks exclusively against this interface — the concrete
+// implementation is WebRTC DataChannel (webrtc-transport.ts). There is
+// NO HTTP/WS server (D-current-state point 1).
 //
-// Decision 8 (S02): JEDE Nachricht trägt das Player-Token. Der Host validiert
-// pro Nachricht (nicht nur beim Handshake) via session-identity-service.
-// validateToken — ohne gültiges aktives Token wird die Nachricht verworfen.
+// Decision 8 (S02): EVERY message carries the player token. The host validates
+// per message (not only at the handshake) via session-identity-service.
+// validateToken — without a valid active token the message is discarded.
 
 export interface TransportMessage {
   type: string;
   payload: Record<string, unknown>;
-  /** Player-Token (S02 Decision 8): host-seitig pro Nachricht geprüft.
-   *  Der DM/System-Sender darf hier auch einen Marker verwenden — für die
-   *  echte Auth kommt es nur auf gehostete Client-Nachrichten an. */
+  /** Player token (S02 Decision 8): checked host-side per message.
+   *  The DM/system sender may also use a marker here — for the
+   *  real auth only hosted client messages matter. */
   token: string;
 }
 
-// M10-#387: Join/Auth als Transport-Handshake. Diese Typ-Konstanten sind die
-// EINE Quelle für Host- (host-join-sync) und Player-Seite (PlayerJoinView) sowie
-// die pre-auth-Ausnahme im Transport-Gate (webrtc-transport).
+// M10-#387: Join/auth as a transport handshake. These type constants are the
+// ONE source for the host side (host-join-sync) and the player side (PlayerJoinView) as well as
+// the pre-auth exception in the transport gate (webrtc-transport).
 export const JOIN_REQUEST = 'join_request';
 export const RECONNECT_REQUEST = 'reconnect_request';
 export const JOIN_RESPONSE = 'join_response';
 
 /**
- * Pre-auth Handshake-Typen. Ein Handshake ist per Definition pre-auth — der
- * Absender hat noch (join) bzw. wieder (reconnect) kein gültiges Player-Token,
- * kann das per-Nachricht Token-Gate (Decision 8) also nicht passieren. Diese
- * Typen sind vom Gate ausgenommen und werden stattdessen HOST-AUTORITATIV von
- * `host-join-sync` validiert (Code gegen `invite_codes`, Token gegen
- * `session_players`). ALLE anderen Nachrichten bleiben voll gegated.
+ * Pre-auth handshake types. A handshake is by definition pre-auth — the
+ * sender still has (join) or again has (reconnect) no valid player token,
+ * so it cannot pass the per-message token gate (Decision 8). These
+ * types are exempt from the gate and are instead validated HOST-AUTHORITATIVELY by
+ * `host-join-sync` (code against `invite_codes`, token against
+ * `session_players`). ALL other messages stay fully gated.
  */
 export const PRE_AUTH_MESSAGE_TYPES: ReadonlySet<string> = new Set([JOIN_REQUEST, RECONNECT_REQUEST]);
 
-/** Envelope-`token`-Platzhalter für pre-auth Handshake-Nachrichten (der Absender
- *  hat noch kein echtes Token; `validateIncomingMessage` verlangt aber ein
- *  nicht-leeres Feld). Für die Auth irrelevant — das Gate überspringt sie. */
+/** Envelope `token` placeholder for pre-auth handshake messages (the sender
+ *  has no real token yet; but `validateIncomingMessage` requires a
+ *  non-empty field). Irrelevant for auth — the gate skips them. */
 export const HANDSHAKE_TOKEN = 'handshake';
 
-/** System-Marker im Envelope-`token`-Feld für host-erzeugte Broadcasts/Antworten
- *  (DM/System-Sender; der Empfänger ist noch nicht per Player-Token adressierbar).
- *  EINE Quelle für host-join-sync, presented-map-push, token-movement, visibility. */
+/** System marker in the envelope `token` field for host-generated broadcasts/responses
+ *  (DM/system sender; the recipient is not yet addressable by player token).
+ *  ONE source for host-join-sync, presented-map-push, token-movement, visibility. */
 export const SYSTEM_TOKEN = 'system-dm';
 
-/** Antwort des Hosts auf join_request/reconnect_request (#387). Bei Erfolg trägt
- *  sie das (neue bzw. bestätigte) Player-Token + player_id; sonst einen Grund. */
+/** The host's response to join_request/reconnect_request (#387). On success it carries
+ *  the (new or confirmed) player token + player_id; otherwise a reason. */
 export type JoinResponsePayload =
   | { ok: true; token: string; playerId: string }
   | { ok: false; error: string };
 
 export interface SessionTransport {
-  /** Öffnet die Peer-Verbindung (Host: DataChannel bereitstellen). */
+  /** Opens the peer connection (host: provide the DataChannel). */
   connect(): Promise<void>;
-  /** Schließt die Peer-Verbindung — an den Campaign-Lebenszyklus gekoppelt. */
+  /** Closes the peer connection — coupled to the campaign lifecycle. */
   close(): Promise<void>;
-  /** Sendet eine bereits schema-konforme Nachricht. */
+  /** Sends an already schema-conformant message. */
   send(msg: TransportMessage): Promise<void>;
   /**
-   * Registriert einen Empfänger für host-seitig validierte Eingaben.
-   * MEHRERE Listener sind erlaubt (z.B. Host: token-sync + join-sync am selben
-   * Transport; Player: Join-Handshake + Client-Store-Bridge) — jede Nachricht
-   * geht an ALLE. Gibt einen Disposer zum Abmelden zurück (#387).
+   * Registers a receiver for host-side validated inputs.
+   * MULTIPLE listeners are allowed (e.g. host: token-sync + join-sync on the same
+   * transport; player: join handshake + client-store bridge) — every message
+   * goes to ALL of them. Returns a disposer to unregister (#387).
    */
   onMessage(cb: (msg: TransportMessage) => void): () => void;
 }
 
 /**
- * Host-seitige Schema-Validierung eingehender Nachrichten (AC).
- * Ungültige Payloads → Throw; der Aufrufer verwirft die Nachricht.
+ * Host-side schema validation of incoming messages (AC).
+ * Invalid payloads → throw; the caller discards the message.
  */
 export function validateIncomingMessage(raw: unknown): TransportMessage {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {

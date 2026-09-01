@@ -1,4 +1,4 @@
-// Alle Third-Party-Pakete (trystero, @trystero-p2p/nostr|mqtt|torrent, peerjs)
-// sind installiert und liefern eigene .d.mts — keine Shim mehr nötig.
-// Datei bewusst leer gelassen als Marker: „hier war mal eine Shim, ist raus."
+// All third-party packages (trystero, @trystero-p2p/nostr|mqtt|torrent, peerjs)
+// are installed and ship their own .d.mts — no shim needed anymore.
+// File deliberately left empty as a marker: "there was a shim here once, it's gone."
 export {};

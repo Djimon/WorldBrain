@@ -55,10 +55,10 @@ export function EncounterCounters({ sessionId, database, onEncounterEnd }: Props
   }
 
   function handleEndEncounter() {
-    // #378: Die Encounter-Zusammenfassung ist ein SESSION-Laufzeit-Record und
-    // gehört ins session-scoped `session_log` (wie EncounterMode) — NICHT als
-    // `base_entities`-Event (World-Building). Der frühere createEventEntity-Call
-    // verschmutzte den Welt-Zeitstrahl/Chronicle/Suche/Graph mit Mechanik-Bullshit
+    // #378: The encounter summary is a SESSION runtime record and
+    // belongs in the session-scoped `session_log` (like EncounterMode) — NOT as
+    // a `base_entities` event (world-building). The earlier createEventEntity call
+    // polluted the world timeline/chronicle/search/graph with mechanics bullshit
     // („Encounter — N rounds", start_day:0).
     void addLogEntry(database, {
       session_id: sessionId,

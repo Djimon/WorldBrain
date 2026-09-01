@@ -1,4 +1,4 @@
-// M12-S04: Reset- & Zustands-Übergangs-Phasen (#229)
+// M12-S04: Reset & state-transition phases (#229)
 // One core action per trigger (e.g. "Long Rest") runs all matching
 // transitions for a session-state field/resource atomically. `apply_dice`
 // classifies an already-delivered roll (Decision 2) — the engine never

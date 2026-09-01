@@ -1,11 +1,11 @@
-// M10-#386: aktive „präsentierte Karte" des Play-Cockpits. Der DM wählt im
-// Play-Modus bewusst eine Karte, die die Spieler sehen — campaign-scoped +
-// persistiert, bewusst getrennt vom Edit-Modus-`selectedMapId`. Die ID (+ die
-// Tokens) werden vom Host über den Transport an die Spieler gepusht.
+// M10-#386: active "presented map" of the play cockpit. In play mode the DM
+// deliberately picks a map for the players to see — campaign-scoped +
+// persisted, deliberately separate from the edit-mode `selectedMapId`. The ID (+ the
+// tokens) are pushed by the host to the players over the transport.
 import type { DatabaseLike } from './entity-service';
 
 /**
- * Liest die aktuell präsentierte Karten-ID einer Campaign (oder null).
+ * Reads the currently presented map ID of a campaign (or null).
  */
 export async function getPresentedMapId(db: DatabaseLike, campaignId: string): Promise<string | null> {
   const rows = await db.select<{ active_map_id: string | null }>(
@@ -16,8 +16,8 @@ export async function getPresentedMapId(db: DatabaseLike, campaignId: string): P
 }
 
 /**
- * Setzt die präsentierte Karte (persistiert, überlebt Reload/Menüwechsel).
- * `null` = keine Karte präsentiert.
+ * Sets the presented map (persisted, survives reload/menu switch).
+ * `null` = no map presented.
  */
 export async function setPresentedMapId(
   db: DatabaseLike,

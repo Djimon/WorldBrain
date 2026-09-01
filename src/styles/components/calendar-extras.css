@@ -1,4 +1,4 @@
-/* ── Backlinks tab (Verlinkungen) ─────────────────────────────────────────── */
+/* ── Backlinks tab (links) ─────────────────────────────────────────── */
 .backlinks {
   list-style: none;
   margin: 0;
@@ -299,7 +299,7 @@
   padding: 4px 0;
 }
 
-/* ── Wizard tabs (Monate / Wochentage / Ären) ─────────────────────────────── */
+/* ── Wizard tabs (Months / Weekdays / Eras) ─────────────────────────────── */
 /* Layout only — the tab strip itself is <Tabs> (.ui-tabs); this just spaces it
    from the section above/below. */
 .cal-tabs {
@@ -384,7 +384,7 @@
   flex: none;
 }
 
-/* segmented Global | Ära toggle */
+/* segmented Global | Era toggle */
 
 /* ── Calendar start / picker view ─────────────────────────────────────────── */
 .cal-start {

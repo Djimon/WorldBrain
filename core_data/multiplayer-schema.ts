@@ -1,7 +1,7 @@
-// M10 Rebuild: Campaign-Klammer + Roster + Visibility (S20/S02/S03/S04/S07).
-// Wird von src/services/db-init.ts beim Projekt-Open ausgeführt. Spiegelt
-// die Tabellen in src/data/runtime/schema.sql (die nur die Tests direkt laden)
-// zur Runtime-DB der App.
+// M10 rebuild: campaign bracket + roster + visibility (S20/S02/S03/S04/S07).
+// Executed by src/services/db-init.ts on project open. Mirrors
+// the tables in src/data/runtime/schema.sql (which only the tests load directly)
+// into the app's runtime DB.
 import { DatabaseSync } from 'node:sqlite';
 
 type MpDb = InstanceType<typeof DatabaseSync>;
@@ -16,9 +16,9 @@ export function applyMultiplayerSchema(db: MpDb): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
-  // M10-#386: aktive präsentierte Karte (Play-Cockpit). ALTER für bestehende
-  // Dev-DBs (idempotent) — CREATE oben deckt frische DBs.
-  try { db.exec(`ALTER TABLE campaigns ADD COLUMN active_map_id TEXT`); } catch { /* Spalte existiert schon */ }
+  // M10-#386: active presented map (play cockpit). ALTER for existing
+  // dev DBs (idempotent) — the CREATE above covers fresh DBs.
+  try { db.exec(`ALTER TABLE campaigns ADD COLUMN active_map_id TEXT`); } catch { /* column already exists */ }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS invite_codes (
@@ -113,8 +113,8 @@ export function applyMultiplayerSchema(db: MpDb): void {
     )
   `);
 
-  // M10-D30 (#376): eigene Tabelle für Player-Charaktere; base_entities
-  // bleibt reines World-Building.
+  // M10-D30 (#376): dedicated table for player characters; base_entities
+  // stays pure world-building.
   db.exec(`
     CREATE TABLE IF NOT EXISTS player_characters (
       id TEXT PRIMARY KEY,
@@ -136,9 +136,9 @@ export function applyMultiplayerSchema(db: MpDb): void {
     )
   `);
 
-  // M10-S17 (#363, D16): campaign-scoped „Session-Jetzt" als absoluter
-  // Tages-Zähler. Der DM schreibt vor / setzt absolut; das host-seitige
-  // Kalender-Gate liefert nur Ereignisse mit start_day <= day aus.
+  // M10-S17 (#363, D16): campaign-scoped "session now" as an absolute
+  // day counter. The DM advances / sets it absolutely; the host-side
+  // calendar gate emits only events with start_day <= day.
   db.exec(`
     CREATE TABLE IF NOT EXISTS campaign_session_now (
       campaign_id TEXT PRIMARY KEY,

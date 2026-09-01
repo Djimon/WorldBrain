@@ -1,4 +1,4 @@
-// M15-S05: Map-Ordnerbaum — verschachtelte Folders für Maps (#277)
+// M15-S05: map folder tree — nested folders for maps (#277)
 // Organizes maps themselves (map_folders + maps.folder_id) — a separate
 // concept from the existing per-map pin folder tree (map_markers.group_name
 // with "/"). Independent of M15-S01's layer stack.

@@ -1,8 +1,8 @@
-// M10-S15 (#361): Spotlight/Whiteboard (D19). Campaign-scoped.
-// - 'shared': für alle Spieler der Campaign; target_player_id = null.
-// - 'private': nur der DM bespielt, nur der targetPlayerId sieht — genau eine
-//   private Wand pro (campaignId, targetPlayerId).
-// Elemente: entity_ref | text | image (payload_json trägt die Daten).
+// M10-S15 (#361): Spotlight/whiteboard (D19). Campaign-scoped.
+// - 'shared': for all players of the campaign; target_player_id = null.
+// - 'private': only the DM populates it, only the targetPlayerId sees it — exactly one
+//   private board per (campaignId, targetPlayerId).
+// Elements: entity_ref | text | image (payload_json carries the data).
 import type { DatabaseLike } from './entity-service';
 
 export type BoardType = 'shared' | 'private';
@@ -36,7 +36,7 @@ export async function createBoard(db: DatabaseLike, params: CreateBoardParams): 
   if (params.type === 'private' && (params.targetPlayerId === undefined || params.targetPlayerId === '')) {
     throw new Error('Private whiteboard requires targetPlayerId');
   }
-  // D19: genau EINE private Wand pro (campaignId, targetPlayerId).
+  // D19: exactly ONE private board per (campaignId, targetPlayerId).
   if (params.type === 'private') {
     const existing = await db.select<{ id: string }>(
       "SELECT id FROM whiteboards WHERE campaign_id = ? AND type = 'private' AND target_player_id = ?",
@@ -57,11 +57,11 @@ export async function createBoard(db: DatabaseLike, params: CreateBoardParams): 
 }
 
 /**
- * Listet Boards, sichtbar für den Aufrufer:
- * - Ohne Kontext / role='dm' → alle Boards (DM sieht privaten für alle
- *   Spieler, weil er sie bespielt, D19).
- * - Mit role='player' + playerId → shared UND das eigene private
- *   (target_player_id = playerId). Fremde private bleiben verborgen.
+ * Lists boards visible to the caller:
+ * - Without context / role='dm' → all boards (the DM sees the private ones for all
+ *   players, because they populate them, D19).
+ * - With role='player' + playerId → shared AND the player's own private one
+ *   (target_player_id = playerId). Others' private boards stay hidden.
  */
 export async function listBoards(
   db: DatabaseLike, campaignId: string,

@@ -1,11 +1,11 @@
-// PeerJS + Public PeerServer-Cloud. Verbindungs-Race: wer zuerst `open` wird,
-// versucht `connect(otherId)` — der Broker kennt otherId aber noch nicht →
-// `peer-unavailable` (Doku: transient, „try again later"). Fix: filter auf
-// PeerErrorType.PeerUnavailable, Retry mit 500ms Backoff bis zum globalen
-// bench-Timeout. Nur echte Netzwerk-Fehler killen den Attempt.
+// PeerJS + public PeerServer cloud. Connection race: whoever goes `open` first
+// tries `connect(otherId)` — but the broker doesn't know otherId yet →
+// `peer-unavailable` (docs: transient, "try again later"). Fix: filter on
+// PeerErrorType.PeerUnavailable, retry with 500ms backoff up to the global
+// bench timeout. Only real network errors kill the attempt.
 //
-// Konvention: peerLabel A|B mappt auf `${roomId}-a` / `${roomId}-b` als
-// deterministische Broker-IDs.
+// Convention: peerLabel A|B maps to `${roomId}-a` / `${roomId}-b` as
+// deterministic broker IDs.
 import { Peer, PeerError } from 'peerjs';
 import type { DataConnection } from 'peerjs';
 import type { AdapterFactory, AdapterHandle } from '../types';
@@ -38,13 +38,13 @@ export const peerjsAdapter: AdapterFactory = async (opts) => {
       });
       conn.on('data', (data) => opts.onMessage(conn.peer, data));
       conn.on('error', (err) => {
-        // Pre-open conn-Errors sind Retry-Rauschen (negotiation gescheitert,
-        // Peer nicht erreichbar) — der peer.on('error')-Loop retry'd bereits.
-        // Nur POST-open-Fehler (gerissene Verbindung) sind echte Fehler.
+        // Pre-open conn errors are retry noise (negotiation failed,
+        // peer unreachable) — the peer.on('error') loop already retries.
+        // Only POST-open errors (dropped connection) are real errors.
         if (!opened) return;
         opts.onError(err);
       });
-      conn.on('close', () => { /* bench schließt aktiv */ });
+      conn.on('close', () => { /* the bench closes actively */ });
     }
 
     function tryConnect() {

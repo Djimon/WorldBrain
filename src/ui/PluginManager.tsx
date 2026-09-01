@@ -9,9 +9,9 @@ export function PluginManager() {
 
   return (
     <div>
-      {/* M17-S05 (#384): USP-Fläche — die Engine-Marke (einzelner Registry-Key
-          aus #381) am Kopf der Regelsystem-/Plugin-Verwaltung. Die Engine-Marke
-          ist KEIN Shell-Modus und erscheint NICHT im Modus-Umschalter. */}
+      {/* M17-S05 (#384): USP area — the engine brand (single registry key
+          from #381) at the top of the rule-system/plugin management. The engine brand
+          is NOT a shell mode and does NOT appear in the mode toggle. */}
       <header className="u-row u-gap-2">
         <StatusChip tone="accent" aria-label={t('engineBrandAria', 'Regel-Engine')}>
           {t('brand.engine', { ns: 'common' })}

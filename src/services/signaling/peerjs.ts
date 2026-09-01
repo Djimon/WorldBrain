@@ -1,6 +1,6 @@
-// M10-S12 (#368): PeerJS-Cloud — Backup-Broker (Spike 9-10/10, ~216ms).
-// Kein appId-Namespace am Broker → salted Prefix muss DIREKT in die Peer-ID.
-// Deshalb: `${appId}-${roomId}-${peerLabel}` als vollständige Peer-ID.
+// M10-S12 (#368): PeerJS-Cloud — backup broker (Spike 9-10/10, ~216ms).
+// No appId namespace at the broker → the salted prefix must go DIRECTLY into the peer ID.
+// Hence: `${appId}-${roomId}-${peerLabel}` as the full peer ID.
 import { Peer, PeerError } from 'peerjs';
 import type { DataConnection } from 'peerjs';
 import type { AdapterFactory, AdapterHandle } from './types';
@@ -12,9 +12,9 @@ export const peerjsAdapter: AdapterFactory = async (opts) => {
   return new Promise<AdapterHandle>((resolve, reject) => {
     const selfSide = opts.peerLabel === 'A' ? 'a' : 'b';
     const otherSide = selfSide === 'a' ? 'b' : 'a';
-    // Wir brechen die Peer-ID auf 63 Zeichen (PeerJS-Limit); appId + roomId
-    // kommen gehasht rein wenn nötig — aber der User sollte die Adapter-Wahl
-    // ohnehin klein halten. Hier: einfach zusammensetzen, User-Verantwortung.
+    // We cap the peer ID at 63 characters (PeerJS limit); appId + roomId
+    // come in hashed if needed — but the user should keep the adapter choice
+    // small anyway. Here: just concatenate, user's responsibility.
     const selfId = `${opts.appId}-${opts.roomId}-${selfSide}`;
     const otherId = `${opts.appId}-${opts.roomId}-${otherSide}`;
     opts.onDiagnostic?.(`[peerjs] self="${selfId}" target="${otherId}"`);
@@ -31,7 +31,7 @@ export const peerjsAdapter: AdapterFactory = async (opts) => {
       });
       conn.on('data', (data) => opts.onMessage(conn.peer, data));
       conn.on('error', (err) => {
-        // Pre-open conn-Errors sind Retry-Rauschen — nicht durchreichen.
+        // Pre-open conn errors are retry noise — do not pass through.
         if (!opened) return;
         opts.onError(err);
       });

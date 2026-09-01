@@ -1,7 +1,7 @@
-// M10-S21 (#365, D23): Promote-Schalter — hebt den GANZEN Campaign-Override
-// einer Entity in die Welt-Basis (opt-in, ein Klick) und nimmt ihn reversibel
-// zurück. Erscheint nur im Campaign-Kontext (EntityDetailView mit campaignId);
-// beim Editieren der reinen Welt-Basis gibt es keinen Override zu promoten.
+// M10-S21 (#365, D23): promote switch — lifts the ENTIRE campaign override
+// of an entity into the world base (opt-in, one click) and takes it back
+// reversibly. Appears only in the campaign context (EntityDetailView with campaignId);
+// when editing the pure world base there is no override to promote.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
@@ -12,7 +12,7 @@ export interface PromoteControlProps {
   database: DatabaseLike;
   campaignId: string;
   entityId: string;
-  /** Nach Promote/Unpromote — Parent kann seine effektive Sicht neu laden. */
+  /** After promote/unpromote — the parent can reload its effective view. */
   onChanged?: () => void;
 }
 

@@ -1,7 +1,7 @@
-// M10-S08 + D30 (#376): Player-Charakter — CRUD auf eigener Tabelle
-// `player_characters` (nicht mehr in `base_entities`). Der Bogen liegt in
-// sheet_json (frei strukturiert; system_plugin_id-Schema folgt aus M9).
-// D10: genau 1 Charakter pro (campaignId, playerId).
+// M10-S08 + D30 (#376): player character — CRUD on its own table
+// `player_characters` (no longer in `base_entities`). The sheet lives in
+// sheet_json (freely structured; system_plugin_id schema follows from M9).
+// D10: exactly 1 character per (campaignId, playerId).
 import type { DatabaseLike } from './entity-service';
 
 export interface PlayerCharacter {
@@ -49,8 +49,8 @@ export async function getPlayerCharacter(
 export interface CreatePlayerCharacterParams {
   campaignId: string;
   playerId: string;
-  /** Frei strukturierter Bogen (S08/M9-S03). Beispiel: { name, summary,
-   *  class, hp, ... }. Wird als JSON persistiert. */
+  /** Freely structured sheet (S08/M9-S03). Example: { name, summary,
+   *  class, hp, ... }. Persisted as JSON. */
   sheetJson: Record<string, unknown>;
 }
 

@@ -1,10 +1,10 @@
-// Bench-Runner: 10 Cold-Starts pro Adapter, misst Erfolgsquote + Median-TTC.
-// „Erfolg" = onOpen feuert UND ein Ping-Payload round-trippt < TIMEOUT_MS.
+// Bench runner: 10 cold starts per adapter, measures success rate + median TTC.
+// "Success" = onOpen fires AND a ping payload round-trips < TIMEOUT_MS.
 //
-// Konvention: Der Bench läuft in ZWEI Fenstern parallel — Seite A klickt
-// „Run 10", Seite B klickt „Run 10" mit dem gleichen roomId-Prefix; die
-// Ergebnisse werden pro Seite geloggt (jede Seite sieht ihre eigenen Zahlen).
-// Für die Matrix zählt: pro Cold-Start beide Seiten „Erfolg" → 1/10.
+// Convention: the bench runs in TWO windows in parallel — side A clicks
+// "Run 10", side B clicks "Run 10" with the same roomId prefix; the
+// results are logged per side (each side sees its own numbers).
+// For the matrix what counts: per cold start both sides "success" → 1/10.
 
 import type { AdapterFactory, AdapterKey } from './types';
 import { trysteroNostrAdapter } from './adapters/trystero-nostr';
@@ -25,11 +25,11 @@ export const ADAPTERS: Record<AdapterKey, AdapterFactory> = {
 };
 
 export type FailReason =
-  | 'no-peer-joined'      // room joined, aber innerhalb TIMEOUT kein anderer Peer
-  | 'peer-joined-no-ping' // Peer erschien, aber Ping-RTT kam nicht zurück
-  | 'adapter-error'       // Adapter warf Exception oder onError feuerte
-  | 'timeout-before-open' // nie ein open-Event, aber auch kein Fehler
-  | 'not-auto-benchable'; // Adapter (manual-sdp) braucht User-Interaktion pro Attempt
+  | 'no-peer-joined'      // room joined, but no other peer within TIMEOUT
+  | 'peer-joined-no-ping' // peer appeared, but the ping RTT didn't come back
+  | 'adapter-error'       // adapter threw an exception or onError fired
+  | 'timeout-before-open' // never an open event, but also no error
+  | 'not-auto-benchable'; // adapter (manual-sdp) needs user interaction per attempt
 
 export interface AttemptResult {
   attempt: number;
@@ -39,7 +39,7 @@ export interface AttemptResult {
   failReason?: FailReason;
   error?: string;
   roomId: string;
-  /** Broker-Sichtbarkeit: selfId, Relay-URLs, Socket-Zustände, Retry-Events. */
+  /** Broker visibility: selfId, relay URLs, socket states, retry events. */
   diagnostics: string[];
 }
 
@@ -53,9 +53,9 @@ export interface BenchResult {
   timestamp: string;
 }
 
-// Timeout: bei Cold-Announce über Nostr braucht der erste Attempt auf Handy-
-// Hotspot oft mehr als 10s. 20s ist der Kompromiss zwischen „ehrliches
-// Cold-Start-Fenster" und „User will nicht ewig warten".
+// Timeout: on a cold announce over Nostr the first attempt on a phone
+// hotspot often takes more than 10s. 20s is the compromise between an "honest
+// cold-start window" and "the user doesn't want to wait forever".
 const TIMEOUT_MS = 20_000;
 
 export interface BenchProgress {
@@ -76,8 +76,8 @@ export async function runBench(
   await logWriter?.writeRaw(`RUN: adapter=${adapter} peer=${peerLabel} roomIdPrefix="${roomIdPrefix}" runs=${runCount}`);
   await logWriter?.writeRaw(`     appId="${APP_ID}"`);
   await logWriter?.writeRaw(`=================================================================\n`);
-  // Manual-SDP ist Copy/Paste — nicht auto-benchbar. Short-circuit mit klarer
-  // Begründung statt N sinnlose Timeouts zu produzieren.
+  // Manual SDP is copy-paste — not auto-benchable. Short-circuit with a clear
+  // reason instead of producing N pointless timeouts.
   if (adapter === 'manual-sdp') {
     const attempts: AttemptResult[] = [];
     for (let i = 1; i <= runCount; i++) {
@@ -100,14 +100,14 @@ export async function runBench(
   const factory = ADAPTERS[adapter];
   const attempts: AttemptResult[] = [];
   for (let i = 1; i <= runCount; i++) {
-    // WICHTIG: roomId MUSS auf beiden Seiten IDENTISCH sein, sonst finden sich
-    // die Peers nie. Deterministisch aus Prefix+Attempt-Index. Cold-Start-
-    // Freshness kommt aus dem NEUEN factory()-Call (neuer RTCPeerConnection,
-    // neuer joinRoom), nicht aus zufälliger roomId.
-    // 1-Raum-Modus: alle Attempts nutzen DENSELBEN Room. Beide Peers treten
-    // dem gleichen Raum bei, Reihenfolge egal — Cold-Start-Freshness kommt aus
-    // dem NEUEN factory()-Call (frische Trystero-Instanz, neue Peer-ID) nicht
-    // aus wechselnder roomId. Damit finden sich zeitversetzte Starts auch.
+    // IMPORTANT: roomId MUST be IDENTICAL on both sides, otherwise the peers
+    // never find each other. Deterministic from prefix+attempt index. Cold-start
+    // freshness comes from the NEW factory() call (new RTCPeerConnection,
+    // new joinRoom), not from a random roomId.
+    // 1-room mode: all attempts use the SAME room. Both peers join
+    // the same room, order doesn't matter — cold-start freshness comes from
+    // the NEW factory() call (fresh Trystero instance, new peer ID) not
+    // from a changing roomId. This way time-offset starts also find each other.
     const roomId = roomIdPrefix;
     await logWriter?.writeRaw(`\n--- attempt ${i}/${runCount} — roomId="${roomId}" ---`);
     console.log(`[bench] ${adapter} attempt ${i}/${runCount} — room=${roomId}`);
@@ -116,9 +116,9 @@ export async function runBench(
     await logWriter?.writeRaw(`--- result: ${result.success ? 'SUCCESS' : 'FAIL'} ttc=${result.timeToOpenMs}ms rtt=${result.pingRttMs}ms reason=${result.failReason ?? '-'} ---`);
     attempts.push(result);
     onProgress({ attempt: i, total: runCount, lastResult: result });
-    // 500ms Pause zwischen Attempts — PeerJS-Broker (und Nostr-Relays)
-    // brauchen Zeit zwischen close/register um dieselbe ID/Room sauber
-    // freizugeben, sonst kollidiert der nächste Attempt mit dem vorigen.
+    // 500ms pause between attempts — the PeerJS broker (and Nostr relays)
+    // need time between close/register to cleanly release the same ID/room,
+    // otherwise the next attempt collides with the previous one.
     if (i < runCount) await new Promise<void>((r) => setTimeout(r, 500));
   }
   const okTimes = attempts.filter((a) => a.success && a.timeToOpenMs !== null).map((a) => a.timeToOpenMs as number);
@@ -154,9 +154,9 @@ async function runOneAttempt(
     void logWriter?.write(line);
   };
 
-  // Ping-Protokoll: {id, echo:false} = neuer Ping vom Sender.
-  // {id, echo:true} = Reply des Peers. Nur wenn EIGENE id mit echo:true
-  // zurückkommt, ist das ein echter Roundtrip (nicht bloß irgendein Traffic).
+  // Ping protocol: {id, echo:false} = new ping from the sender.
+  // {id, echo:true} = the peer's reply. Only when OUR OWN id comes back with
+  // echo:true is it a real roundtrip (not just any traffic).
   const myPingId = Math.random().toString(36).slice(2);
   const pingSettled = new Promise<void>((resolve) => {
     const check = setInterval(() => {
@@ -178,20 +178,20 @@ async function runOneAttempt(
       onOpen: () => { openedAt = performance.now(); capture('adapter reports OPEN (peer joined)'); },
       onDiagnostic: capture,
       onMessage: (_from, payload) => {
-        // Payload kann strukturiert oder String sein (manual-sdp stringifiziert).
-        // Nur JSON-Objekte mit {id, echo} interpretieren.
+        // Payload can be structured or a string (manual-sdp stringifies).
+        // Only interpret JSON objects with {id, echo}.
         const p = typeof payload === 'object' && payload !== null
           ? payload as { id?: string; echo?: boolean }
           : null;
         if (p?.id === undefined || typeof p.echo !== 'boolean') return;
 
         if (p.id === myPingId && p.echo === true) {
-          // MEIN Ping ist zurück → echter Roundtrip.
+          // MY ping is back → real roundtrip.
           if (pingSentAt !== null && pingRtt === null) {
             pingRtt = performance.now() - pingSentAt;
           }
         } else if (p.echo === false) {
-          // Ping vom anderen Peer → antworten mit echo:true.
+          // Ping from the other peer → reply with echo:true.
           try { handle?.send({ id: p.id, echo: true }); } catch { /* ignore */ }
         }
       },
@@ -212,8 +212,8 @@ async function runOneAttempt(
     else if (pingRtt === null) failReason = 'peer-joined-no-ping';
     else failReason = 'timeout-before-open';
   }
-  // Erfolg → keine Fehler-Historie mitschleppen. Recovery-Errors (z. B.
-  // PeerJS retry-nach-`peer-unavailable`) sind kein User-facing Failure.
+  // Success → don't carry along an error history. Recovery errors (e.g.
+  // PeerJS retry-after-`peer-unavailable`) are not a user-facing failure.
   return {
     attempt,
     success,

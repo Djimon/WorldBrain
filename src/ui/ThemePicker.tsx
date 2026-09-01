@@ -8,14 +8,14 @@ import { Button, Segmented } from './primitives';
 import { getStoredThemeId, setThemeId, THEME_CHANGE_EVENT } from '../theme';
 import { listThemes, previewAccent } from '../styles/theme-registry';
 
-// #388-Follow-up: den Ordner öffnen, in den User-Theme-Dateien gehören
-// (<appDataDir>/themes/). Ordner sicherstellen, dann im OS-Dateimanager öffnen;
-// wenn openPath nicht erlaubt/verfügbar ist, auf revealItemInDir zurückfallen.
-// In Nicht-Tauri-Umgebungen (Test/Browser) scheitert der Aufruf → guarded.
+// #388 follow-up: open the folder where user theme files belong
+// (<appDataDir>/themes/). Ensure the folder exists, then open it in the OS file manager;
+// if openPath is not permitted/available, fall back to revealItemInDir.
+// In non-Tauri environments (test/browser) the call fails → guarded.
 async function openThemesFolder(): Promise<void> {
   try {
     const dir = await join(await appDataDir(), 'themes');
-    await mkdir(dir, { recursive: true }).catch(() => { /* existiert bereits */ });
+    await mkdir(dir, { recursive: true }).catch(() => { /* already exists */ });
     try {
       await openPath(dir);
     } catch {
@@ -26,9 +26,9 @@ async function openThemesFolder(): Promise<void> {
   }
 }
 
-// M17-S04 (#385): Theme-Auswahl — eigener Bedienpfad, getrennt vom Dark/Light-
-// Umschalter (Entkopplung, Decision 5). Ein Theme-Wechsel ersetzt den Token-Satz
-// live ohne Reload; der aktive Shell-Modus bleibt unverändert.
+// M17-S04 (#385): theme selection — its own control path, separate from the dark/light
+// toggle (decoupling, Decision 5). A theme change replaces the token set
+// live without a reload; the active shell mode stays unchanged.
 export function ThemePicker() {
   const { t } = useTranslation();
   const [themeId, setThemeIdState] = useState<string>(getStoredThemeId);
@@ -56,8 +56,8 @@ export function ThemePicker() {
           id: th.id,
           label: (
             <span className="theme-picker__option">
-              {/* Live-Vorschau: der repräsentative Akzent des Themes als Swatch —
-                  die dynamische Farbe reist über die CSS-Variable, kein Hex im JSX. */}
+              {/* Live preview: the theme's representative accent as a swatch —
+                  the dynamic color travels via the CSS variable, no hex in the JSX. */}
               <span className="theme-picker__swatch" aria-hidden="true"
                 style={{ '--swatch': previewAccent(th) } as CSSProperties} />
               {t(th.labelKey, th.defaultLabel)}
@@ -65,7 +65,7 @@ export function ThemePicker() {
           ),
         }))}
       />
-      {/* #388-Follow-up: schneller Zugang zum Import-Ordner für eigene Theme-Dateien. */}
+      {/* #388 follow-up: quick access to the import folder for your own theme files. */}
       <Button variant="outline" onClick={() => void openThemesFolder()}>
         {t('themesFolderOpen', 'Themes-Ordner öffnen')}
       </Button>

@@ -1,7 +1,7 @@
-// M10-S16 (#362): Kampflog — Persistenz + Sichtbarkeits-Routing (D17).
-// Ein Eintrag ist entweder 'private' (nur der Werfer), 'dm_only' (Werfer +
-// DM) oder 'all' (alle Campaign-Mitglieder). listEntries filtert host-seitig
-// nach Rolle des Aufrufers — der Client-Filter ist die zweite Reihe.
+// M10-S16 (#362): combat log — persistence + visibility routing (D17).
+// An entry is either 'private' (roller only), 'dm_only' (roller +
+// DM) or 'all' (all campaign members). listEntries filters host-side
+// by the caller's role — the client filter is the second line of defense.
 import type { DatabaseLike } from './entity-service';
 import type { DiceVisibility } from './dice-roller-service';
 
@@ -57,8 +57,8 @@ export async function listEntries(db: DatabaseLike, params: ListEntriesParams): 
   const pid = params.playerId ?? '';
   return all.filter((e) => {
     if (e.visibility === 'all') return true;
-    if (e.visibility === 'dm_only') return e.actor_player_id === pid; // Werfer sieht eigenen Wurf
-    // 'private' → nur der Werfer
+    if (e.visibility === 'dm_only') return e.actor_player_id === pid; // roller sees their own roll
+    // 'private' → roller only
     return e.actor_player_id === pid;
   });
 }

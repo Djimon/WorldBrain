@@ -1,6 +1,6 @@
 /* ── "Toxic" — proof-of-concept community theme ─────────────────────────────
    Demonstrates that a whole theme is ONE file overriding token variables:
-   giftgrün accent + azurblau borders on a slightly-darkened grey base (not a
+   toxic-green accent + azure-blue borders on a slightly-darkened grey base (not a
    real dark mode). Only --* variables are touched — no component CSS. Activated
    by data-theme="toxic" on <html> (see ThemeToggle). Lives in @layer tokens and
    is imported after tokens.css, so it wins by source order. */
@@ -8,7 +8,7 @@
   --color-text:           #eafff2;   /* near-white, faint green */
   --color-text-muted:     #a8c7d6;   /* muted azure-grey */
 
-  --color-accent:         #66ff33;   /* giftgrün — neon */
+  --color-accent:         #66ff33;   /* toxic green — neon */
   --color-accent-strong:  #45e015;   /* deeper toxic green */
   --color-accent-soft:    #14361d;   /* dark green tint (accent-soft fills) */
 
@@ -18,7 +18,7 @@
   --color-surface-active: #0f4152;   /* azure-tinted selection */
   --color-background:     #33383d;   /* slightly darker grey (not black) */
 
-  --color-border:         #00c2ff;   /* azurblau — borders glow */
+  --color-border:         #00c2ff;   /* azure blue — borders glow */
 
   --color-status-success: #66ff33;
   --color-status-warning: #ffd21a;

@@ -1,8 +1,8 @@
 import { evaluate } from './condition-engine';
 import type { DatabaseLike } from './entity-service';
 
-// M10-S07: campaign_id ergänzt (D23 — Roster/Overrides sind campaign-scoped,
-// nicht termin-scoped). Additiv zu den bisherigen 4 Scopes (Decisions 5–7).
+// M10-S07: campaign_id added (D23 — roster/overrides are campaign-scoped,
+// not session-scoped). Additive to the previous 4 scopes (Decisions 5–7).
 export interface VisibilityContext {
   audience?: 'gm' | 'player';
   vars?: Record<string, unknown>;
@@ -70,10 +70,10 @@ export interface ResolveSessionVisibilityParams {
 }
 
 /**
- * Campaign-scoped visibility (M10-S07, D23): ein Ziel ist für einen Spieler
- * sichtbar, wenn ein Override ihn direkt (player_id) oder über eine seiner
- * Gruppen (group_id) freigibt. Default ohne Override = `gm_only` (Decision 5).
- * Additiv zu den 4 bisherigen Scopes.
+ * Campaign-scoped visibility (M10-S07, D23): a target is visible to a player
+ * if an override releases it to them directly (player_id) or via one of their
+ * groups (group_id). Default without an override = `gm_only` (Decision 5).
+ * Additive to the previous 4 scopes.
  */
 export async function resolveSessionVisibility(
   database: DatabaseLike,
@@ -101,11 +101,11 @@ export interface SetVisibilityOverrideParams {
   groupId?: string;
 }
 
-// M10-S09 (#358): Live-Push-Hook. Consumer (Play-Cockpit, Whiteboard, ...)
-// registrieren einen Listener; setVisibilityOverride / clearVisibilityOverride
-// rufen ihn nach dem DB-Write auf. Die konkrete Push-Verdrahtung an einen
-// SessionTransport passiert im Consumer — Stufe 3 (S11/S12) wenn ein echter
-// Remote-Client existiert; heute lokal-DB reicht ein DB-Reload beim Consumer.
+// M10-S09 (#358): Live-push hook. Consumers (play-cockpit, whiteboard, ...)
+// register a listener; setVisibilityOverride / clearVisibilityOverride
+// call it after the DB write. The concrete push wiring to a
+// SessionTransport happens in the consumer — stage 3 (S11/S12) when a real
+// remote client exists; today, with a local DB, a DB reload at the consumer is enough.
 export interface VisibilityChange {
   kind: 'set' | 'clear';
   campaignId: string;
@@ -122,8 +122,8 @@ export function onVisibilityChange(listener: VisibilityChangeListener): () => vo
 }
 function emitChange(change: VisibilityChange): void {
   for (const l of listeners) {
-    try { l(change); } catch { /* fail-open: ein rausrutschender Listener darf
-                                  den Editor nicht crashen */ }
+    try { l(change); } catch { /* fail-open: a listener that throws must not
+                                  crash the editor */ }
   }
 }
 

@@ -25,8 +25,7 @@ import { CardCreationFlow } from './CardCreationFlow';
 import { PrintSheetComposer } from './PrintSheetComposer';
 import { PluginManager } from './PluginManager';
 import { DmScreen, DmScreenSelector } from './DmScreen';
-import { SnapshotManager } from './SnapshotManager';
-import { UpdateNotification } from './UpdateNotification';
+import { SettingsPanel } from './SettingsPanel';
 import { MapViewer } from './MapViewer';
 import { GlobalGraphView } from './GlobalGraphView';
 import { LayerPanel } from './LayerPanel';
@@ -35,7 +34,6 @@ import { MapFolderTree } from './MapFolderTree';
 import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
-import { ThemePicker } from './ThemePicker';
 import { applyThemeVars } from '../theme';
 import { Button, Field, Panel, Segmented, StatusChip } from './primitives';
 import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext';
@@ -90,6 +88,7 @@ interface Props {
   projectDir?: string;
   snapshotsDir?: string;
   onProjectClose?: () => void;
+  onOpenProject?: (projectId: string) => void;
   activePanel?: Area;
 }
 
@@ -106,12 +105,12 @@ const AREAS: { id: Area; icon: string }[] = [
   { id: 'audio',    icon: '🎧' },
   { id: 'graph',    icon: '🌌' },
   { id: 'project',  icon: '⚙' },
-  // #390: Play-Settings — nur im Play-Modus sichtbar (Campaign/Rolle/Verlassen).
+  // #390: Play settings — only visible in play mode (campaign/role/leave).
   { id: 'play-settings', icon: '⚙' },
 ];
 
-// M10-S22 (#342 / D25): fester Play-Subset — kein Konfig-Punkt.
-// #390: play-settings ergänzt den Subset (Play-scoped Einstellungs-Bereich).
+// M10-S22 (#342 / D25): fixed play subset — not a config point.
+// #390: play-settings extends the subset (play-scoped settings area).
 const PLAY_AREAS: Area[] = ['entities', 'search', 'maps', 'calendar', 'session', 'play-settings'];
 
 const CORE_ENTITY_TYPES = [
@@ -119,33 +118,33 @@ const CORE_ENTITY_TYPES = [
   'Quest', 'Event', 'Scene', 'Rule', 'Resource', 'Culture', 'Lore',
 ];
 
-export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snapshotsDir, onProjectClose, activePanel }: Props) {
+export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snapshotsDir, onProjectClose, onOpenProject, activePanel }: Props) {
   const { t } = useTranslation('nav');
   const database = useDatabase();
-  // M10-S22 (D25): App-Mode-Shell. `edit` = voller Autor-Workspace, `play` =
-  // Session-Sicht mit festem Play-Subset (Menü-Reduktion) + gewählter Rolle.
+  // M10-S22 (D25): app-mode shell. `edit` = full author workspace, `play` =
+  // session view with a fixed play subset (reduced menu) + chosen role.
   const [mode, setMode] = useState<AppMode>('edit');
   const [sessionRole, setSessionRole] = useState<SessionRole>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [showRoleSelect, setShowRoleSelect] = useState(false);
-  // M10-S05/S08: Nach dem Player-Join steht Token+playerId+displayName fest;
-  // die Play-Sicht schaltet dann auf PlayerCharacterSheet.
+  // M10-S05/S08: after the player join, token+playerId+displayName are fixed;
+  // the play view then switches to PlayerCharacterSheet.
   const [playerContext, setPlayerContext] = useState<{ playerId: string; displayName: string } | null>(null);
-  // M10-S14: Group-IDs des Players für die host-seitige Gruppen-Sicht (S09).
+  // M10-S14: the player's group IDs for the host-side group view (S09).
   const [playerGroupIds, setPlayerGroupIds] = useState<string[]>([]);
-  // #374 D30-Membran: der Client rendert nur aus dem Store. Lazy erzeugen,
-  // sobald Player-Kontext feststeht — der Host würde später Snapshot+Delta
-  // pushen (Transport in R2/R3-Verdrahtung folgt).
+  // #374 D30 membrane: the client renders only from the store. Create lazily,
+  // once the player context is fixed — the host would later push snapshot+delta
+  // (transport wiring in R2/R3 follows).
   const [playerStore, setPlayerStore] = useState<PlayClientStoreImpl | null>(null);
-  // M10-#386: der Host-Transport wird in State gehoben, damit das Play-Cockpit
-  // (PlayModeView → MapViewer) Token-Bewegungen darüber broadcasten kann.
+  // M10-#386: the host transport is lifted into state so the play cockpit
+  // (PlayModeView → MapViewer) can broadcast token movements through it.
   const [hostTransport, setHostTransport] = useState<WebRtcTransport | null>(null);
-  // M10-#386 (Variante A): der Player-Transport kommt aus dem Join-Flow
-  // (PlayerJoinView) hoch — die Shell speist damit den DB-losen Store (D29-Feed)
-  // und der Player sendet darüber Token-Bewegungs-Intents.
+  // M10-#386 (variant A): the player transport bubbles up from the join flow
+  // (PlayerJoinView) — the shell feeds the DB-less store with it (D29 feed)
+  // and the player sends token movement intents through it.
   const [playerTransport, setPlayerTransport] = useState<WebRtcTransport | null>(null);
-  // M10-S22 (Follow-up): echte Campaign-Auswahl beim Play-Eintritt statt
-  // projectId-Hack. Campaigns werden beim Öffnen des Auswahl-Panels geladen.
+  // M10-S22 (follow-up): real campaign selection on play entry instead of the
+  // projectId hack. Campaigns are loaded when the selection panel opens.
   const [availableCampaigns, setAvailableCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaignForPlay, setSelectedCampaignForPlay] = useState<string>('');
   const [newCampaignTitle, setNewCampaignTitle] = useState('');
@@ -263,7 +262,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   const allEntityTypes = [...CORE_ENTITY_TYPES, ...pluginEntityTypes.filter((t) => !CORE_ENTITY_TYPES.includes(t))];
 
   function navigateToEntity(entityId: string) {
-    // Navigate the whole path, not just the leaf detail view: switch the TYP
+    // Navigate the whole path, not just the leaf detail view: switch the type
     // list to the target's type, select it, and land in the entities area.
     // Type + id must be set in the SAME continuation (type first) so React
     // batches them into one render — otherwise the type-change effect fires
@@ -579,10 +578,10 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
         );
 
       case 'session':
-        // M10-S22: session-Icon ist Teil des Play-Subset (D25). Im edit-Modus
-        // ist es normalerweise nicht sichtbar, nur wenn activePanel='session'
-        // gesetzt wurde — dann Hinweis, dass der Play-Modus per Toggle
-        // erreicht wird.
+        // M10-S22: the session icon is part of the play subset (D25). In edit mode
+        // it is normally not visible, only when activePanel='session'
+        // was set — then a hint that play mode is reached via the
+        // toggle.
         return (
           <div className="workspace-area">
             <p>{t('sessionAreaEditHint', 'Play-Cockpit über den „Spielen"-Toggle in der Kopfzeile öffnen.')}</p>
@@ -815,7 +814,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
               {evalResult && <pre>{evalResult}</pre>}
             </div>
             <hr />
-            {/* M13-S07 (#242): House-Rule-Overlay-Bibliothek + Per-Session-Toggle. */}
+            {/* M13-S07 (#242): house-rule overlay library + per-session toggle. */}
             <ModuleLibrary database={database} />
             <hr />
             {selectedScreenId ? (
@@ -855,30 +854,19 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       case 'project':
         return (
           <div className="workspace-area">
-            <h2>{t('project')}</h2>
-            {/* M17-S04 (#385): Theme-Auswahl im Einstellungs-Bereich (nicht im
-                Header) — eigener Bedienpfad, getrennt vom Dark/Light-Umschalter. */}
-            <section className="u-stack u-gap-2">
-              <h3>{t('themeSectionLabel', 'Darstellung')}</h3>
-              <ThemePicker />
-            </section>
-            <hr />
-            {/* #183: no window.location.reload() — close project and reopen via welcome screen */}
-            <SnapshotManager
+            <SettingsPanel
               projectId={projectId}
+              projectTitle={projectTitle}
               projectDir={projectDir ?? ''}
               snapshotsDir={snapshotsDir ?? ''}
-              onRestored={onProjectClose ?? (() => {})}
+              onProjectClose={onProjectClose}
+              onOpenProject={onOpenProject}
             />
-            <hr />
-            <UpdateNotification />
-            <hr />
-            <button onClick={() => onProjectClose?.()}>{t('closeProject')}</button>
           </div>
         );
       case 'play-settings':
-        // #390: Play-scoped Einstellungs-Bereich — Campaign/Rolle wechseln,
-        // Session verlassen. Aufgebaut aus Primitives, Farben aus Tokens.
+        // #390: play-scoped settings area — switch campaign/role,
+        // leave the session. Built from primitives, colors from tokens.
         return (
           <div className="workspace-area">
             <h2>{t('play-settings')}</h2>
@@ -922,12 +910,12 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   const activeAreaLabel = t(activeArea);
   const visibleAreas = mode === 'play'
     ? AREAS.filter((a) => PLAY_AREAS.includes(a.id))
-    : AREAS.filter((a) => a.id !== 'play-settings'); // #390: play-only im Edit ausblenden
+    : AREAS.filter((a) => a.id !== 'play-settings'); // #390: hide play-only in edit
 
-  // M10-S22 (D25) + #390: Klick auf mode-toggle.
-  // edit → wenn ein Play-Kontext gemerkt ist, DIREKT hinein (kein Dialog);
-  //        sonst den „Campaign + Rolle"-Auswahl-Schritt öffnen.
-  // play → sofort zurück nach edit; der gemerkte Kontext BLEIBT (schneller Rückweg).
+  // M10-S22 (D25) + #390: click on the mode toggle.
+  // edit → if a play context is remembered, go DIRECTLY in (no dialog);
+  //        otherwise open the "campaign + role" selection step.
+  // play → return to edit immediately; the remembered context STAYS (fast way back).
   function handleModeToggle() {
     if (mode === 'edit') {
       const remembered = getPlayContext(projectId);
@@ -944,7 +932,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     }
   }
 
-  // #390: den „Campaign + Rolle"-Auswahl-Schritt öffnen (nur wenn kein Kontext).
+  // #390: open the "campaign + role" selection step (only when no context).
   function openRoleSelect() {
     setShowRoleSelect(true);
     void listCampaigns(database).then((cs) => {
@@ -953,9 +941,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     });
   }
 
-  // #390: gemerkten Kontext direkt betreten. Edge-Case: existiert die Campaign
-  // nicht mehr (gelöscht) → Kontext verwerfen und sauber auf den Auswahl-Schritt
-  // zurückfallen (kein Crash).
+  // #390: enter the remembered context directly. Edge case: if the campaign
+  // no longer exists (deleted) → discard the context and fall back cleanly to the
+  // selection step (no crash).
   async function enterPlay(campaignId: string, role: 'dm' | 'player') {
     const cs = await listCampaigns(database);
     setAvailableCampaigns(cs);
@@ -976,8 +964,8 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   async function pickRole(role: 'dm' | 'player') {
     let campaignId = selectedCampaignForPlay;
     if (campaignId === '') {
-      // Kein Campaign gewählt: DM darf automatisch eine anlegen (verhindert
-      // Sackgasse in einem leeren Projekt); Player braucht Auswahl.
+      // No campaign selected: the DM may auto-create one (prevents a
+      // dead end in an empty project); the player needs a selection.
       if (role === 'dm') {
         const c = await createCampaign(database, { title: t('modeCampaignDefault', 'Default Campaign') });
         campaignId = c.id;
@@ -992,11 +980,11 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     setSelectedCampaignForPlay(campaignId);
     setShowRoleSelect(false);
     setActiveArea('session');
-    setPlayContext(projectId, { campaignId, role }); // #390: Kontext merken
+    setPlayContext(projectId, { campaignId, role }); // #390: remember context
   }
 
-  // #390 — Play-Settings-Aktionen (im Play-Modus, eigener Bereich):
-  /** Campaign umschalten ohne Edit-Umweg — aktualisiert die aktive Session + Merker. */
+  // #390 — play-settings actions (in play mode, its own area):
+  /** Switch campaign without the edit detour — updates the active session + remembered context. */
   function switchPlayCampaign(campaignId: string) {
     if (campaignId === activeSessionId) return;
     setActiveSessionId(campaignId);
@@ -1005,14 +993,14 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       setPlayContext(projectId, { campaignId, role: sessionRole });
     }
   }
-  /** Rolle wechseln (DM/Player) — Player-Wechsel setzt den Join-Kontext zurück. */
+  /** Switch role (DM/Player) — switching to player resets the join context. */
   function switchPlayRole(role: 'dm' | 'player') {
     if (role === sessionRole) return;
     setSessionRole(role);
     if (role === 'player') setPlayerContext(null);
     if (activeSessionId !== null) setPlayContext(projectId, { campaignId: activeSessionId, role });
   }
-  /** Session verlassen — gemerkten Kontext löschen und zurück nach Bearbeiten. */
+  /** Leave the session — clear the remembered context and back to edit. */
   function leavePlaySession() {
     clearPlayContext(projectId);
     setMode('edit');
@@ -1031,55 +1019,55 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
 
   const modeContextValue = { mode, sessionRole, activeSessionId };
 
-  // M17-S07 (#389): Marken-Strings aus der Registry (#381) — Quelle für die
-  // zusammengeführte Wortmarke UND den OS-Fenstertitel. Modus-Teil folgt `mode`
-  // (Decision 2: Modus→Marke, NIE Rolle→Marke).
+  // M17-S07 (#389): brand strings from the registry (#381) — source for the
+  // merged wordmark AND the OS window title. The mode part follows `mode`
+  // (Decision 2: mode→brand, NEVER role→brand).
   const brandPlatform = t('brand.platform', { ns: 'common' });
   const brandModeMark = t(mode === 'play' ? 'brand.mode.play' : 'brand.mode.edit', { ns: 'common' });
 
-  // M17-S03 (#382): den aktiven Shell-Modus als zweite Achse (neben data-theme)
-  // auf documentElement spiegeln — die Modus-Akzent-Tokens in tokens.css hängen
-  // an `:root[data-mode='…']`. So wechselt der Akzent Rot⟷Amber ohne Reload.
+  // M17-S03 (#382): mirror the active shell mode as a second axis (besides data-theme)
+  // onto documentElement — the mode-accent tokens in tokens.css hang
+  // off `:root[data-mode='…']`. So the accent switches red⟷amber without a reload.
   useEffect(() => {
     document.documentElement.setAttribute('data-mode', mode);
-    // #388: bei einem per-mode User-Theme den (jetzt anderen) Modus-Accent inline
-    // nachziehen — Built-in-Themes räumt der Applier no-op ab (CSS bleibt zuständig).
+    // #388: with a per-mode user theme, reapply the (now different) mode accent
+    // inline — for built-in themes the applier no-ops (CSS stays responsible).
     applyThemeVars();
   }, [mode]);
 
-  // M17-S07 (#389): OS-Fenstertitel modus-abhängig — „Beyond Worlds – RealmForge"
-  // (edit) bzw. „Beyond Worlds – Adventure Nexus" (play). In Nicht-Tauri-Umgebungen
-  // (Tests/Browser) ist getCurrentWindow nicht verfügbar → guarded; der Titel ist
-  // kosmetisch, ein Fehlschlag darf die App nicht stören.
+  // M17-S07 (#389): OS window title depends on the mode — "Beyond Worlds – RealmForge"
+  // (edit) or "Beyond Worlds – Adventure Nexus" (play). In non-Tauri environments
+  // (tests/browser) getCurrentWindow is not available → guarded; the title is
+  // cosmetic, a failure must not disrupt the app.
   useEffect(() => {
     try {
-      void WebviewWindow.getCurrent().setTitle(`${brandPlatform} – ${brandModeMark}`).catch(() => { /* kosmetisch */ });
-    } catch { /* nicht in Tauri */ }
+      void WebviewWindow.getCurrent().setTitle(`${brandPlatform} – ${brandModeMark}`).catch(() => { /* cosmetic */ });
+    } catch { /* not in Tauri */ }
   }, [brandPlatform, brandModeMark]);
   const inPlayCockpit = mode === 'play' && activeArea === 'session';
 
-  // #374 D30: Player-Store erzeugen sobald Player-Kontext feststeht (leerer
-  // Store = „Host offline"). Snapshot+Delta füttert der Client-Transport
-  // (Verdrahtung folgt in R4 / #375).
+  // #374 D30: create the player store once the player context is fixed (an empty
+  // store = "host offline"). Snapshot+delta is fed by the client transport
+  // (wiring follows in R4 / #375).
   useEffect(() => {
     if (sessionRole !== 'player' || playerContext === null) { setPlayerStore(null); return; }
     setPlayerStore(createPlayClientStore({ playerId: playerContext.playerId }));
   }, [sessionRole, playerContext]);
 
-  // M10-#386 (D29-Feed): sobald Player-Store UND -Transport existieren, den
-  // Store an den Transport-Feed hängen — Snapshot/Delta (inkl. Token-
-  // Bewegungen) fließen dann in den DB-losen Client.
+  // M10-#386 (D29 feed): once both the player store AND transport exist, attach
+  // the store to the transport feed — snapshot/delta (incl. token
+  // movements) then flow into the DB-less client.
   useEffect(() => {
     if (playerStore === null || playerTransport === null) return;
     const dispose = attachClientStoreToTransport(playerTransport, playerStore);
     return () => dispose();
   }, [playerStore, playerTransport]);
 
-  // #373 M10-R2 + S11: Host-Push verdrahten + Broker-Signaling attachen.
-  // DM ist im Host/Connect-Modell Peer 'A' (Initiator). appId = currentAppId
-  // (per-Host-Namespace aus getHostSecret); roomId = campaignId. Der Signaling-
-  // Adapter läuft die Fallback-Kette (Nostr → MQTT → BitTorrent → PeerJS) und
-  // vermittelt SDP/ICE — Spieldaten bleiben P2P.
+  // #373 M10-R2 + S11: wire up host push + attach broker signaling.
+  // In the host/connect model the DM is peer 'A' (initiator). appId = currentAppId
+  // (per-host namespace from getHostSecret); roomId = campaignId. The signaling
+  // adapter runs the fallback chain (Nostr → MQTT → BitTorrent → PeerJS) and
+  // brokers SDP/ICE — game data stays P2P.
   useEffect(() => {
     if (mode !== 'play' || sessionRole !== 'dm' || activeSessionId === null) return;
     const transport = WebRtcTransport.host(activeSessionId, database);
@@ -1096,16 +1084,16 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       });
     })().catch((e) => console.warn('[host-signaling] setup failed', e));
     const unsub = attachVisibilityBroadcaster(transport);
-    // M10-#386 (D18, host-authoritative): eingehende Token-Bewegungs-Intents
-    // der Spieler autorisieren + Ground-Truth persistieren + an alle broadcasten.
+    // M10-#386 (D18, host-authoritative): authorize incoming token movement intents
+    // from players + persist the ground truth + broadcast to everyone.
     attachHostTokenSync({ transport, database, campaignId });
-    // M10-#387 (D24/D29): DB-loser Join/Reconnect-Handshake — Spieler-Requests
-    // gegen die Host-DB validieren, Mitglied anlegen + Token + Initial-Snapshot.
+    // M10-#387 (D24/D29): DB-less join/reconnect handshake — validate player requests
+    // against the host DB, create member + token + initial snapshot.
     attachHostJoinSync({ transport, database, campaignId });
-    // M10-#386: Initial-Snapshot der präsentierten Karte + Tokens senden, sobald
-    // der Host-Transport steht — sonst bekäme der DB-lose Player-Store nie die
-    // Szene (computeSnapshot wurde vorher nie gesendet). present() re-pusht bei
-    // Kartenwechsel.
+    // M10-#386: send the initial snapshot of the presented map + tokens once
+    // the host transport is up — otherwise the DB-less player store would never get
+    // the scene (computeSnapshot was never sent before). present() re-pushes on
+    // map change.
     void pushPresentedMapSnapshot({ database, campaignId, transport });
     return () => {
       unsub();
@@ -1141,28 +1129,28 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           </button>
         </nav>
         <div className="workspace-shell__content">
-          {/* M17-S03 (#382): Kopf-Akzentstreifen — trägt die Modus-Farbe
-              (Prep-Rot / Live-Amber) aus --mode-accent, rein dekorativ. */}
+          {/* M17-S03 (#382): header accent stripe — carries the mode color
+              (prep red / live amber) from --mode-accent, purely decorative. */}
           <div className="workspace-shell__mode-stripe" aria-hidden="true" />
           <header className="workspace-shell__header">
-            {/* M17-S07 (#389): EINE zusammengeführte Produkt-Wortmarke „Beyond
-                Worlds – RealmForge" (bzw. „… – Adventure Nexus"). Einheitliche Typo/
-                Basis-Farbe; nur der Modus-Teil trägt dezent den Modus-Akzent
-                (--mode-accent-text) — kein zweiter, andersartiger Pill-Style. Modus-
-                Teil folgt `mode` (Decision 2), Strings aus der Registry (#381).
-                Nicht-farbliche Modus-Kennzeichnung #1 (Decision 4) = der Klartext-Name. */}
+            {/* M17-S07 (#389): ONE merged product wordmark "Beyond
+                Worlds – RealmForge" (or "… – Adventure Nexus"). Uniform typography/
+                base color; only the mode part carries the mode accent subtly
+                (--mode-accent-text) — no second, different pill style. The mode
+                part follows `mode` (Decision 2), strings from the registry (#381).
+                Non-color mode indicator #1 (Decision 4) = the plain-text name. */}
             <div className="workspace-shell__identity" role="group"
               aria-label={t('modeIdentityAria', 'Produkt-Identität')}>
               <span className="workspace-shell__wordmark">{brandPlatform} – {brandModeMark}</span>
-              {/* Live-Modus-Schloss — nicht-farbliche Modus-Kennzeichnung #2 (Decision 4). */}
+              {/* Live-mode lock — non-color mode indicator #2 (Decision 4). */}
               {mode === 'play' && (
                 <StatusChip tone="warning" aria-label={t('modeLockedAria', 'Live-Modus (gesperrt)')}>
                   🔒
                 </StatusChip>
               )}
             </div>
-            {/* #389: Projekt- und Area-Name sind sekundär — sie dürfen die Identität
-                nicht überlagern (kleiner/gedämpft via shell.css). */}
+            {/* #389: project and area name are secondary — they must not overlay the
+                identity (smaller/dimmed via shell.css). */}
             <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
             <span className="workspace-shell__area-name">{activeAreaLabel}</span>
             <div className="workspace-shell__header-controls">
@@ -1230,11 +1218,11 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             sessionRole === 'dm' ? (
               <PlayModeView role={sessionRole} activeSessionId={activeSessionId} database={database} transport={hostTransport ?? undefined} />
             ) : playerContext !== null && activeSessionId !== null ? (
-              // M10-S14: Nach dem Join sieht der Player das volle Cockpit
-              // (Map/Kampflog/Spotlight/Free-Browse + Bogen), gefiltert durch
-              // S09 (host-seitige Content-Filter). Group-IDs kommen aus der
-              // group_members-Tabelle — die S09-Filter sind an alle Gruppen
-              // des Players adressiert (D6).
+              // M10-S14: after the join the player sees the full cockpit
+              // (map/combat log/spotlight/free-browse + sheet), filtered through
+              // S09 (host-side content filter). Group IDs come from the
+              // group_members table — the S09 filters are addressed to all of the
+              // player's groups (D6).
               <PlayModeView
                 role={sessionRole}
                 activeSessionId={activeSessionId}
@@ -1244,20 +1232,20 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                 transport={playerTransport ?? undefined}
               />
             ) : (
-              // M10-S05 (#387): Player-Rolle startet mit dem DB-losen Beitritts-
-              // Flow — kein `database`-Prop mehr (Join läuft als Transport-Handshake).
+              // M10-S05 (#387): the player role starts with the DB-less join
+              // flow — no `database` prop anymore (join runs as a transport handshake).
               <PlayerJoinView
                 onJoined={async ({ playerId, displayName, transport }) => {
                   setPlayerContext({ playerId, displayName });
                   setPlayerTransport(transport ?? null); // #386 D29-Feed
-                  // Group-Zugehörigkeit des Players → Filter-Kontext für S09.
+                  // The player's group membership → filter context for S09.
                   try {
                     const rows = await database.select<{ group_id: string }>(
                       'SELECT group_id FROM group_members WHERE player_id = ?',
                       [playerId],
                     );
                     setPlayerGroupIds(rows.map((r) => r.group_id));
-                  } catch { /* keine group_members → leere Liste */ }
+                  } catch { /* no group_members → empty list */ }
                 }}
               />
             )

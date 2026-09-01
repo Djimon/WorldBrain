@@ -1,4 +1,4 @@
-// chore(maps): Layer-Panel als Reiter in der Sidebar (Karten/Ebenen) (#297)
+// chore(maps): layer panel as a tab in the sidebar (maps/layers) (#297)
 // UX refinement of the Maps sidebar: "Karten"/"Ebenen" tabs instead of the
 // list + LayerPanel stacked in the same column. Selecting a map auto-jumps
 // to "Ebenen"; "Karten" switches back manually without clearing selection.

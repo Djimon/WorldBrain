@@ -1,28 +1,28 @@
-// M10 R4 (#375, D26): Loopback-Transport für GM-Self-Join. Der DM verbindet
-// im Play-Modus als „Als Player" gegen den eigenen laufenden Host (R2) —
-// keine echte WebRTC-Verbindung, aber semantisch identisch:
-// - ClientAction geht durch send() an den Host-Handler
-// - Host-seitige Snapshot/Delta kommt über onMessage beim Client an
-// Damit lebt die D30-Membran auch lokal: der Self-Join-Client rendert
-// ausschließlich aus dem Store, nicht aus der DB.
+// M10 R4 (#375, D26): loopback transport for GM self-join. The DM connects
+// in play mode as "As player" against their own running host (R2) —
+// no real WebRTC connection, but semantically identical:
+// - ClientAction goes through send() to the host handler
+// - host-side snapshot/delta arrives at the client via onMessage
+// This keeps the D30 membrane alive locally too: the self-join client renders
+// exclusively from the store, not from the DB.
 import type { SessionTransport, TransportMessage } from './session-transport';
 
 /**
- * Ein Paar {clientSide, hostSide} verbunden über zwei In-Memory-Buffer.
- * Der DM instanziiert beide Seiten; hostSide wird vom Host-Push-Loop
- * konsumiert (send Snapshot/Delta), clientSide vom Play-Cockpit (nimmt sie
- * entgegen + sendet ClientActions zurück).
+ * A pair {clientSide, hostSide} connected via two in-memory buffers.
+ * The DM instantiates both sides; hostSide is consumed by the host-push loop
+ * (send snapshot/delta), clientSide by the play cockpit (receives them
+ * + sends ClientActions back).
  */
 export interface LoopbackPair {
   clientSide: SessionTransport;
   hostSide: SessionTransport;
 }
 
-// M10-#387: modelliert die echte WebRtcTransport-Semantik treu — MEHRERE
-// onMessage-Listener (jede Nachricht an alle) + bounded Receive-Replay-Puffer
-// (späte Subscriber bekommen bereits eingetroffene Nachrichten nachgespielt).
-// Single-Handler hätte den Host-Handler-Konflikt (token-sync/join-sync) im Test
-// verdeckt, so wie es der ursprüngliche Loopback tat.
+// M10-#387: faithfully models the real WebRtcTransport semantics — MULTIPLE
+// onMessage listeners (every message to all) + bounded receive-replay buffer
+// (late subscribers get already-arrived messages replayed).
+// A single handler would have masked the host-handler conflict (token-sync/join-sync)
+// in the test, the way the original loopback did.
 interface Channel {
   handlers: Array<(msg: TransportMessage) => void>;
   inbox: TransportMessage[];
@@ -32,11 +32,11 @@ const MAX_INBOX = 64;
 
 function makeSide(peerChannel: Channel, selfChannel: Channel): SessionTransport {
   return {
-    async connect() { /* Loopback: nichts zu tun. */ },
+    async connect() { /* Loopback: nothing to do. */ },
     async close() { selfChannel.handlers = []; selfChannel.inbox = []; },
     async send(msg) {
-      // Fire-and-forget an die andere Seite. Bewusst asynchron via microtask,
-      // damit send/onMessage nicht synchron re-entrieren.
+      // Fire-and-forget to the other side. Deliberately asynchronous via microtask,
+      // so that send/onMessage do not re-enter synchronously.
       queueMicrotask(() => {
         if (peerChannel.inbox.length >= MAX_INBOX) peerChannel.inbox.shift();
         peerChannel.inbox.push(msg);
@@ -58,7 +58,7 @@ export function createLoopbackTransport(): LoopbackPair {
   const clientChannel: Channel = { handlers: [], inbox: [] };
   const hostChannel: Channel = { handlers: [], inbox: [] };
   return {
-    // clientSide.send → hostChannel; clientSide.onMessage horcht auf clientChannel
+    // clientSide.send → hostChannel; clientSide.onMessage listens on clientChannel
     clientSide: makeSide(hostChannel, clientChannel),
     hostSide: makeSide(clientChannel, hostChannel),
   };

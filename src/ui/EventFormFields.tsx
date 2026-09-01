@@ -1,4 +1,4 @@
-// M14-S07: Event-Formular — kind, participants/locations, visibility (#262)
+// M14-S07: Event form — kind, participants/locations, visibility (#262)
 // Event-specific extra fields for the standard entity edit form (title/body
 // come from EntityDetailView — not rebuilt here, per this Story's AC).
 //
@@ -44,7 +44,7 @@ export function isEventFormValid(kind: EventKind, startDay: number, endDay: numb
 
 /**
  * #292: event_kind is derived internally from the end-date field, never
- * shown/asked as its own control (the "Art" toggle must not appear in the
+ * shown/asked as its own control (the "Kind" toggle must not appear in the
  * DOM). Empty end_day or end_day === start_day => 'single'; anything else
  * => 'phase'. Clamped end_day (>= start_day) is the caller's job before
  * calling this — this function only classifies.

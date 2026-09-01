@@ -1,7 +1,7 @@
-// M15-S05 / #307: Map-Ordnerbaum konsumiert NestedTree — dünner Adapter,
-// keine eigene Baum-Logik. Löschen zeigt einen gerenderten Dialog statt eines
-// blockierenden Browser-Dialogs (AP-003); Karten fallen auf folder_id = NULL
-// zurück, sie werden nicht mitgelöscht.
+// M15-S05 / #307: Map folder tree consumes NestedTree — a thin adapter,
+// no tree logic of its own. Deleting shows a rendered dialog instead of a
+// blocking browser dialog (AP-003); maps fall back to folder_id = NULL,
+// they are not deleted along with it.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';

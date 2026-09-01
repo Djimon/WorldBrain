@@ -1,10 +1,10 @@
-// M10-#386: Host → Player Snapshot-Push der präsentierten Karte. Schließt die
-// Lücke, dass computeSnapshot zwar existierte, aber nie gesendet wurde — ohne
-// diesen Push bekäme der DB-lose Player-Store nie Karte + Token-Set.
+// M10-#386: Host → player snapshot push of the presented map. Closes the
+// gap that computeSnapshot existed but was never sent — without
+// this push the DB-less player store would never get map + token set.
 //
-// Der Host baut aus der präsentierten Karte (Bild-URL) + ihren Tokens (x/y)
-// einen Snapshot und schickt ihn als TransportMessage. Aufgerufen wenn der DM
-// eine Karte präsentiert und wenn der Host-Transport steht (initialer Zustand).
+// The host builds a snapshot from the presented map (image URL) + its tokens (x/y)
+// and sends it as a TransportMessage. Called when the DM
+// presents a map and when the host transport is up (initial state).
 import type { DatabaseLike } from './entity-service';
 import type { SessionTransport, TransportMessage } from './session-transport';
 import { SYSTEM_TOKEN } from './session-transport';
@@ -15,10 +15,10 @@ import { listLayers } from './map-layer-service';
 import { listTokens } from './map-token-service';
 
 /**
- * Baut + sendet den Snapshot der aktuell präsentierten Karte an die Spieler.
- * Ohne präsentierte Karte wird ein leerer Snapshot gesendet (Player-Sicht
- * zeigt „keine Karte präsentiert"). `recipientPlayerId` optional — für einen
- * gezielten Empfänger; sonst Broadcast-Marker.
+ * Builds + sends the snapshot of the currently presented map to the players.
+ * With no presented map, an empty snapshot is sent (the player view
+ * shows "no map presented"). `recipientPlayerId` optional — for a
+ * targeted recipient; otherwise a broadcast marker.
  */
 export async function pushPresentedMapSnapshot(params: {
   database: DatabaseLike;
@@ -32,7 +32,7 @@ export async function pushPresentedMapSnapshot(params: {
   const mapId = await getPresentedMapId(database, campaignId);
   if (mapId !== null) {
     const map = await getMap(database, mapId);
-    // Bild-URL aus dem ersten Image-Layer (wie MapViewer sie auflöst).
+    // Image URL from the first image layer (the way MapViewer resolves it).
     const layers = await listLayers(database, mapId);
     const imageLayer = layers.find((l) => l.layer_type === 'image' && l.asset_id);
     const imageUrl = imageLayer?.asset_id ? getAssetUrl(imageLayer.asset_id) : '';
@@ -42,7 +42,7 @@ export async function pushPresentedMapSnapshot(params: {
       kind: 'map',
       data: { image_url: imageUrl, title: map?.title ?? '' },
     });
-    // Tokens der präsentierten Karte (Positionen für die Player-Sicht).
+    // Tokens of the presented map (positions for the player view).
     const tokens = await listTokens(database, mapId, campaignId);
     for (const tk of tokens) {
       entities.push({ id: tk.id, visibility: 'all', kind: 'token', data: { x: tk.x, y: tk.y } });
@@ -60,5 +60,5 @@ export async function pushPresentedMapSnapshot(params: {
     token: SYSTEM_TOKEN,
     payload: snapshot as unknown as Record<string, unknown>,
   };
-  void transport.send(msg).catch(() => { /* offline → verwerfen */ });
+  void transport.send(msg).catch(() => { /* offline → discard */ });
 }

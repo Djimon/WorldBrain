@@ -1,17 +1,17 @@
-// Ein-Datei-Logger für den Spike: schreibt jede Zeile append-mode via Tauri
-// fs-Plugin in Dokumente\wbx-signaling-spike\<timestamp>-<peer>.log. Fallback
-// (Browser ohne Tauri): nur console + in-memory. Der Pfad wird via getPath()
-// exponiert, damit die UI ihn dem User zeigen kann.
+// Single-file logger for the spike: writes each line in append mode via the Tauri
+// fs plugin to Dokumente\wbx-signaling-spike\<timestamp>-<peer>.log. Fallback
+// (browser without Tauri): console + in-memory only. The path is exposed via getPath()
+// so the UI can show it to the user.
 import { writeTextFile, mkdir, BaseDirectory, exists } from '@tauri-apps/plugin-fs';
 
 const LOG_DIR = 'wbx-signaling-spike';
 
 export interface LogWriter {
-  /** Absoluter Pfad (nur wenn Tauri verfügbar), sonst Marker-String. */
+  /** Absolute path (only when Tauri is available), otherwise a marker string. */
   getPath(): string;
-  /** Zeile mit Zeitstempel schreiben. Silent-Fail bei fs-Errors. */
+  /** Write a line with a timestamp. Silent-fails on fs errors. */
   write(line: string): Promise<void>;
-  /** Freie Markierung ohne Zeitstempel — z. B. Section-Header. */
+  /** Free-form marker without a timestamp — e.g. a section header. */
   writeRaw(text: string): Promise<void>;
 }
 
@@ -39,7 +39,7 @@ export async function createLogWriter(peerLabel: string): Promise<LogWriter> {
     };
   }
 
-  // Sicherstellen dass Log-Verzeichnis existiert (idempotent).
+  // Ensure the log directory exists (idempotent).
   try {
     const dirExists = await exists(LOG_DIR, { baseDir: BaseDirectory.Document });
     if (!dirExists) {
@@ -49,7 +49,7 @@ export async function createLogWriter(peerLabel: string): Promise<LogWriter> {
     console.error('[log-writer] mkdir failed', e);
   }
 
-  // Header schreiben (init = truncate: false + append: false → create-or-overwrite).
+  // Write the header (init = truncate: false + append: false → create-or-overwrite).
   const header = [
     `# M10 Signaling-Spike Log (#380)`,
     `# Peer: ${peerLabel}`,

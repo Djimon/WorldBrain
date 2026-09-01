@@ -1,6 +1,6 @@
-// M10-S06 (#355): GM-Lobby — Live-Sicht der verbundenen Spieler + Kick +
-// Copy-Code (D24/D27). Auto-Join macht separate Freigabe-Sektionen
-// obsolet. Signaling-UI bleibt Stufe 3 (S11/S12) — hier NICHT gemountet.
+// M10-S06 (#355): GM lobby — live view of connected players + Kick +
+// copy-code (D24/D27). Auto-join makes separate approval sections
+// obsolete. Signaling UI stays stage 3 (S11/S12) — NOT mounted here.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
@@ -17,9 +17,9 @@ interface GroupMemberRow { group_id: string; player_id: string }
 export interface LobbyPanelProps {
   database: DatabaseLike;
   campaignId: string;
-  /** Aktueller Einladungscode — vom Host-Owner initial gesetzt / persistiert. */
+  /** Current invite code — initially set / persisted by the host owner. */
   currentInviteCode?: string;
-  /** Neuer Code nach Regenerierung — Callback für die Persistenz-Schicht. */
+  /** New code after regeneration — callback for the persistence layer. */
   onInviteCodeChanged?: (newCode: string) => void;
 }
 
@@ -28,14 +28,14 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
   const [players, setPlayers] = useState<SessionPlayer[]>([]);
   const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
   const [inviteCode, setInviteCode] = useState(currentInviteCode);
-  // S11 (#367): per-Host `appId` (aus getHostSecret + majorMinor) wird als
-  // `&ns=<appId>` in den Einladungslink codiert — der Joiner kann den
-  // Broker-Namespace nicht selbst ableiten, deshalb trägt ihn der Link.
+  // S11 (#367): the per-host `appId` (from getHostSecret + majorMinor) is
+  // encoded as `&ns=<appId>` in the invite link — the joiner cannot derive
+  // the broker namespace itself, so the link carries it.
   const [nsAppId, setNsAppId] = useState('');
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // #377 D31: campaign-scoped Gruppen (Namen aus Edit-Panel #371) +
-  // per-Mitglied-Zuordnung; hier existieren die Mitglieder wirklich.
+  // #377 D31: campaign-scoped groups (names from the edit panel #371) +
+  // per-member assignment; here the members really exist.
   const [groups, setGroups] = useState<PlayerGroup[]>([]);
   const [memberGroups, setMemberGroups] = useState<Record<string, string[]>>({});
 
@@ -47,7 +47,7 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
       ]);
       setPlayers(rows);
       setGroups(gs);
-      // Anzeigename statt UUID: display_name aus der players-Tabelle nachladen.
+      // Display name instead of UUID: load display_name from the players table.
       if (rows.length > 0) {
         const ids = rows.map((r) => r.player_id);
         const placeholders = ids.map(() => '?').join(',');
@@ -58,7 +58,7 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
         const map: Record<string, string> = {};
         for (const n of names) map[n.id] = n.display_name;
         setPlayerNames(map);
-        // Gruppen-Membership pro Mitglied laden.
+        // Load group membership per member.
         const memberships = await database.select<GroupMemberRow>(
           `SELECT group_id, player_id FROM group_members WHERE player_id IN (${placeholders})`,
           ids,
@@ -92,8 +92,8 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
 
   useEffect(() => { void reload(); }, [database, campaignId]);
 
-  // #371 Fix 1/2: aktiven Code beim Mount aus der DB laden — kein Auto-Generate,
-  // Neu-Generieren bleibt explizite Aktion.
+  // #371 Fix 1/2: load the active code from the DB on mount — no auto-generate,
+  // regenerating stays an explicit action.
   useEffect(() => {
     if (campaignId === '') return;
     let cancelled = false;
@@ -126,20 +126,20 @@ export function LobbyPanel({ database, campaignId, currentInviteCode = '', onInv
     }
   }
 
-  // Roster-Anzeige: nur aktive. Gekickte bleiben in der DB (Token-Sperre für
-  // Reconnect-Schutz), tauchen aber nicht mehr in "Verbundene Spieler" auf.
+  // Roster display: active only. Kicked players stay in the DB (token lock for
+  // reconnect protection), but no longer appear in "Connected players".
   const activePlayers = players.filter((p) => p.status === 'active');
 
-  // Beim Mount die appId ableiten (deterministisch, per-Host).
+  // Derive the appId on mount (deterministic, per-host).
   useEffect(() => {
     let cancelled = false;
     void currentAppId().then((id) => { if (!cancelled) setNsAppId(id); });
     return () => { cancelled = true; };
   }, []);
 
-  // Teilbarer Einladungs-Link (D27 + S11): trägt Code + Campaign + `ns` als
-  // unerratbaren Broker-Namespace. S05 akzeptiert Link ODER nackten Code —
-  // der Link ist die einzige Quelle für `ns` (kein manuelles Eingeben).
+  // Shareable invite link (D27 + S11): carries code + campaign + `ns` as the
+  // unguessable broker namespace. S05 accepts a link OR a bare code —
+  // the link is the only source for `ns` (no manual entry).
   const inviteLink = inviteCode !== ''
     ? `wbrain://join?code=${encodeURIComponent(inviteCode)}&campaign=${encodeURIComponent(campaignId)}&ns=${encodeURIComponent(nsAppId)}`
     : '';

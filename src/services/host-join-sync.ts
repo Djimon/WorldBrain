@@ -1,21 +1,21 @@
-// M10-#387 (D24/D29, Decision 8): DB-loser Join/Auth als Transport-Handshake.
+// M10-#387 (D24/D29, Decision 8): DB-less join/auth as a transport handshake.
 //
-// Warum: Der Player-Client ist DB-los (D29). Beitritt/Reconnect dürfen NICHT
-// als geteilte DB laufen — die Wahrheit (invite_codes / players / session_players)
-// lebt und wird ausschließlich in der HOST-DB geprüft. Der Spieler schickt seinen
-// Wunsch über den Transport; erst der Host entscheidet und legt bei Gültigkeit das
-// aktive Mitglied an (D24: Auto-Join, kein Approve-Gate).
+// Why: The player client is DB-less (D29). Join/reconnect must NOT
+// run as a shared DB — the truth (invite_codes / players / session_players)
+// lives and is checked exclusively in the HOST DB. The player sends their
+// request over the transport; only the host decides and, if valid, creates the
+// active member (D24: auto-join, no approve gate).
 //
-// Ablauf (host-seitig):
-//   join_request { code, displayName }      → Code gegen Host-DB prüfen; gültig →
-//     joinWithCode() legt session_players(status='active') an, erzeugt Token →
-//     join_response { ok:true, token, playerId } + unmittelbar der Initial-Snapshot
-//     (präsentierte Karte + Tokens, #386). Ungültig → join_response { ok:false }, KEIN DB-Eintrag.
-//   reconnect_request { token }             → Token gegen Host-DB auflösen; aktives
-//     Mitglied → join_response { ok:true, token(echo), playerId } + Snapshot; sonst ok:false.
+// Flow (host-side):
+//   join_request { code, displayName }      → check code against host DB; valid →
+//     joinWithCode() creates session_players(status='active'), generates token →
+//     join_response { ok:true, token, playerId } + immediately the initial snapshot
+//     (presented map + tokens, #386). Invalid → join_response { ok:false }, NO DB entry.
+//   reconnect_request { token }             → resolve token against host DB; active
+//     member → join_response { ok:true, token(echo), playerId } + snapshot; otherwise ok:false.
 //
-// Spiegelt das Muster von attachHostTokenSync: transport.onMessage → gegen die DB
-// autorisieren → antworten. Der Client entscheidet nie selbst über Zugehörigkeit.
+// Mirrors the pattern of attachHostTokenSync: transport.onMessage → authorize
+// against the DB → respond. The client never decides membership itself.
 import type { DatabaseLike } from './entity-service';
 import type { SessionTransport, TransportMessage, JoinResponsePayload } from './session-transport';
 import { JOIN_REQUEST, RECONNECT_REQUEST, JOIN_RESPONSE, SYSTEM_TOKEN } from './session-transport';
@@ -32,10 +32,10 @@ interface ReconnectRequestPayload {
 }
 
 /**
- * Host-Seite: Beitritts-/Reconnect-Handshakes über den Transport entgegennehmen,
- * gegen die Host-DB validieren und mit `join_response` (+ Initial-Snapshot bei
- * Erfolg) antworten. Analog `attachHostTokenSync` — neben diesem im Host-Effekt
- * verdrahtet.
+ * Host side: receive join/reconnect handshakes over the transport,
+ * validate against the host DB, and respond with `join_response` (+ initial
+ * snapshot on success). Analogous to `attachHostTokenSync` — wired alongside
+ * it in the host effect.
  */
 export function attachHostJoinSync(params: {
   transport: Pick<SessionTransport, 'onMessage' | 'send'>;
@@ -61,19 +61,19 @@ async function handleJoinRequest(
   const code = typeof payload.code === 'string' ? payload.code : '';
   const displayName = typeof payload.displayName === 'string' ? payload.displayName.trim() : '';
 
-  // Vorab-Validierung OHNE joinWithCode()-Throw abzufangen (AP-006): ein
-  // unbekannter/invalidierter Code oder ein Code einer FREMDEN Campaign wird
-  // hier host-autoritativ abgelehnt — kein DB-Eintrag entsteht.
+  // Pre-validation WITHOUT catching a joinWithCode() throw (AP-006): an
+  // unknown/invalidated code or a code from a FOREIGN campaign is
+  // rejected host-authoritatively here — no DB entry is created.
   const codeCampaign = code === '' ? null : await resolveCampaignForCode(database, code);
   if (codeCampaign === null || codeCampaign !== campaignId) {
-    void transport.send(joinResponse({ ok: false, error: 'invalid_code' })).catch(() => { /* offline → verwerfen */ });
+    void transport.send(joinResponse({ ok: false, error: 'invalid_code' })).catch(() => { /* offline → discard */ });
     return;
   }
 
-  // Gültig → aktives Mitglied anlegen (D24) + Token erzeugen (Ground Truth in der Host-DB).
+  // Valid → create active member (D24) + generate token (ground truth in the host DB).
   const { token, playerId } = await joinWithCode(database, { code, displayName });
-  void transport.send(joinResponse({ ok: true, token, playerId })).catch(() => { /* offline → verwerfen */ });
-  // Unmittelbar danach der Initial-Snapshot (#386) — gezielt für diesen Spieler.
+  void transport.send(joinResponse({ ok: true, token, playerId })).catch(() => { /* offline → discard */ });
+  // Immediately afterwards the initial snapshot (#386) — targeted at this player.
   await pushSnapshot(database, campaignId, transport, playerId);
 }
 
@@ -86,20 +86,20 @@ async function handleReconnectRequest(
   const token = typeof payload.token === 'string' ? payload.token : '';
   const member = token === '' ? null : await resolvePlayerByToken(database, token);
   if (member === null) {
-    void transport.send(joinResponse({ ok: false, error: 'invalid_token' })).catch(() => { /* offline → verwerfen */ });
+    void transport.send(joinResponse({ ok: false, error: 'invalid_token' })).catch(() => { /* offline → discard */ });
     return;
   }
-  // Aktives Mitglied → dasselbe Token zurückspielen (Token-Replay, #387) + Snapshot.
-  void transport.send(joinResponse({ ok: true, token, playerId: member.playerId })).catch(() => { /* offline → verwerfen */ });
+  // Active member → replay the same token (token replay, #387) + snapshot.
+  void transport.send(joinResponse({ ok: true, token, playerId: member.playerId })).catch(() => { /* offline → discard */ });
   await pushSnapshot(database, campaignId, transport, member.playerId);
 }
 
-/** Baut das `join_response`-Envelope (System-Token, da der Spieler noch/wieder nicht adressierbar ist). */
+/** Builds the `join_response` envelope (system token, since the player is not yet/again addressable). */
 function joinResponse(payload: JoinResponsePayload): TransportMessage {
   return { type: JOIN_RESPONSE, token: SYSTEM_TOKEN, payload: payload as unknown as Record<string, unknown> };
 }
 
-/** Initial-Snapshot der präsentierten Karte für genau diesen Empfänger (#386). */
+/** Initial snapshot of the presented map for exactly this recipient (#386). */
 async function pushSnapshot(
   database: DatabaseLike,
   campaignId: string,

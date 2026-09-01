@@ -1,6 +1,6 @@
-// M10-S20 (#349): Campaign-Klammer + campaign_id-Keying (D23).
-// Eine Welt → mehrere Campaigns. Roster/Overrides/Visibility hängen an der
-// Campaign, nicht am Termin.
+// M10-S20 (#349): campaign bracket + campaign_id keying (D23).
+// One world → multiple campaigns. Roster/overrides/visibility hang off the
+// campaign, not the session date.
 import type { DatabaseLike } from './entity-service';
 
 export interface Campaign {

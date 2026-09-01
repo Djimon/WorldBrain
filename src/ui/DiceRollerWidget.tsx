@@ -1,8 +1,8 @@
-// M10-S16 (#362): Würfel-Widget im Kampflog-Reiter (D17).
-// Nutzer gibt eine Expression (z.B. `2d6+3`) ein, wählt die Sichtbarkeit
-// (Privat / DM / Alle), klickt Würfeln → das Ergebnis wird per
-// combat-log-service.postEntry persistiert; der Log darüber (in
-// KampflogPane) rerendert.
+// M10-S16 (#362): Dice widget in the combat-log tab (D17).
+// The user enters an expression (e.g. `2d6+3`), selects the visibility
+// (Private / DM / All), clicks Roll → the result is persisted via
+// combat-log-service.postEntry; the log above it (in the combat log
+// pane) re-renders.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';

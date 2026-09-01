@@ -21,7 +21,7 @@
     "applyToWorld": "Apply to world"
   },
   "snapshot": {
-    "title": "Snapshots",
+    "title": "Backup",
     "create": "Create snapshot",
     "name": "Snapshot name",
     "restore": "Restore",

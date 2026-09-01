@@ -39,13 +39,13 @@ function mountApp(): void {
   );
 }
 
-// #393: importierbare User-Themes für JEDES Fenster registrieren (auch die
-// abgedockten Soundboard-/Player-Fenster mit eigenem JS-Kontext), sonst degradiert
-// ein aktives User-Theme dort still auf die Default-Palette.
-// #396: ist das GESPEICHERTE Theme ein Built-in, sofort painten und parallel scannen
-// (kein Flash möglich). Ist es ein NICHT-Built-in (User-Theme, zu diesem Zeitpunkt
-// noch nicht registriert), erst scannen+anwenden, DANN painten — vermeidet den
-// kurzen Default-Paletten-Flash.
+// #393: register importable user themes for EVERY window (including the
+// detached soundboard/player windows with their own JS context), otherwise an
+// active user theme silently degrades there to the default palette.
+// #396: if the STORED theme is a built-in, paint immediately and scan in parallel
+// (no flash possible). If it is a NON-built-in (user theme, not yet registered at
+// this point), scan+apply first, THEN paint — avoids the
+// brief default-palette flash.
 if (isBuiltinThemeId(getStoredThemeId())) {
   void bootstrapUserThemes();
   mountApp();

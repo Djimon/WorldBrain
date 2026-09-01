@@ -1,59 +1,59 @@
-// M10-D29 (#372): Client-Store-Contract — nimmt Snapshot + Delta vom Host
-// entgegen und hält einen FLÜCHTIGEN In-Memory-Store für die Play-Sichten
-// des Spielers. KEIN DB-Zugriff (D30-Membran); der Client sieht keine
-// lokale Datenbank, nur die vom Host geschickte Sicht.
+// M10-D29 (#372): Client store contract — receives snapshot + delta from the
+// host and keeps a VOLATILE in-memory store for the player's play
+// views. NO DB access (D30 membrane); the client sees no
+// local database, only the view sent by the host.
 //
-// Dieses File definiert nur das Interface + Typen. Die konkrete Impl
-// (play-client-store-memory) und die Verdrahtung an den Transport (R3)
-// binden gegen DIESEN Vertrag.
+// This file defines only the interface + types. The concrete impl
+// (play-client-store-memory) and the wiring to the transport (R3)
+// bind against THIS contract.
 import type { Delta, Snapshot, SyncEntity, SyncEntityKind } from './play-sync-protocol';
 
 /**
- * PlayClientStore: der Client empfängt Snapshot + Delta und stellt
- * Read-Selektoren für die Views bereit. Kein autoritatives Schreiben —
- * Änderungen wandern als `ClientAction` zurück zum Host.
+ * PlayClientStore: the client receives snapshot + delta and provides
+ * read selectors for the views. No authoritative writes —
+ * changes travel back to the host as a `ClientAction`.
  */
 export interface PlayClientStore {
-  /** Initialer Zustand aus dem Snapshot übernehmen (Reset). */
+  /** Adopt the initial state from the snapshot (reset). */
   applySnapshot(snapshot: Snapshot): void;
-  /** Einzel-Delta einweben (add/update/remove). */
+  /** Weave in a single delta (add/update/remove). */
   applyDelta(delta: Delta): void;
 
-  /** Alle sichtbaren Entities einer Kategorie. */
+  /** All visible entities of a category. */
   list(kind: SyncEntityKind): readonly SyncEntity[];
-  /** Einzel-Zugriff (Detail-Sicht). null wenn nicht vorhanden/nicht sichtbar. */
+  /** Single access (detail view). null if absent/not visible. */
   get(kind: SyncEntityKind, id: string): SyncEntity | null;
-  /** Der eigene Charakter (Play-Cockpit „Bogen"-Tab), falls im Store. */
+  /** The player's own character (play-cockpit "sheet" tab), if in the store. */
   ownCharacter(): SyncEntity | null;
 
-  /** View-Abonnenten: die konkrete Impl darf einen Listener-Bus fahren. */
+  /** View subscribers: the concrete impl may run a listener bus. */
   subscribe(listener: () => void): () => void;
 
-  /** Vollständig leeren (Disconnect / Session-Ende). */
+  /** Fully clear (disconnect / session end). */
   clear(): void;
 }
 
 /**
- * Fabrik-Vertrag: Consumer erzeugt sich seinen Store mit dem eigenen
- * playerId-Kontext; die Impl darf zwischen playerId und den empfangenen
- * Snapshots konsistent bleiben.
+ * Factory contract: the consumer creates its store with its own
+ * playerId context; the impl may stay consistent between playerId and the
+ * received snapshots.
  */
 export interface PlayClientStoreOptions {
   playerId?: string;
 }
 
 // --------------------------------------------------------------------------
-// Konkrete In-Memory-Impl. Kein persistenter Zustand — leerer Store zeigt
-// „offline" an; sobald ein Snapshot reinkommt, gilt der Store als verbunden.
+// Concrete in-memory impl. No persistent state — an empty store indicates
+// "offline"; once a snapshot arrives, the store counts as connected.
 // --------------------------------------------------------------------------
 
 interface EntityKey { kind: SyncEntityKind; id: string }
 function keyOf(k: EntityKey): string { return `${k.kind}::${k.id}`; }
 
 /**
- * Erweiterte Schnittstelle mit den zusätzlichen Test-erfüllenden Methoden.
- * `getEntities` gibt alle Entities über alle Kategorien flach zurück;
- * `isOffline` liefert true, solange noch kein Snapshot empfangen wurde.
+ * Extended interface with the additional test-satisfying methods.
+ * `getEntities` returns all entities across all categories flat;
+ * `isOffline` returns true as long as no snapshot has been received yet.
  */
 export interface PlayClientStoreImpl extends PlayClientStore {
   getEntities(): readonly SyncEntity[];

@@ -1,6 +1,6 @@
-// M10-D28 (#380) Spike-UI. Wegwerf-Harness — bewusst KEINE prod-Primitives,
-// eigene minimal-CSS damit das Panel isoliert ist.
-// Zwei Fenster gleichzeitig öffnen → in einem „Als A", im anderen „Als B" ausführen.
+// M10-D28 (#380) Spike UI. Throwaway harness — deliberately NO prod primitives,
+// own minimal CSS so the panel is isolated.
+// Open two windows at once → in one run "As A", in the other "As B".
 import { useEffect, useMemo, useState } from 'react';
 import type { AdapterKey, ManualSdpPanel } from './types';
 import { runBench, type BenchResult, type AttemptResult } from './bench';
@@ -41,7 +41,7 @@ export function SignalingSpike(): React.ReactElement {
 
   const platform = useMemo(() => navigator.userAgent, []);
 
-  // Log-Writer beim Mount pro Peer initialisieren — eine Datei pro Sitzung.
+  // Initialize the log writer per peer at mount — one file per session.
   useEffect(() => {
     let cancelled = false;
     void createLogWriter(peerLabel).then((w) => {
@@ -53,7 +53,7 @@ export function SignalingSpike(): React.ReactElement {
   }, [peerLabel]);
 
   useEffect(() => {
-    // Neuer Adapter → altes manual-Panel wegwerfen.
+    // New adapter → throw away the old manual panel.
     setManualPanel(null);
     setRemoteBlob('');
   }, [adapter]);
@@ -75,8 +75,8 @@ export function SignalingSpike(): React.ReactElement {
   }
 
   async function handleCopyJson() {
-    // Tauri-WebView blockt <a download>, aber clipboard geht überall.
-    // Fürs Matrix-Ausfüllen willst du eh Copy → in research-Doc einfügen.
+    // Tauri WebView blocks <a download>, but clipboard works everywhere.
+    // For filling in the matrix you want copy anyway → paste into the research doc.
     const json = JSON.stringify(results, null, 2);
     try {
       await navigator.clipboard.writeText(json);

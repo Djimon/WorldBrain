@@ -1,25 +1,25 @@
-// M10-#386 (D29): Client-Store ← Transport-Bridge. Verbindet den DB-losen
-// play-client-store mit dem eingehenden Transport-Feed: Snapshot-Nachrichten
-// setzen den Store neu, Delta-Nachrichten (inkl. Token-Bewegungen aus
-// broadcastMovement) werden eingewoben. Die einzige Stelle, an der der Client
-// den Transport-Feed in Store-State übersetzt — der Client liest nie DB.
+// M10-#386 (D29): client-store ← transport bridge. Connects the DB-less
+// play-client-store with the incoming transport feed: snapshot messages
+// reset the store, delta messages (incl. token movements from
+// broadcastMovement) are woven in. The only place where the client
+// translates the transport feed into store state — the client never reads DB.
 import type { SessionTransport, TransportMessage } from './session-transport';
 import type { PlayClientStore } from './play-client-store';
 import type { Delta, Snapshot } from './play-sync-protocol';
 
 /**
- * Registriert den onMessage-Handler des Transports so, dass Snapshot/Delta-
- * Nachrichten in den Store fließen. `type` der TransportMessage entscheidet:
+ * Registers the transport's onMessage handler so that snapshot/delta
+ * messages flow into the store. The TransportMessage's `type` decides:
  * - 'snapshot' → applySnapshot(payload)
- * - 'delta'    → applyDelta(payload)   (auch Token-Bewegungen)
- * Andere Nachrichtentypen (z.B. 'visibility_change') werden hier ignoriert.
+ * - 'delta'    → applyDelta(payload)   (incl. token movements)
+ * Other message types (e.g. 'visibility_change') are ignored here.
  */
 export function attachClientStoreToTransport(
   transport: Pick<SessionTransport, 'onMessage'>,
   store: PlayClientStore,
 ): () => void {
-  // #387: Disposer zurückgeben — der Transport ist jetzt Multi-Listener, ohne
-  // Abmelden würde ein Effekt-Re-Run einen zweiten Store-Handler akkumulieren.
+  // #387: return a disposer — the transport is now multi-listener, without
+  // unsubscribing an effect re-run would accumulate a second store handler.
   return transport.onMessage((msg: TransportMessage) => {
     if (msg.type === 'snapshot') {
       store.applySnapshot(msg.payload as unknown as Snapshot);

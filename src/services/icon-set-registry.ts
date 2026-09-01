@@ -50,9 +50,9 @@ export const CORE_ICON_SET: IconSet = {
   ],
 };
 
-// Default-Set = Core, im App-Code fest registriert -> immer da, Grundfunktionen
-// laufen ohne jedes Plugin (analog relation-type-registry.ts: Kern-Inhalt wird
-// direkt bei Modul-Load in die Registry gesetzt, kein separater Bootstrap-Call).
+// Default set = core, hardcoded in app code -> always present, base features
+// work without any plugin (like relation-type-registry.ts: core content is
+// put into the registry directly at module load, no separate bootstrap call).
 const registry = new Map<string, IconSet>([[CORE_ICON_SET.id, CORE_ICON_SET]]);
 
 /** Registers an icon set (core or plugin). Re-registering the same id replaces it. */

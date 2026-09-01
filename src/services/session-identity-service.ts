@@ -1,7 +1,7 @@
-// M10-S02 (#351): Campaign-Identität, Einladungscodes & Token-Auth (Auto-Join).
-// D24: Gültiger Code → sofort aktives Mitglied, KEIN Approve-Schritt.
-// Decision 8: Token wird bei jeder Nachricht geprüft (validateToken), nicht nur
-// beim Handshake.
+// M10-S02 (#351): Campaign identity, invite codes & token auth (auto-join).
+// D24: valid code → immediately an active member, NO approve step.
+// Decision 8: the token is checked on every message (validateToken), not only
+// at the handshake.
 import type { DatabaseLike } from './entity-service';
 
 export interface GenerateInviteParams {
@@ -22,7 +22,7 @@ const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 8;
 const TOKEN_BYTES = 32;
 
-/** Kryptografisch zufälliger, teilbarer Einladungscode (verwechslungsfreies Alphabet). */
+/** Cryptographically random, shareable invite code (confusion-free alphabet). */
 function randomCode(): string {
   const bytes = new Uint8Array(CODE_LENGTH);
   crypto.getRandomValues(bytes);
@@ -44,9 +44,9 @@ async function hashToken(token: string): Promise<string> {
 }
 
 /**
- * Aktueller Einladungscode einer Campaign (der zuletzt generierte, nicht
- * invalidierte). Null wenn noch nie einer erzeugt wurde. Die UI ruft das
- * beim Mount, statt still einen neuen anzulegen (#371 Fix 1).
+ * Current invite code of a campaign (the most recently generated, not
+ * invalidated one). Null if none has ever been created. The UI calls this
+ * on mount, instead of silently creating a new one (#371 Fix 1).
  */
 export async function getActiveInviteCode(db: DatabaseLike, campaignId: string): Promise<string | null> {
   const rows = await db.select<{ code: string }>(
@@ -57,10 +57,10 @@ export async function getActiveInviteCode(db: DatabaseLike, campaignId: string):
 }
 
 /**
- * Erzeugt einen neuen Einladungscode für die Campaign und markiert alle
- * bestehenden aktiven Codes derselben Campaign als invalidiert.
- * Bereits eingeloggte Spieler behalten ihr Token (D24 — die Invalidierung
- * greift nur für NEUE Joins).
+ * Creates a new invite code for the campaign and marks all
+ * existing active codes of the same campaign as invalidated.
+ * Already logged-in players keep their token (D24 — the invalidation
+ * applies only to NEW joins).
  */
 export async function generateInviteCode(db: DatabaseLike, params: GenerateInviteParams): Promise<string> {
   await db.execute(
@@ -78,8 +78,8 @@ export async function generateInviteCode(db: DatabaseLike, params: GenerateInvit
 }
 
 /**
- * Gültiger Code → legt Player + session_players (`status='active'`) sofort an
- * und gibt das Token zurück. Ungültiger/invalidierter Code → Fehler.
+ * Valid code → immediately creates player + session_players (`status='active'`)
+ * and returns the token. Invalid/invalidated code → error.
  */
 export async function joinWithCode(db: DatabaseLike, params: JoinWithCodeParams): Promise<JoinResult> {
   const rows = await db.select<{ campaign_id: string }>(
@@ -108,8 +108,8 @@ export async function joinWithCode(db: DatabaseLike, params: JoinWithCodeParams)
 }
 
 /**
- * Prüft, ob das Token zu einem aktiven (nicht gekickten) Mitglied gehört.
- * Wird pro Nachricht aufgerufen (Decision 8: server-seitige Durchsetzung).
+ * Checks whether the token belongs to an active (not kicked) member.
+ * Called per message (Decision 8: server-side enforcement).
  */
 export async function validateToken(db: DatabaseLike, token: string): Promise<boolean> {
   const tokenHash = await hashToken(token);
@@ -121,11 +121,11 @@ export async function validateToken(db: DatabaseLike, token: string): Promise<bo
 }
 
 /**
- * Löst einen Einladungscode auf seine Campaign auf, ohne einen Join auszulösen.
- * Gibt `null` für einen unbekannten/invalidierten Code zurück. Der Host-Join-
- * Handler (#387) nutzt das als Vorab-Validierung, damit ungültige Codes eine
- * `join_response{ok:false}` erzeugen, OHNE `joinWithCode`s Throw abfangen zu
- * müssen (AP-006: kein try/catch um DB-Operationen).
+ * Resolves an invite code to its campaign without triggering a join.
+ * Returns `null` for an unknown/invalidated code. The host join
+ * handler (#387) uses this as a pre-validation, so that invalid codes produce a
+ * `join_response{ok:false}` WITHOUT having to catch `joinWithCode`'s throw
+ * (AP-006: no try/catch around DB operations).
  */
 export async function resolveCampaignForCode(db: DatabaseLike, code: string): Promise<string | null> {
   const rows = await db.select<{ campaign_id: string }>(
@@ -136,10 +136,10 @@ export async function resolveCampaignForCode(db: DatabaseLike, code: string): Pr
 }
 
 /**
- * Löst ein aktives Token auf sein Mitglied (player_id) auf — für den transport-
- * basierten Reconnect (#387): der Spieler sendet nur sein Token, der Host findet
- * das aktive `session_players`-Mitglied und schickt eine neue `join_response`.
- * `null`, wenn das Token unbekannt oder das Mitglied gekickt/inaktiv ist.
+ * Resolves an active token to its member (player_id) — for the transport-
+ * based reconnect (#387): the player sends only its token, the host finds
+ * the active `session_players` member and sends a new `join_response`.
+ * `null` if the token is unknown or the member is kicked/inactive.
  */
 export async function resolvePlayerByToken(db: DatabaseLike, token: string): Promise<{ playerId: string } | null> {
   const tokenHash = await hashToken(token);

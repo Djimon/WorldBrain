@@ -201,7 +201,7 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
   }, [base]);
   const hiddenSet = useMemo(() => new Set(settings.hiddenRelationTypes), [settings.hiddenRelationTypes]);
 
-  // VISIBLE links: mentions gated by "Mentions zeigen", relations dropped when
+  // VISIBLE links: mentions gated by "Show mentions", relations dropped when
   // their type is filtered out (independent of showAllEdges). Degree (and thus
   // sphere size) follows the visible set.
   const links = useMemo<GraphLink[]>(

@@ -1,14 +1,14 @@
-// M10 R2 (#373): Host-Push — filtert pro Empfänger und pusht nur Freigegebenes.
-// Nutzt das S07/S09-Backend (visibility-service, player-content-filter-service)
-// und die R1-Typen aus play-sync-protocol. Der Transport (S01) bekommt die
-// serialisierten Nachrichten zum Verteilen.
+// M10 R2 (#373): host push — filters per recipient and pushes only what is released.
+// Uses the S07/S09 backend (visibility-service, player-content-filter-service)
+// and the R1 types from play-sync-protocol. The transport (S01) receives the
+// serialized messages to distribute.
 import type { Snapshot, SyncEntity, SyncEntityKind } from './play-sync-protocol';
 
 /**
- * Minimales Meta-Objekt einer Host-Sicht: id + base-visibility ('all'|'gm_only'|
- * o.ä.). Die volle S07-Auswertung (per-Player/Group-Overrides) läuft im
- * Callsite über resolveSessionVisibility; dieser Filter ist die letzte Zeile,
- * die verhindert, dass etwas gm_only den Host verlässt.
+ * Minimal meta object of a host view: id + base visibility ('all'|'gm_only'|
+ * etc.). The full S07 evaluation (per-player/group overrides) runs at the
+ * call site via resolveSessionVisibility; this filter is the last line
+ * that prevents anything gm_only from leaving the host.
  */
 export interface HostViewItem {
   id: string;
@@ -26,8 +26,8 @@ export interface SnapshotParams {
 }
 
 /**
- * Berechnet den initialen Snapshot für EINEN Empfänger. Nicht sichtbare
- * Items (gm_only) fallen hier heraus — sie verlassen den Host nie.
+ * Computes the initial snapshot for ONE recipient. Non-visible
+ * items (gm_only) are dropped here — they never leave the host.
  */
 export async function computeSnapshot(params: SnapshotParams): Promise<Snapshot> {
   const now = params.serverTime ?? new Date().toISOString();
@@ -50,10 +50,10 @@ export async function computeSnapshot(params: SnapshotParams): Promise<Snapshot>
 }
 
 /**
- * Filtert eine Menge aktiver Empfänger auf die, die eine Änderung an
- * `item` sehen dürfen. Der eigentliche Overrides-Check liegt im aufrufenden
- * Callsite (S07 resolveSessionVisibility); hier ist der Endgültige gm_only-
- * Cut-Off, damit host-seitige Bugs kein „gm_only rausrutscht" mehr auslösen.
+ * Filters a set of active recipients down to those allowed to see a change to
+ * `item`. The actual overrides check lives at the calling
+ * call site (S07 resolveSessionVisibility); here is the final gm_only
+ * cut-off, so that host-side bugs no longer trigger a "gm_only slips out".
  */
 export function computeDeltaRecipients(
   item: HostViewItem,

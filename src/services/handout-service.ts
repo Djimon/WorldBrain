@@ -33,8 +33,8 @@ interface HandoutBlock {
   type: string;
   text?: string;
   visibility?: string;
-  /** #128: bei visibility 'player_known' die Entity, deren Kenntnis den Block
-   *  für Spieler freischaltet (in context.knownEntities). */
+  /** #128: for visibility 'player_known', the entity whose knowledge unlocks
+   *  the block for players (in context.knownEntities). */
   entityId?: string;
 }
 
@@ -56,8 +56,8 @@ export function generateHandoutHtml(opts: GenerateHandoutHtmlOpts): string {
     .filter((b) => {
       if (b.visibility === 'gm_only' && isPlayer) return false;
       if (b.visibility === 'hidden_until_condition' && isPlayer) return false;
-      // #128: 'player_known' nur strippen, wenn der Spieler die Entity NICHT kennt;
-      // ist sie in knownEntities, wird der Block gezeigt (bedingte Enthüllung).
+      // #128: only strip 'player_known' if the player does NOT know the entity;
+      // if it is in knownEntities, the block is shown (conditional reveal).
       if (b.visibility === 'player_known' && isPlayer && !context.knownEntities.includes(b.entityId ?? '')) return false;
       return true;
     })

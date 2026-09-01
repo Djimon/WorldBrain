@@ -1,8 +1,8 @@
-// M10-S17 (issue 363, D16): DM-Control für die Session-Zeit im Play-Modus.
-// Schreibt „Session-Jetzt" VOR (Tage/Wochen/Jahre) ODER setzt es ABSOLUT auf
-// einen konkreten Tag (Rückblende/Zeitsprung). Beide Wege persistieren
-// campaign-scoped; das host-seitige Kalender-Gate (filterEventsForPlayer)
-// greift auf den resultierenden Session-Jetzt.
+// M10-S17 (issue 363, D16): DM control for the session time in play mode.
+// Advances "session-now" FORWARD (days/weeks/years) OR sets it ABSOLUTELY to
+// a specific day (flashback/time jump). Both ways persist
+// campaign-scoped; the host-side calendar gate (filterEventsForPlayer)
+// acts on the resulting session-now.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
@@ -12,7 +12,7 @@ import { Button, Field, Panel } from './primitives';
 export interface SessionTimeControlProps {
   database: DatabaseLike;
   campaignId: string;
-  /** Nach jeder Änderung — Parent kann seine Kalender-/Event-Sicht neu laden. */
+  /** After each change — the parent can reload its calendar/event view. */
   onChanged?: () => void;
 }
 

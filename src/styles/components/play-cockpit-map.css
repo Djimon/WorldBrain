@@ -1,5 +1,5 @@
-/* M10-#386: Play-Cockpit-Map. Der DB-lose Player-Pfad rendert das Karten-Bild
-   + Tokens (position via dynamischem inline transform). Farben/Maße aus Tokens. */
+/* M10-#386: Play cockpit map. The DB-less player path renders the map image
+   + tokens (position via dynamic inline transform). Colors/dimensions from tokens. */
 .play-cockpit-map__stage {
   position: relative;
   width: 100%;

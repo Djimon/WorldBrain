@@ -1,4 +1,4 @@
-// M14-S04: Event-Entity-Modell & Ablösung der events-Tabelle (#259)
+// M14-S04: event entity model & replacement of the events table (#259)
 // Replaces event-service.ts / event-schema.ts (EPIC-021 Decision 1): an
 // Event is a base_entities row with type='Event'. Event-specific data lives
 // in properties: event_kind, start_day (may be negative), end_day (phase

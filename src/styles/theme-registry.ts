@@ -1,11 +1,11 @@
-// M17-S04 (#385): Theme-Registry — die EINE Quelle der ausgelieferten Themes.
-// DREI orthogonale Achsen (Decision 5), die NIE vermischt werden:
-//   Shell-Modus   — edit/play
-//   Erscheinung   — light/dark (reine Anzeige-Präferenz, KEIN Theme)
-//   Theme         — das vollständige benannte Skin (default/teal)
-// Jedes Theme deklariert zwei unabhängige Fähigkeits-Achsen:
-//   modeSupport       'unified' (eine Farbwelt) | 'per-mode' (Akzent je Shell-Modus)
-//   appearanceSupport 'both' (eigener Dark- UND Light-Satz) | 'dark' | 'light' (eine erzwungene Erscheinung)
+// M17-S04 (#385): Theme registry — the ONE source of the shipped themes.
+// THREE orthogonal axes (Decision 5) that are NEVER mixed:
+//   Shell mode    — edit/play
+//   Appearance    — light/dark (pure display preference, NOT a theme)
+//   Theme         — the complete named skin (default/teal)
+// Each theme declares two independent capability axes:
+//   modeSupport       'unified' (one color world) | 'per-mode' (accent per shell mode)
+//   appearanceSupport 'both' (its own dark AND light set) | 'dark' | 'light' (a single forced appearance)
 
 export type ShellMode = 'edit' | 'play';
 export type Appearance = 'light' | 'dark';
@@ -20,12 +20,12 @@ export interface AccentTokens {
   '--mode-accent-soft': string;
 }
 
-/** Palette-Overrides (VS-Code-Stil): beliebige --color-*-Tokens; nicht gesetzte
- *  erben die Basis-Palette der aktiven Erscheinung. Nur bekannte Namen (s.u.). */
+/** Palette overrides (VS Code style): any --color-* tokens; those not set
+ *  inherit the base palette of the active appearance. Only known names (see below). */
 export type PaletteOverrides = Partial<Record<string, string>>;
 
-/** Vollständiger Skin für EINE Erscheinung (dark oder light): Palette-Overrides
- *  + Akzent-Satz je Shell-Modus (per-mode) bzw. geteilt unter 'edit' (unified). */
+/** Complete skin for ONE appearance (dark or light): palette overrides
+ *  + accent set per shell mode (per-mode) or shared under 'edit' (unified). */
 export interface AppearanceSkin {
   palette?: PaletteOverrides;
   tokens: Partial<Record<ShellMode, AccentTokens>>;
@@ -37,24 +37,24 @@ export interface ThemeDef {
   defaultLabel: string;
   modeSupport: ModeSupport;
   appearanceSupport: AppearanceSupport;
-  /** Kanonischer Akzent-Satz je Shell-Modus (per-mode) bzw. der eine geteilte Satz
-   *  unter 'edit' (unified). Bei appearanceSupport 'both' sind dies die Dark-Werte;
-   *  bei eingebauten Themes liefert die Light-Variante die CSS-Kaskade in
-   *  tokens.css. Dient außerdem als Vorschau-Quelle (previewAccent). */
+  /** Canonical accent set per shell mode (per-mode) or the one shared set
+   *  under 'edit' (unified). With appearanceSupport 'both' these are the dark values;
+   *  for built-in themes the light variant is provided by the CSS cascade in
+   *  tokens.css. Also serves as the preview source (previewAccent). */
   tokens: Partial<Record<ShellMode, AccentTokens>>;
-  /** #388 — Voll-Token-Skins je Erscheinung, vom JS-Applier zur Laufzeit inline
-   *  gesetzt. NUR bei importierten User-Themes gefüllt; eingebaute Themes lassen
-   *  dies leer (sie sind CSS-getrieben, der Applier fasst sie nicht an). */
+  /** #388 — full-token skins per appearance, set inline at runtime by the JS applier.
+   *  Filled ONLY for imported user themes; built-in themes leave
+   *  this empty (they are CSS-driven, the applier does not touch them). */
   skins?: Partial<Record<Appearance, AppearanceSkin>>;
-  /** true = eingebaut/CSS-getrieben (default/teal): nicht überschreibbar, kein
-   *  Inline-Applier. Importierte User-Themes sind es NICHT. */
+  /** true = built-in/CSS-driven (default/teal): not overridable, no
+   *  inline applier. Imported user themes are NOT. */
   builtin?: boolean;
 }
 
-/** #388 — die themebaren --color-*-Tokens (Basis-Palette aus tokens.css, plus der
- *  aufgetrennte Schatten-Farbanteil --color-shadow-panel). Ein User-Theme darf nur
- *  diese Namen als palette-Override setzen; die fünf --mode-accent-* laufen über
- *  `accents`. Geometrie (--radius-*, --space-*, Schatten-Pixel) ist NICHT themebar. */
+/** #388 — the themeable --color-* tokens (base palette from tokens.css, plus the
+ *  split-out shadow color component --color-shadow-panel). A user theme may set only
+ *  these names as palette overrides; the five --mode-accent-* go through
+ *  `accents`. Geometry (--radius-*, --space-*, shadow pixels) is NOT themeable. */
 export const THEMEABLE_COLOR_TOKENS: ReadonlySet<string> = new Set([
   '--color-text', '--color-text-muted',
   '--color-accent', '--color-accent-strong', '--color-accent-soft',
@@ -68,8 +68,8 @@ export const THEMEABLE_COLOR_TOKENS: ReadonlySet<string> = new Set([
   '--color-focus-glow', '--color-error-soft', '--color-shadow-panel',
 ]);
 
-/** Die fünf Akzent-Token-Namen in kanonischer Reihenfolge (Mapping-Ziel für
- *  einen `accents`-Satz im User-Theme-Format). */
+/** The five accent token names in canonical order (mapping target for
+ *  an `accents` set in the user-theme format). */
 export const ACCENT_TOKEN_KEYS: readonly (keyof AccentTokens)[] = [
   '--mode-accent', '--mode-accent-hover', '--mode-accent-on', '--mode-accent-text', '--mode-accent-soft',
 ];
@@ -98,11 +98,11 @@ const TEAL_THEME: ThemeDef = {
   labelKey: 'theme.teal',
   defaultLabel: 'Teal',
   modeSupport: 'per-mode',
-  appearanceSupport: 'dark', // Single-Appearance: erzwingt Dark, Dark/Light-Umschalter aus
+  appearanceSupport: 'dark', // Single appearance: forces dark, dark/light toggle off
   builtin: true,
   tokens: {
     edit: {
-      // Prep bleibt Rot (stabil über beide ausgelieferten Themes).
+      // Prep stays red (stable across both shipped themes).
       '--mode-accent': '#e5484d', '--mode-accent-hover': '#ef5a5f', '--mode-accent-on': '#ffffff',
       '--mode-accent-text': '#f0888b', '--mode-accent-soft': 'rgba(229,72,77,0.16)',
     },
@@ -127,20 +127,20 @@ export function getTheme(id: string): ThemeDef {
   return THEMES[id] ?? DEFAULT_THEME;
 }
 
-/** #396 — ist `id` eine EINGEBAUTE Theme-ID? (Ohne Fallback — anders als getTheme,
- *  das für unbekannte/noch-nicht-registrierte IDs `default` liefert.) Genutzt im
- *  Startup, um zu entscheiden, ob vor dem ersten Paint auf den User-Theme-Scan
- *  gewartet werden muss (Flash-Vermeidung). */
+/** #396 — is `id` a BUILT-IN theme id? (No fallback — unlike getTheme,
+ *  which returns `default` for unknown/not-yet-registered ids.) Used at
+ *  startup to decide whether the user-theme scan must be awaited before the
+ *  first paint (flash avoidance). */
 export function isBuiltinThemeId(id: string): boolean {
   return THEMES[id]?.builtin === true;
 }
 
 /**
- * #388 — ein (importiertes) User-Theme registrieren. Eingebaute IDs
- * (`default`/`teal`) sind NICHT überschreibbar: Kollision → Built-in gewinnt,
- * `false` zurück (Aufrufer loggt + überspringt die Datei). Sonst wird das Theme
- * in die interne Map aufgenommen und ab sofort von `listThemes()`/`getTheme()`
- * geführt; `true` zurück.
+ * #388 — register an (imported) user theme. Built-in ids
+ * (`default`/`teal`) are NOT overridable: collision → built-in wins,
+ * returns `false` (the caller logs + skips the file). Otherwise the theme
+ * is added to the internal map and from then on carried by `listThemes()`/`getTheme()`;
+ * returns `true`.
  */
 export function registerTheme(def: ThemeDef): boolean {
   if (THEMES[def.id]?.builtin) return false;
@@ -149,16 +149,16 @@ export function registerTheme(def: ThemeDef): boolean {
 }
 
 /**
- * Erzwungene Erscheinung eines Single-Appearance-Themes (`dark`/`light`) — oder
- * `null`, wenn das Theme `both` unterstützt (Erscheinung frei wählbar). Der
- * Dark/Light-Umschalter wird deaktiviert, wenn dies nicht `null` ist.
+ * Forced appearance of a single-appearance theme (`dark`/`light`) — or
+ * `null` when the theme supports `both` (appearance freely selectable). The
+ * dark/light toggle is disabled when this is not `null`.
  */
 export function forcedAppearance(theme: ThemeDef): Appearance | null {
   return theme.appearanceSupport === 'both' ? null : theme.appearanceSupport;
 }
 
-/** Repräsentativer Akzent eines Themes für die Vorschau (Live-Modus, sonst der
- *  geteilte Satz) — vom ThemePicker als Farb-Swatch genutzt. */
+/** Representative accent of a theme for the preview (live mode, otherwise the
+ *  shared set) — used by the ThemePicker as a color swatch. */
 export function previewAccent(theme: ThemeDef): string {
   return (theme.tokens.play ?? theme.tokens.edit)?.['--mode-accent'] ?? 'transparent';
 }

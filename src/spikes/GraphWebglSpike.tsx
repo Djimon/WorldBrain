@@ -14,15 +14,15 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { Pass, FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 
-// Grauschleier-Fix (live vermessen, temp/bloom-repro.html): der Composer-RT
-// enthaelt bereits sRGB-kodierte Werte (Raw-Copy eines Hintergrund-Pixels
-// liefert unveraendert 11,13,16). Jeder finale Blit — Blooms renderToScreen
-// genauso wie ein nachgehaengter OutputPass — kodiert ERNEUT: 11 -> 59,
-// exakt sRGB(sRGB(x)). Deshalb brachte "OutputPass anhaengen" allein auch
-// nichts. Fix: einmal dekodieren (sRGB -> Linear) BEVOR Bloom rechnet,
-// OutputPass macht am Ende ToneMapping + die eine korrekte Kodierung.
-// Decode -> Bloom(0) -> Output ohne ToneMapping reproduziert die Referenz
-// pixelgenau (11,13,16); mit ACES wird Near-Black zu 1,2,3 (satter).
+// Grey-veil fix (measured live, temp/bloom-repro.html): the composer RT
+// already holds sRGB-encoded values (a raw copy of a background pixel
+// returns 11,13,16 unchanged). Every final blit — Bloom's renderToScreen
+// as well as an appended OutputPass — encodes AGAIN: 11 -> 59,
+// exactly sRGB(sRGB(x)). That's why "append an OutputPass" alone did
+// nothing either. Fix: decode once (sRGB -> Linear) BEFORE Bloom computes,
+// OutputPass does ToneMapping at the end + the single correct encoding.
+// Decode -> Bloom(0) -> Output without ToneMapping reproduces the reference
+// pixel-accurately (11,13,16); with ACES near-black becomes 1,2,3 (richer).
 const SRGB_DECODE_SHADER = {
   uniforms: { tDiffuse: { value: null as THREE.Texture | null } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
@@ -37,13 +37,13 @@ const SRGB_DECODE_SHADER = {
     }`,
 };
 
-// Selektiver Bloom (nur Bubbles gluehen, Links/Pfade NIE; Kerne bleiben
-// scharf) als Photoshop-Stack: unten die scharfe Basis-Szene, darauf der
-// PURE Glow (nur die Bloom-Mips, ohne den Bubble-Render selbst), und die
-// Bubbles bleiben "oben drueber", indem der Glow unter ihnen per Maske
-// ausgestanzt wird: out = base + glow * (1 - bubbleMask). Ein voriger
-// max()-Ansatz scheiterte: der Glow-Buffer enthielt die (geblurrten)
-// Bubbles selbst und war an den Kanten heller als die scharfe Basis.
+// Selective Bloom (only bubbles glow, links/paths NEVER; cores stay
+// sharp) as a Photoshop stack: at the bottom the sharp base scene, on top
+// the PURE glow (only the Bloom mips, without the bubble render itself), and the
+// bubbles stay "on top" by punching the glow out beneath them via a mask:
+// out = base + glow * (1 - bubbleMask). An earlier
+// max() approach failed: the glow buffer contained the (blurred)
+// bubbles themselves and was brighter at the edges than the sharp base.
 const BLOOM_LAYER = 1;
 
 const COPY_SHADER = {
@@ -54,9 +54,9 @@ const COPY_SHADER = {
 
 class BubbleLayerRenderPass extends RenderPass {
   constructor(scene: THREE.Scene, camera: THREE.Camera) {
-    // Clear mit Alpha 0: der Buffer-Alpha ist dann exakt das gerenderte
-    // Sprite-Alpha — der MixPass nutzt das als formtreue Stanz-Maske
-    // (Helligkeits-Schwellen erzeugten dunkle Ringe am Bubble-Rand).
+    // Clear with alpha 0: the buffer alpha is then exactly the rendered
+    // sprite alpha — the MixPass uses it as a shape-faithful punch-out mask
+    // (brightness thresholds produced dark rings at the bubble edge).
     super(scene, camera, null, new THREE.Color(0, 0, 0), 0);
   }
 
@@ -80,9 +80,9 @@ class SelectiveBloomMixPass extends Pass {
     this.material = new THREE.ShaderMaterial({
       uniforms: { tDiffuse: { value: null }, tGlow: { value: null }, tBubbles: { value: null } },
       vertexShader: SRGB_DECODE_SHADER.vertexShader,
-      // tGlow = PURER Bloom (nur Blur-Mips); tBubbles = scharfer
-      // Bubbles-only-Render als Stanz-Maske. Wo eine Bubble ist, kommt
-      // KEIN Glow drauf -> Kern bleibt exakt die scharfe Basis-Szene.
+      // tGlow = PURE Bloom (only blur mips); tBubbles = sharp
+      // bubbles-only render as a punch-out mask. Where a bubble is,
+      // NO glow is applied -> the core stays exactly the sharp base scene.
       fragmentShader: `
         uniform sampler2D tDiffuse; uniform sampler2D tGlow; uniform sampler2D tBubbles;
         varying vec2 vUv;
@@ -99,22 +99,22 @@ class SelectiveBloomMixPass extends Pass {
   render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget) {
     this.bloomComposer.render();
     this.material.uniforms.tDiffuse.value = readBuffer.texture;
-    // renderTargetsHorizontal[0] haelt das Composite aller Blur-Mips
-    // (inkl. Strength/Radius) BEVOR der Pass es additiv verblendet —
-    // das ist der pure Glow ohne die Bubbles selbst.
+    // renderTargetsHorizontal[0] holds the composite of all blur mips
+    // (incl. strength/radius) BEFORE the pass blends it additively —
+    // that is the pure glow without the bubbles themselves.
     this.material.uniforms.tGlow.value = this.bloomPass.renderTargetsHorizontal[0].texture;
-    // Buffer-Choreografie im Glow-Composer (Render->Decode->Copy->Bloom):
-    // nach dem Copy-Swap blendet Bloom in die Kopie; der writeBuffer
-    // haelt danach noch den unverblurrten Bubbles-only-Render.
+    // Buffer choreography in the glow composer (Render->Decode->Copy->Bloom):
+    // after the copy swap Bloom blends into the copy; the writeBuffer
+    // then still holds the un-blurred bubbles-only render.
     this.material.uniforms.tBubbles.value = this.bloomComposer.writeBuffer.texture;
     renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
     this.fsQuad.render(renderer);
   }
 
   dispose() {
-    // EffectComposer.dispose() raeumt nur die eigenen RenderTargets ab,
-    // nicht die addPass()-Paesse — die haengen an diesem Composer und
-    // muessen hier mit weg.
+    // EffectComposer.dispose() only cleans up its own RenderTargets,
+    // not the addPass() passes — those hang off this composer and
+    // have to go here too.
     for (const pass of this.bloomComposer.passes) pass.dispose();
     this.bloomComposer.dispose();
     this.material.dispose();
@@ -126,7 +126,7 @@ interface SpikeNode {
   id: string;
   group: number;
   val: number; // degree-based size — hub nodes render bigger, mirrors real entity importance
-  degreeNorm: number; // 0..1 (sqrt-skaliert relativ zum Max-Degree) — Basis fuer den Spread-Slider
+  degreeNorm: number; // 0..1 (sqrt-scaled relative to the max degree) — basis for the spread slider
 }
 
 type LinkKind = 'relation' | 'mention';
@@ -139,11 +139,11 @@ interface SpikeLink {
 }
 
 const GROUP_COUNT = 8;
-// Pastell-Palette nach den Referenzbildern (_design/knowledgegraph-*.png):
-// Hellblau, Rosa, Hellgruen, Lavendel, Orange, Gelb, Lachs, Himmelblau.
+// Pastel palette after the reference images (_design/knowledgegraph-*.png):
+// light blue, pink, light green, lavender, orange, yellow, salmon, sky blue.
 const GROUP_COLORS = ['#6cb8f0', '#f07ad0', '#8fd97a', '#b39df5', '#f5923e', '#f2c94c', '#f0716a', '#a8cdec'];
-// Referenz: Links sind hauchduenn und fast unsichtbar — beide Arten
-// graulich-dezent, Unterscheidung nur warm (relation) vs kalt (mention).
+// Reference: links are wafer-thin and almost invisible — both kinds
+// greyish-subtle, distinguished only by warm (relation) vs cold (mention).
 const LINK_KIND_COLOR: Record<LinkKind, string> = {
   relation: '#ffffff',
   mention: '#ff3526',
@@ -242,9 +242,9 @@ function generateGraph(nodeCount: number, linkCount: number): { nodes: SpikeNode
   return { nodes, links };
 }
 
-// Fake-Glow wie im Referenz-Mockup: ein weich auslaufender Kreis UNTER der
-// Kugel, in Kugelfarbe — pro Node ein zweites Sprite statt Fullscreen-
-// Post-Processing. Deterministisch, billig, brennt nicht aus.
+// Fake glow like in the reference mockup: a softly fading circle BENEATH the
+// sphere, in the sphere's color — a second sprite per node instead of fullscreen
+// post-processing. Deterministic, cheap, doesn't blow out.
 let glowTexture: THREE.Texture | null = null;
 function getGlowTexture(): THREE.Texture {
   if (glowTexture) return glowTexture;
@@ -273,9 +273,9 @@ function getGlowMaterial(color: string): THREE.SpriteMaterial {
     map: getGlowTexture(),
     color,
     transparent: true,
-    // Additiv: ueberlappende Glows in Clustern summieren sich zum weichen
-    // Nebel wie in der Galaxy-Referenz; depthWrite aus, damit der Glow
-    // nichts verdeckt.
+    // Additive: overlapping glows in clusters sum up to the soft
+    // nebula like in the galaxy reference; depthWrite off so the glow
+    // doesn't occlude anything.
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     fog: false,
@@ -284,12 +284,12 @@ function getGlowMaterial(color: string): THREE.SpriteMaterial {
   return material;
 }
 
-// Referenz (bubble.png = matte GRAUE Kugel mit Licht von oben, zum Tinten
-// gedacht): das ist schlicht eine ECHTE, beleuchtete 3D-Kugel — kein Sprite-
-// Trick. 3d-force-graph bringt AmbientLight(0xcccccc, PI) + Directional-
-// Light von oben (0.6*PI) bereits mit; MeshLambert (matt, nur diffus)
-// reproduziert die Referenz-Schattierung aus jedem Blickwinkel.
-// Geometrie geteilt (Durchmesser 1, per Node skaliert), Material pro Farbe.
+// Reference (bubble.png = matte GREY sphere with light from above, meant
+// to be tinted): that is simply a REAL, lit 3D sphere — no sprite
+// trick. 3d-force-graph already ships AmbientLight(0xcccccc, PI) + directional
+// light from above (0.6*PI); MeshLambert (matte, diffuse only)
+// reproduces the reference shading from every angle.
+// Geometry shared (diameter 1, scaled per node), material per color.
 const NODE_SPHERE_GEOMETRY = new THREE.SphereGeometry(0.5, 24, 16);
 const sphereMaterialCache = new Map<string, THREE.MeshLambertMaterial>();
 function getSphereMaterial(color: string): THREE.MeshLambertMaterial {
@@ -300,8 +300,8 @@ function getSphereMaterial(color: string): THREE.MeshLambertMaterial {
   return material;
 }
 
-// Ego-Dim-Variante: ausgegraut (Richtung Grau gelerpt) + 30% Deckkraft,
-// bleibt anklickbar. Eigene Instanz pro Farbe, da Materialien geteilt sind.
+// Ego-dim variant: greyed out (lerped toward grey) + 30% opacity,
+// stays clickable. Own instance per color, since materials are shared.
 const sphereDimMaterialCache = new Map<string, THREE.MeshLambertMaterial>();
 function getSphereDimMaterial(color: string): THREE.MeshLambertMaterial {
   const cached = sphereDimMaterialCache.get(color);
@@ -312,8 +312,8 @@ function getSphereDimMaterial(color: string): THREE.MeshLambertMaterial {
     fog: false,
     transparent: true,
     opacity: 0.3,
-    // kein Depth-Write: halbtransparente Dimm-Kugeln sollen die aktiven
-    // dahinter nicht wegstanzen
+    // no depth write: semi-transparent dimmed spheres should not punch out
+    // the active ones behind them
     depthWrite: false,
   });
   sphereDimMaterialCache.set(color, material);
@@ -341,10 +341,10 @@ const LINK_FADE_FRAGMENT_SHADER = `
   uniform float uFadeFar;
   uniform float uFadeEnabled;
   varying vec3 vWorldPosition;
-  // Encode auf sRGB wie die Built-in-Materialien: der Composer-Buffer haelt
-  // kodierte Werte und der Decode-Pass linearisiert ALLES — ein Custom-
-  // Shader ohne Encode wird dabei doppelt abgedunkelt (Links wurden zu
-  // schwarzen Strichen, sobald Bloom aktiv war).
+  // Encode to sRGB like the built-in materials: the composer buffer holds
+  // encoded values and the decode pass linearizes EVERYTHING — a custom
+  // shader without encode gets darkened twice (links turned into
+  // black strokes as soon as Bloom was active).
   vec3 linearToSrgb(vec3 c) {
     return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c));
   }
@@ -360,9 +360,9 @@ function getLinkFadeMaterial(kind: LinkKind): THREE.ShaderMaterial {
   const cached = linkFadeMaterialCache.get(kind);
   if (cached) return cached;
   const material = new THREE.ShaderMaterial({
-    // Startwerte = UI-Defaults (fogEnabled true, 270/1950, Deckkraft 0.25):
-    // der erste Frame rendert sonst mit falschen Werten, bis der Sync-
-    // Effect feuert — Fade wirkte erst nach einmal Aus/Anklicken.
+    // Initial values = UI defaults (fogEnabled true, 270/1950, opacity 0.25):
+    // otherwise the first frame renders with wrong values until the sync
+    // effect fires — fade only took effect after toggling off/on once.
     uniforms: {
       uColor: { value: new THREE.Color(LINK_KIND_COLOR[kind]) },
       uOpacity: { value: 0.25 },
@@ -403,26 +403,26 @@ export function GraphWebglSpike() {
   const [genKey, setGenKey] = useState(0);
   const [dims, setDims] = useState<1 | 2 | 3>(3);
 
-  // Der fruehere "Grauschleier sobald Bloom aktiv" ist GEFIXT — Ursache war
-  // doppelte sRGB-Kodierung, siehe SRGB_DECODE_SHADER oben. ACHTUNG: Bloom
-  // rechnet jetzt auf LINEAREN Werten, dadurch wirken Threshold/Strength
-  // anders als vorher — ggf. neu einstellen.
+  // The earlier "grey veil as soon as Bloom is active" is FIXED — the cause was
+  // double sRGB encoding, see SRGB_DECODE_SHADER above. NOTE: Bloom
+  // now computes on LINEAR values, so threshold/strength behave
+  // differently than before — re-tune if needed.
   //
-  // Selektiver Bloom ist inzwischen UMGESETZT (BubbleLayerRenderPass +
-  // SelectiveBloomMixPass oben): der frueher noetige Zwei-Composer-Aufbau
-  // laesst sich doch fahren, indem der eigene Glow-Composer aus einem
-  // Custom-Pass INNERHALB des Library-Composers getrieben wird. Nur die
-  // Sprites liegen auf BLOOM_LAYER — Links/Pfade gluehen nie. Gilt nur im
-  // Custom-Node-Rendering; die Library-Spheres (Original-Modus) haben den
-  // Layer nicht und bekommen keinen Glow.
-  // Defaults auf LINEARE Werte kalibriert (Decode-Fix): linear ist alles
-  // dunkler als sRGB (0.5 -> 0.21), darum Strength hoeher als frueher.
-  // Threshold 0: der Cut vergleicht LUMINANZ (G ~0.71, R ~0.21, B ~0.07),
-  // dadurch springt jede Gruppenfarbe bei anderem Wert an — bei 0 glueht
-  // alles proportional zur eigenen Helligkeit, Hintergrund (~0) bleibt
-  // schwarz. Dosierung ueber Strength/Radius.
-  // Fake-Glow (Referenz-Ansatz): weicher Farbkreis pro Node UNTER der Kugel
-  // — Default-Glow statt Bloom-Post-Processing. Bloom bleibt als A/B-Option.
+  // Selective Bloom is now IMPLEMENTED (BubbleLayerRenderPass +
+  // SelectiveBloomMixPass above): the two-composer setup once thought
+  // necessary can be run after all, by driving the own glow composer from a
+  // custom pass INSIDE the library composer. Only the
+  // sprites are on BLOOM_LAYER — links/paths never glow. Applies only in
+  // custom node rendering; the library spheres (original mode) don't have the
+  // layer and get no glow.
+  // Defaults calibrated to LINEAR values (decode fix): in linear everything is
+  // darker than sRGB (0.5 -> 0.21), so strength is higher than before.
+  // Threshold 0: the cut compares LUMINANCE (G ~0.71, R ~0.21, B ~0.07),
+  // so each group color kicks in at a different value — at 0 everything
+  // glows proportional to its own brightness, the background (~0) stays
+  // black. Dosage via strength/radius.
+  // Fake glow (reference approach): a soft color circle per node BENEATH the sphere
+  // — default glow instead of Bloom post-processing. Bloom stays as an A/B option.
   const [glowEnabled, setGlowEnabled] = useState(true);
   const [glowScale, setGlowScale] = useState(2.8);
   const [glowOpacity, setGlowOpacity] = useState(0.75);
@@ -430,17 +430,17 @@ export function GraphWebglSpike() {
   const [bloomStrength, setBloomStrength] = useState(0.5);
   const [bloomRadius, setBloomRadius] = useState(0.85);
   const [bloomThreshold, setBloomThreshold] = useState(0);
-  // Default KEIN ToneMapping: Decode+Encode heben sich exakt auf, Bloom-an
-  // ist damit farbgleich zu Bloom-aus (Referenzfarben bleiben 1:1) — ACES
-  // drueckte die Pastellfarben sichtbar ab ("Multiply-Optik"). Kompressoren
-  // bleiben zum A/B im Select.
+  // Default NO ToneMapping: decode+encode cancel out exactly, so Bloom-on
+  // is color-identical to Bloom-off (reference colors stay 1:1) — ACES
+  // visibly pushed the pastel colors down ("multiply look"). The compressors
+  // remain in the select for A/B.
   const [toneMappingMode, setToneMappingMode] = useState<'neutral' | 'aces' | 'reinhard' | 'none'>('neutral');
   const [showLinks, setShowLinks] = useState(true);
-  // ACHTUNG Perf: curved links (>0) erzwingen per-link Curve-Geometrie statt
-  // plain THREE.Line — hat bei 15k Links fps getankt (live-confirmed).
-  // 0.15 ist der Look-getunte Default; bei grossen Datensaetzen auf 0.
+  // PERF NOTE: curved links (>0) force per-link curve geometry instead of
+  // plain THREE.Line — tanked fps at 15k links (live-confirmed).
+  // 0.15 is the look-tuned default; set to 0 for large datasets.
   const [linkCurvature, setLinkCurvature] = useState(0.15);
-  // Referenz: Links kaum sichtbar — Struktur kommt aus den Dots.
+  // Reference: links barely visible — structure comes from the dots.
   const [linkOpacity, setLinkOpacity] = useState(1.0);
   const [relationColor, setRelationColor] = useState(LINK_KIND_COLOR.relation);
   const [mentionColor, setMentionColor] = useState(LINK_KIND_COLOR.mention);
@@ -455,8 +455,8 @@ export function GraphWebglSpike() {
   // spheres via nodeAutoColorBy) against the hand-tuned sprite rendering
   // below, live, instead of guessing blind at which one you actually want.
   const [useCustomNodeRender, setUseCustomNodeRender] = useState(true);
-  // Headlight-Richtung kamera-lokal, per Regler drehbar. 0/0 = exakt hinter
-  // dem Betrachter; horizontal dreht um die Hochachse, vertikal hebt/senkt.
+  // Headlight direction camera-local, rotatable via slider. 0/0 = exactly behind
+  // the viewer; horizontal rotates around the vertical axis, vertical raises/lowers.
   const [lightAzimuth, setLightAzimuth] = useState(0);
   const [lightElevation, setLightElevation] = useState(0);
 
@@ -468,23 +468,23 @@ export function GraphWebglSpike() {
   // node/link counts are unchanged.
   const graphData = useMemo(() => generateGraph(nodeCount, linkCount), [nodeCount, linkCount, genKey]);
 
-  // Groessen-Spread: Faktor zwischen kleinster (Degree 0) und groesster
-  // Kugel (Max-Degree). 0 = alle gleich gross; 6 = bisheriges Verhalten.
+  // Size spread: factor between the smallest (degree 0) and largest
+  // sphere (max degree). 0 = all the same size; 6 = previous behavior.
   const [sizeSpread, setSizeSpread] = useState(25);
 
-  // Ego-View: Klick auf Kugel -> nur sie + Nachbarn + deren Links.
-  // dim = Rest ausgegraut/30% (bleibt klickbar), hide = Rest komplett weg.
+  // Ego view: click a sphere -> only it + neighbors + their links.
+  // dim = the rest greyed out/30% (stays clickable), hide = the rest completely gone.
   const [egoNodeId, setEgoNodeId] = useState<string | null>(null);
   const [egoMode, setEgoMode] = useState<'dim' | 'hide'>('dim');
-  // Ego-Zustand als Ref: nodeThreeObject liest ihn bei JEDEM (Re-)Bau der
-  // Node-Objekte — die Lib baut nach Prop-Aenderungen neu und wuerde einen
-  // rein imperativen Material-Swap sofort wieder ueberschreiben (Dim war
-  // nur 1 Frame sichtbar).
+  // Ego state as a ref: nodeThreeObject reads it on EVERY (re)build of the
+  // node objects — the lib rebuilds after prop changes and would immediately
+  // overwrite a purely imperative material swap again (dim was
+  // visible for only 1 frame).
   const egoStateRef = useRef<{ id: string | null; mode: 'dim' | 'hide'; neighbors: Set<string> | null }>(
     { id: null, mode: 'dim', neighbors: null },
   );
-  // Adjazenz aus den frischen Daten (source/target sind hier noch die
-  // String-IDs; die Force-Engine ersetzt sie spaeter durch Node-Objekte).
+  // Adjacency from the fresh data (source/target are still the
+  // string IDs here; the force engine replaces them with node objects later).
   const neighborsOf = useMemo(() => {
     const map = new Map<string, Set<string>>();
     for (const link of graphData.links) {
@@ -495,11 +495,11 @@ export function GraphWebglSpike() {
     }
     return map;
   }, [graphData]);
-  // Nach dem Engine-Start sind link.source/target Node-Objekte.
+  // After the engine start, link.source/target are node objects.
   const endpointId = (end: string | NodeObject<SpikeNode>): string =>
     typeof end === 'string' ? end : end.id;
-  // Im Render-Body aktualisiert, damit der Ref VOR dem naechsten
-  // Objekt-(Re-)Bau der Lib garantiert frisch ist.
+  // Updated in the render body so the ref is guaranteed fresh BEFORE the
+  // lib's next object (re)build.
   egoStateRef.current = {
     id: egoNodeId,
     mode: egoMode,
@@ -517,8 +517,8 @@ export function GraphWebglSpike() {
     if (!fg) return;
     const composer = fg.postProcessingComposer();
     const renderer = fg.renderer();
-    // dispose(): UnrealBloomPass haelt eigene RenderTargets — ohne dispose
-    // leakt jeder Slider-/Resize-Durchlauf GPU-Speicher.
+    // dispose(): UnrealBloomPass holds its own RenderTargets — without dispose
+    // every slider/resize pass leaks GPU memory.
     for (const pass of bloomPassesRef.current) {
       composer.removePass(pass);
       pass.dispose();
@@ -530,7 +530,7 @@ export function GraphWebglSpike() {
     // renderer defaults to NoToneMapping (3d-force-graph never sets it,
     // since it wasn't built assuming bloom would be added) — a documented
     // requirement this was missing entirely, not a guess.
-    // OutputPass liest renderer.toneMapping pro Frame — Umschalten wirkt live.
+    // OutputPass reads renderer.toneMapping per frame — switching takes effect live.
     const TONE_MAPPINGS = {
       neutral: THREE.NeutralToneMapping,
       aces: THREE.ACESFilmicToneMapping,
@@ -547,15 +547,15 @@ export function GraphWebglSpike() {
       // rectangle covering only part of the screen once bloom was enabled.
       const size = renderer.getSize(new THREE.Vector2());
       const pixelRatio = renderer.getPixelRatio();
-      // Kette gegen den Grauschleier (Herleitung am SRGB_DECODE_SHADER):
-      // Decode (RT -> linear), Bloom rechnet linear, OutputPass macht
-      // ToneMapping + die eine finale sRGB-Kodierung.
-      // Glow-Zweig (Herleitung an BLOOM_LAYER): rendert NUR die Bubbles
-      // (Kamera auf Bloom-Layer), dekodiert, bloomt. renderToScreen false —
-      // das Ergebnis wird vom MixPass im Haupt-Composer abgeholt.
-      // Lichter auf den Bloom-Layer mitnehmen: der Glow-Zweig rendert mit
-      // Kamera NUR auf BLOOM_LAYER — die Lambert-Kugeln waeren dort sonst
-      // unbeleuchtet (= schwarz) und Bloom haette keine Quelle.
+      // Chain against the grey veil (derivation at SRGB_DECODE_SHADER):
+      // Decode (RT -> linear), Bloom computes linear, OutputPass does
+      // ToneMapping + the single final sRGB encoding.
+      // Glow branch (derivation at BLOOM_LAYER): renders ONLY the bubbles
+      // (camera on the bloom layer), decodes, blooms. renderToScreen false —
+      // the result is picked up by the MixPass in the main composer.
+      // Take the lights onto the bloom layer too: the glow branch renders with
+      // the camera ONLY on BLOOM_LAYER — otherwise the Lambert spheres would be
+      // unlit there (= black) and Bloom would have no source.
       fg.lights().forEach((light) => light.layers.enable(BLOOM_LAYER));
       const bloomComposer = new EffectComposer(renderer);
       bloomComposer.renderToScreen = false;
@@ -566,8 +566,8 @@ export function GraphWebglSpike() {
       );
       bloomComposer.addPass(new BubbleLayerRenderPass(fg.scene(), fg.camera()));
       bloomComposer.addPass(new ShaderPass(SRGB_DECODE_SHADER));
-      // Copy vor Bloom: opfert einen Blit, damit der scharfe Bubbles-only-
-      // Render den Bloom-Blend ueberlebt (Stanz-Maske im MixPass).
+      // Copy before Bloom: sacrifices one blit so the sharp bubbles-only
+      // render survives the Bloom blend (punch-out mask in the MixPass).
       bloomComposer.addPass(new ShaderPass(COPY_SHADER));
       bloomComposer.addPass(glowBloomPass);
       const passes: Pass[] = [
@@ -595,14 +595,14 @@ export function GraphWebglSpike() {
     });
   }, [linkOpacity, fogNear, fogFar, fogEnabled, relationColor, mentionColor]);
 
-  // Glow-Deckkraft in die gecachten (pro Farbe geteilten) Materialien pushen.
+  // Push the glow opacity into the cached (per-color shared) materials.
   useEffect(() => {
     for (const material of glowMaterialCache.values()) material.opacity = glowOpacity;
   }, [glowOpacity]);
 
-  // Ego-Dim: nicht-Nachbarn ausgrauen statt versteckt — Material-Swap auf
-  // den bestehenden Node-Objekten (kein Rebuild), Glow-Sprite dabei aus.
-  // Nur im Custom-Rendering (Library-Spheres haben eigene Materialien).
+  // Ego dim: grey out non-neighbors instead of hiding — material swap on
+  // the existing node objects (no rebuild), glow sprite off in the process.
+  // Only in custom rendering (library spheres have their own materials).
   useEffect(() => {
     if (!useCustomNodeRender) return;
     const neighbors = egoNodeId ? neighborsOf.get(egoNodeId) : null;
@@ -622,9 +622,9 @@ export function GraphWebglSpike() {
     }
   }, [egoNodeId, egoMode, useCustomNodeRender, graphData, neighborsOf]);
 
-  // Headlight: das Lib-DirectionalLight haengt fix im Weltraum — beim
-  // Orbiten schaut man auf unbeleuchtete Rueckseiten. Licht UND Target an
-  // die Kamera geparentet = Sonne beim Betrachter; Richtung per Regler.
+  // Headlight: the lib's DirectionalLight sits fixed in world space — when
+  // orbiting you look at unlit back sides. Light AND target parented to
+  // the camera = sun at the viewer; direction via slider.
   useEffect(() => {
     const fg = fgRef.current;
     if (!fg) return;
@@ -636,13 +636,13 @@ export function GraphWebglSpike() {
       );
       if (!dirLight) return;
       if (dirLight.parent !== camera) {
-        // Kamera muss im Szenengraph haengen, sonst rendern ihre Kinder nicht.
+        // The camera must be in the scene graph, otherwise its children don't render.
         fg.scene().add(camera);
         camera.add(dirLight);
         camera.add(dirLight.target);
       }
-      // Kamera-lokal: +z = hinter dem Betrachter, -z = Blickrichtung.
-      // Az/El 0/0 = Licht exakt hinter der Kamera, zielt durch sie hindurch.
+      // Camera-local: +z = behind the viewer, -z = viewing direction.
+      // Az/El 0/0 = light exactly behind the camera, aiming through it.
       const az = THREE.MathUtils.degToRad(lightAzimuth);
       const el = THREE.MathUtils.degToRad(lightElevation);
       const x = Math.sin(az) * Math.cos(el);
@@ -653,10 +653,10 @@ export function GraphWebglSpike() {
     };
 
     applyHeadlight();
-    // Die Lib wendet ihre lights-Property verzoegert (Kapsule-Digest) an
-    // und haengt das Licht dabei zurueck in die Szene — das Headlight sass
-    // deshalb beim Start falsch, bis ein Slider-Move den Effect neu feuerte.
-    // Waechter holt es zurueck, sobald es geklaut wurde.
+    // The lib applies its lights property with a delay (Kapsule digest)
+    // and reparents the light back into the scene in the process — the headlight
+    // therefore sat wrong at startup, until a slider move re-fired the effect.
+    // The guard reclaims it as soon as it was stolen.
     const guard = setInterval(() => {
       const camera = fg.camera();
       const dirLight = fg.lights().find(
@@ -711,30 +711,30 @@ export function GraphWebglSpike() {
         nodeAutoColorBy={useCustomNodeRender ? undefined : 'group'}
         nodeThreeObject={useCustomNodeRender ? (n: NodeObject<SpikeNode>) => {
           const color = GROUP_COLORS[n.group % GROUP_COLORS.length];
-          // Ego-Dim direkt beim Objektbau anwenden — die Lib baut die
-          // Objekte nach Prop-Aenderungen neu, ein nachtraeglicher Swap
-          // allein wird dabei ueberschrieben.
+          // Apply ego dim directly at object build time — the lib rebuilds the
+          // objects after prop changes, so a later swap
+          // alone gets overwritten.
           const ego = egoStateRef.current;
           const active = !ego.id || n.id === ego.id || (ego.neighbors?.has(n.id) ?? false);
           const dimmed = ego.mode === 'dim' && ego.id !== null && !active;
           const group = new THREE.Group();
-          // Spreizung symmetrisch um die feste Mittelgroesse 10: kleine
-          // Kugeln schrumpfen, grosse wachsen. Ratio kleinste:groesste =
-          // 1:(1+Spread); Spread 0 = alle gleich gross.
+          // Spread symmetric around the fixed mid-size 10: small
+          // spheres shrink, large ones grow. Ratio smallest:largest =
+          // 1:(1+spread); spread 0 = all the same size.
           const coreSize = 10 * Math.pow(1 + sizeSpread, n.degreeNorm - 0.5);
           if (glowEnabled && !dimmed) {
             const glow = new THREE.Sprite(getGlowMaterial(color));
             glow.scale.set(coreSize * glowScale, coreSize * glowScale, 1);
-            // renderOrder: Glow zuerst, Kugel deckend drueber.
+            // renderOrder: glow first, sphere opaque on top.
             glow.renderOrder = 1;
             group.add(glow);
           }
-          // Echte beleuchtete Kugel (Referenz-Look), geteilte Geometrie.
+          // Real lit sphere (reference look), shared geometry.
           const core = new THREE.Mesh(NODE_SPHERE_GEOMETRY, dimmed ? getSphereDimMaterial(color) : getSphereMaterial(color));
           core.scale.setScalar(coreSize);
           core.renderOrder = 2;
-          // Layer 0 bleibt AN (Haupt-Render), Bloom-Layer kommt dazu —
-          // nur was hier liegt, geht in den (optionalen) Bloom-Glow-Zweig.
+          // Layer 0 stays ON (main render), the bloom layer is added —
+          // only what's here goes into the (optional) bloom glow branch.
           core.layers.enable(BLOOM_LAYER);
           group.add(core);
           return group;

@@ -1,9 +1,9 @@
-// Trystero + Nostr (v0.25 API — assign-Properties, kein Tuple mehr).
-// Ausgangs-Hypothese (D28). Import via `@trystero-p2p/nostr` — den Alias
-// `trystero/nostr` gibt es zwar noch, aber der neue Pfad ist der stabile.
+// Trystero + Nostr (v0.25 API — assign properties, no more tuple).
+// Starting hypothesis (D28). Import via `@trystero-p2p/nostr` — the alias
+// `trystero/nostr` does still exist, but the new path is the stable one.
 import type { AdapterFactory, AdapterHandle } from '../types';
-// Room heißt im @trystero-p2p/core so, wird von /nostr re-exportiert. joinRoom
-// ist eine JoinRoom<NostrRoomConfig>-Funktion — typeof reicht als Alias.
+// Room is named this way in @trystero-p2p/core, re-exported by /nostr. joinRoom
+// is a JoinRoom<NostrRoomConfig> function — typeof is enough as an alias.
 import type { Room, joinRoom as JoinRoomFn } from '@trystero-p2p/nostr';
 
 export const trysteroNostrAdapter: AdapterFactory = async (opts) => {
@@ -13,10 +13,10 @@ export const trysteroNostrAdapter: AdapterFactory = async (opts) => {
 };
 
 /**
- * Loggt die vollständige Broker-Connection-String: appId, roomId, computed
- * SHA-1-Topic (das ist der echte Namespace-Key den Trystero intern nutzt),
- * selfId, alle Ziel-Relay-URLs. Damit können zwei Seiten ihre Logs
- * vergleichen und sehen ob sie denselben Topic verwenden.
+ * Logs the full broker connection string: appId, roomId, computed
+ * SHA-1 topic (that is the real namespace key Trystero uses internally),
+ * selfId, all target relay URLs. With this two sides can compare their logs
+ * and see whether they use the same topic.
  */
 export async function reportTrysteroBrokerInfo(
   mod: { selfId: string; defaultRelayUrls: string[] },
@@ -36,7 +36,7 @@ export async function reportTrysteroBrokerInfo(
   for (const l of lines) { console.log(l); sink?.(l); }
 }
 
-/** Trystero-intern: sha1(appId + '/' + roomId) hex — muss auf beiden Seiten identisch sein. */
+/** Trystero-internal: sha1(appId + '/' + roomId) hex — must be identical on both sides. */
 async function computeTrysteroTopic(appId: string, roomId: string): Promise<string> {
   const bytes = new TextEncoder().encode(`${appId}/${roomId}`);
   const hash = await crypto.subtle.digest('SHA-1', bytes);
@@ -67,21 +67,21 @@ export async function joinTrystero(
     throw err;
   }
 
-  // JsonValue satisfies DataPayload — Ping-Payload ist {id:string, echo:boolean}.
+  // JsonValue satisfies DataPayload — the ping payload is {id:string, echo:boolean}.
   const action = room.makeAction<{ id: string; echo: boolean }>('ping');
   let opened = false;
 
-  // v0.25: onPeerJoin und action.onMessage sind Properties, KEINE Method-Aufrufe.
+  // v0.25: onPeerJoin and action.onMessage are properties, NOT method calls.
   room.onPeerJoin = (peerId) => {
     if (!opened) { opened = true; opts.onOpen(); }
     opts.onDiagnostic?.(`peer joined: ${peerId}`);
   };
   action.onMessage = (data, ctx) => opts.onMessage(ctx.peerId, data);
 
-  // Broker-Socket-Zustand nach 2/5/10/15s snapshotten — zeigt ob wir den Broker
-  // überhaupt erreichen UND welche konkreten URLs verbunden sind (relay-Subset
-  // ist entscheidend: zwei Peers müssen mindestens EINEN gemeinsamen Relay
-  // offen haben, sonst sehen sie sich nie). Mehr Probes passend zum 20s-Timeout.
+  // Snapshot the broker socket state at 2/5/10/15s — shows whether we reach the broker
+  // at all AND which concrete URLs are connected (the relay subset
+  // is decisive: two peers must have at least ONE shared relay
+  // open, otherwise they never see each other). More probes to match the 20s timeout.
   const socketProbeTimers = [2000, 5000, 10000, 15000].map((delay) => window.setTimeout(() => {
     if (opened) return;
     const sockets = getRelaySockets();

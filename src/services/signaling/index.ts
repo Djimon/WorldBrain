@@ -1,10 +1,10 @@
-// M10-S12 (#368): Signaling-Layer-Registry + Fallback-Orchestrator.
-// Manueller SDP-Copy/Paste-Pfad wurde nie validiert (Spike #380) und ist im
-// gesamten Layer gestrichen — keine UI-Panel-Hooks, kein entsprechender Adapter.
+// M10-S12 (#368): Signaling-layer registry + fallback orchestrator.
+// The manual SDP copy/paste path was never validated (Spike #380) and is
+// removed from the entire layer — no UI panel hooks, no corresponding adapter.
 //
-// Fallback-Reihenfolge: nostr → mqtt → bittorrent → peerjs
-// BEIDE Peers müssen die identische Liste + identisches appId+roomId laufen —
-// sonst landen sie auf verschiedenen Relays und finden sich nie.
+// Fallback order: nostr → mqtt → bittorrent → peerjs
+// BOTH peers must run the identical list + identical appId+roomId —
+// otherwise they land on different relays and never find each other.
 import type { AdapterFactory, AdapterFactoryOpts, AdapterHandle, AdapterKey } from './types';
 import { STRATEGY_ORDER } from './types';
 import { nostrAdapter } from './nostr';
@@ -15,7 +15,7 @@ import { peerjsAdapter } from './peerjs';
 export type { AdapterFactory, AdapterFactoryOpts, AdapterHandle, AdapterKey } from './types';
 export { STRATEGY_ORDER } from './types';
 
-// Interface-Vertrag (siehe types.ts für die volle Definition):
+// Interface contract (see types.ts for the full definition):
 //   AdapterFactoryOpts: { appId, roomId, peerLabel, onOpen, onMessage, onError, onDiagnostic? }
 //   AdapterHandle: { send, close }
 
@@ -27,8 +27,8 @@ const ADAPTERS: Record<AdapterKey, AdapterFactory> = {
 };
 
 /**
- * Registry: liefert einen konkreten Adapter für den gegebenen Key.
- * Wirft wenn der Key unbekannt ist — Aufrufer sollen `AdapterKey`-Typ nutzen.
+ * Registry: returns a concrete adapter for the given key.
+ * Throws if the key is unknown — callers should use the `AdapterKey` type.
  */
 export async function createSignalingAdapter(
   key: AdapterKey,
@@ -40,21 +40,21 @@ export async function createSignalingAdapter(
 }
 
 export interface FallbackOpts extends AdapterFactoryOpts {
-  /** Zeitbudget pro Strategie (default 8s). Gesamtbudget = perStrategyMs × Kette. */
+  /** Time budget per strategy (default 8s). Total budget = perStrategyMs × chain. */
   perStrategyMs?: number;
-  /** Optional: Reihenfolge überschreiben (nur für Tests). BEIDE Peers müssen gleich. */
+  /** Optional: override the order (tests only). BOTH peers must match. */
   order?: AdapterKey[];
   /**
-   * Injectable adapter-Factory für Tests — Default: `createSignalingAdapter`.
-   * Ermöglicht Orchestrator-Testen (fake-fail / fake-success) ohne Real-Broker.
+   * Injectable adapter factory for tests — default: `createSignalingAdapter`.
+   * Enables orchestrator testing (fake-fail / fake-success) without a real broker.
    */
   createAdapterFn?: (key: AdapterKey, opts: AdapterFactoryOpts) => Promise<AdapterHandle>;
 }
 
 /**
- * Fallback-Orchestrator: rückt bei fehlschlagender Strategie eine Stufe weiter.
- * „Fehlschlag" = Adapter feuert onError ODER kein onOpen innerhalb perStrategyMs.
- * Beide Peers müssen dieselbe Order laufen — sonst treffen sie sich nie.
+ * Fallback orchestrator: advances one step when a strategy fails.
+ * "Failure" = the adapter fires onError OR no onOpen within perStrategyMs.
+ * Both peers must run the same order — otherwise they never meet.
  */
 export async function connectWithFallback(opts: FallbackOpts): Promise<AdapterHandle> {
   const perStrategyMs = opts.perStrategyMs ?? 8000;

@@ -1,7 +1,7 @@
-// M14-S12: Effekt-Editor im Event-Formular (#267)
+// M14-S12: Effect editor in the event form (#267)
 // Manages an Event entity's properties.effects (S09 event-effects-service)
 // list: add/remove, with client-side S08 target/verb validation gating
-// "hinzufügen" before any addEffect call (Decision — invalid never saved).
+// "add" before any addEffect call (Decision — invalid never saved).
 //
 // #292 follow-up: an optional `calendar` prop renders the day field via the
 // real CalendarDateInput widget when a calendar is available; without one,

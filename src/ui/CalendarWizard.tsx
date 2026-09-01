@@ -21,7 +21,7 @@ interface Props {
   database: DatabaseLike | undefined;
   /** Existing calendar to edit; when absent the wizard starts from the default preset. */
   initial?: CalendarInitial;
-  /** Shown as an "Abbrechen" button when editing an existing calendar. */
+  /** Shown as a "Cancel" button when editing an existing calendar. */
   onCancel?: () => void;
 }
 
@@ -153,7 +153,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
         )}
       </div>
 
-      {/* Live-Summe: aktualisiert sich bei jeder Monats-/Wochentag-Änderung */}
+      {/* Live total: updates on every month/weekday change */}
       <div className="cal-form__summary">
         <span className="cal-form__summary-item">{t('calendar.wizard.daysPerYear', { n: totalDays })}</span>
         <span className="cal-form__summary-sep">·</span>
@@ -167,7 +167,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
       </div>
 
       <div className="cal-form__body">
-        {/* Grundeinstellungen */}
+        {/* Basic settings */}
         <Panel className="cal-section u-stack u-gap-3">
           <h3 className="cal-section__title">{t('calendar.wizard.basics')}</h3>
           <div className="cal-form__row">
@@ -227,7 +227,7 @@ export function CalendarWizard({ onComplete, database, initial, onCancel }: Prop
           </div>
         </Panel>
 
-        {/* Tabs — je Bereich volle Breite, kein Platz-Konkurrieren */}
+        {/* Tabs — full width per section, no competing for space */}
         <Tabs
           className="cal-tabs"
           label={t('calendar.wizard.sectionsLabel')}

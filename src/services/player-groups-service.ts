@@ -1,6 +1,6 @@
-// M10-S04 (#353): Spieler-Gruppen — campaign-scoped (D23).
-// Ein Spieler kann in mehreren Gruppen sein; Gruppen einer Campaign A sind
-// in Campaign B unsichtbar. Basis für Visibility-Targeting (S07).
+// M10-S04 (#353): Player groups — campaign-scoped (D23).
+// A player can be in multiple groups; groups of a campaign A are
+// invisible in campaign B. Basis for visibility targeting (S07).
 import type { DatabaseLike } from './entity-service';
 
 export interface PlayerGroup {
@@ -55,7 +55,7 @@ export async function renameGroup(params: RenameGroupParams): Promise<void> {
   );
 }
 
-/** Löscht die Gruppe und alle Mitgliedschaften (kein DB-CASCADE, per Hand). */
+/** Deletes the group and all memberships (no DB CASCADE, done by hand). */
 export async function deleteGroup(params: DeleteGroupParams): Promise<void> {
   await params.database.execute('DELETE FROM group_members WHERE group_id = ?', [params.groupId]);
   await params.database.execute('DELETE FROM player_groups WHERE id = ?', [params.groupId]);

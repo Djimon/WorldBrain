@@ -1,27 +1,27 @@
-// M17-S01 (#381): Zentrale Marken-/Namens-Registry — die EINE Quelle für alle
-// Produkt-Marken (Plattform, die zwei Modus-Marken, die Regel-Engine). i18n-fähig
-// über den `common`-Namespace mit inline-deutschem Default; die Marken-Strings
-// werden NIRGENDS sonst hardcodiert (Grep-Guard in WorkspaceShell/primitives).
+// M17-S01 (#381): Central brand/naming registry — the ONE source for all
+// product brands (platform, the two mode brands, the rule engine). i18n-capable
+// via the `common` namespace with an inline German default; the brand strings
+// are NOT hardcoded ANYWHERE else (grep guard in WorkspaceShell/primitives).
 //
 // Epic: planning/epics/identity-naming-mode-theming.md (Story S01, Decision 2).
 import { useTranslation } from 'react-i18next';
 
 export interface Brand {
-  /** Plattform-Marke — das Dach über beiden Modi. */
+  /** Platform brand — the umbrella over both modes. */
   platform: string;
-  /** Modus-Marke Bearbeiten/Prep. */
+  /** Mode brand for edit/prep. */
   editMode: string;
-  /** Modus-Marke Spielen/Live. */
+  /** Mode brand for play/live. */
   playMode: string;
-  /** System-agnostische Regel-Engine (das USP-Feature). Platzhalter-Wert,
-   *  finaler Name noch offen — in EINER Zeile austauschbar (Default + Locale). */
+  /** System-agnostic rule engine (the USP feature). Placeholder value,
+   *  final name still open — swappable in ONE line (default + locale). */
   engine: string;
 }
 
 /**
- * React-Hook: löst alle Produkt-Marken über i18n auf (inline-deutscher Default,
- * damit die App auch ohne Locale-Eintrag korrekt rendert). Konsumenten (#383/#385)
- * beziehen Marken NUR hierüber, nie als eigene String-Literale.
+ * React hook: resolves all product brands via i18n (inline German default,
+ * so the app renders correctly even without a locale entry). Consumers (#383/#385)
+ * obtain brands ONLY through this, never as their own string literals.
  */
 export function useBrand(): Brand {
   const { t } = useTranslation('common');

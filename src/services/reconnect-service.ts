@@ -1,10 +1,10 @@
-// M10-S10 (#359): Reconnect & Token-Persistenz.
-// Persistiert das Player-Token pro Client (localStorage, node-fallback
-// in-memory für Tests) und stellt Reconnect + Ping-basierte Online-Erkennung
-// bereit. D10: KEIN Heartbeat — nur einmaliger Ping beim Öffnen + Retry.
+// M10-S10 (#359): Reconnect & token persistence.
+// Persists the player token per client (localStorage, node fallback
+// in-memory for tests) and provides reconnect + ping-based online detection.
+// D10: NO heartbeat — only a one-time ping on opening + retry.
 //
-// Verhältnis zu session-identity-service (S02): dort lebt das Server-Token
-// (validateToken); hier lebt der Client-lokale Reference-Eintrag.
+// Relationship to session-identity-service (S02): the server token lives there
+// (validateToken); here lives the client-local reference entry.
 import type { DatabaseLike } from './entity-service';
 import { validateToken } from './session-identity-service';
 
@@ -16,18 +16,18 @@ export interface StoredToken {
   token: string;
   displayName: string;
   campaignName: string;
-  /** Für die Player-Client-Seite: die serverseitige player_id, damit der
-   *  Reconnect direkt in die Bogen-Sicht (S08) schalten kann. */
+  /** For the player-client side: the server-side player_id, so that the
+   *  reconnect can switch directly into the sheet view (S08). */
   playerId?: string;
-  /** M10-#387: Broker-Namespace (appId aus dem Einladungslink) + Raum (campaignId),
-   *  damit der DB-lose Reconnect den Transport erneut per Signaling aufbauen und
-   *  ein `reconnect_request` schicken kann — es gibt keine lokale DB mehr. */
+  /** M10-#387: Broker namespace (appId from the invite link) + room (campaignId),
+   *  so that the DB-less reconnect can rebuild the transport via signaling and
+   *  send a `reconnect_request` — there is no local DB anymore. */
   appId?: string;
   roomId?: string;
   lastOnlineAt?: string;
 }
 
-// Test-Fallback: wenn kein window.localStorage (Node) → in-memory-Map.
+// Test fallback: if no window.localStorage (Node) → in-memory map.
 const memory = new Map<string, StoredToken>();
 
 function readAll(): Map<string, StoredToken> {
@@ -73,9 +73,9 @@ export async function clearStoredToken(token: string): Promise<void> {
 
 export interface ReconnectParams {
   token: string;
-  /** Optional: bei gesetzter DB wird server-seitig via validateToken() geprüft;
-   *  sonst fällt der Reconnect auf die Client-lokale Heuristik (Token nicht
-   *  als 'kicked' markiert) zurück — Netzunabhängig, D24. */
+  /** Optional: with a DB set, it is checked server-side via validateToken();
+   *  otherwise the reconnect falls back to the client-local heuristic (token not
+   *  marked as 'kicked') — network-independent, D24. */
   database?: DatabaseLike;
 }
 
@@ -85,9 +85,9 @@ export interface ReconnectResult {
 }
 
 /**
- * Reconnect: gültiges, aktives Token → success. Gekickt / unbekannt → reject
- * mit Grund. Ohne DB (Host offline) → `no_host` — UI zeigt Retry (D10). Die
- * echte Antwort kommt sobald die DB/der Host wieder erreichbar ist.
+ * Reconnect: valid, active token → success. Kicked / unknown → reject
+ * with reason. Without DB (host offline) → `no_host` — the UI shows retry (D10). The
+ * real answer comes once the DB/host is reachable again.
  */
 export async function reconnect(params: ReconnectParams): Promise<ReconnectResult> {
   if (params.database === undefined) return { success: false, reason: 'no_host' };
@@ -96,9 +96,9 @@ export async function reconnect(params: ReconnectParams): Promise<ReconnectResul
 }
 
 /**
- * Einmaliger Ping — kein Heartbeat (D10). Signalisiert ob der Host erreichbar
- * ist; die UI zeigt bei false ein Retry-Icon (siehe D10 Offline-Zustand).
- * Ohne DB → false; mit DB → SELECT 1 als Round-Trip.
+ * One-time ping — no heartbeat (D10). Signals whether the host is reachable;
+ * on false the UI shows a retry icon (see D10 offline state).
+ * Without DB → false; with DB → SELECT 1 as a round-trip.
  */
 export async function ping(database?: DatabaseLike): Promise<boolean> {
   if (database === undefined) return false;

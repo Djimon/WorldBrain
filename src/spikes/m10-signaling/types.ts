@@ -1,11 +1,11 @@
-// M10-D28 (#380) Signaling-Spike — throwaway harness.
-// EINE Adapter-Schnittstelle für alle Kandidaten (Trystero/Nostr, Trystero/MQTT,
-// Trystero/BitTorrent, PeerJS, manual-SDP). Damit sind alle apples-to-apples
-// hinter derselben Fassade — und die Austauschbarkeit fürs D28-Roadmap-Ziel
-// (v2/v3 self-hosted Relay = weiterer Adapter) ist demonstriert.
+// M10-D28 (#380) signaling spike — throwaway harness.
+// ONE adapter interface for all candidates (Trystero/Nostr, Trystero/MQTT,
+// Trystero/BitTorrent, PeerJS, manual-SDP). This makes them all apples-to-apples
+// behind the same facade — and the interchangeability for the D28 roadmap goal
+// (v2/v3 self-hosted relay = another adapter) is demonstrated.
 //
-// Nach dem Spike wird der Ordner verworfen — nur der schriftliche Befund
-// (planning/research/multiplayer-signaling-broker-options.md) bleibt.
+// After the spike the folder is discarded — only the written finding
+// (planning/research/multiplayer-signaling-broker-options.md) remains.
 
 export type AdapterKey =
   | 'trystero-nostr'
@@ -15,36 +15,36 @@ export type AdapterKey =
   | 'manual-sdp';
 
 export interface AdapterFactoryOpts {
-  /** Zwei Peers gelten als „im selben Raum" wenn roomId identisch. */
+  /** Two peers count as "in the same room" when roomId is identical. */
   roomId: string;
-  /** Kandidat-lokale Peer-ID; Anzeige/Debug, kein Sicherheitsmerkmal. */
+  /** Candidate-local peer ID; display/debug, not a security property. */
   peerLabel: string;
-  /** Feuert sobald mindestens EIN DataChannel `open` ist (Erfolgsmarker). */
+  /** Fires as soon as at least ONE DataChannel is `open` (success marker). */
   onOpen: () => void;
-  /** Feuert bei Payload-Empfang; Bench nutzt es fürs Ping-RTT. */
+  /** Fires on payload receipt; the bench uses it for the ping RTT. */
   onMessage: (from: string, payload: unknown) => void;
-  /** Fatale/soft Fehler, die der Bench als Fail werten sollte. */
+  /** Fatal/soft errors that the bench should count as a fail. */
   onError: (err: Error) => void;
-  /** Für manual-SDP: die UI muss ein Panel für Copy/Paste rendern. */
+  /** For manual-SDP: the UI must render a panel for copy-paste. */
   requestUiPanel?: (panel: ManualSdpPanel) => void;
-  /** Broker-Sichtbarkeit — Adapter loggt selfId, Relay-URLs, Socket-Zustände. */
+  /** Broker visibility — the adapter logs selfId, relay URLs, socket states. */
   onDiagnostic?: (msg: string) => void;
-  /** appId für Broker-Namespacing. Trystero: joinRoom({appId}, roomId). */
+  /** appId for broker namespacing. Trystero: joinRoom({appId}, roomId). */
   appId: string;
 }
 
 export interface AdapterHandle {
-  /** Broadcast an alle bekannten Peers im Raum. */
+  /** Broadcast to all known peers in the room. */
   send(payload: unknown): void;
-  /** Adapter sauber schließen (Cold-Start-Bench muss oft schließen). */
+  /** Close the adapter cleanly (the cold-start bench has to close often). */
   close(): Promise<void>;
 }
 
 export interface ManualSdpPanel {
   role: 'offer' | 'answer';
-  /** Blob zum Anzeigen für den User. */
+  /** Blob to display to the user. */
   localBlob: string;
-  /** Callback wenn der User die Remote-Antwort einfügt. */
+  /** Callback when the user pastes the remote answer. */
   onRemoteBlob(blob: string): void;
 }
 

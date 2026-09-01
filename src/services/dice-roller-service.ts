@@ -1,9 +1,9 @@
-// M10-S16 (#362): Würfel-Roller + per-Wurf-Sichtbarkeit (D17).
-// Generischer dNN-Roller (z.B. `2d6+3`). Pro Wurf trägt der Werfer eine
-// Sichtbarkeit — Privat / Nur DM / Alle. Die tatsächliche Routing-Logik
-// (wer sieht was im Kampflog) liegt server/host-seitig; hier steht die
-// Wurf-Primitive plus Ergebnis-Struktur inkl. `visibility`-Feld für die
-// weiterführende Verteilung.
+// M10-S16 (#362): dice roller + per-roll visibility (D17).
+// Generic dNN roller (e.g. `2d6+3`). Per roll the roller carries a
+// visibility — Private / DM only / All. The actual routing logic
+// (who sees what in the combat log) lives server/host-side; here is the
+// roll primitive plus result structure incl. `visibility` field for the
+// downstream distribution.
 
 export type DiceVisibility = 'private' | 'dm_only' | 'all';
 
@@ -40,7 +40,7 @@ export function parseDiceExpression(expr: string): DiceExpression {
 function rollDie(sides: number): number {
   const buf = new Uint32Array(1);
   crypto.getRandomValues(buf);
-  // Modulo-Bias für die üblichen Würfel-Größen vernachlässigbar (n << 2^32).
+  // Modulo bias negligible for the usual dice sizes (n << 2^32).
   return (buf[0] % sides) + 1;
 }
 

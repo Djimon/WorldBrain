@@ -29,9 +29,9 @@ export interface NestedTreeProps {
   header?: ReactNode;
   searchable?: boolean;
   onResizeStart?: (e: React.MouseEvent) => void;
-  /** Enables the "⋮" folder menu (Löschen). Menu is hidden until hovered/opened — never a permanent button in the drag path. */
+  /** Enables the "⋮" folder menu (Delete). Menu is hidden until hovered/opened — never a permanent button in the drag path. */
   onDeleteFolder?: (node: TreeNode) => void;
-  /** Enables a color swatch in the folder's "Bearbeiten" (rename) row. */
+  /** Enables a color swatch in the folder's "Edit" (rename) row. */
   onFolderColorChange?: (path: string, color: string) => void;
   /** Persists collapsed/expanded folder state in localStorage across remounts (per-tree key, e.g. "pin-tree-<mapId>"). Omit to keep it session-only. */
   persistKey?: string;
@@ -445,7 +445,7 @@ export function NestedTree({
   );
 }
 
-// ── Adapter: Pfad-Strings → TreeNode[] ────────────────────────────────────────
+// ── Adapter: Path strings → TreeNode[] ────────────────────────────────────────
 
 export function fromPathStrings(
   items: Array<{ id: string; groupPath: string; label: string }>,

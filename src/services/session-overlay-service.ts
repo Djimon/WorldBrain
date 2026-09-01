@@ -1,6 +1,6 @@
-// M13-S04 (#239): House-Rule-Overlay-Aktivierung pro Session (EPIC-019).
-// Modul-Definitionen (M13-S01) sind wiederverwendbar; ihre Aktivierung ist
-// session-lokal. Reihenfolge über `display_order` (kleinstes zuerst).
+// M13-S04 (#239): House-rule overlay activation per session (EPIC-019).
+// Module definitions (M13-S01) are reusable; their activation is
+// session-local. Order via `display_order` (smallest first).
 import type { DatabaseLike } from './entity-service';
 
 export interface ActiveOverlay {
@@ -19,8 +19,8 @@ export interface ActivateParams {
 export async function activateModule(db: DatabaseLike, params: ActivateParams): Promise<void> {
   const order = params.order ?? 0;
   const enabled = (params.enabled ?? true) ? 1 : 0;
-  // Upsert per PRIMARY KEY (session_id, module_id) — mehrfach aktivieren
-  // reordert / re-enabled, ohne Doubletten anzulegen.
+  // Upsert by PRIMARY KEY (session_id, module_id) — activating multiple times
+  // reorders / re-enables, without creating duplicates.
   await db.execute(
     `INSERT INTO session_active_overlays (session_id, module_id, display_order, enabled)
      VALUES (?, ?, ?, ?)
@@ -61,9 +61,9 @@ export interface ReorderParams {
   moduleIds: readonly string[];
 }
 
-/** Setzt die Reihenfolge der aktiven Overlays auf die übergebene Reihenfolge —
- *  Index in `moduleIds` ist der neue `display_order`. Nicht-genannte Module
- *  bleiben unverändert (Test-Erwartung + intuitives Verhalten). */
+/** Sets the order of the active overlays to the given order —
+ *  the index in `moduleIds` is the new `display_order`. Modules not named
+ *  stay unchanged (test expectation + intuitive behavior). */
 export async function reorderModules(db: DatabaseLike, params: ReorderParams): Promise<void> {
   for (let i = 0; i < params.moduleIds.length; i += 1) {
     await db.execute(
@@ -73,9 +73,9 @@ export async function reorderModules(db: DatabaseLike, params: ReorderParams): P
   }
 }
 
-// M13-S05 (#240): Ad-hoc Session-Override — impliziter session-lokaler
-// „Session-Modul"-Layer. Nutzt DIESELBE Entry-Form wie die Modul-Bibliothek
-// (S01/S07), damit kein Parallelweg entsteht.
+// M13-S05 (#240): Ad-hoc session override — implicit session-local
+// "session module" layer. Uses the SAME entry form as the module library
+// (S01/S07), so no parallel path arises.
 export interface OverlayEntry {
   target: string;
   op: string;
@@ -130,10 +130,10 @@ export interface PromotedModule {
 }
 
 /**
- * Nimmt alle Ad-hoc-Overrides der Session und legt daraus ein benanntes,
- * teilbares rule_module (M13-S01-Form) an — die Entries wandern in
- * rule_module_entries; die Ad-hoc-Zeilen bleiben unangetastet, damit der
- * DM die Session weiterlaufen lassen kann.
+ * Takes all ad-hoc overrides of the session and creates from them a named,
+ * shareable rule_module (M13-S01 form) — the entries move into
+ * rule_module_entries; the ad-hoc rows stay untouched, so the
+ * DM can keep the session running.
  */
 export async function promoteToModule(db: DatabaseLike, params: PromoteParams): Promise<PromotedModule> {
   const id = `rmod_${crypto.randomUUID()}`;

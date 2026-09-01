@@ -1,8 +1,8 @@
-// M15-S20 (#310): zentrale, wiederverwendbare Emoji-Picker-Komponente.
-// Datenquelle: emojibase-data (reines JSON, offline, kein UI) — D-A.
-// UI-Muster: Kategorie-Reiter + Grid, analog IconPicker.tsx (#300) — D-B.
-// Suche ist Pflicht (D-C). Strikt frei von Audio-spezifischem Code (D-D) —
-// der Aufrufer konsumiert dies nur.
+// M15-S20 (#310): central, reusable emoji picker component.
+// Data source: emojibase-data (pure JSON, offline, no UI) — D-A.
+// UI pattern: category tabs + grid, like IconPicker.tsx (#300) — D-B.
+// Search is mandatory (D-C). Strictly free of audio-specific code (D-D) —
+// the caller only consumes this.
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import emojiData from 'emojibase-data/en/data.json';

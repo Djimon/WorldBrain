@@ -1,12 +1,12 @@
-// M10-S14 (#360) + #374: Play-Cockpit — Reiter Map/Kampflog/Spotlight +
-// Free-Browse. Role kommt aus AppModeContext (dm|player). Für den DM sitzt
-// LobbyPanel oben als permanentes Kontroll-Element.
+// M10-S14 (#360) + #374: Play cockpit — tabs Map/Combat log/Spotlight +
+// Free-Browse. Role comes from AppModeContext (dm|player). For the DM the
+// LobbyPanel sits on top as a permanent control element.
 //
-// Datenherkunft (D30-Membran, #374):
-// - DM: liest per `database`-Prop direkt aus der Host-DB (Kampflog, Free-
-//   Browse, Lobby-Roster).
-// - Player: liest AUSSCHLIESSLICH aus dem transport-gespeisten `store` (kein
-//   lokaler DB-Zugriff). Der Store bekommt Snapshot/Delta vom Host.
+// Data source (D30 membrane, #374):
+// - DM: reads via the `database` prop directly from the host DB (combat log, free-
+//   browse, lobby roster).
+// - Player: reads EXCLUSIVELY from the transport-fed `store` (no
+//   local DB access). The store receives snapshot/delta from the host.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
@@ -26,13 +26,13 @@ import type { SessionRole } from './AppModeContext';
 export interface PlayModeViewProps {
   role: SessionRole; // 'dm' | 'player' | null
   activeSessionId: string | null;
-  /** DM-Pfad: direkte Host-DB. Für Player NICHT gesetzt (Membran D30). */
+  /** DM path: direct host DB. NOT set for players (membrane D30). */
   database?: DatabaseLike;
-  /** Player-Pfad: transport-gespeister Store. Für DM ungenutzt. */
+  /** Player path: transport-fed store. Unused for the DM. */
   store?: PlayClientStoreImpl;
   playerId?: string;
   playerGroupIds?: string[];
-  /** M10-#386: Host-Transport für den Token-Broadcast der präsentierten Karte. */
+  /** M10-#386: host transport for the token broadcast of the presented map. */
   transport?: Pick<SessionTransport, 'send'>;
 }
 
@@ -52,8 +52,8 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
   const campaignId = activeSessionId ?? '';
   const isPlayer = role === 'player';
 
-  // S09 Live-Push: lokaler Listener; bei Remote-Client wird derselbe Effekt
-  // durch eine 'visibility_change'-Nachricht des Hosts ausgelöst (S11/S12).
+  // S09 live push: local listener; on a remote client the same effect is
+  // triggered by a 'visibility_change' message from the host (S11/S12).
   useEffect(() => {
     return onVisibilityChange((change) => {
       if (change.campaignId !== campaignId) return;
@@ -61,13 +61,13 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
     });
   }, [campaignId]);
 
-  // Store-Abo (Player): rerender auf Snapshot/Delta.
+  // Store subscription (player): rerender on snapshot/delta.
   useEffect(() => {
     if (!isPlayer || !store) return;
     return store.subscribe(() => setStoreTick((n) => n + 1));
   }, [isPlayer, store]);
 
-  // Kampflog — DM aus DB, Player aus Store.
+  // Combat log — DM from DB, player from store.
   useEffect(() => {
     if (activeTab !== 'combatlog' || campaignId === '') return;
     if (isPlayer) {
@@ -92,7 +92,7 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
     return () => { cancelled = true; };
   }, [database, store, isPlayer, activeTab, campaignId, playerId, logTick, storeTick]);
 
-  // Free-Browse — DM aus DB (direktes SELECT), Player aus Store.
+  // Free-Browse — DM from DB (direct SELECT), player from store.
   useEffect(() => {
     if (isPlayer) {
       if (!store) { setBrowseItems([]); return; }
@@ -112,8 +112,8 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
     return () => { cancelled = true; };
   }, [database, store, isPlayer, campaignId, visTick, storeTick]);
 
-  // S19 (#364): DM kann Map ‖ Kampflog als 2-Pane-Split nebeneinander sehen
-  // (In-App, kein OS-Pop-out). Nur DM (der Anwendungsfall aus D21).
+  // S19 (#364): the DM can view Map ‖ Combat log side by side as a 2-pane split
+  // (in-app, no OS pop-out). DM only (the use case from D21).
   const [splitMode, setSplitMode] = useState(false);
 
   const mapPane = (
@@ -152,7 +152,7 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
     </Panel>
   );
 
-  // Player sieht zusätzlich den „Bogen"-Reiter (D13/D14).
+  // The player additionally sees the "Sheet" tab (D13/D14).
   const tabOptions = [
     { id: 'map', label: t('cockpit.tabMap', 'Map') },
     { id: 'combatlog', label: t('cockpit.tabCombatLog', 'Kampflog') },
@@ -170,9 +170,9 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
         <LobbyPanel database={database} campaignId={campaignId} />
       )}
 
-      {/* S17 (#363): DM-Session-Zeit-Control (voranschreiten + absolut setzen).
-          Nur DM; das host-seitige Kalender-Gate hängt am resultierenden
-          Session-Jetzt. */}
+      {/* S17 (#363): DM session-time control (advance + set absolute).
+          DM only; the host-side calendar gate hangs off the resulting
+          session-now. */}
       {role === 'dm' && database !== undefined && campaignId !== '' && (
         <SessionTimeControl database={database} campaignId={campaignId}
           onChanged={() => setVisTick((n) => n + 1)} />
@@ -198,8 +198,8 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
         )}
       </div>
 
-      {/* S19: DM-Split zeigt Map ‖ Kampflog nebeneinander (überschreibt die
-          Tab-Ansicht solange aktiv). */}
+      {/* S19: the DM split shows Map ‖ Combat log side by side (overrides the
+          tab view while active). */}
       {splitMode && role === 'dm' ? (
         <div className="play-cockpit__split">
           <SplitView primary={mapPane} secondary={combatPane} />

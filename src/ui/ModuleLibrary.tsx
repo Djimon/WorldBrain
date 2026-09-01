@@ -1,7 +1,7 @@
-// M13-S07 (#242): Modul-Bibliothek + Per-Session-Toggle UI.
-// Zeigt alle rule_modules, erlaubt Aktivieren/Deaktivieren + Reihenfolge
-// pro (in-place gewählter) Session und rendert Konflikt-Hinweise (S06),
-// Validierungs-Ladefehler (S06) und Diff-Vorschau pro Modul.
+// M13-S07 (#242): Module library + per-session toggle UI.
+// Shows all rule_modules, allows enabling/disabling + ordering
+// per (in-place selected) session and renders conflict hints (S06),
+// validation load errors (S06) and a diff preview per module.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
@@ -17,8 +17,8 @@ import { Button, ListSurface, Panel, Segmented, StatusChip } from './primitives'
 
 export interface ModuleLibraryProps {
   database: DatabaseLike;
-  /** Optional: fixiert die Session (z.B. Play-Cockpit). Sonst zeigt das UI
-   *  einen eigenen Session-Selector — Ad-hoc-Toggle im Edit-Modus. */
+  /** Optional: pins the session (e.g. play cockpit). Otherwise the UI shows
+   *  its own session selector — ad-hoc toggle in edit mode. */
   sessionId?: string;
 }
 
@@ -45,7 +45,7 @@ export function ModuleLibrary({ database, sessionId: fixedSessionId }: ModuleLib
   const [active, setActive] = useState<ActiveOverlay[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Sessions einmalig für den Selector laden.
+  // Load sessions once for the selector.
   useEffect(() => {
     if (fixedSessionId !== undefined) return;
     database.select<SessionRow>('SELECT id, title FROM sessions ORDER BY created_at').then((rows) => {
@@ -99,8 +99,8 @@ export function ModuleLibrary({ database, sessionId: fixedSessionId }: ModuleLib
     }
   }
 
-  // Konflikt-Set aus aktivierten Modulen berechnen — moduleDiff pro Karte, damit
-  // die Bibliothek eine Diff-Vorschau anzeigen kann.
+  // Compute the conflict set from the active modules — moduleDiff per card, so
+  // the library can show a diff preview.
   const activeSummaries: ModuleSummary[] = active.map((a) => ({
     id: a.moduleId,
     overrides: entries
@@ -158,7 +158,7 @@ export function ModuleLibrary({ database, sessionId: fixedSessionId }: ModuleLib
             target: e.target, op: e.op as 'patch' | 'replace' | 'remove', value: null,
           }));
           const diff = moduleDiff({ id: m.id, overrides });
-          // Validierungs-Ladefehler (S06) — pro Modul beim Rendern prüfen.
+          // Validation load errors (S06) — checked per module during render.
           const validationErrors = validateModuleTargets({
             id: m.id, overlays: m.base_system_id, overrides,
           });

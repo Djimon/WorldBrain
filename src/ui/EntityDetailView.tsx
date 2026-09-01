@@ -67,31 +67,31 @@ type EntityDetailViewProps = {
   /** Called after the entity is deleted — the parent owns what happens next
    *  (close an inline panel, clear a list selection, ...). */
   onDeleted?: () => void;
-  /** M14 (#345): Called after every successful `commitEdit()` — Parent kann
-   *  seinen Cache/Refresh-Token bumpen (z.B. Kalender-Refresh nach End-Datum-
-   *  Änderung). Feuert für Event- und Nicht-Event-Zweig. */
+  /** M14 (#345): Called after every successful `commitEdit()` — parent can
+   *  bump its cache/refresh token (e.g. calendar refresh after an end-date
+   *  change). Fires for both the Event and non-Event branch. */
   onSaved?: () => void;
   /** Read-only compact peek: render ONLY the overview tab (no registered extra
    *  tabs, no tab strip, no edit pencil). Used by the graph node-preview so it
    *  can't re-mount its own Graph tab → infinite recursion. The caller pairs it
-   *  with its own jump-to-entity affordance (e.g. the graph's "Öffnen" button). */
+   *  with its own jump-to-entity affordance (e.g. the graph's "Open" button). */
   overviewOnly?: boolean;
-  /** M10-S21 (#365): im Campaign-Kontext gesetzt — dann erscheint der
-   *  Promote-Schalter (Override → Welt-Basis). Bei reinem Welt-Basis-Edit
-   *  ungesetzt → kein Promote (es gibt keinen Override). */
+  /** M10-S21 (#365): set in the campaign context — then the promote switch
+   *  appears (override → world base). For a pure world-base edit it is
+   *  unset → no promote (there is no override). */
   campaignId?: string;
 };
 
 export function EntityDetailView({ entityId, database, onNavigateToEntity, calendar, startInEditMode, onDeleted, onSaved, overviewOnly, campaignId: campaignIdProp }: EntityDetailViewProps) {
-  // M10-S21 (#365, D25-Reconciliation): das Edit-Ziel kommt aus dem aktiven
-  // Campaign-Kontext, NICHT vom Bearbeiten/Spielen-Toggle. Nur wenn der DM im
-  // Play-Modus eine aktive Campaign hat, sind Edits campaign-scoped (Override)
-  // und der Promote-Schalter erreichbar. Sonst = Welt-Basis (kein Override).
+  // M10-S21 (#365, D25 reconciliation): the edit target comes from the active
+  // campaign context, NOT from the edit/play toggle. Only when the DM has an
+  // active campaign in play mode are edits campaign-scoped (override)
+  // and the promote switch reachable. Otherwise = world base (no override).
   const { mode, sessionRole, activeSessionId } = useAppMode();
   const campaignId = campaignIdProp
     ?? (mode === 'play' && sessionRole === 'dm' && activeSessionId !== null ? activeSessionId : undefined);
   const { t } = useTranslation('entity');
-  const readOnly = useReadOnly(); // M10-S23: Player-Modus blendet Edit/Delete aus.
+  const readOnly = useReadOnly(); // M10-S23: player mode hides edit/delete.
   const [activeTab, setActiveTab] = useState('overview');
   const [extraTabs] = useState<TabDefinition[]>(() => [...registeredTabs]);
   const [result, setResult] = useState<EffectiveResult | null>(null);
@@ -179,8 +179,8 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
     setEditTitle(entity.title);
     setEditSummary(entity.summary);
     setEditProps({ ...entity.properties });
-    // M10-S07: editVisibility gilt für ALLE Entity-Typen (VisibilityScopePicker
-    // im Overview-Tab), nicht mehr nur für Events.
+    // M10-S07: editVisibility applies to ALL entity types (VisibilityScopePicker
+    // in the overview tab), no longer only for Events.
     setEditVisibility(entity.visibility);
     if (entity.type === 'Event') {
       setEditStartDay(typeof entity.properties.start_day === 'number' ? entity.properties.start_day : 0);
@@ -203,9 +203,9 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
       await saveEntity(database as DatabaseLike, entityId, { summary: editSummary, visibility: editVisibility });
       onSaved?.();
     } else if (campaignId !== undefined) {
-      // M10-S21: Edit im aktiven DM-Play-Campaign-Kontext → Campaign-Override
-      // (properties), Basis-Welt UNBERÜHRT. Der Promote-Schalter kann den
-      // Override später in die Welt heben.
+      // M10-S21: edit in the active DM-play campaign context → campaign override
+      // (properties), base world UNTOUCHED. The promote switch can later lift
+      // the override into the world.
       await upsertCampaignOverride(database as DatabaseLike, {
         campaignId,
         entityId,
@@ -267,9 +267,9 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
               <div className="entity-detail__field">
                 <EffectEditor database={database as DatabaseLike} eventId={entityId} startDay={editStartDay} calendar={effectiveCalendar} />
               </div>
-              {/* M10-S07: Auch Events bekommen den per-Spieler/Gruppen-Editor
-                  (der base-Scope-Select in EventFormFields deckt nur die 4
-                  Klassik-Scopes ab, hier folgt der additive Layer). */}
+              {/* M10-S07: Events also get the per-player/group editor
+                  (the base-scope select in EventFormFields only covers the 4
+                  classic scopes; the additive layer follows here). */}
               <div className="entity-detail__field">
                 <label className="entity-detail__field-label">{t('field.visibility')}</label>
                 <VisibilityScopePicker
@@ -294,9 +294,9 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
                   />
                 </div>
               )}
-              {/* M10-S07 (#356): base-scope + per-Spieler/Gruppen-Overrides.
-                  Editor bewusst hier für alle nicht-Event-Typen (Events haben
-                  ihr eigenes Sichtbarkeits-Widget in EventFormFields). */}
+              {/* M10-S07 (#356): base-scope + per-player/group overrides.
+                  Editor deliberately here for all non-Event types (Events have
+                  their own visibility widget in EventFormFields). */}
               <div className="entity-detail__field">
                 <label className="entity-detail__field-label">{t('field.visibility')}</label>
                 <VisibilityScopePicker
@@ -443,8 +443,8 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
         ) : overviewOnly || readOnly ? null : (
           <Button variant="ghost" size="icon" className="entity-detail__edit-btn" onClick={startEdit} aria-label={t('edit', { ns: 'common' })} title={t('edit', { ns: 'common' })}>✏️</Button>
         )}
-        {/* M10-S21 (#365): Promote-Schalter nur im Campaign-Kontext + nicht
-            read-only. Hebt den Campaign-Override dieser Entity in die Welt. */}
+        {/* M10-S21 (#365): promote switch only in the campaign context + not
+            read-only. Lifts this entity's campaign override into the world. */}
         {campaignId !== undefined && !overviewOnly && !readOnly && database !== undefined && (
           <PromoteControl database={database} campaignId={campaignId} entityId={entityId} onChanged={onSaved} />
         )}

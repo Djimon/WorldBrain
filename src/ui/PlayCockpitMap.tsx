@@ -1,14 +1,14 @@
-// M10-#386: Play-Cockpit-Map — ersetzt den Map-Tab-Stub durch die echte Karte
-// und schließt den Token-Sync-Loop an.
+// M10-#386: Play cockpit map — replaces the map-tab stub with the real map
+// and hooks up the token-sync loop.
 //
-// Zwei Pfade (D29-Membran):
-// - DM/Host (database): Play-Map-Picker wählt die präsentierte Karte
-//   (persistiert, presented-map-service), MapViewer rendert sie aus der DB;
-//   jeder Token-Drag broadcastet via broadcastMovement über den Transport.
-// - Player (store, DB-LOS): rendert die präsentierte Karte + Tokens
-//   AUSSCHLIESSLICH aus dem transport-gespeisten play-client-store — kein
-//   database-Prop. Eingehende Bewegungs-Deltas landen über applyMovementMessage
-//   im Store und werden hier gerendert.
+// Two paths (D29 membrane):
+// - DM/Host (database): the play-map picker selects the presented map
+//   (persisted, presented-map-service), MapViewer renders it from the DB;
+//   every token drag broadcasts via broadcastMovement over the transport.
+// - Player (store, DB-LESS): renders the presented map + tokens
+//   EXCLUSIVELY from the transport-fed play-client-store — no
+//   database prop. Incoming movement deltas arrive via applyMovementMessage
+//   in the store and are rendered here.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
@@ -25,13 +25,13 @@ import { Button, ListSurface, Panel } from './primitives';
 export interface PlayCockpitMapProps {
   role: 'dm' | 'player';
   campaignId: string;
-  /** DM/Host-Pfad. Für Player NICHT gesetzt (Membran). */
+  /** DM/Host path. NOT set for players (membrane). */
   database?: DatabaseLike;
-  /** Player-Pfad: transport-gespeister Store. */
+  /** Player path: transport-fed store. */
   store?: PlayClientStoreImpl;
-  /** Host-Transport (DM broadcastet) bzw. Player-Transport (Player schickt Intent). */
+  /** Host transport (DM broadcasts) or player transport (player sends intent). */
   transport?: Pick<SessionTransport, 'send'>;
-  /** Player-Pfad: eigene Spieler-ID (Absender des Bewegungs-Intents). */
+  /** Player path: own player ID (sender of the movement intent). */
   playerId?: string;
 }
 
@@ -40,7 +40,7 @@ interface StoreToken { id: string; x: number; y: number }
 export function PlayCockpitMap({ role, campaignId, database, store, transport, playerId }: PlayCockpitMapProps) {
   const { t } = useTranslation('multiplayer');
 
-  // ---- DM/Host-Pfad ------------------------------------------------------
+  // ---- DM/Host path ------------------------------------------------------
   const [maps, setMaps] = useState<MapRow[]>([]);
   const [presentedId, setPresentedId] = useState<string | null>(null);
 
@@ -59,11 +59,11 @@ export function PlayCockpitMap({ role, campaignId, database, store, transport, p
     if (!database) return;
     await setPresentedMapId(database, { campaignId, mapId });
     setPresentedId(mapId);
-    // Neue präsentierte Karte + Tokens an die Spieler pushen.
+    // Push the newly presented map + tokens to the players.
     if (transport) await pushPresentedMapSnapshot({ database, campaignId, transport });
   }
 
-  // ---- Player-Pfad (DB-los) ---------------------------------------------
+  // ---- Player path (DB-less) --------------------------------------------
   const [, setStoreTick] = useState(0);
   useEffect(() => {
     if (role !== 'player' || !store) return;
@@ -94,9 +94,9 @@ export function PlayCockpitMap({ role, campaignId, database, store, transport, p
                 data-x={tk.x} data-y={tk.y}
                 style={{ transform: `translate(${tk.x}px, ${tk.y}px)` }}
                 onPointerDown={(e) => {
-                  // Host-autoritativ: der Player schreibt NICHT lokal, er schickt
-                  // beim Loslassen einen Intent. Ground truth + Broadcast kommen
-                  // vom Host zurück (memory: host-authoritative-token-sync).
+                  // Host-authoritative: the player does NOT write locally, they send
+                  // an intent on release. Ground truth + broadcast come
+                  // back from the host (memory: host-authoritative-token-sync).
                   const stage = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
                   const startX = tk.x; const startY = tk.y;
                   const startClientX = e.clientX; const startClientY = e.clientY;
@@ -105,7 +105,7 @@ export function PlayCockpitMap({ role, campaignId, database, store, transport, p
                     if (transport === undefined || playerId === undefined) return;
                     const nx = Math.round(startX + (ev.clientX - startClientX));
                     const ny = Math.round(startY + (ev.clientY - startClientY));
-                    void stage; // Stage-Rect nur für spätere Clamping-Erweiterung
+                    void stage; // stage rect only for a later clamping extension
                     sendMoveIntent(transport, { campaignId, senderPlayerId: playerId, tokenId: tk.id, x: nx, y: ny });
                   };
                   window.addEventListener('pointerup', onUp);
@@ -118,7 +118,7 @@ export function PlayCockpitMap({ role, campaignId, database, store, transport, p
     );
   }
 
-  // ---- DM-Render ---------------------------------------------------------
+  // ---- DM render ---------------------------------------------------------
   return (
     <div className="play-cockpit-map u-stack u-gap-2">
       <div className="play-cockpit-map__picker u-row u-gap-2" role="group"
@@ -149,7 +149,7 @@ export function PlayCockpitMap({ role, campaignId, database, store, transport, p
           sessionId={campaignId}
           database={database}
           onTokenMoved={(tokenId, x, y) => {
-            // Token-Sync-Loop: Bewegung live an alle broadcasten (D18).
+            // Token-sync loop: broadcast the movement live to everyone (D18).
             if (transport) broadcastMovement({ campaignId, tokenId, x, y }, transport);
           }}
         />

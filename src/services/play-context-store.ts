@@ -1,9 +1,9 @@
-// #390 — gemerkter Play-Kontext (Campaign + Rolle) je Projekt. Erlaubt den
-// schnellen Edit⟷Play-Wechsel: einmal gewählt, betritt „Bearbeiten → Spielen"
-// den Kontext direkt wieder, ohne erneuten „Campaign + Rolle"-Schritt.
+// #390 — remembered play context (campaign + role) per project. Enables the
+// quick edit⟷play switch: once chosen, "Edit → Play" re-enters
+// the context directly, without another "campaign + role" step.
 //
-// Persistenz analog src/theme.ts über localStorage (per-Fenster, überlebt Neustart).
-// AP-006: localStorage/JSON.parse an der Lade-Grenze mit sicherem Fallback.
+// Persistence analogous to src/theme.ts via localStorage (per-window, survives restart).
+// AP-006: localStorage/JSON.parse at the load boundary with a safe fallback.
 export type PlaySessionRole = 'dm' | 'player';
 
 export interface PlayContext {
@@ -13,7 +13,7 @@ export interface PlayContext {
 
 const keyFor = (projectId: string): string => `wbx:playContext:${projectId}`;
 
-/** Gemerkten Play-Kontext des Projekts lesen — `null`, wenn keiner/ungültig. */
+/** Read the project's remembered play context — `null` if none/invalid. */
 export function getPlayContext(projectId: string): PlayContext | null {
   try {
     const raw = localStorage.getItem(keyFor(projectId));
@@ -24,20 +24,20 @@ export function getPlayContext(projectId: string): PlayContext | null {
     }
     return null;
   } catch {
-    return null; // beschädigter Eintrag → wie „kein Kontext"
+    return null; // corrupted entry → treated as "no context"
   }
 }
 
-/** Play-Kontext des Projekts merken (nach Rollen-/Campaign-Wahl). */
+/** Remember the project's play context (after role/campaign choice). */
 export function setPlayContext(projectId: string, ctx: PlayContext): void {
   try {
     localStorage.setItem(keyFor(projectId), JSON.stringify(ctx));
   } catch {
-    /* Speicher nicht verfügbar — nicht kritisch, der Kontext lebt dann nur im State */
+    /* storage unavailable — not critical, the context then lives only in state */
   }
 }
 
-/** Gemerkten Kontext löschen („Session verlassen") → nächster Play-Wechsel fragt wieder. */
+/** Clear the remembered context ("leave session") → the next play switch asks again. */
 export function clearPlayContext(projectId: string): void {
   try {
     localStorage.removeItem(keyFor(projectId));

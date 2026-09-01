@@ -1,11 +1,11 @@
 // Shared theme handling for every window (main + detached soundboard/player
 // WebviewWindows). Each window applies the persisted state to its OWN <html>.
 //
-// M17-S04 (#385): Entkopplung — Erscheinung (dark/light) und Theme (default/teal)
-// sind ZWEI orthogonale Achsen mit getrennten Persistenz-Keys und getrennten
-// DOM-Attributen (Decision 5). Ein Dark/Light-Wechsel ändert NIE das Theme und
-// umgekehrt. Ein Single-Appearance-Theme (z.B. Teal = dark) erzwingt seine
-// Erscheinung; der Dark/Light-Umschalter ist dann wirkungslos.
+// M17-S04 (#385): decoupling — appearance (dark/light) and theme (default/teal)
+// are TWO orthogonal axes with separate persistence keys and separate
+// DOM attributes (Decision 5). A dark/light switch NEVER changes the theme and
+// vice versa. A single-appearance theme (e.g. Teal = dark) forces its
+// appearance; the dark/light toggle then has no effect.
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { getTheme, forcedAppearance, type Appearance, type ShellMode } from './styles/theme-registry';
 import { scanUserThemes } from './services/user-theme-loader';
@@ -14,12 +14,12 @@ const APPEARANCE_KEY = 'appearance';
 const THEME_KEY = 'theme';
 const THEMES_SUBDIR = 'themes';
 
-/** Attribut, in dem der Applier die Namen der aktuell inline gesetzten User-Theme-
- *  Vars merkt — damit ein Theme-Wechsel sie sauber wieder abräumen kann (#388). */
+/** Attribute in which the applier remembers the names of the currently inline-set
+ *  user-theme vars — so a theme switch can cleanly clear them again (#388). */
 const USER_VARS_ATTR = 'data-user-theme-vars';
 
-/** In-window Signal, dass sich Theme/Erscheinung geändert hat (storage feuert nur
- *  in ANDEREN Fenstern; Geschwister-Controls im selben Fenster hören hierauf). */
+/** In-window signal that theme/appearance has changed (storage fires only
+ *  in OTHER windows; sibling controls in the same window listen for this). */
 export const THEME_CHANGE_EVENT = 'wbx:themechange';
 
 export function getStoredAppearance(): Appearance {
@@ -31,39 +31,39 @@ export function getStoredThemeId(): string {
   return localStorage.getItem(THEME_KEY) ?? 'default';
 }
 
-/** Erscheinung als `data-appearance` (light = bare :root-Palette, dark = Override). */
+/** Appearance as `data-appearance` (light = bare :root palette, dark = override). */
 export function applyAppearance(appearance: Appearance): void {
   document.documentElement.setAttribute('data-appearance', appearance);
 }
 
-/** Theme-Name als `data-theme` (Skin-Achse; default = keine Akzent-Overrides). */
+/** Theme name as `data-theme` (skin axis; default = no accent overrides). */
 export function applyThemeId(id: string): void {
   document.documentElement.setAttribute('data-theme', id);
 }
 
-/** Effektive Erscheinung: ein Single-Appearance-Theme erzwingt seine Erscheinung,
- *  ohne die gespeicherte Nutzer-Präferenz zu überschreiben (Entkopplung). */
+/** Effective appearance: a single-appearance theme forces its appearance,
+ *  without overriding the stored user preference (decoupling). */
 export function effectiveAppearance(themeId: string, stored: Appearance): Appearance {
   return forcedAppearance(getTheme(themeId)) ?? stored;
 }
 
-/** #388 — JS-Applier für importierte User-Themes. Liest data-theme/-appearance/
- *  -mode vom documentElement, löst aus der Registry auf (Palette der aktiven
- *  Erscheinung + Accents des aktiven Modus) und setzt ALLE Override-Vars INLINE
- *  auf documentElement. Eingebaute Themes (default/teal) sind CSS-getrieben →
- *  der Applier setzt nichts inline und räumt zuvor gesetzte Vars ab, sodass die
- *  Kaskade wieder greift. Idempotent; bei jedem Theme-/Erscheinungs-/Modus-
- *  Wechsel aufgerufen. */
+/** #388 — JS applier for imported user themes. Reads data-theme/-appearance/
+ *  -mode from documentElement, resolves from the registry (palette of the active
+ *  appearance + accents of the active mode) and sets ALL override vars INLINE
+ *  on documentElement. Built-in themes (default/teal) are CSS-driven →
+ *  the applier sets nothing inline and clears previously set vars, so that the
+ *  cascade takes effect again. Idempotent; called on every theme/appearance/mode
+ *  switch. */
 export function applyThemeVars(): void {
   const el = document.documentElement;
-  // Zuletzt gesetzte Inline-Vars entfernen (Wechsel weg von einem User-Theme).
+  // Remove the last set inline vars (switching away from a user theme).
   const prev = el.getAttribute(USER_VARS_ATTR);
   if (prev) {
     for (const name of prev.split(' ')) if (name) el.style.removeProperty(name);
     el.removeAttribute(USER_VARS_ATTR);
   }
   const theme = getTheme(el.getAttribute('data-theme') ?? getStoredThemeId());
-  if (theme.builtin || !theme.skins) return; // CSS-getrieben → nichts inline
+  if (theme.builtin || !theme.skins) return; // CSS-driven → nothing inline
   const appAttr = el.getAttribute('data-appearance');
   const appearance: Appearance = appAttr === 'light' ? 'light' : 'dark';
   const skin = theme.skins[appearance] ?? theme.skins.dark ?? theme.skins.light;
@@ -75,7 +75,7 @@ export function applyThemeVars(): void {
     el.style.setProperty(name, value);
     applied.push(name);
   }
-  // unified → geteilter Satz (unter 'edit'); per-mode → Satz des aktiven Modus.
+  // unified → shared set (under 'edit'); per-mode → set of the active mode.
   const accents = theme.modeSupport === 'unified' ? skin.tokens.edit : (skin.tokens[mode] ?? skin.tokens.edit);
   if (accents) {
     for (const [name, value] of Object.entries(accents)) {
@@ -90,28 +90,28 @@ function emitChange(): void {
   window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
 }
 
-/** Dark/Light umschalten — ändert NUR die Erscheinung, NIE das Theme. */
+/** Toggle dark/light — changes ONLY the appearance, NEVER the theme. */
 export function setAppearance(appearance: Appearance): void {
   localStorage.setItem(APPEARANCE_KEY, appearance);
   applyAppearance(effectiveAppearance(getStoredThemeId(), appearance));
-  applyThemeVars(); // User-Theme: den Satz der neuen Erscheinung anwenden
+  applyThemeVars(); // user theme: apply the set of the new appearance
   emitChange();
 }
 
-/** Theme wählen — ersetzt den Token-Satz live; die gespeicherte Dark/Light-
- *  Präferenz bleibt erhalten, die effektive Erscheinung wird neu aufgelöst. */
+/** Select a theme — replaces the token set live; the stored dark/light
+ *  preference is retained, the effective appearance is re-resolved. */
 export function setThemeId(id: string): void {
   localStorage.setItem(THEME_KEY, id);
   applyThemeId(id);
   applyAppearance(effectiveAppearance(id, getStoredAppearance()));
-  applyThemeVars(); // User-Theme → inline setzen; Built-in → inline abräumen
+  applyThemeVars(); // user theme → set inline; built-in → clear inline
   emitChange();
 }
 
-/** Den gespeicherten Zustand (Theme + effektive Erscheinung + User-Theme-Vars)
- *  auf dieses Fenster anwenden. Von `initTheme` genutzt und nach dem Startup-Scan
- *  der User-Themes erneut aufgerufen (#388) — dann löst ein zuvor gespeichertes
- *  User-Theme wirklich auf (bei init war es noch nicht registriert). */
+/** Apply the stored state (theme + effective appearance + user-theme vars)
+ *  to this window. Used by `initTheme` and called again after the startup scan
+ *  of the user themes (#388) — then a previously stored
+ *  user theme actually resolves (at init it was not yet registered). */
 export function applyStoredTheme(): void {
   const themeId = getStoredThemeId();
   applyThemeId(themeId);
@@ -120,11 +120,11 @@ export function applyStoredTheme(): void {
 }
 
 /**
- * #393 — importierbare User-Themes für DIESES Fenster registrieren und danach das
- * gespeicherte Theme erneut anwenden. Wird pro Fenster im Bootstrap aufgerufen
- * (main.tsx), damit AUCH abgedockte Fenster (Soundboard/Player) ein aktives
- * User-Theme identisch rendern — jedes Fenster hat seinen eigenen JS-Kontext mit
- * eigener (anfangs leerer) Registry. Ohne Tauri (Test/Browser) ein No-op.
+ * #393 — register importable user themes for THIS window and then apply the
+ * stored theme again. Called per window in the bootstrap
+ * (main.tsx) so that detached windows (soundboard/player) ALSO render an active
+ * user theme identically — each window has its own JS context with
+ * its own (initially empty) registry. Without Tauri (test/browser) a no-op.
  */
 export async function bootstrapUserThemes(): Promise<void> {
   try {
@@ -132,7 +132,7 @@ export async function bootstrapUserThemes(): Promise<void> {
     const scan = await scanUserThemes(themesDir);
     if (scan.registered.length > 0) applyStoredTheme();
   } catch {
-    // kein Tauri / kein appDataDir → nur Built-in-Themes (kein Fehler).
+    // no Tauri / no appDataDir → only built-in themes (no error).
   }
 }
 

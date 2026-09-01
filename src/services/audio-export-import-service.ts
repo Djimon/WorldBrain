@@ -1,12 +1,12 @@
-// M15-S21 (#311): Audio-Soundboard Export/Import — komplette Board-
-// Konfiguration (Szenen/Kanäle/Clips) als JSON teilbar.
+// M15-S21 (#311): Audio soundboard export/import — complete board
+// configuration (scenes/channels/clips) shareable as JSON.
 //
-// Design entschieden (Interview 2026-07-22):
-// D-A Lokale Dateien = nur Referenz, Re-Link beim Import. Kein Datei-Bündeln.
-// D-B Kollision beim Import = immer additiv ("Name (2)", "Name (3)", ...).
-//     Kein Merge, kein Überschreiben.
-// D-C Schema-Version im Export-Root (schema_version), unbekannte Version
-//     beim Import -> klare Fehlermeldung (gerenderte UI, kein Browser-Dialog).
+// Design decided (interview 2026-07-22):
+// D-A Local files = reference only, re-link on import. No file bundling.
+// D-B Collision on import = always additive ("Name (2)", "Name (3)", ...).
+//     No merge, no overwrite.
+// D-C Schema version in the export root (schema_version); unknown version
+//     on import -> clear error message (rendered UI, no browser dialog).
 import type { DatabaseLike } from './entity-service';
 import {
   createChannel, createPreset, createScene, listChannels, listPresets, listScenes, updateChannelMixer,
@@ -15,8 +15,8 @@ import type { ChannelMode, SourceType, TransitionType } from './audio-service';
 
 export const AUDIO_EXPORT_SCHEMA_VERSION = 1;
 
-// Reine Referenz auf Datenmodell-Felder aus audio-service.ts — keine ids,
-// kein created_at (neue ids werden beim Import vergeben).
+// Pure reference to data-model fields from audio-service.ts — no ids,
+// no created_at (new ids are assigned on import).
 export interface AudioExportClip {
   order_index: number;
   source_type: SourceType;
@@ -54,8 +54,8 @@ export interface AudioExportFile {
   scenes: AudioExportScene[];
 }
 
-// AC 2: liest die ausgewählten Szenen vollständig (listScene je Szene) und
-// baut die exportierbare, id-freie Repräsentation.
+// AC 2: reads the selected scenes in full (listScene per scene) and
+// builds the exportable, id-free representation.
 export async function exportScenesToJson(db: DatabaseLike, sceneIds: string[]): Promise<AudioExportFile> {
   const wanted = new Set(sceneIds);
   const allScenes = await listScenes(db);
@@ -105,10 +105,10 @@ export interface AudioImportResult {
   unlinkedFiles: AudioImportUnlinkedFile[];
 }
 
-// Geworfen bei kaputtem/fremdem JSON (kein Objekt, unbekannte
-// schema_version, `scenes` fehlt/kein Array) — AC 7 verlangt eine klare,
-// gerenderte Fehlermeldung statt eines Browser-Dialogs; dieser Fehlertyp
-// ist der Kontrakt, den die UI-Schicht abfängt und rendert.
+// Thrown on broken/foreign JSON (not an object, unknown
+// schema_version, `scenes` missing/not an array) — AC 7 requires a clear,
+// rendered error message instead of a browser dialog; this error type
+// is the contract that the UI layer catches and renders.
 export class InvalidAudioExportError extends Error {}
 
 function uniqueSceneName(name: string, taken: Set<string>): string {
@@ -118,9 +118,9 @@ function uniqueSceneName(name: string, taken: Set<string>): string {
   return `${name} (${n})`;
 }
 
-// AC 3/5/6: validiert grob, persistiert additiv (D-B: Namenskollision ->
-// " (2)", " (3)", ... statt Merge/Überschreiben), markiert fehlende lokale
-// Dateien als "nicht verknüpft" (D-A) statt den Import abzubrechen.
+// AC 3/5/6: validates roughly, persists additively (D-B: name collision ->
+// " (2)", " (3)", ... instead of merge/overwrite), marks missing local
+// files as "not linked" (D-A) instead of aborting the import.
 export async function importAudioBoardFromJson(db: DatabaseLike, data: unknown): Promise<AudioImportResult> {
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
     throw new InvalidAudioExportError('Invalid audio export: payload must be a JSON object');
@@ -169,9 +169,9 @@ export async function importAudioBoardFromJson(db: DatabaseLike, data: unknown):
           color: clip.color ?? undefined,
           loop: clip.loop,
         });
-        // D-A: lokale Datei-Referenzen werden vom DM neu verknüpft, nie
-        // gebündelt — jeder file-Clip wird gemeldet, damit die UI ihn
-        // markieren kann.
+        // D-A: local file references are re-linked by the DM, never
+        // bundled — every file clip is reported so the UI can mark
+        // it.
         if (clip.source_type === 'file') {
           unlinkedFiles.push({ clipLabel: clip.label, sourceRef: clip.source_ref });
         }

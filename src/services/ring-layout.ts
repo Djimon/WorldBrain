@@ -1,18 +1,18 @@
-// M16-S05 (#290): Ring/Disc-Modus — deterministische Radial-Anordnung.
-// Reine Layout-Logik (Positionen), kein three.js/GPU, kein eigener Renderer
-// (D12: derselbe GraphCanvas wie S03, nur eine andere Layout-Config-Prop mit
-// fixen Positionen statt laufender Force).
+// M16-S05 (#290): Ring/disc mode — deterministic radial arrangement.
+// Pure layout logic (positions), no three.js/GPU, no own renderer
+// (D12: the same GraphCanvas as S03, just a different layout-config prop with
+// fixed positions instead of a running force).
 //
 // Design: planning/research/graph-ring-disc-design.md
-//   - Areas = Entity-Typ, ein GEFÜLLTER Keil (Kreissektor) je Typ.
-//   - Sektor-Winkel proportional zur Knotenzahl (Summe 360°).
-//   - Sektor-Reihenfolge per Berührungs-Seriation (stark verbundene Typen
-//     benachbart), deterministisch.
-//   - Innerhalb Keil: force-Blob je Typ (intra-typ Kanten -> verbundene Knoten
-//     klumpen), dann Bounding-Box-normalisiert und flächendeckend in den Keil
-//     gemappt (Winkel x flächengleicher Radius). Fläche wird gefüllt, nicht der
-//     Rand -- Nachbarschaft aus dem Blob bleibt erhalten.
-//   - Kein degree-Radius. Einmal berechnet -> fixe Positionen.
+//   - Areas = entity type, one FILLED wedge (circle sector) per type.
+//   - Sector angle proportional to the node count (sum 360°).
+//   - Sector order by touch seriation (strongly connected types
+//     adjacent), deterministic.
+//   - Within a wedge: force blob per type (intra-type edges -> connected nodes
+//     clump), then bounding-box-normalized and mapped area-covering into the wedge
+//     (angle x equal-area radius). The area is filled, not the
+//     edge -- adjacency from the blob is preserved.
+//   - No degree radius. Computed once -> fixed positions.
 import { forceLink, forceManyBody, forceSimulation } from 'd3-force';
 import type { SimulationLinkDatum, SimulationNodeDatum } from 'd3-force';
 import type { GraphLink, GraphNode } from './graph-model';

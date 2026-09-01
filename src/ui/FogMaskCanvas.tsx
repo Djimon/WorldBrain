@@ -1,4 +1,4 @@
-// M15-S04: Fog-Layer & Paint-Tools — Paint-Oberfläche (#276)
+// M15-S04: Fog-Layer & Paint-Tools — paint surface (#276)
 // Renders the fog mask as a <canvas> overlay in the map's CSS-transform
 // container, above image layers. Paints via pointer down/move/up in map
 // coordinates (PaintInteractionLayer's existing pattern), NOT Leaflet.

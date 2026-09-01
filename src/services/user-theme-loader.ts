@@ -1,10 +1,10 @@
-// #388 — Importierbare User-Themes. Scannt <appDataDir>/themes/*.json, validiert
-// jede Datei gegen das Story-Format und registriert valide Themes in der Registry
-// (theme-registry.ts). Invalide Dateien werden übersprungen (Grund geloggt), die
-// übrigen laden weiter. Muster analog src/services/plugin-loader.ts.
+// #388 — Importable user themes. Scans <appDataDir>/themes/*.json, validates
+// each file against the story format and registers valid themes in the registry
+// (theme-registry.ts). Invalid files are skipped (reason logged), the
+// rest keep loading. Pattern analogous to src/services/plugin-loader.ts.
 //
-// Nur FARBEN sind themebar: palette-Overrides (--color-*) + fünf Mode-Accents.
-// Geometrie (Radien/Spacing/Schatten-Pixel) ist NICHT themebar.
+// Only COLORS are themeable: palette overrides (--color-*) + five mode accents.
+// Geometry (radii/spacing/shadow pixels) is NOT themeable.
 import { readDir, readTextFile } from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
 import {
@@ -12,7 +12,7 @@ import {
   type ThemeDef, type AccentTokens, type AppearanceSkin, type Appearance, type ShellMode,
 } from '../styles/theme-registry';
 
-// ── Datei-Format (DTO) ──────────────────────────────────────────────────────
+// ── File format (DTO) ──────────────────────────────────────────────────────
 interface AccentSetDto { accent: string; hover: string; on: string; text: string; soft: string; }
 interface BlockDto { palette?: Record<string, unknown>; accents?: unknown; }
 interface UserThemeDto {
@@ -25,18 +25,18 @@ export type ValidationResult =
   | { ok: false; reason: string };
 
 const ID_RE = /^[a-z0-9-]+$/;
-// #392: Farbwerte, die keine reinen Farbliterale sind, ablehnen — verhindert,
-// dass ein Fremd-Theme via `url(...)` einen ausgehenden Request (Tracking/Exfil-
-// Beacon) in die CSS-Kaskade schmuggelt, oder via `;`/`@import`/Kommentar aus der
-// Deklaration ausbricht. Kein Script (kein XSS), aber ein Netzwerk-Side-Effect.
+// #392: Reject color values that are not pure color literals — prevents
+// a foreign theme from smuggling an outgoing request (tracking/exfil
+// beacon) into the CSS cascade via `url(...)`, or from breaking out of the
+// declaration via `;`/`@import`/comment. No script (no XSS), but a network side effect.
 const UNSAFE_VALUE_RE = /url\(|expression\(|@import|;|\/\*/i;
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 const isStr = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
-/** Nicht-leerer String, der wie ein Farbliteral aussieht (kein url()/;/@import/…). */
+/** Non-empty string that looks like a color literal (no url()/;/@import/…). */
 const isSafeColorValue = (v: unknown): v is string => isStr(v) && !UNSAFE_VALUE_RE.test(v);
 
-/** Ein Accent-Satz muss alle fünf Felder als sichere Farbliterale tragen. */
+/** An accent set must carry all five fields as safe color literals. */
 function validAccentSet(v: unknown): v is AccentSetDto {
   return isObj(v)
     && isSafeColorValue(v.accent) && isSafeColorValue(v.hover) && isSafeColorValue(v.on)
@@ -53,14 +53,14 @@ function accentSetToTokens(dto: AccentSetDto): AccentTokens {
   };
 }
 
-/** Validiert einen Erscheinungs-Block und mappt ihn auf einen AppearanceSkin.
- *  Rückgabe: Skin oder eine Fehlerbegründung. */
+/** Validates an appearance block and maps it to an AppearanceSkin.
+ *  Returns: skin or an error reason. */
 function validateBlock(block: unknown, modeSupport: 'unified' | 'per-mode', where: string):
   { skin: AppearanceSkin } | { reason: string } {
   if (!isObj(block)) return { reason: `block '${where}' missing or not an object` };
   const b = block as BlockDto;
 
-  // palette (optional): nur bekannte --color-*-Namen, Werte als Strings.
+  // palette (optional): only known --color-* names, values as strings.
   let palette: Record<string, string> | undefined;
   if (b.palette !== undefined) {
     if (!isObj(b.palette)) return { reason: `'${where}.palette' is not an object` };
@@ -72,7 +72,7 @@ function validateBlock(block: unknown, modeSupport: 'unified' | 'per-mode', wher
     }
   }
 
-  // accents (Pflicht): per-mode → {edit,play}; unified → flacher Satz.
+  // accents (required): per-mode → {edit,play}; unified → flat set.
   const accents = b.accents;
   let tokens: Partial<Record<ShellMode, AccentTokens>>;
   if (modeSupport === 'per-mode') {
@@ -83,15 +83,15 @@ function validateBlock(block: unknown, modeSupport: 'unified' | 'per-mode', wher
     tokens = { edit: accentSetToTokens(a.edit), play: accentSetToTokens(a.play) };
   } else {
     if (!validAccentSet(accents)) return { reason: `'${where}.accents' incomplete (need accent/hover/on/text/soft)` };
-    tokens = { edit: accentSetToTokens(accents) }; // unified: geteilter Satz unter 'edit'
+    tokens = { edit: accentSetToTokens(accents) }; // unified: shared set under 'edit'
   }
 
   return { skin: palette ? { palette, tokens } : { tokens } };
 }
 
 /**
- * Validiert ein rohes User-Theme-Objekt gegen das Story-Format und mappt es auf
- * eine Runtime-`ThemeDef`. DTO-Validierung geschieht VOR der Konvertierung.
+ * Validates a raw user-theme object against the story format and maps it to
+ * a runtime `ThemeDef`. DTO validation happens BEFORE the conversion.
  */
 export function validateUserTheme(raw: unknown): ValidationResult {
   if (!isObj(raw)) return { ok: false, reason: 'not a JSON object' };
@@ -108,7 +108,7 @@ export function validateUserTheme(raw: unknown): ValidationResult {
   const appearance = dto.appearance;
   const modeSupport = dto.modeSupport;
 
-  // Welche Erscheinungs-Blöcke sind erforderlich?
+  // Which appearance blocks are required?
   const required: Appearance[] = appearance === 'both' ? ['dark', 'light'] : [appearance];
   const skins: Partial<Record<Appearance, AppearanceSkin>> = {};
   for (const app of required) {
@@ -117,7 +117,7 @@ export function validateUserTheme(raw: unknown): ValidationResult {
     skins[app] = res.skin;
   }
 
-  // Top-Level tokens (Vorschau/Parität): der primäre Skin (dark bevorzugt).
+  // Top-level tokens (preview/parity): the primary skin (dark preferred).
   const primary = skins.dark ?? skins.light;
 
   const def: ThemeDef = {
@@ -132,13 +132,13 @@ export function validateUserTheme(raw: unknown): ValidationResult {
   return { ok: true, def };
 }
 
-/** Bequem für Tests / Datei-Laden: JSON-String parsen + validieren. */
+/** Convenient for tests / file loading: parse + validate a JSON string. */
 export function parseUserTheme(text: string): ValidationResult {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
   } catch {
-    // AP-006: JSON.parse an der Lade-Grenze — strukturierter Fallback.
+    // AP-006: JSON.parse at the load boundary — structured fallback.
     return { ok: false, reason: 'invalid JSON' };
   }
   return validateUserTheme(raw);
@@ -150,16 +150,16 @@ export interface ScanResult {
 }
 
 /**
- * Scannt <themesDir>/*.json, validiert und registriert valide User-Themes.
- * Fehlender/leerer Ordner → leeres Ergebnis (kein Fehler). Invalide Datei oder
- * Kollision mit einer eingebauten ID → übersprungen (Grund geloggt).
+ * Scans <themesDir>/*.json, validates and registers valid user themes.
+ * Missing/empty folder → empty result (no error). Invalid file or
+ * collision with a built-in ID → skipped (reason logged).
  */
 export async function scanUserThemes(themesDir: string): Promise<ScanResult> {
   const registered: string[] = [];
   const skipped: { file: string; reason: string }[] = [];
-  // #396: doppelte User-IDs innerhalb eines Scans dürfen sich nicht still
-  // überschreiben (last-wins). Erste gewinnt (Dateien sind sortiert), weitere
-  // werden übersprungen + geloggt — konsistent mit skip-on-invalid.
+  // #396: duplicate user IDs within a scan must not silently
+  // overwrite each other (last-wins). The first wins (files are sorted), further
+  // ones are skipped + logged — consistent with skip-on-invalid.
   const seenIds = new Set<string>();
 
   let files: string[];
@@ -169,7 +169,7 @@ export async function scanUserThemes(themesDir: string): Promise<ScanResult> {
       .map((d) => d.name)
       .sort();
   } catch {
-    // AP-006: themes-Ordner fehlt oder ist unlesbar — leeres Ergebnis.
+    // AP-006: themes folder is missing or unreadable — empty result.
     return { registered, skipped };
   }
 
@@ -179,7 +179,7 @@ export async function scanUserThemes(themesDir: string): Promise<ScanResult> {
     try {
       text = await readTextFile(path);
     } catch {
-      // AP-006: Datei unlesbar — überspringen, andere weiterladen.
+      // AP-006: file unreadable — skip, keep loading the others.
       skipped.push({ file, reason: 'unreadable' });
       console.warn(`[user-theme] ${file}: unreadable — skipped`);
       continue;

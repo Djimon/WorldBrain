@@ -1,10 +1,10 @@
-// M10-S12 (#368): Trystero + Nostr — Default-Strategie (Spike #380 primär).
-// v0.25 API: makeAction gibt Objekt (nicht Tuple), onPeerJoin ist Property.
+// M10-S12 (#368): Trystero + Nostr — default strategy (Spike #380 primary).
+// v0.25 API: makeAction returns an object (not a tuple), onPeerJoin is a property.
 import type { Room, joinRoom as JoinRoomFn, JsonValue, MessageAction } from '@trystero-p2p/nostr';
 import type { AdapterFactory, AdapterHandle } from './types';
 
 // Trystero DataPayload = JsonValue | Blob | ArrayBuffer | ArrayBufferView.
-// Für Signaling reicht JSON — enger Typ, tsc-sauber.
+// JSON is enough for signaling — narrow type, tsc-clean.
 type JsonPayload = JsonValue;
 
 export const nostrAdapter: AdapterFactory = async (opts) => {
@@ -16,10 +16,10 @@ export async function joinTrystero(
   joinRoom: typeof JoinRoomFn,
   opts: Parameters<AdapterFactory>[0],
 ): Promise<AdapterHandle> {
-  // joinRoom passiert asynchron via queueMicrotask — factory() liefert sofort
-  // ein Handle. So ist der Adapter test-freundlich (Registry-Test in Node ohne
-  // RTCPeerConnection), und echte Broker-Fehler landen als opts.onError statt
-  // als Factory-Throw. Sends vor dem tatsächlichen Join werden gepuffert.
+  // joinRoom happens asynchronously via queueMicrotask — factory() returns
+  // a handle immediately. This makes the adapter test-friendly (registry test in Node without
+  // RTCPeerConnection), and real broker errors land as opts.onError instead
+  // of a factory throw. Sends before the actual join are buffered.
   let room: Room | null = null;
   let action: MessageAction<JsonPayload> | null = null;
   const queued: JsonPayload[] = [];

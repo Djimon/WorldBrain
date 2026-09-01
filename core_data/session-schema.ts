@@ -49,7 +49,7 @@ export function applySessionSchema(db: Db): void {
     )
   `);
 
-  // M13-S01: rule_modules — benannte, teilbare Overlays.
+  // M13-S01: rule_modules — named, shareable overlays.
   db.exec(`
     CREATE TABLE IF NOT EXISTS rule_modules (
       id TEXT PRIMARY KEY,
@@ -79,9 +79,9 @@ export function applySessionSchema(db: Db): void {
     )
   `);
 
-  // M13-S04 (#239): pro Session aktivierte House-Rule-Overlay-Module.
-  // Reihenfolge über display_order (kleinstes zuerst); enabled = 0 pausiert
-  // ein Modul, ohne den Eintrag zu verlieren.
+  // M13-S04 (#239): house-rule overlay modules activated per session.
+  // Ordering via display_order (smallest first); enabled = 0 pauses
+  // a module without losing the entry.
   db.exec(`
     CREATE TABLE IF NOT EXISTS session_active_overlays (
       session_id TEXT NOT NULL,

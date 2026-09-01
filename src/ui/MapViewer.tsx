@@ -56,8 +56,8 @@ interface Props {
   moveLayerId?: string | null;
   /** Opens the Tauri file dialog, copies the image, returns the token art asset id. */
   onPickTokenArt?: () => Promise<string | null>;
-  /** M10-#386: nach jedem Token-Drag (committed) — der Play-Cockpit hängt hier
-   *  broadcastMovement(→ Transport) dran, damit die Bewegung live an alle geht. */
+  /** M10-#386: after every token drag (committed) — the play cockpit hooks
+   *  broadcastMovement(→ Transport) in here, so the movement goes live to everyone. */
   onTokenMoved?: (tokenId: string, x: number, y: number) => void;
 }
 
@@ -185,7 +185,7 @@ function RadiusOverlay({
 
 export function MapViewer({ mapId, sessionId = 'default', database, showCoordinates, onNavigateToEntity, editFogLayerId = null, reloadKey = 0, onLayersChanged, moveLayerId = null, onPickTokenArt, onTokenMoved }: Props) {
   const { t } = useTranslation('map');
-  const readOnly = useReadOnly(); // M10-S23: Player-Modus blendet Marker/Token-Edit-Affordances aus.
+  const readOnly = useReadOnly(); // M10-S23: player mode hides marker/token edit affordances.
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [imageLayers, setImageLayers] = useState<MapLayerRow[]>([]);
   const [fogLayers, setFogLayers] = useState<MapLayerRow[]>([]);
@@ -237,7 +237,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
   const [pinFlyout, setPinFlyout] = useState(false);
   const [pinFlyoutPos, setPinFlyoutPos] = useState<{ top: number; left: number } | null>(null);
   // Icon the NEXT placed pin gets — picked from the pin-tool flyout (same
-  // grid as "Pin bearbeiten"); persists across placements.
+  // grid as "Edit pin"); persists across placements.
   const [newPinIcon, setNewPinIcon] = useState<PinIconKey>('pin');
   const pinGroupRef = useRef<HTMLDivElement>(null);
 
@@ -485,7 +485,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     const nx = Math.round(p.x + dx);
     const ny = Math.round(p.y + dy);
     moveToken(database, id, nx, ny).then(reloadTokens).catch(console.error);
-    // M10-#386: Live-Broadcast der Bewegung (Play-Cockpit hängt sich hier ein).
+    // M10-#386: live broadcast of the movement (play cockpit hooks in here).
     onTokenMoved?.(id, nx, ny);
   }
 
@@ -494,7 +494,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     if (suppressTokenClick.current) { suppressTokenClick.current = false; return; }
     if (mode !== 'navigate') return;
     setSelectedTokenId(token.id);
-    // M10-S23 / D14: Player kein Token-Editor; Selektion + Drag (D18) bleibt.
+    // M10-S23 / D14: player gets no token editor; selection + drag (D18) stays.
     if (!readOnly) setEditingToken(token);
   }
 
@@ -622,7 +622,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
     e.stopPropagation();
     if (mode === 'grid') return;
     if (mode === 'move-pin') return; // move-pin handled by map click
-    if (readOnly) return; // M10-S23: Player sieht Pin-Details später als Peek (S09), kein Editor.
+    if (readOnly) return; // M10-S23: player sees pin details later as a peek (S09), no editor.
     const geo = parsePinGeometry(m.geometry_json);
     setEditingPin(m);
     setEditLabel(m.label_text ?? '');
@@ -772,13 +772,13 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
 
   return (
     <div className="map-viewer__body">
-      {/* Left toolbar — im Player-Modus (readOnly) nur Navigation, keine Edit-Tools (M10-S23) */}
+      {/* Left toolbar — in player mode (readOnly) navigation only, no edit tools (M10-S23) */}
       <div className="map-toolbar">
         <div className="map-toolbar__group">
           <Button size="icon" aria-pressed={mode === 'navigate'} onClick={() => setMode('navigate')} title={t('all', { ns: 'common' })}>🗺</Button>
           {!readOnly && (<>
           {/* Pin tool group — flyout with the pin-icon grid (reuses .pin-icon-picker
-              from "Pin bearbeiten"), pre-selects the icon for the next placed pin. */}
+              from "Edit pin"), pre-selects the icon for the next placed pin. */}
           <div className="map-tool-group" ref={pinGroupRef}>
             <Button
               size="icon"
@@ -856,7 +856,7 @@ export function MapViewer({ mapId, sessionId = 'default', database, showCoordina
             )}
           </div>
           </>)}
-          {/* Measure tool group — auch für Player OK (nur Anzeige, kein Welt-State) */}
+          {/* Measure tool group — OK for players too (display only, no world state) */}
           <div className="map-tool-group" ref={measureGroupRef}>
             <Button
               size="icon"

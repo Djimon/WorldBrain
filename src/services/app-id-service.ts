@@ -1,30 +1,30 @@
-// M10-S11 (#367): appId-Ableitung für den Signaling-Broker-Namespace.
+// M10-S11 (#367): appId derivation for the signaling-broker namespace.
 //
-// Formel (Spike #380 + Memory `signaling-namespace-design`):
+// Formula (Spike #380 + Memory `signaling-namespace-design`):
 //   appId = sha256(appName + '\n' + majorMinor + '\n' + hostSecret) → hex(16)
 //
-// - `appName` = feste Konstante ("WorldBuilderX"), Rebrand = neuer Namespace.
-// - `majorMinor` = z.B. "0.9" aus package.json, Minor-Bump = neuer Namespace.
-// - `hostSecret` = einmal generierter Zufalls-Secret, persistiert.
+// - `appName` = fixed constant ("WorldBuilderX"), rebrand = new namespace.
+// - `majorMinor` = e.g. "0.9" from package.json, minor bump = new namespace.
+// - `hostSecret` = randomly generated secret, generated once and persisted.
 //
-// Warum überhaupt: öffentliche Nostr/BitTorrent-Relays sind für alle sichtbar;
-// ohne unerratbaren Per-Host-Namespace könnte ein Fremder den Campaign-Namen
-// raten und den Broker-Raum mitlesen. Der Secret macht den Namespace opak.
+// Why at all: public Nostr/BitTorrent relays are visible to everyone;
+// without an unguessable per-host namespace a stranger could guess the campaign
+// name and eavesdrop on the broker room. The secret makes the namespace opaque.
 //
-// Der Secret wird ausschließlich über `getHostSecret()` bezogen (Provider),
-// damit V2 (mit Accounts) den Secret account-gehasht liefern kann → gleiche
-// appId nach Hardware-Wechsel, alte Invites gelten weiter.
+// The secret is obtained exclusively via `getHostSecret()` (provider), so that
+// V2 (with accounts) can deliver the secret account-hashed → same
+// appId after a hardware change, old invites remain valid.
 
 const STORAGE_KEY = 'wbrain.host-secret';
 const APP_NAME = 'WorldBuilderX';
 
 /**
- * Konzeptionelle Major-Minor-Version der App für den Broker-Namespace.
- * BEWUSST NICHT aus package.json abgeleitet: `package.json.version` (0.0.x)
- * ist der Build-Zähler und wird bei jedem Release inkrementiert — würde
- * darauf gehasht, wäre nach jedem Patch der Namespace neu und alle alten
- * Einladungen tot. Diese Konstante wird nur bei bewussten Namespace-Cuts
- * (inkompatible Netzwerk-Version) angefasst, nicht per Release-Automation.
+ * Conceptual major-minor version of the app for the broker namespace.
+ * DELIBERATELY NOT derived from package.json: `package.json.version` (0.0.x)
+ * is the build counter and is incremented on every release — if we hashed
+ * on it, the namespace would be new after every patch and all old
+ * invitations would be dead. This constant is only touched on deliberate
+ * namespace cuts (incompatible network version), not by release automation.
  */
 export const APP_MAJOR_MINOR = '0.9';
 
@@ -35,9 +35,9 @@ export interface DeriveAppIdOpts {
 }
 
 /**
- * Deterministisch aus (appName, majorMinor, hostSecret) einen 16-hex-Zeichen
- * Namespace ableiten. Gleiche Inputs → gleicher Output. Verschiedene
- * hostSecrets → verschiedene Outputs.
+ * Deterministically derive a 16-hex-character namespace from
+ * (appName, majorMinor, hostSecret). Same inputs → same output. Different
+ * hostSecrets → different outputs.
  */
 export async function deriveAppId(opts: DeriveAppIdOpts): Promise<string> {
   const input = `${opts.appName}\n${opts.majorMinor}\n${opts.hostSecret}`;
@@ -46,15 +46,15 @@ export async function deriveAppId(opts: DeriveAppIdOpts): Promise<string> {
   const hex = Array.from(new Uint8Array(hashBuf))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
-  // 16 Zeichen (64 Bit) reichen kollisions-sicher fürs Namespacing und halten
-  // den Invite-Link kurz.
+  // 16 characters (64 bit) are collision-safe enough for namespacing and keep
+  // the invite link short.
   return hex.slice(0, 16);
 }
 
 /**
- * Host-Secret-Provider — V1: read-or-generate aus localStorage. V2 wird ihn
- * per Account liefern (siehe Memory). Aufrufer nutzen ausschließlich diese
- * Funktion, nie den Storage direkt.
+ * Host-secret provider — V1: read-or-generate from localStorage. V2 will
+ * deliver it per account (see Memory). Callers use exclusively this
+ * function, never the storage directly.
  */
 export async function getHostSecret(): Promise<string> {
   const existing = readStoredSecret();
@@ -81,11 +81,11 @@ function generateSecret(): string {
 }
 
 /**
- * Convenience: für den aktuellen Host die appId mit den kanonischen
- * Konstanten (APP_NAME + APP_MAJOR_MINOR) + persistiertem Host-Secret
- * ableiten. Diese Funktion ist die EINZIGE Stelle wo Aufrufer die appId
- * bekommen sollen — kein manuelles majorMinor-Übergeben mehr (verhindert
- * Desync zwischen Aufruferstellen).
+ * Convenience: derive the appId for the current host from the canonical
+ * constants (APP_NAME + APP_MAJOR_MINOR) + persisted host secret.
+ * This function is the ONLY place where callers should get the appId
+ * — no more manual majorMinor passing (prevents desync between call
+ * sites).
  */
 export async function currentAppId(): Promise<string> {
   const secret = await getHostSecret();

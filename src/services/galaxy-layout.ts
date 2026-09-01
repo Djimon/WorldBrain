@@ -1,8 +1,8 @@
-// M16-S04 (#318): Galaxy-Modus — Cluster-nach-Typ-Kraft in der d3-force-Sim.
-// Reine Layout-Logik (Positionen), kein Pixi/GPU, kein eigener Renderer
-// (D12: derselbe GraphCanvas wie S03, nur eine andere Layout-Config-Prop).
-// Bestehende Kräfte (forceManyBody/charge, forceLink, forceCenter) bleiben;
-// die Cluster-Kraft kommt additiv dazu.
+// M16-S04 (#318): galaxy mode — cluster-by-type force in the d3-force sim.
+// Pure layout logic (positions), no Pixi/GPU, no dedicated renderer
+// (D12: the same GraphCanvas as S03, just a different layout-config prop).
+// Existing forces (forceManyBody/charge, forceLink, forceCenter) remain;
+// the cluster force is added on top.
 import { forceCenter, forceLink, forceManyBody, forceSimulation } from 'd3-force';
 import type { SimulationLinkDatum, SimulationNodeDatum } from 'd3-force';
 import {

@@ -1,5 +1,5 @@
-// M14-S03: Geklemmtes Datums-Widget CalendarDateInput (#258)
-// Reusable y/m/d input for Event- and Ära-date. Month/day definition comes
+// M14-S03: Clamped date widget CalendarDateInput (#258)
+// Reusable y/m/d input for Event- and era-date. Month/day definition comes
 // entirely from the `months` prop — no hard 12-month/length assumption.
 // Only the year is signed/unbounded (Decision 4); day/month always clamp.
 

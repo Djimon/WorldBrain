@@ -1,13 +1,13 @@
-// M10-S21 (#365, D23): Campaign-Override-Default + reversibler Promote.
+// M10-S21 (#365, D23): campaign-override default + reversible promote.
 //
-// Editiert der DM in einer Campaign, landet die Änderung als Override
-// (`campaign_entity_overrides.patch_json`) — die Basis-Welt (`base_entities`)
-// bleibt unberührt. Die effektive Sicht = Welt + Override.
+// When the DM edits within a campaign, the change lands as an override
+// (`campaign_entity_overrides.patch_json`) — the base world (`base_entities`)
+// stays untouched. The effective view = world + override.
 //
-// Promote hebt den GANZEN Entity-Override in die Welt-Basis (opt-in, ein Klick).
-// REVERSIBEL: der Override wird NICHT gelöscht (bleibt nachvollziehbar), und
-// der vorherige Welt-Zustand wird in `pre_promote_json` gesnapshottet, sodass
-// `unpromoteOverride` ihn zurücksetzt.
+// Promote lifts the WHOLE entity override into the world base (opt-in, one click).
+// REVERSIBLE: the override is NOT deleted (remains traceable), and
+// the previous world state is snapshotted into `pre_promote_json`, so that
+// `unpromoteOverride` restores it.
 import type { DatabaseLike } from './entity-service';
 
 export interface EffectiveEntity {
@@ -16,8 +16,8 @@ export interface EffectiveEntity {
 }
 
 /**
- * Editieren in einer Campaign = Override schreiben (upsert), Basis-Welt bleibt
- * unberührt. campaign-scoped über den UNIQUE-Index (campaign_id, entity_id).
+ * Editing within a campaign = write override (upsert), base world stays
+ * untouched. Campaign-scoped via the UNIQUE index (campaign_id, entity_id).
  */
 export async function upsertCampaignOverride(
   db: DatabaseLike,
@@ -34,8 +34,8 @@ export async function upsertCampaignOverride(
 }
 
 /**
- * Effektive Sicht für eine Campaign = Basis-Properties überlagert mit dem
- * Override-Patch. Kein Override → reine Basis.
+ * Effective view for a campaign = base properties overlaid with the
+ * override patch. No override → pure base.
  */
 export async function getEffectiveForCampaign(
   db: DatabaseLike,
@@ -59,9 +59,9 @@ export async function getEffectiveForCampaign(
 }
 
 /**
- * Promote: den GANZEN Override in die Welt-Basis schreiben (danach für alle
- * Campaigns sichtbar). REVERSIBEL — der vorherige Basis-Zustand wird in
- * pre_promote_json gesnapshottet und der Override bleibt erhalten.
+ * Promote: write the WHOLE override into the world base (visible to all
+ * campaigns afterwards). REVERSIBLE — the previous base state is
+ * snapshotted into pre_promote_json and the override is preserved.
  */
 export async function promoteOverride(
   db: DatabaseLike,
@@ -88,7 +88,7 @@ export async function promoteOverride(
     `UPDATE base_entities SET properties_json = ?, updated_at = ? WHERE id = ?`,
     [JSON.stringify(merged), now, params.entityId],
   );
-  // Override NICHT löschen — nur Promote-Stand markieren (reversibel).
+  // Do NOT delete the override — only mark the promote state (reversible).
   await db.execute(
     `UPDATE campaign_entity_overrides
        SET promoted_at = ?, pre_promote_json = ?, updated_at = ?
@@ -98,9 +98,9 @@ export async function promoteOverride(
 }
 
 /**
- * Nimmt einen Promote zurück: setzt die Welt-Basis auf den gesnapshotteten
- * Vorher-Zustand und löscht die Promote-Markierung. Der Override selbst bleibt
- * (die Campaign sieht ihre Änderung weiter).
+ * Reverses a promote: sets the world base back to the snapshotted
+ * before-state and clears the promote marker. The override itself remains
+ * (the campaign continues to see its change).
  */
 export async function unpromoteOverride(
   db: DatabaseLike,
@@ -111,7 +111,7 @@ export async function unpromoteOverride(
     [params.campaignId, params.entityId],
   );
   const snapshot = rows[0]?.pre_promote_json;
-  if (snapshot === null || snapshot === undefined) return; // war nie promoted
+  if (snapshot === null || snapshot === undefined) return; // was never promoted
 
   const now = new Date().toISOString();
   await db.execute(
@@ -127,8 +127,8 @@ export async function unpromoteOverride(
 }
 
 /**
- * Ist der Override einer Campaign-Entity aktuell in die Welt promoted?
- * (Für den UI-Schalter-Zustand.)
+ * Is a campaign entity's override currently promoted into the world?
+ * (For the UI toggle state.)
  */
 export async function isPromoted(
   db: DatabaseLike,

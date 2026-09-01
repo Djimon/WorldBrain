@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { exists, readDir, readTextFile } from '@tauri-apps/plugin-fs';
 import type { DatabaseLike } from './services/entity-service';
-import { readAppConfig, registerProject } from './services/app-config-service';
+import { readAppConfig, registerProject, writeAppConfig } from './services/app-config-service';
 import type { ProjectEntry } from './services/app-config-service';
 import { openProjectDb } from './services/db-init';
 import { scanPlugins } from './services/plugin-loader';
@@ -65,8 +65,8 @@ export function App() {
     appDataDir().then(async (base) => {
       if (cancelled) return;
       appBase.current = base;
-      // #393: User-Themes werden jetzt im gemeinsamen Bootstrap (main.tsx →
-      // bootstrapUserThemes) für JEDES Fenster registriert — hier nicht mehr nötig.
+      // #393: user themes are now registered in the shared bootstrap (main.tsx →
+      // bootstrapUserThemes) for EVERY window — no longer needed here.
       const configPath = await join(base, APP_CONFIG_FILENAME);
       const projectsBase = await join(base, PROJECTS_SUBDIR);
       const config = await readAppConfig(configPath);
@@ -130,6 +130,18 @@ export function App() {
     }).catch(() => setMode({ kind: 'welcome' }));
   }
 
+  // Remember the last opened project so the next launch reopens it directly,
+  // instead of always dropping to the welcome screen.
+  useEffect(() => {
+    if (mode.kind !== 'workspace') return;
+    const id = mode.projectId;
+    void join(appBase.current, APP_CONFIG_FILENAME).then(async (configPath) => {
+      const config = await readAppConfig(configPath);
+      if (config.last_opened_project_id === id) return;
+      await writeAppConfig({ ...config, last_opened_project_id: id }, configPath);
+    }).catch(() => { /* best effort — remembering the project is non-critical */ });
+  }, [mode]);
+
   if (mode.kind === 'loading') {
     return <div className="app-loading">Laden…</div>;
   }
@@ -176,6 +188,7 @@ export function App() {
         projectDir={projectDir}
         snapshotsDir={snapshotsDir}
         onProjectClose={closeProject}
+        onOpenProject={openProject}
       />
     </DatabaseProvider>
   );

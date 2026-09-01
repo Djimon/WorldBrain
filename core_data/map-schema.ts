@@ -63,11 +63,11 @@ export function applyMapSchema(db: MapDb): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
-  // M15-S09 (#309): Single-counter → counters_json Migration passiert nicht
-  // hier (TauriSqlAdapter.exec() verschluckt sync-errors, rejections eskapieren
-  // als unhandled promise). Die idempotenten ALTERs sitzen in src/services/
-  // db-init.ts, wo `adapter.execute(...).catch(() => {})` Konvention ist.
-  // Für synchrone DatabaseSync-Tests reicht das fresh-Schema oben.
+  // M15-S09 (#309): the single-counter → counters_json migration does not happen
+  // here (TauriSqlAdapter.exec() swallows sync errors, rejections escape
+  // as unhandled promises). The idempotent ALTERs live in src/services/
+  // db-init.ts, where `adapter.execute(...).catch(() => {})` is the convention.
+  // For synchronous DatabaseSync tests the fresh schema above is enough.
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS map_markers (

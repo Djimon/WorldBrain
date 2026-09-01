@@ -1,6 +1,6 @@
-// M13-S06 (#241): Konflikt-Erkennung + Validierungs-Warnungen für die
-// aktivierten House-Rule-Overlays. Reine Datenverarbeitung — die Ergebnisse
-// werden von der Modul-Bibliothek-UI (S07) angezeigt.
+// M13-S06 (#241): Conflict detection + validation warnings for the
+// activated house-rule overlays. Pure data processing — the results
+// are displayed by the module-library UI (S07).
 
 export type Op = 'patch' | 'replace' | 'remove';
 
@@ -16,7 +16,7 @@ export interface ModuleSummary {
 }
 
 export interface ModuleWithBase extends ModuleSummary {
-  /** Basis-System, dessen IDs dieses Modul patcht (z.B. 'dnd5e_srd'). */
+  /** Base system whose IDs this module patches (e.g. 'dnd5e_srd'). */
   overlays: string;
 }
 
@@ -27,13 +27,13 @@ export interface Conflict {
 }
 
 /**
- * Konflikt = zwei aktive Module berühren dasselbe target. Der Gewinner ist
- * das später aktivierte Modul (spätere Reihenfolge sticht). Bei mehr als
- * zwei Modulen auf demselben target wird jeder Verlierer einzeln gemeldet,
- * damit die UI alle betroffenen Module benennt (keine Ketten-Reduktion).
+ * Conflict = two active modules touch the same target. The winner is
+ * the module activated later (later order wins). With more than
+ * two modules on the same target, each loser is reported individually,
+ * so the UI names all affected modules (no chain reduction).
  */
 export function detectConflicts(modules: readonly ModuleSummary[]): Conflict[] {
-  // target → alle Module in Aktivierungs-Reihenfolge, die es berühren.
+  // target → all modules touching it, in activation order.
   const touched = new Map<string, string[]>();
   for (const mod of modules) {
     for (const entry of mod.overrides) {
@@ -54,21 +54,21 @@ export function detectConflicts(modules: readonly ModuleSummary[]): Conflict[] {
   return conflicts;
 }
 
-// Kern-Grammatik-Präfixe der Regel-Substrate (M9 / EPIC-019). Die konkrete
-// ID-Registry liegt beim Base-System-Plugin (dnd5e_srd, S08); default hier
-// erkennt nur die Kategorie-Namen — unbekannte Präfixe → Ladefehler.
-// `hook:` ist der Event-Hook-Kanal (z.B. hook:crit_damage) — Plugins können
-// darüber Regel-Ableitungen ändern (S08 max_crit_damage).
+// Core grammar prefixes of the rule substrates (M9 / EPIC-019). The concrete
+// ID registry lives in the base-system plugin (dnd5e_srd, S08); the default here
+// recognizes only the category names — unknown prefixes → load error.
+// `hook:` is the event-hook channel (e.g. hook:crit_damage) — plugins can
+// change rule derivations through it (S08 max_crit_damage).
 const KNOWN_TARGET_PREFIXES = [
   'bands:', 'transition:', 'roll_target:', 'resource:', 'success_bands:', 'hook:',
 ];
 
 /**
- * Modul zeigt auf einen target-Prefix, der nicht Teil des bekannten
- * Regel-Substrats ist → Ladefehler mit Modul-ID + Target-ID. Optional
- * kann eine `knownIds`-Menge übergeben werden (aus der Basis-System-
- * Registry, S08); dann wird zusätzlich Existenz statt nur Prefix geprüft.
- * Der Consumer rendert die Meldung als StatusChip/Panel (kein alert()).
+ * Module points to a target prefix that is not part of the known
+ * rule substrate → load error with module ID + target ID. Optionally
+ * a `knownIds` set can be passed (from the base-system
+ * registry, S08); then existence is checked in addition to just the prefix.
+ * The consumer renders the message as a StatusChip/Panel (no alert()).
  */
 export function validateModuleTargets(
   mod: ModuleWithBase,
@@ -94,8 +94,8 @@ export interface DiffEntry {
 }
 
 /**
- * „Was überschreibt dieses Modul": Liste aller (target, op)-Paare für die
- * Diff-Vorschau in der Bibliothek-UI (S07).
+ * "What this module overrides": list of all (target, op) pairs for the
+ * diff preview in the library UI (S07).
  */
 export function moduleDiff(mod: ModuleSummary): DiffEntry[] {
   return mod.overrides.map((e) => ({ target: e.target, op: e.op }));

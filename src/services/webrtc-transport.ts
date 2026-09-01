@@ -1,15 +1,15 @@
-// M10-S01 (#350) + S11 (#367): WebRTC-DataChannel-Implementierung des
-// SessionTransport. Host-Peer wird an eine gehostete Campaign gekoppelt
-// (D23). Kein HTTP/WS-Server.
+// M10-S01 (#350) + S11 (#367): WebRTC DataChannel implementation of the
+// SessionTransport. The host peer is coupled to a hosted campaign
+// (D23). No HTTP/WS server.
 //
-// S11: Für Remote-Peer-Discovery wird der Transport mit einem #368-Adapter
-// komponiert. `attachSignaling({ appId, roomId, peerLabel })` ruft
-// `createSignalingAdapter(...)` auf, tauscht SDP-Offer/Answer + ICE-Kandidaten
-// über den Broker aus, und der Transport übernimmt danach die P2P-Verbindung.
-// Broker sieht nur SDP/ICE — keine Spieldaten.
+// S11: For remote peer discovery the transport is composed with a #368 adapter.
+// `attachSignaling({ appId, roomId, peerLabel })` calls
+// `createSignalingAdapter(...)`, exchanges SDP offer/answer + ICE candidates
+// over the broker, and the transport then takes over the P2P connection.
+// The broker sees only SDP/ICE — no game data.
 //
-// STUN (Google + Cloudflare + Trystero-intern) reicht für NAT-Traversal;
-// KEIN TURN in V1 → ~10-20% strenge Symmetric-NATs scheitern mit `onError`.
+// STUN (Google + Cloudflare + Trystero-internal) is enough for NAT traversal;
+// NO TURN in V1 → ~10-20% strict symmetric NATs fail with `onError`.
 
 import { validateIncomingMessage, PRE_AUTH_MESSAGE_TYPES } from './session-transport';
 import type { SessionTransport, TransportMessage } from './session-transport';
@@ -25,57 +25,57 @@ const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
 
 export interface WebRtcTransportOptions {
   /**
-   * Die Campaign, deren Host-Peer diese Transport-Instanz bereitstellt.
-   * Der DataChannel wird nach ihr benannt, und der Lebenszyklus ist an sie
-   * gekoppelt: kein connect() ohne Campaign, close() bei Campaign-Ende.
+   * The campaign whose host peer this transport instance provides.
+   * The DataChannel is named after it, and the lifecycle is coupled
+   * to it: no connect() without a campaign, close() at campaign end.
    */
   campaignId: string;
   iceServers?: RTCIceServer[];
   /**
-   * S02 Decision 8: pro Nachricht wird das Token validiert (nicht nur beim
-   * Handshake). Der Host setzt hier einen Callback, der true zurückgibt wenn
-   * das Token noch zu einem aktiven (nicht gekickten) Mitglied gehört.
-   * Nicht gesetzt (Client-Seite) → keine Auth-Prüfung; die Server-Seite
-   * hört auf.
+   * S02 Decision 8: the token is validated per message (not only at the
+   * handshake). The host sets a callback here that returns true if
+   * the token still belongs to an active (not kicked) member.
+   * Not set (client side) → no auth check; the server side
+   * enforces it.
    */
   authenticate?: (token: string) => Promise<boolean> | boolean;
 }
 
 export interface SignalingAttachOpts {
-  /** Broker-Namespace (per-Host, aus `deriveAppId`). */
+  /** Broker namespace (per-host, from `deriveAppId`). */
   appId: string;
-  /** Broker-Room (= Campaign, opak für den Broker). */
+  /** Broker room (= campaign, opaque to the broker). */
   roomId: string;
-  /** A|B — welche Rolle diese Seite im Rendezvous spielt. */
+  /** A|B — which role this side plays in the rendezvous. */
   peerLabel: 'A' | 'B';
-  /** Adapter-Wahl. Default 'nostr' (Spike-primär). */
+  /** Adapter choice. Default 'nostr' (Spike primary). */
   strategy?: AdapterKey;
-  /** Diagnose-Senke (broker-interne Events). */
+  /** Diagnostics sink (broker-internal events). */
   onDiagnostic?: (msg: string) => void;
-  /** NAT-/Broker-Fehler → User-sichtbare Meldung. */
+  /** NAT/broker error → user-visible message. */
   onError?: (err: Error) => void;
-  /** Feuert wenn Broker Peer-Vermittlung geschafft hat (vor DataChannel-open). */
+  /** Fires when the broker has managed peer mediation (before DataChannel open). */
   onConnected?: () => void;
 }
 
 export class WebRtcTransport implements SessionTransport {
   private pc: RTCPeerConnection | null = null;
   private channel: RTCDataChannel | null = null;
-  // M10-#387: MEHRERE Empfänger (Host: token-sync + join-sync; Player: Join-
-  // Handshake + Store-Bridge). Single-Handler ließ den zweiten den ersten
-  // überschreiben → toter Handler. `inbox` ist ein bounded Receive-Replay-Puffer:
-  // ein SPÄTER dazukommender Listener (z.B. die Store-Bridge nach dem Join)
-  // bekommt die bereits eingetroffenen Nachrichten (z.B. den Initial-Snapshot)
-  // nachgespielt, statt sie zu verlieren.
+  // M10-#387: MULTIPLE receivers (host: token-sync + join-sync; player: join
+  // handshake + store bridge). A single handler let the second overwrite the
+  // first → dead handler. `inbox` is a bounded receive-replay buffer:
+  // a listener joining LATER (e.g. the store bridge after the join)
+  // gets the already-arrived messages (e.g. the initial snapshot)
+  // replayed, instead of losing them.
   private handlers: Array<(msg: TransportMessage) => void> = [];
   private inbox: TransportMessage[] = [];
   private static readonly MAX_INBOX = 64;
   private signalingHandle: AdapterHandle | null = null;
-  // M10-#387: Ausgangs-Puffer. `onConnected` feuert beim Broker-Rendezvous —
-  // VOR der DataChannel-Öffnung; ein früher send() (z.B. join_request) muss
-  // warten bis der Kanal offen ist, statt zu werfen. Gepufferte Nachrichten
-  // werden bei `onopen` in Reihenfolge geflusht (bounded gegen einen nie
-  // öffnenden Kanal).
+  // M10-#387: Outbound buffer. `onConnected` fires at the broker rendezvous —
+  // BEFORE the DataChannel opens; an early send() (e.g. join_request) must
+  // wait until the channel is open, instead of throwing. Buffered messages
+  // are flushed in order on `onopen` (bounded against a channel that never
+  // opens).
   private outbox: TransportMessage[] = [];
   private static readonly MAX_OUTBOX = 64;
 
@@ -87,9 +87,9 @@ export class WebRtcTransport implements SessionTransport {
     this.pc = new RTCPeerConnection({ iceServers });
     this.channel = this.pc.createDataChannel(`campaign-${this.options.campaignId}`);
     this.wireChannel(this.channel);
-    // Player-Peers stellen den DataChannel her (ondatachannel) — beim Host
-    // greifen wir jede eingehende Neuverbindung ab und ersetzen den lokalen
-    // Kanal-Handle (Single-Channel-Modell im DataChannel-Duplex).
+    // Player peers establish the DataChannel (ondatachannel) — on the host
+    // we intercept every incoming new connection and replace the local
+    // channel handle (single-channel model in the DataChannel duplex).
     this.pc.ondatachannel = (ev) => {
       this.channel = ev.channel;
       this.wireChannel(ev.channel);
@@ -105,34 +105,34 @@ export class WebRtcTransport implements SessionTransport {
     this.handlers = [];
     this.inbox = [];
     this.signalingHandle = null;
-    this.outbox = []; // nie geöffneter Kanal → gepufferte Nachrichten verwerfen
+    this.outbox = []; // never-opened channel → discard buffered messages
 
   }
 
   /**
-   * S11: Signaling-Adapter (#368) an den Transport hängen — über den
-   * Fallback-Orchestrator (`connectWithFallback`), sodass die feste Kette
-   * Nostr → MQTT → BitTorrent → PeerJS automatisch durchläuft, wenn eine
-   * Strategie zickt. Erfolg = `onOpen` beim ersten funktionierenden Broker.
+   * S11: Attach the signaling adapter (#368) to the transport — via the
+   * fallback orchestrator (`connectWithFallback`), so that the fixed chain
+   * Nostr → MQTT → BitTorrent → PeerJS runs automatically when a
+   * strategy acts up. Success = `onOpen` at the first working broker.
    *
-   * Der Broker sieht nur SDP/ICE — keine Spieldaten (E2E via WebRTC).
-   * Bei strenger Symmetric-NAT scheitert die ICE-Handshake trotz STUN und
-   * feuert `onError` (kein TURN in V1).
+   * The broker sees only SDP/ICE — no game data (E2E via WebRTC).
+   * With a strict symmetric NAT the ICE handshake fails despite STUN and
+   * fires `onError` (no TURN in V1).
    *
-   * `opts.onConnected` feuert wenn der Broker beide Peers vermittelt hat —
-   * die eigentliche P2P-DataChannel-Öffnung folgt asynchron danach.
+   * `opts.onConnected` fires when the broker has mediated both peers —
+   * the actual P2P DataChannel opening follows asynchronously afterward.
    */
   async attachSignaling(opts: SignalingAttachOpts): Promise<void> {
     if (this.pc === null) throw new Error('Transport not connected — call connect() first');
     const pc = this.pc;
-    // Nur echte AdapterKey akzeptieren; wenn strategy gesetzt, single-shot,
-    // sonst volle Fallback-Kette.
+    // Accept only real AdapterKeys; if strategy is set, single-shot,
+    // otherwise the full fallback chain.
     const order: AdapterKey[] = opts.strategy !== undefined
       ? [opts.strategy]
       : STRATEGY_ORDER;
-    // ICE-Kandidaten des lokalen Peers via Broker mit-teilen (Handler muss
-    // GESETZT sein bevor der Adapter open feuert — sonst gehen frühe
-    // Kandidaten verloren; deshalb hier vor connectWithFallback).
+    // Share the local peer's ICE candidates via the broker (the handler must
+    // be SET before the adapter fires open — otherwise early
+    // candidates are lost; hence here before connectWithFallback).
     pc.onicecandidate = (ev) => {
       if (ev.candidate !== null) {
         this.signalingHandle?.send({ kind: 'ice', candidate: ev.candidate.toJSON() });
@@ -146,7 +146,7 @@ export class WebRtcTransport implements SessionTransport {
       onOpen: () => {
         opts.onDiagnostic?.('[signaling] peer joined broker');
         opts.onConnected?.();
-        // A initiiert Offer nach open; B wartet auf offer via onMessage.
+        // A initiates the offer after open; B waits for the offer via onMessage.
         if (opts.peerLabel === 'A') {
           void pc.createOffer().then(async (offer) => {
             await pc.setLocalDescription(offer);
@@ -160,15 +160,15 @@ export class WebRtcTransport implements SessionTransport {
         void this.handleSignalingPayload(pc, payload, opts.onError);
       },
       onError: (err) => {
-        // Broker/NAT-Fehler → User-sichtbare Meldung. Symmetric-NAT scheitert
-        // hier trotz STUN (kein TURN in V1) — Meldung muss das benennen.
+        // Broker/NAT error → user-visible message. Symmetric NAT fails
+        // here despite STUN (no TURN in V1) — the message must name that.
         opts.onError?.(new Error(`NAT/Signaling failed: ${err.message}`));
       },
     });
   }
 
-  // Legacy-Direct-Adapter für Tests, die die Fallback-Kette umgehen wollen.
-  // Nutzt createSignalingAdapter direkt — kein Orchestrator.
+  // Legacy direct adapter for tests that want to bypass the fallback chain.
+  // Uses createSignalingAdapter directly — no orchestrator.
   async attachSingleAdapter(key: AdapterKey, opts: Omit<SignalingAttachOpts, 'strategy'>): Promise<void> {
     if (this.pc === null) throw new Error('Transport not connected');
     void createSignalingAdapter(key, {
@@ -208,14 +208,14 @@ export class WebRtcTransport implements SessionTransport {
       this.channel.send(JSON.stringify(msg));
       return;
     }
-    // Kanal (noch) nicht offen → puffern statt werfen. `send()` verspricht laut
-    // SessionTransport-Vertrag Zustellung, nicht Sofort-Übertragung; der Flush
-    // bei `onopen` löst das Versprechen ein. Bounded: bei Überlauf ältestes raus.
+    // Channel not (yet) open → buffer instead of throw. Per the SessionTransport
+    // contract, `send()` promises delivery, not immediate transmission; the flush
+    // on `onopen` fulfills the promise. Bounded: on overflow, the oldest goes out.
     if (this.outbox.length >= WebRtcTransport.MAX_OUTBOX) this.outbox.shift();
     this.outbox.push(msg);
   }
 
-  /** Gepufferte Nachrichten in Reihenfolge über den offenen Kanal senden. */
+  /** Send buffered messages in order over the open channel. */
   private flushOutbox(ch: RTCDataChannel): void {
     if (ch.readyState !== 'open' || this.outbox.length === 0) return;
     const pending = this.outbox;
@@ -225,9 +225,9 @@ export class WebRtcTransport implements SessionTransport {
 
   onMessage(cb: (msg: TransportMessage) => void): () => void {
     this.handlers.push(cb);
-    // Receive-Replay: bereits eingetroffene Nachrichten an den neuen Listener
-    // nachspielen (z.B. Store-Bridge bekommt den Join-Snapshot, der VOR ihrem
-    // Attach ankam). Idempotente Consumer (applySnapshot/applyDelta) vertragen das.
+    // Receive replay: replay already-arrived messages to the new listener
+    // (e.g. the store bridge gets the join snapshot that arrived BEFORE its
+    // attach). Idempotent consumers (applySnapshot/applyDelta) tolerate this.
     for (const msg of this.inbox) cb(msg);
     return () => {
       const i = this.handlers.indexOf(cb);
@@ -235,18 +235,18 @@ export class WebRtcTransport implements SessionTransport {
     };
   }
 
-  /** Eingehende Nachricht puffern (bounded) + an ALLE Listener verteilen. */
+  /** Buffer an incoming message (bounded) + distribute to ALL listeners. */
   private dispatchIncoming(msg: TransportMessage): void {
     if (this.inbox.length >= WebRtcTransport.MAX_INBOX) this.inbox.shift();
     this.inbox.push(msg);
-    // Kopie, falls ein Handler sich während der Iteration ab-/anmeldet.
+    // Copy, in case a handler unregisters/registers during the iteration.
     for (const h of [...this.handlers]) h(msg);
   }
 
   /**
-   * Convenience: baut einen Host-Transport, dessen Authenticator direkt an
-   * validateToken(db) hängt. So verdrahtet die App die per-Nachricht-Auth
-   * (S02 Decision 8) mit einer Zeile beim Aufsetzen des Servers.
+   * Convenience: builds a host transport whose authenticator hangs directly on
+   * validateToken(db). This lets the app wire the per-message auth
+   * (S02 Decision 8) with one line when setting up the server.
    */
   static host(campaignId: string, database: DatabaseLike, iceServers?: RTCIceServer[]): WebRtcTransport {
     return new WebRtcTransport({
@@ -257,37 +257,37 @@ export class WebRtcTransport implements SessionTransport {
   }
 
   private wireChannel(ch: RTCDataChannel): void {
-    // Sobald der Kanal offen ist, gepufferte Nachrichten flushen (#387). Falls er
-    // beim Verdrahten schon offen ist (Race), sofort flushen.
+    // As soon as the channel is open, flush buffered messages (#387). If it is
+    // already open at wiring time (race), flush immediately.
     ch.onopen = () => this.flushOutbox(ch);
     if (ch.readyState === 'open') this.flushOutbox(ch);
     ch.onmessage = (ev: MessageEvent) => {
-      // Jede eingehende Nachricht wird VOR der Verarbeitung schema-validiert
-      // (AC). Ungültige Payloads werden verworfen, ohne den Handler zu rufen.
+      // Every incoming message is schema-validated BEFORE processing
+      // (AC). Invalid payloads are discarded without calling the handler.
       let parsed: TransportMessage;
       try {
         parsed = validateIncomingMessage(JSON.parse(ev.data as string) as unknown);
       } catch {
         return;
       }
-      // M10-#387: pre-auth Handshake-Nachrichten (join_request/reconnect_request)
-      // umgehen das Token-Gate — der Absender hat noch/wieder kein gültiges Token.
-      // Sie werden host-autoritativ von host-join-sync validiert (Code gegen
-      // invite_codes, Token gegen session_players), nicht hier. Alle anderen
-      // Nachrichten bleiben voll gegated (Decision 8, secure-by-default).
+      // M10-#387: pre-auth handshake messages (join_request/reconnect_request)
+      // bypass the token gate — the sender still/again has no valid token.
+      // They are validated host-authoritatively by host-join-sync (code against
+      // invite_codes, token against session_players), not here. All other
+      // messages stay fully gated (Decision 8, secure-by-default).
       if (PRE_AUTH_MESSAGE_TYPES.has(parsed.type)) {
         this.dispatchIncoming(parsed);
         return;
       }
-      // S02 Decision 8: pro Nachricht Token-Validierung. Wenn ein Authenticator
-      // gesetzt ist (Host-Seite), erst nach OK an den Handler weitergeben.
+      // S02 Decision 8: per-message token validation. If an authenticator
+      // is set (host side), forward to the handler only after OK.
       const auth = this.options.authenticate;
       if (auth) {
         void Promise.resolve(auth(parsed.token)).then((ok) => {
           if (ok) this.dispatchIncoming(parsed);
-          /* not ok → Nachricht verworfen; kein Kanal-Feedback (Client soll
-             nicht wissen, ob Token existiert oder gekickt ist) */
-        }).catch(() => { /* fail-closed: verwerfen */ });
+          /* not ok → message discarded; no channel feedback (the client should
+             not know whether the token exists or was kicked) */
+        }).catch(() => { /* fail-closed: discard */ });
         return;
       }
       this.dispatchIncoming(parsed);

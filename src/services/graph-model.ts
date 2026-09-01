@@ -1,7 +1,7 @@
-// M16-S02 (#317): Graph-Datenmodell — Entities + Relations + Mention-Kanten
-// zu EINEM Graph-Modell in renderer-neutraler {nodes, links}-Form. Reine
-// Funktion: kein DB-Zugriff, kein Rendering, kein Layout (die kommen in
-// S03/S04/S05). d3-force + GraphCanvas/Pixi erwarten `links`, nicht `edges`.
+// M16-S02 (#317): graph data model — entities + relations + mention edges
+// into ONE graph model in renderer-neutral {nodes, links} form. Pure
+// function: no DB access, no rendering, no layout (those come in
+// S03/S04/S05). d3-force + GraphCanvas/Pixi expect `links`, not `edges`.
 export interface GraphEntityInput {
   id: string;
   type: string;

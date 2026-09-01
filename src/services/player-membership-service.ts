@@ -1,6 +1,6 @@
-// M10-S03 (#352): Spieler-Mitgliedschaft — Schema & Services (campaign-scoped).
-// D24 Auto-Join: kein `pending`/`approve`/`reject`. Jeder Beitritt landet
-// direkt als `active`. Kick invalidiert das Token.
+// M10-S03 (#352): Player membership — schema & services (campaign-scoped).
+// D24 auto-join: no `pending`/`approve`/`reject`. Every join lands
+// directly as `active`. Kick invalidates the token.
 import type { DatabaseLike } from './entity-service';
 
 export interface Player {
@@ -44,9 +44,9 @@ export async function createPlayer(db: DatabaseLike, params: CreatePlayerParams)
 }
 
 /**
- * Low-level insert: legt einen `session_players`-Eintrag mit `status='active'`
- * an. Der komplette Auto-Join-Flow (Code → Player + Token) lebt in
- * `session-identity-service.joinWithCode`, das diese Funktion darunter nutzt.
+ * Low-level insert: creates a `session_players` entry with `status='active'`.
+ * The complete auto-join flow (code → player + token) lives in
+ * `session-identity-service.joinWithCode`, which uses this function underneath.
  */
 export async function joinWithCode(db: DatabaseLike, params: JoinWithCodeParams): Promise<void> {
   const id = `sp_${crypto.randomUUID()}`;
@@ -58,8 +58,8 @@ export async function joinWithCode(db: DatabaseLike, params: JoinWithCodeParams)
 }
 
 /**
- * Kick: setzt `status='kicked'` und leert den `token_hash` — der bisherige
- * Token wird damit für validateToken() unbrauchbar (D24).
+ * Kick: sets `status='kicked'` and clears the `token_hash` — the previous
+ * token thereby becomes unusable for validateToken() (D24).
  */
 export async function kick(db: DatabaseLike, params: KickParams): Promise<void> {
   await db.execute(

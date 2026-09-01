@@ -1,12 +1,12 @@
-// M16-S10 (#327): Vorberechnete Graph-Layout-Positionen.
-// - computeLayout: headless d3-force-Simulation bis Konvergenz. Deterministisch
-//   per Seed → gleiche Eingabe + Seed = gleiche Positionen (cachebar).
-// - structureHash: stabile Signatur aus Node-Ids + Kanten für Cache-Schlüssel.
-// 2D-Fall (heute): Positionen tragen nur x/y. 3D-Fall folgt dem Renderer-
-// Ergebnis aus S00b (#326) — dieselbe Funktion, ergänzt dann z.
+// M16-S10 (#327): precomputed graph-layout positions.
+// - computeLayout: headless d3-force simulation until convergence. Deterministic
+//   per seed → same input + seed = same positions (cacheable).
+// - structureHash: stable signature from node ids + edges for the cache key.
+// 2D case (today): positions carry only x/y. The 3D case follows the renderer
+// result from S00b (#326) — the same function, then extended with z.
 //
-// Bewusst KEINE Web-Worker-Verdrahtung hier (Node-Test-Env). Der Consumer
-// wickelt den Aufruf in einen Worker; die Funktion bleibt reine Datenverarb.
+// Deliberately NO web-worker wiring here (Node test env). The consumer
+// wraps the call in a worker; the function stays pure data processing.
 import {
   forceCenter, forceLink, forceManyBody, forceSimulation, forceX, forceY,
   type Simulation,
@@ -21,7 +21,7 @@ export interface LayoutModel {
 }
 export interface LayoutOptions {
   seed: number;
-  /** Fest gewählte Anzahl von Ticks bis „Konvergenz" — deterministisch. */
+  /** Fixed number of ticks until "convergence" — deterministic. */
   ticks?: number;
 }
 export interface LayoutPosition {
@@ -29,9 +29,9 @@ export interface LayoutPosition {
   y: number;
 }
 
-// Deterministischer PRNG (Mulberry32) — d3-force's `.randomSource` verlangt
-// eine Funktion, die [0,1) zurückgibt. Gleicher Seed → gleiche Sequenz →
-// reproduzierbare Startpositionen und damit reproduzierbares Layout.
+// Deterministic PRNG (Mulberry32) — d3-force's `.randomSource` requires
+// a function that returns [0,1). Same seed → same sequence →
+// reproducible start positions and thus a reproducible layout.
 function mulberry32(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
@@ -47,15 +47,15 @@ interface D3Node { id: string; x?: number; y?: number }
 interface D3Link { source: string; target: string }
 
 /**
- * Läuft die Force-Simulation headless (kein Renderer) für eine feste Zahl
- * Ticks. Gibt eine stabile Node→Position-Map zurück.
+ * Runs the force simulation headless (no renderer) for a fixed number of
+ * ticks. Returns a stable node→position map.
  */
 export async function computeLayout(model: LayoutModel, opts: LayoutOptions): Promise<Map<string, LayoutPosition>> {
   const rand = mulberry32(opts.seed);
   const ticks = opts.ticks ?? 300;
-  // Startpositionen aus dem PRNG — sonst würde d3-force's interner Math.random
-  // die Determinismus-Garantie brechen (unser Setter deckt nur die Force-eigene
-  // Zufalls-Nutzung ab).
+  // Start positions from the PRNG — otherwise d3-force's internal Math.random
+  // would break the determinism guarantee (our setter only covers the force's own
+  // random usage).
   const nodes: D3Node[] = model.nodes.map((n) => ({
     id: n.id,
     x: (rand() - 0.5) * 200,
@@ -82,16 +82,16 @@ export async function computeLayout(model: LayoutModel, opts: LayoutOptions): Pr
 }
 
 /**
- * Struktur-Hash: stabile Signatur aus sortierten Node-Ids + sortierten
- * gerichteten Kanten. Gleicher Graph → gleicher Hash (Cache-Hit). Ändert
- * sich Struktur → Hash ändert sich → Recompute.
+ * Structure hash: stable signature from sorted node ids + sorted
+ * directed edges. Same graph → same hash (cache hit). If the structure
+ * changes → hash changes → recompute.
  */
 export function structureHash(model: LayoutModel): string {
   const ids = model.nodes.map((n) => n.id).slice().sort();
   const edges = model.edges.map((e) => `${e.source}${e.target}`).slice().sort();
   const src = `${ids.join('')}${edges.join('')}`;
-  // FNV-1a 32-bit — schnell + gleichverteilt genug für Cache-Keys, keine
-  // Krypto-Anforderung. Byte-genau deterministisch, keine Umgebungsabhängigkeit.
+  // FNV-1a 32-bit — fast + uniformly distributed enough for cache keys, no
+  // crypto requirement. Byte-exact deterministic, no environment dependency.
   let h = 0x811c9dc5;
   for (let i = 0; i < src.length; i += 1) {
     h ^= src.charCodeAt(i);
@@ -101,11 +101,11 @@ export function structureHash(model: LayoutModel): string {
 }
 
 // ---------------------------------------------------------------------------
-// M16-S10 Cache-Layer: DB-Persistenz für vorberechnete Positionen.
-// Consumer-Flow: (1) hash = structureHash(model); (2) getCachedLayout(db, hash);
-//   → wenn Map: direkt renderen, kein Recompute. → wenn null: computeLayout
-//     laufen lassen, saveCachedLayout(db, hash, result). Worker-Wrapper ist
-//     Consumer-Sache (Renderer-abhängig, S00b/#326).
+// M16-S10 cache layer: DB persistence for precomputed positions.
+// Consumer flow: (1) hash = structureHash(model); (2) getCachedLayout(db, hash);
+//   → if Map: render directly, no recompute. → if null: run computeLayout,
+//     saveCachedLayout(db, hash, result). The worker wrapper is the
+//     consumer's concern (renderer-dependent, S00b/#326).
 // ---------------------------------------------------------------------------
 
 interface CacheRow { positions_json: string }
@@ -139,10 +139,10 @@ export async function saveCachedLayout(
 }
 
 /**
- * All-in-one: gibt gecachte Positionen zurück wenn vorhanden; sonst berechnet
- * headless + persistiert. Consumer, die den Cache benutzen wollen, greifen
- * darauf statt direkt zu computeLayout — der `simCalls`-Zähler dient dem
- * Test zur Verifikation, dass ein Cache-Hit die Sim NICHT erneut anwirft.
+ * All-in-one: returns cached positions if present; otherwise computes
+ * headless + persists. Consumers that want to use the cache reach for
+ * this instead of computeLayout directly — the `simCalls` counter serves
+ * the test to verify that a cache hit does NOT start the sim again.
  */
 let simCalls = 0;
 export function _getSimCalls(): number { return simCalls; }

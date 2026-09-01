@@ -14,7 +14,7 @@ interface Props {
   selectedEntityId?: string;
   onEntitySelect?: (entityId: string) => void;
   /** Cross-type navigation (mentions/backlinks): bubbles up so the parent can
-   *  switch the TYP list too, not just swap the detail view. */
+   *  switch the TYPE list too, not just swap the detail view. */
   onNavigateToEntity?: (entityId: string) => void;
   database?: DatabaseLike;
 }
@@ -32,7 +32,7 @@ async function createEntity(db: DatabaseLike, type: string, title: string): Prom
 
 export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySelect, onNavigateToEntity, database }: Props) {
   const { t } = useTranslation('entity');
-  const readOnly = useReadOnly(); // M10-S23: Player-Modus blendet Create-Affordances aus.
+  const readOnly = useReadOnly(); // M10-S23: player mode hides create affordances.
   const [selectedId, setSelectedId] = useState<string | null>(selectedEntityId ?? null);
   const [entities, setEntities] = useState<EntityListItem[]>([]);
   const [creating, setCreating] = useState(false);

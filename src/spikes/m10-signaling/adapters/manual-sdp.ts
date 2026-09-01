@@ -1,11 +1,11 @@
-// Manueller SDP-Austausch (Offer/Answer copy-paste) — der Broker-lose Fallback
-// (D27/D28). Kein Broker heißt: der User klebt SDP-Blobs von Hand zwischen
-// zwei Seiten. Der Bench misst hier NICHT die Time-to-Connect gegen den
-// Broker (den gibt's nicht), sondern nur ob nach Paste beide open werden.
+// Manual SDP exchange (offer/answer copy-paste) — the broker-less fallback
+// (D27/D28). No broker means: the user pastes SDP blobs by hand between
+// two sides. The bench here does NOT measure the time-to-connect against the
+// broker (there is none), only whether both go open after paste.
 //
-// Rollen: eine Seite ruft `create({peerLabel:'A'})` → wird 'offer'-Rolle;
-// die andere `create({peerLabel:'B'})` → wird 'answer'-Rolle. Die UI zeigt
-// die zu kopierenden Blobs + Eingabefeld für den Gegen-Blob.
+// Roles: one side calls `create({peerLabel:'A'})` → becomes the 'offer' role;
+// the other `create({peerLabel:'B'})` → becomes the 'answer' role. The UI shows
+// the blobs to copy + an input field for the counterpart blob.
 import type { AdapterFactory } from '../types';
 
 export const manualSdpAdapter: AdapterFactory = async (opts) => {
@@ -27,7 +27,7 @@ export const manualSdpAdapter: AdapterFactory = async (opts) => {
     pc.ondatachannel = (ev) => attachChannel(ev.channel);
   }
 
-  // Trickle-ICE einsammeln — wir warten auf `null`-Kandidat als Ende-Marker.
+  // Collect trickle ICE — we wait for the `null` candidate as the end marker.
   const iceComplete = new Promise<void>((resolve) => {
     pc.onicecandidate = (ev) => { if (ev.candidate === null) resolve(); };
   });
@@ -54,11 +54,11 @@ export const manualSdpAdapter: AdapterFactory = async (opts) => {
           await pc.setLocalDescription(answer);
           await iceComplete;
           const answerBlob = JSON.stringify(pc.localDescription);
-          // Panel-Update: nach Paste zeigt die 'answer'-Seite jetzt ihren Blob.
+          // Panel update: after paste the 'answer' side now shows its blob.
           opts.requestUiPanel?.({
             role: 'answer',
             localBlob: answerBlob,
-            onRemoteBlob: () => { /* answer-Seite ist fertig */ },
+            onRemoteBlob: () => { /* answer side is done */ },
           });
         }
       } catch (e) {
