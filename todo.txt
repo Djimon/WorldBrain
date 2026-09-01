@@ -1,10 +1,12 @@
 1. Featuer-cut-config in Arbeit (folge-Issues)
 
 2. Settings-UX-Session (in Arbeit)
+	- edit mode (1/6)
+	- play mode (0/4)
+	
+3. UX-Session für Play-Mode Lobby
 
 5. full live UX-Session für Play-Mode (e2e-test mit 2 rechnern +2 netzen)
-
-6. UX-session für Settings.
 
 7. 
 0.1 Release Beta-version
