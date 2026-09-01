@@ -1,15 +1,6 @@
-0. mini-fix: Platform + Mode auch im App-Fenster (aktuell nur platform-name)
+1. Featuer-cut-config in Arbeit (folge-Issues)
 
-1. siehe \WorldBuilderX\temp\i18n: ganz viele nciht übersetzte labels und ahrdcodeirte texte.
-
-2. obwohl mehrmals erwähnt und issue geshckossen sehe ich immer noch das Cmpaing menü im edit modus-> schwachsinn bitte löschen dafür gbits den Switch afu playmodus = Lobby (neue camoaing ansicht)
-
-3. in Maps auf kleine Monitore verschwindet der untere teil der Grid-Settins außerhalb der View - entweder scroll balken bei den grid settings oder grid-setting mehr in dei breite ziehen, um platz zu sparen.
-
-4. Feature-config für Release-Build: nur fertige feautres configurieren. Dev-build hat immer alle in entiwkclung bfinden features.
--> so gut es geht feature ganz entfenren nciht nur den mount unsichtbar machen.
--> gern architectur review, ob genug gekapselt dafür ode rerst ein refactor ansteht.
--> auch ganze test-quatshc, docs, plannig files, .md files.  fleigt im release raus (ausnahme: theme-tester.html ->ggf nach /themes/ verschieben* -> * NACH install-exe)
+2. Settings-UX-Session (in Arbeit)
 
 5. full live UX-Session für Play-Mode (e2e-test mit 2 rechnern +2 netzen)
 
