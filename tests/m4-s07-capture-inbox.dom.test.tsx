@@ -3,20 +3,22 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type { DatabaseLike } from '../src/services/entity-service';
 import { CaptureInbox } from '../src/ui/CaptureInbox';
 
+// Services sind auf async migriert — createCapture/listCaptures liefern Promises (#400 Cluster B).
 vi.mock('../src/services/capture-service', () => ({
-  createCapture: vi.fn(() => ({ id: 'cap-1' })),
-  listCaptures: vi.fn(() => [
+  createCapture: vi.fn().mockResolvedValue({ id: 'cap-1' }),
+  listCaptures: vi.fn().mockResolvedValue([
     { id: 'cap-1', type: 'new_npc', raw_text: 'Mysterious merchant appeared.', status: 'needs_processing', links: [] },
     { id: 'cap-2', type: 'decision', raw_text: 'Party chose the northern road.', status: 'processed', links: ['char-ada'] },
     { id: 'cap-3', type: 'open_question', raw_text: 'Who is the masked figure?', status: 'needs_processing', links: [] },
   ]),
-  updateCaptureStatus: vi.fn(),
+  updateCaptureStatus: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../src/services/entity-service', () => ({
-  listEntitiesByType: vi.fn(() => [
+  listEntitiesByType: vi.fn().mockResolvedValue([
     { id: 'char-ada', type: 'Character', title: 'Ada Thorn', summary: 'Archivist.', aliases: [] },
   ]),
 }));
@@ -29,19 +31,21 @@ describe('M4-S07 capture inbox', () => {
       expect(() => render(<CaptureInbox sessionId="s1" database={mockDb as never} />)).not.toThrow();
     });
 
-    it('displays existing captures', () => {
+    it('displays existing captures', async () => {
       render(<CaptureInbox sessionId="s1" database={mockDb as never} />);
-      expect(screen.getByText('Mysterious merchant appeared.')).toBeInTheDocument();
+      expect(await screen.findByText('Mysterious merchant appeared.')).toBeInTheDocument();
       expect(screen.getByText('Party chose the northern road.')).toBeInTheDocument();
     });
 
     it('shows capture type labels', () => {
       render(<CaptureInbox sessionId="s1" database={mockDb as never} />);
+      // Type labels are rendered as <option> values in the type select (present immediately).
       expect(screen.getByText(/new.?npc|new npc/i)).toBeInTheDocument();
     });
 
     it('shows status on each capture', () => {
       render(<CaptureInbox sessionId="s1" database={mockDb as never} />);
+      // Status labels are rendered as <option> values in the status filter (present immediately).
       expect(screen.getByText(/needs.?processing|needs processing/i)).toBeInTheDocument();
     });
   });
@@ -96,16 +100,17 @@ describe('M4-S07 capture inbox', () => {
   });
 
   describe('status transitions', () => {
-    it('needs_processing captures show a "Mark processed" or "Dismiss" control', () => {
+    it('needs_processing captures show a "Mark processed" or "Dismiss" control', async () => {
       render(<CaptureInbox sessionId="s1" database={mockDb as never} />);
-      const control = screen.queryByRole('button', { name: /processed|dismiss|done/i });
+      // The control appears only after captures load (hasPending is data-driven).
+      const control = await screen.findByRole('button', { name: /processed|dismiss|done/i });
       expect(control).toBeInTheDocument();
     });
 
     it('clicking Mark processed calls updateCaptureStatus', async () => {
       const { updateCaptureStatus } = await import('../src/services/capture-service');
       render(<CaptureInbox sessionId="s1" database={mockDb as never} />);
-      fireEvent.click(screen.getByRole('button', { name: /processed|done/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /processed|done/i }));
       expect(updateCaptureStatus).toHaveBeenCalled();
     });
   });
@@ -123,6 +128,8 @@ describe('M4-S07 capture inbox', () => {
 // Bug #119: listCaptures must not throw on malformed links_json — guards the inbox from being
 //           permanently broken by a corrupt or migrated row.
 describe('issue #119: listCaptures resilience against malformed links_json', () => {
+  // #400: der Service ist auf async DatabaseLike (select/execute) migriert; die rohe
+  // node:sqlite-DB wird als async DatabaseLike gewrappt und listCaptures awaited.
   async function makeDb() {
     const { DatabaseSync } = await import('node:sqlite');
     const db = new DatabaseSync(':memory:');
@@ -138,6 +145,13 @@ describe('issue #119: listCaptures resilience against malformed links_json', () 
     return db;
   }
 
+  function asAsyncDb(db: { prepare: (sql: string) => { run: (...a: unknown[]) => unknown; all: (...a: unknown[]) => unknown[] } }): DatabaseLike {
+    return {
+      execute: (sql: string, args: unknown[] = []) => { db.prepare(sql).run(...args); return Promise.resolve(); },
+      select: <T,>(sql: string, args: unknown[] = []): Promise<T[]> => Promise.resolve(db.prepare(sql).all(...args) as T[]),
+    };
+  }
+
   it('listCaptures does not throw when links_json is an empty string', async () => {
     const { listCaptures } = await vi.importActual<typeof import('../src/services/capture-service')>('../src/services/capture-service');
     const db = await makeDb();
@@ -145,7 +159,7 @@ describe('issue #119: listCaptures resilience against malformed links_json', () 
       `INSERT INTO capture_notes (id, session_id, type, raw_text, status, links_json, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run('cap-corrupt', 's1', 'decision', 'Some text.', 'needs_processing', '', '2026-06-24T00:00:00.000Z');
-    expect(() => listCaptures(db, 's1')).not.toThrow();
+    await expect(listCaptures(asAsyncDb(db), 's1')).resolves.toBeInstanceOf(Array);
     db.close();
   });
 
@@ -156,7 +170,7 @@ describe('issue #119: listCaptures resilience against malformed links_json', () 
       `INSERT INTO capture_notes (id, session_id, type, raw_text, status, links_json, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run('cap-corrupt', 's1', 'decision', 'Some text.', 'needs_processing', '{broken json', '2026-06-24T00:00:00.000Z');
-    const captures = listCaptures(db, 's1');
+    const captures = await listCaptures(asAsyncDb(db), 's1');
     expect(Array.isArray(captures)).toBe(true);
     expect(captures[0].links).toEqual([]);
     db.close();
@@ -169,7 +183,7 @@ describe('issue #119: listCaptures resilience against malformed links_json', () 
       `INSERT INTO capture_notes (id, session_id, type, raw_text, status, links_json, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run('cap-null', 's1', 'open_question', 'Some text.', 'needs_processing', null, '2026-06-24T00:00:00.000Z');
-    expect(() => listCaptures(db, 's1')).not.toThrow();
+    await expect(listCaptures(asAsyncDb(db), 's1')).resolves.toBeInstanceOf(Array);
     db.close();
   });
 });

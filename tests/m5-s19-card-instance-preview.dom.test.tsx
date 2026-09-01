@@ -4,25 +4,26 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+// Services sind auf async migriert — listCard*/listEntities/getEffectiveEntity liefern Promises (#400 Cluster B).
 vi.mock('../src/services/card-service', () => ({
-  listCardTemplates: vi.fn(() => [
+  listCardTemplates: vi.fn().mockResolvedValue([
     { id: 'tpl-npc', label: 'NPC', entity_types: '["Character"]', size_mm: '{"width_mm":63,"height_mm":88}' },
     { id: 'tpl-loc', label: 'Location', entity_types: '["Location"]', size_mm: '{"width_mm":63,"height_mm":88}' },
   ]),
-  createCardInstance: vi.fn(() => ({ id: 'card-1' })),
-  listCardInstances: vi.fn(() => [
+  createCardInstance: vi.fn().mockResolvedValue({ id: 'card-1' }),
+  listCardInstances: vi.fn().mockResolvedValue([
     { id: 'card-1', entity_id: 'char-ada', template_id: 'tpl-npc', audience: 'players', fields: '{}' },
   ]),
-  updateCardInstance: vi.fn(),
+  updateCardInstance: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../src/services/entity-service', () => ({
-  listEntitiesByType: vi.fn(() => [
+  listEntitiesByType: vi.fn().mockResolvedValue([
     { id: 'char-ada', type: 'Character', title: 'Ada Thorn', summary: '' },
   ]),
-  getEffectiveEntity: vi.fn(() => ({
+  getEffectiveEntity: vi.fn().mockResolvedValue({
     found: true, entity: { id: 'char-ada', type: 'Character', title: 'Ada Thorn', summary: 'Archivist', properties: {} },
-  })),
+  }),
 }));
 
 import { CardCreationFlow } from '../src/ui/CardCreationFlow';
@@ -37,26 +38,23 @@ describe('M5-S19 card instance & preview', () => {
       expect(() => render(<CardCreationFlow database={mockDb as never} onComplete={vi.fn()} />)).not.toThrow();
     });
 
-    it('step 1: entity selector shows entities', () => {
+    it('step 1: entity selector shows entities', async () => {
       render(<CardCreationFlow database={mockDb as never} onComplete={vi.fn()} />);
-      expect(screen.getByText(/Ada Thorn|select entity/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Ada Thorn|select entity/i)).toBeInTheDocument();
     });
 
-    it('step 2: template selector filtered by entity type', () => {
+    it('step 2: template selector filtered by entity type', async () => {
       render(<CardCreationFlow database={mockDb as never} onComplete={vi.fn()} />);
-      const entityItem = screen.queryByText(/Ada Thorn/i);
-      if (entityItem) {
-        fireEvent.click(entityItem);
-        expect(screen.getByText(/NPC|template/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Location/i)).not.toBeInTheDocument();
-      }
+      fireEvent.click(await screen.findByText(/Ada Thorn/i));
+      expect(await screen.findByText(/NPC|template/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Location/i)).not.toBeInTheDocument();
     });
   });
 
   describe('CardPreview', () => {
-    it('renders card at correct physical proportions', () => {
+    it('renders card at correct physical proportions', async () => {
       render(<CardPreview templateId="tpl-npc" entityId="char-ada" database={mockDb as never} />);
-      expect(screen.queryByText(/Ada Thorn|preview/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Ada Thorn|preview/i)).toBeInTheDocument();
     });
 
     it('shows overflow amber indicator when content exceeds slot', () => {
@@ -73,9 +71,9 @@ describe('M5-S19 card instance & preview', () => {
   });
 
   describe('CardList', () => {
-    it('renders all card instances', () => {
+    it('renders all card instances', async () => {
       render(<CardList database={mockDb as never} />);
-      expect(screen.getByText(/Ada Thorn|NPC|card-1/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Ada Thorn|NPC|card-1/i)).toBeInTheDocument();
     });
 
     it('filter by entity type', () => {

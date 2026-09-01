@@ -4,34 +4,35 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+// Services sind auf async migriert — listSnapshots u.a. liefern Promises (#400 Cluster B).
 vi.mock('../src/services/snapshot-service', () => ({
-  listSnapshots: vi.fn(() => [
+  listSnapshots: vi.fn().mockResolvedValue([
     { id: 'snap-1', name: 'Vor großem Umbau', createdAt: '2026-06-01T10:00:00Z', sizeBytes: 1024000 },
     { id: 'snap-2', name: 'Nach Session 5', createdAt: '2026-06-15T18:30:00Z', sizeBytes: 2048000 },
   ]),
-  createSnapshot: vi.fn(() => ({ id: 'snap-new' })),
-  restoreSnapshot: vi.fn(),
-  deleteSnapshot: vi.fn(),
+  createSnapshot: vi.fn().mockResolvedValue({ id: 'snap-new' }),
+  restoreSnapshot: vi.fn().mockResolvedValue(undefined),
+  deleteSnapshot: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { SnapshotManager } from '../src/ui/SnapshotManager';
 
 describe('M7-S04 snapshot manager', () => {
   describe('list display', () => {
-    it('shows snapshot names', () => {
+    it('shows snapshot names', async () => {
       render(<SnapshotManager projectId="proj-1" onRestored={vi.fn()} />);
-      expect(screen.getByText(/Vor großem Umbau/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Vor großem Umbau/i)).toBeInTheDocument();
       expect(screen.getByText(/Nach Session 5/i)).toBeInTheDocument();
     });
 
-    it('shows snapshot dates', () => {
+    it('shows snapshot dates', async () => {
       render(<SnapshotManager projectId="proj-1" onRestored={vi.fn()} />);
-      expect(screen.getByText(/2026-06-01|01\.06\.2026|Jun.*2026/i)).toBeInTheDocument();
+      expect(await screen.findByText(/2026-06-01|01\.06\.2026|Jun.*2026/i)).toBeInTheDocument();
     });
 
-    it('shows snapshot size', () => {
+    it('shows snapshot size', async () => {
       render(<SnapshotManager projectId="proj-1" onRestored={vi.fn()} />);
-      expect(screen.getByText(/1.*MB|1024.*KB|1\.0.*MB/i)).toBeInTheDocument();
+      expect(await screen.findByText(/1.*MB|1024.*KB|1\.0.*MB/i)).toBeInTheDocument();
     });
   });
 
@@ -57,35 +58,36 @@ describe('M7-S04 snapshot manager', () => {
   });
 
   describe('restore', () => {
-    it('each snapshot has a restore button', () => {
+    it('each snapshot has a restore button', async () => {
       render(<SnapshotManager projectId="proj-1" onRestored={vi.fn()} />);
-      expect(screen.getAllByRole('button', { name: /wiederherstellen|restore/i }).length).toBeGreaterThan(0);
+      expect((await screen.findAllByRole('button', { name: /wiederherstellen|restore/i })).length).toBeGreaterThan(0);
     });
 
-    it('clicking restore shows confirmation dialog with warning text', () => {
+    it('clicking restore shows confirmation dialog with warning text', async () => {
       render(<SnapshotManager projectId="proj-1" onRestored={vi.fn()} />);
-      const restoreBtn = screen.getAllByRole('button', { name: /wiederherstellen|restore/i })[0];
+      const restoreBtn = (await screen.findAllByRole('button', { name: /wiederherstellen|restore/i }))[0];
       fireEvent.click(restoreBtn);
-      expect(screen.getByText(/aktuelle änderungen gehen verloren|current changes.*lost/i)).toBeInTheDocument();
+      // Warntext via t('snapshot.confirmRestore'); ohne i18n-Instanz rendert der Key.
+      expect(screen.getByText(/aktuelle änderungen gehen verloren|current changes.*lost|confirmRestore/i)).toBeInTheDocument();
     });
 
-    it('confirmation dialog has confirm and cancel buttons', () => {
+    it('confirmation dialog has confirm and cancel buttons', async () => {
       render(<SnapshotManager projectId="proj-1" onRestored={vi.fn()} />);
-      fireEvent.click(screen.getAllByRole('button', { name: /wiederherstellen|restore/i })[0]);
+      fireEvent.click((await screen.findAllByRole('button', { name: /wiederherstellen|restore/i }))[0]);
       expect(screen.getByRole('button', { name: /ja|yes|fortfahren|confirm/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /abbrechen|cancel/i })).toBeInTheDocument();
     });
   });
 
   describe('delete', () => {
-    it('each snapshot has a delete button', () => {
+    it('each snapshot has a delete button', async () => {
       render(<SnapshotManager projectId="proj-1" onRestored={vi.fn()} />);
-      expect(screen.getAllByRole('button', { name: /löschen|delete/i }).length).toBeGreaterThan(0);
+      expect((await screen.findAllByRole('button', { name: /löschen|delete/i })).length).toBeGreaterThan(0);
     });
 
-    it('clicking delete shows confirmation dialog', () => {
+    it('clicking delete shows confirmation dialog', async () => {
       render(<SnapshotManager projectId="proj-1" onRestored={vi.fn()} />);
-      const deleteBtn = screen.getAllByRole('button', { name: /löschen|delete/i })[0];
+      const deleteBtn = (await screen.findAllByRole('button', { name: /löschen|delete/i }))[0];
       fireEvent.click(deleteBtn);
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });

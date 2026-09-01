@@ -4,30 +4,31 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+// Services sind auf async migriert — listScreens/getScreen u.a. liefern Promises (#400 Cluster B).
 vi.mock('../src/services/dm-screen-service', () => ({
-  listScreens: vi.fn(() => [
+  listScreens: vi.fn().mockResolvedValue([
     { id: 'screen-combat', title: 'Combat Screen', layout: { columns: 2 }, panels: [
       { id: 'p1', title: 'Conditions', source: 'rule_table', config: { tag: 'condition' }, display: 'list' },
       { id: 'p2', title: 'Party', source: 'entity_type', config: { entity_type: 'Character' }, display: 'card' },
     ]},
     { id: 'screen-travel', title: 'Travel Screen', layout: { columns: 1 }, panels: [] },
   ]),
-  saveScreen: vi.fn(() => ({ id: 'screen-new' })),
-  getScreen: vi.fn(() => ({
+  saveScreen: vi.fn().mockResolvedValue({ id: 'screen-new' }),
+  getScreen: vi.fn().mockResolvedValue({
     id: 'screen-combat', title: 'Combat Screen', layout: { columns: 2 }, panels: [
       { id: 'p1', title: 'Conditions', source: 'rule_table', config: { tag: 'condition' }, display: 'list' },
     ],
-  })),
+  }),
 }));
 
 vi.mock('../src/services/rule-import-service', () => ({
-  listRuleEntities: vi.fn(() => [
+  listRuleEntities: vi.fn().mockResolvedValue([
     { id: 'cond-blinded', type: 'condition', title: 'Blinded', reference_summary: 'Cannot see' },
   ]),
 }));
 
 vi.mock('../src/services/entity-service', () => ({
-  listEntitiesByType: vi.fn(() => [{ id: 'char-ada', type: 'Character', title: 'Ada Thorn' }]),
+  listEntitiesByType: vi.fn().mockResolvedValue([{ id: 'char-ada', type: 'Character', title: 'Ada Thorn' }]),
 }));
 
 import { DmScreen } from '../src/ui/DmScreen';
@@ -41,38 +42,40 @@ describe('M6-S09 DM screen dashboard', () => {
       expect(() => render(<DmScreenSelector database={mockDb as never} onSelectScreen={vi.fn()} />)).not.toThrow();
     });
 
-    it('shows all saved screens', () => {
+    it('shows all saved screens', async () => {
       render(<DmScreenSelector database={mockDb as never} onSelectScreen={vi.fn()} />);
-      expect(screen.getByText('Combat Screen')).toBeInTheDocument();
+      expect(await screen.findByText('Combat Screen')).toBeInTheDocument();
       expect(screen.getByText('Travel Screen')).toBeInTheDocument();
     });
 
-    it('clicking a screen calls onSelectScreen with screenId', () => {
+    it('clicking a screen calls onSelectScreen with screenId', async () => {
       const onSelect = vi.fn();
       render(<DmScreenSelector database={mockDb as never} onSelectScreen={onSelect} />);
-      fireEvent.click(screen.getByText('Combat Screen'));
+      fireEvent.click(await screen.findByText('Combat Screen'));
       expect(onSelect).toHaveBeenCalledWith('screen-combat');
     });
   });
 
   describe('DmScreen panels', () => {
-    it('renders panels for the selected screen', () => {
+    it('renders panels for the selected screen', async () => {
       render(<DmScreen screenId="screen-combat" database={mockDb as never} />);
-      expect(screen.getByText('Conditions')).toBeInTheDocument();
+      expect(await screen.findByText('Conditions')).toBeInTheDocument();
     });
 
-    it('rule_table panel renders rule entities', () => {
+    it('rule_table panel renders rule entities', async () => {
       render(<DmScreen screenId="screen-combat" database={mockDb as never} />);
-      expect(screen.getByText(/Blinded/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Blinded/i)).toBeInTheDocument();
     });
 
-    it('entity_type panel renders entities of that type', () => {
+    it('entity_type panel renders entities of that type', async () => {
       render(<DmScreen screenId="screen-combat" database={mockDb as never} />);
-      expect(screen.getByText(/Ada Thorn/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Ada Thorn/i)).toBeInTheDocument();
     });
 
-    it('panels are read-only (no edit buttons on panel content)', () => {
+    it('panels are read-only (no edit buttons on panel content)', async () => {
       render(<DmScreen screenId="screen-combat" database={mockDb as never} />);
+      // Wait for panels to load before asserting the absence of edit controls.
+      await screen.findByText('Conditions');
       expect(screen.queryByRole('button', { name: /edit entity|edit rule/i })).not.toBeInTheDocument();
     });
   });
@@ -83,9 +86,9 @@ describe('M6-S09 DM screen dashboard', () => {
       expect(screen.getByRole('button', { name: /add panel/i })).toBeInTheDocument();
     });
 
-    it('panels have remove/delete control', () => {
+    it('panels have remove/delete control', async () => {
       render(<DmScreen screenId="screen-combat" database={mockDb as never} />);
-      expect(screen.getAllByRole('button', { name: /remove panel|delete panel|×/i }).length).toBeGreaterThan(0);
+      expect((await screen.findAllByRole('button', { name: /remove panel|delete panel|×/i })).length).toBeGreaterThan(0);
     });
   });
 

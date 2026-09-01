@@ -16,27 +16,29 @@ const mockReadAppConfig = readAppConfig as ReturnType<typeof vi.fn>;
 describe('M7-S02 welcome screen & project launcher', () => {
   describe('empty state (no projects)', () => {
     it('renders "Neues Projekt erstellen" button', () => {
-      mockReadAppConfig.mockReturnValue({ last_opened_project_id: null, projects: [] });
+      mockReadAppConfig.mockResolvedValue({ last_opened_project_id: null, projects: [] });
       render(<WelcomeScreen onCreateProject={vi.fn()} onImportZip={vi.fn()} onOpenProject={vi.fn()} />);
-      expect(screen.getByRole('button', { name: /neues projekt erstellen/i })).toBeInTheDocument();
+      // Label via t('createNewProject'); ohne i18n-Instanz rendert der Key.
+      expect(screen.getByRole('button', { name: /neues projekt erstellen|createNewProject/i })).toBeInTheDocument();
     });
 
     it('renders "Bestehendes ZIP importieren" button', () => {
-      mockReadAppConfig.mockReturnValue({ last_opened_project_id: null, projects: [] });
+      mockReadAppConfig.mockResolvedValue({ last_opened_project_id: null, projects: [] });
       render(<WelcomeScreen onCreateProject={vi.fn()} onImportZip={vi.fn()} onOpenProject={vi.fn()} />);
-      expect(screen.getByRole('button', { name: /zip importieren/i })).toBeInTheDocument();
+      // Label via t('importZip'); ohne i18n-Instanz rendert der Key.
+      expect(screen.getByRole('button', { name: /zip importieren|importZip/i })).toBeInTheDocument();
     });
 
     it('does not show project list when projects is empty', () => {
-      mockReadAppConfig.mockReturnValue({ last_opened_project_id: null, projects: [] });
+      mockReadAppConfig.mockResolvedValue({ last_opened_project_id: null, projects: [] });
       render(<WelcomeScreen onCreateProject={vi.fn()} onImportZip={vi.fn()} onOpenProject={vi.fn()} />);
       expect(screen.queryByRole('list')).not.toBeInTheDocument();
     });
   });
 
   describe('existing projects', () => {
-    it('shows list of recent projects when projects exist', () => {
-      mockReadAppConfig.mockReturnValue({
+    it('shows list of recent projects when projects exist', async () => {
+      mockReadAppConfig.mockResolvedValue({
         last_opened_project_id: null,
         projects: [
           { id: 'p1', title: 'Forgotten Realms', path: '/projects/fr' },
@@ -44,36 +46,37 @@ describe('M7-S02 welcome screen & project launcher', () => {
         ],
       });
       render(<WelcomeScreen onCreateProject={vi.fn()} onImportZip={vi.fn()} onOpenProject={vi.fn()} />);
-      expect(screen.getByText(/Forgotten Realms/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Forgotten Realms/i)).toBeInTheDocument();
       expect(screen.getByText(/Middle Earth/i)).toBeInTheDocument();
     });
 
-    it('clicking a project calls onOpenProject with project id', () => {
+    it('clicking a project calls onOpenProject with project id', async () => {
       const onOpen = vi.fn();
-      mockReadAppConfig.mockReturnValue({
+      mockReadAppConfig.mockResolvedValue({
         last_opened_project_id: null,
         projects: [{ id: 'p1', title: 'Forgotten Realms', path: '/projects/fr' }],
       });
       render(<WelcomeScreen onCreateProject={vi.fn()} onImportZip={vi.fn()} onOpenProject={onOpen} />);
-      fireEvent.click(screen.getByText(/Forgotten Realms/i));
+      fireEvent.click(await screen.findByText(/Forgotten Realms/i));
       expect(onOpen).toHaveBeenCalledWith('p1');
     });
   });
 
   describe('stale last_opened_project_id', () => {
-    it('shows hint when last_opened_project_id points to nonexistent project', () => {
-      mockReadAppConfig.mockReturnValue({
+    it('shows hint when last_opened_project_id points to nonexistent project', async () => {
+      mockReadAppConfig.mockResolvedValue({
         last_opened_project_id: 'ghost-project',
         projects: [],
       });
       render(<WelcomeScreen onCreateProject={vi.fn()} onImportZip={vi.fn()} onOpenProject={vi.fn()} />);
-      expect(screen.getByText(/nicht mehr vorhanden|not found|missing/i)).toBeInTheDocument();
+      // Hinweistext via t('staleProject'); ohne i18n-Instanz rendert der Key.
+      expect(await screen.findByText(/nicht mehr vorhanden|not found|missing|staleProject/i)).toBeInTheDocument();
     });
   });
 
   describe('issue #150: readAppConfig called only once on mount (not on every re-render)', () => {
     it('readAppConfig is called at most once after initial render', () => {
-      mockReadAppConfig.mockReturnValue({ last_opened_project_id: null, projects: [] });
+      mockReadAppConfig.mockResolvedValue({ last_opened_project_id: null, projects: [] });
       mockReadAppConfig.mockClear();
       const { rerender } = render(<WelcomeScreen onCreateProject={vi.fn()} onImportZip={vi.fn()} onOpenProject={vi.fn()} />);
       rerender(<WelcomeScreen onCreateProject={vi.fn()} onImportZip={vi.fn()} onOpenProject={vi.fn()} />);

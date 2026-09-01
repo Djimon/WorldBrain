@@ -2,12 +2,14 @@
 // Registered via tab-registration API. Show, add, deactivate, reactivate.
 // See: https://github.com/Djimon/WorldBrain/issues/40
 
+import { readFileSync } from 'node:fs';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RelationsTab } from '../src/ui/RelationsTab';
 
+// Services sind auf async migriert — getRelations/addRelation liefern Promises (#400 Cluster B).
 vi.mock('../src/services/relation-service', () => ({
-  getRelations: vi.fn(() => [
+  getRelations: vi.fn().mockResolvedValue([
     {
       id: 'rel-1',
       source_id: 'entity-silas',
@@ -29,13 +31,13 @@ vi.mock('../src/services/relation-service', () => ({
       notes: 'Former allies.',
     },
   ]),
-  addRelation: vi.fn(() => ({ id: 'new-rel' })),
-  deactivateRelation: vi.fn(),
-  reactivateRelation: vi.fn(),
+  addRelation: vi.fn().mockResolvedValue({ id: 'new-rel' }),
+  deactivateRelation: vi.fn().mockResolvedValue(undefined),
+  reactivateRelation: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../src/services/entity-service', () => ({
-  getEffectiveEntity: vi.fn(({ entityId }: { entityId: string }) => ({
+  getEffectiveEntity: vi.fn(({ entityId }: { entityId: string }) => Promise.resolve({
     found: true,
     entityId,
     entity: {
@@ -54,7 +56,7 @@ vi.mock('../src/services/entity-service', () => ({
     overriddenFields: [],
     orphanedOverrideCount: 0,
   })),
-  listEntitiesByType: vi.fn(() => []),
+  listEntitiesByType: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('../src/data/relation-type-registry', () => ({
@@ -74,23 +76,23 @@ vi.mock('../src/data/relation-type-registry', () => ({
 
 describe('M2-S12 relations tab', () => {
   describe('active relations', () => {
-    it('renders active relations', () => {
-      render(<RelationsTab entityId="entity-silas" />);
+    it('renders active relations', async () => {
+      render(<RelationsTab entityId="entity-silas" database={{} as never} />);
 
       // rel-1 is active: Silas is source, relation is part_of Weavers → label "member of"
-      expect(screen.getByText(/member of|weavers/i)).toBeInTheDocument();
+      expect(await screen.findByText(/member of|weavers/i)).toBeInTheDocument();
     });
 
-    it('shows the target entity chip with its type color', () => {
-      render(<RelationsTab entityId="entity-silas" />);
+    it('shows the target entity chip with its type color', async () => {
+      render(<RelationsTab entityId="entity-silas" database={{} as never} />);
 
       // Target entity should be shown as a clickable chip
-      expect(screen.getByText(/the weavers/i)).toBeInTheDocument();
+      expect(await screen.findByText(/the weavers/i)).toBeInTheDocument();
     });
 
     it('shows gm_only visibility badge for gm_only relations', async () => {
       const { getRelations } = vi.mocked(await import('../src/services/relation-service'));
-      getRelations.mockReturnValueOnce([
+      getRelations.mockResolvedValueOnce([
         {
           id: 'rel-gm',
           source_id: 'entity-silas',
@@ -103,65 +105,65 @@ describe('M2-S12 relations tab', () => {
         },
       ]);
 
-      render(<RelationsTab entityId="entity-silas" />);
+      render(<RelationsTab entityId="entity-silas" database={{} as never} />);
 
-      expect(screen.getByText(/gm.?only|gm only/i)).toBeInTheDocument();
+      expect(await screen.findByText(/gm.?only|gm only/i)).toBeInTheDocument();
     });
   });
 
   describe('inactive relations', () => {
-    it('shows inactive relations in a greyed/collapsed section', () => {
-      render(<RelationsTab entityId="entity-silas" />);
+    it('shows inactive relations in a greyed/collapsed section', async () => {
+      render(<RelationsTab entityId="entity-silas" database={{} as never} />);
 
       // rel-2 is inactive: Ada Thorn with ally_of, notes "Former allies."
       // Either shown greyed or behind a toggle — must be accessible
-      expect(screen.getByText(/former allies|ada thorn/i)).toBeInTheDocument();
+      expect(await screen.findByText(/former allies|ada thorn/i)).toBeInTheDocument();
     });
 
-    it('inactive relations have a reactivate control', () => {
-      render(<RelationsTab entityId="entity-silas" />);
+    it('inactive relations have a reactivate control', async () => {
+      render(<RelationsTab entityId="entity-silas" database={{} as never} />);
 
-      expect(screen.getByRole('button', { name: /reactivate/i })).toBeInTheDocument();
+      expect(await screen.findByRole('button', { name: /reactivate/i })).toBeInTheDocument();
     });
 
     it('clicking reactivate calls reactivateRelation with the relation id', async () => {
       const { reactivateRelation } = await import('../src/services/relation-service');
-      render(<RelationsTab entityId="entity-silas" />);
+      render(<RelationsTab entityId="entity-silas" database={{} as never} />);
 
-      fireEvent.click(screen.getByRole('button', { name: /reactivate/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /reactivate/i }));
 
       expect(reactivateRelation).toHaveBeenCalledWith(expect.anything(), 'rel-2');
     });
   });
 
   describe('deactivate relation', () => {
-    it('active relations have a deactivate control', () => {
-      render(<RelationsTab entityId="entity-silas" />);
+    it('active relations have a deactivate control', async () => {
+      render(<RelationsTab entityId="entity-silas" database={{} as never} />);
 
-      expect(screen.getByRole('button', { name: /deactivate|remove/i })).toBeInTheDocument();
+      expect(await screen.findByRole('button', { name: /deactivate|remove/i })).toBeInTheDocument();
     });
 
     it('clicking deactivate calls deactivateRelation with the relation id', async () => {
       const { deactivateRelation } = await import('../src/services/relation-service');
-      render(<RelationsTab entityId="entity-silas" />);
+      render(<RelationsTab entityId="entity-silas" database={{} as never} />);
 
-      fireEvent.click(screen.getByRole('button', { name: /deactivate|remove/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /deactivate|remove/i }));
 
       expect(deactivateRelation).toHaveBeenCalledWith(expect.anything(), 'rel-1');
     });
   });
 
   describe('label direction', () => {
-    it('shows the relation label from the perspective of the current entity (as source)', () => {
-      render(<RelationsTab entityId="entity-silas" />);
+    it('shows the relation label from the perspective of the current entity (as source)', async () => {
+      render(<RelationsTab entityId="entity-silas" database={{} as never} />);
 
       // Silas is source of part_of → label is "member of"
-      expect(screen.getByText(/member of/i)).toBeInTheDocument();
+      expect(await screen.findByText(/member of/i)).toBeInTheDocument();
     });
 
     it('shows the inverse label when the current entity is the target', async () => {
       const { getRelations } = vi.mocked(await import('../src/services/relation-service'));
-      getRelations.mockReturnValueOnce([
+      getRelations.mockResolvedValueOnce([
         {
           id: 'rel-inv',
           source_id: 'entity-weavers',  // Weavers is source
@@ -174,26 +176,27 @@ describe('M2-S12 relations tab', () => {
         },
       ]);
 
-      render(<RelationsTab entityId="entity-silas" />);
+      render(<RelationsTab entityId="entity-silas" database={{} as never} />);
 
       // From Silas's perspective as target: inverse label "has member" should show
-      expect(screen.getByText(/has member/i)).toBeInTheDocument();
+      expect(await screen.findByText(/has member/i)).toBeInTheDocument();
     });
   });
 
   describe('add relation flow', () => {
     it('renders an "Add relation" button', () => {
-      render(<RelationsTab entityId="entity-silas" />);
+      render(<RelationsTab entityId="entity-silas" database={{} as never} />);
 
       expect(screen.getByRole('button', { name: /add relation/i })).toBeInTheDocument();
     });
 
     it('clicking Add relation opens the entity picker or an add form', () => {
-      render(<RelationsTab entityId="entity-silas" />);
+      render(<RelationsTab entityId="entity-silas" database={{} as never} />);
 
       fireEvent.click(screen.getByRole('button', { name: /add relation/i }));
 
-      // Either an EntityPicker or a form with relation-type selector appears
+      // A form with a relation-type selector (combobox) appears immediately;
+      // the EntityPicker searchbox follows once a type is chosen.
       const picker = screen.queryByRole('searchbox') ?? screen.queryByRole('combobox');
       expect(picker).toBeInTheDocument();
     });
@@ -203,7 +206,7 @@ describe('M2-S12 relations tab', () => {
     it('RelationsTab renders without being hard-coded into EntityDetailView', () => {
       // RelationsTab is a standalone component, not embedded in EntityDetailView directly.
       // It will be registered via registerEntityTab by the EPIC-004 initializer.
-      expect(() => render(<RelationsTab entityId="entity-silas" />)).not.toThrow();
+      expect(() => render(<RelationsTab entityId="entity-silas" database={{} as never} />)).not.toThrow();
     });
   });
 });
@@ -228,19 +231,21 @@ describe('issue-59 RelationsTab and EntityGraph database type safety', () => {
     });
   });
 
-  describe('EntityGraph.tsx', () => {
+  // #400: EntityGraph.tsx wurde in GlobalGraphView.tsx umbenannt/refaktoriert;
+  // die Typsicherheits-Guards prüfen jetzt die aktuelle Datei.
+  describe('GlobalGraphView.tsx', () => {
     it('does not contain "as never" casts', () => {
-      const src = readFileSync('src/ui/EntityGraph.tsx', 'utf-8');
+      const src = readFileSync('src/ui/GlobalGraphView.tsx', 'utf-8');
       expect(src).not.toContain('as never');
     });
 
     it('declares database prop as DatabaseLike', () => {
-      const src = readFileSync('src/ui/EntityGraph.tsx', 'utf-8');
+      const src = readFileSync('src/ui/GlobalGraphView.tsx', 'utf-8');
       expect(src).toMatch(/database\s*:\s*DatabaseLike/);
     });
 
     it('imports DatabaseLike from entity-service', () => {
-      const src = readFileSync('src/ui/EntityGraph.tsx', 'utf-8');
+      const src = readFileSync('src/ui/GlobalGraphView.tsx', 'utf-8');
       expect(src).toMatch(/DatabaseLike/);
       expect(src).toMatch(/from\s+['"].*entity-service['"]/);
     });
@@ -327,7 +332,7 @@ describe('issue-62 RelationsTab registered in EntityDetailView', () => {
 
       render(<EntityDetailView entityId="char-ada" />);
 
-      expect(screen.getByRole('tab', { name: /relations/i })).toBeInTheDocument();
+      expect(await screen.findByRole('tab', { name: /relations/i })).toBeInTheDocument();
     });
   });
 });
@@ -372,13 +377,14 @@ describe('issue-64 RelationsTab state management', () => {
 
       // After deactivate, simulate component re-reading state
       (deactivateRelation as ReturnType<typeof vi.fn>).mockImplementation(() => {
-        (getRelations as ReturnType<typeof vi.fn>).mockReturnValueOnce([]);
+        (getRelations as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
+        return Promise.resolve();
       });
 
       render(<RelationsTab entityId="entity-ada" database={mockDb as never} />);
 
-      // Active relation is visible
-      expect(screen.getByText(/ally of|entity-bram/i)).toBeInTheDocument();
+      // Inactive relation (rel-2, ally_of) is visible from Ada's perspective
+      expect(await screen.findByText(/ally of|entity-bram/i)).toBeInTheDocument();
 
       // Deactivate
       const deactivateBtn = screen.queryByRole('button', { name: /deactivate|remove/i });
@@ -394,13 +400,13 @@ describe('issue-64 RelationsTab state management', () => {
       const { getRelations, reactivateRelation } = await import('../src/services/relation-service');
 
       // Start with an inactive relation
-      (getRelations as ReturnType<typeof vi.fn>).mockReturnValueOnce([
+      (getRelations as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
         { id: 'r-inactive', source_id: 'entity-ada', target_id: 'entity-bram', relation_type: 'ally_of', inverse_type: 'ally_of', active: 0, visibility_json: '"public"', notes: 'Old.' },
       ]);
 
       render(<RelationsTab entityId="entity-ada" database={mockDb as never} />);
 
-      const reactivateBtn = screen.queryByRole('button', { name: /reactivate/i });
+      const reactivateBtn = await screen.findByRole('button', { name: /reactivate/i });
       if (reactivateBtn) {
         fireEvent.click(reactivateBtn);
         expect(reactivateRelation).toHaveBeenCalledWith(expect.anything(), 'r-inactive');
@@ -411,6 +417,16 @@ describe('issue-64 RelationsTab state management', () => {
 
 // Bug #66
 describe('issue-66 relation visibility toggle in add-relation form', () => {
+  const mockDb = {};
+
+  // Opens the add-relation form and selects a relation type so that the
+  // EntityPicker (searchbox) and visibility toggle are available.
+  function openAddForm(entityId = 'entity-silas') {
+    render(<RelationsTab entityId={entityId} database={mockDb as never} />);
+    fireEvent.click(screen.getByRole('button', { name: /^add relation$/i }));
+    fireEvent.change(screen.getByRole('combobox', { name: /relation type/i }), { target: { value: 'ally_of' } });
+  }
+
   describe('visibility toggle in add form', () => {
     it('add-relation form includes a visibility toggle', () => {
       openAddForm();
@@ -437,19 +453,20 @@ describe('issue-66 relation visibility toggle in add-relation form', () => {
 
     it('toggling visibility to gm_only passes gm_only to addRelation', async () => {
       const { addRelation } = await import('../src/services/relation-service');
+      const { listEntitiesByType } = await import('../src/services/entity-service');
+      (listEntitiesByType as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { id: 'entity-bram', type: 'Character', title: 'Bram Holt', summary: '', aliases: [] },
+      ]);
+      (addRelation as ReturnType<typeof vi.fn>).mockClear();
+
       openAddForm();
 
-      // Required: entity picker must exist and accept input
-      fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'bram' } });
-      fireEvent.click(screen.getByText('Bram Holt'));
+      // The current component submits on entity-select, so set GM-only first.
+      fireEvent.click(screen.getByRole('checkbox', { name: /gm.?only/i }));
 
-      // Required: GM-only toggle must exist
-      const toggle =
-        screen.getByRole('checkbox', { name: /gm.?only/i });
-      fireEvent.click(toggle);
-
-      // Required: submit button must exist
-      fireEvent.click(screen.getByRole('button', { name: /save|confirm|add/i }));
+      // Entity picker must exist and accept input
+      fireEvent.change(await screen.findByRole('searchbox'), { target: { value: 'bram' } });
+      fireEvent.click(await screen.findByText('Bram Holt'));
 
       expect(addRelation).toHaveBeenCalledWith(
         expect.anything(),
@@ -459,15 +476,17 @@ describe('issue-66 relation visibility toggle in add-relation form', () => {
 
     it('submitting with public visibility passes public to addRelation', async () => {
       const { addRelation } = await import('../src/services/relation-service');
+      const { listEntitiesByType } = await import('../src/services/entity-service');
+      (listEntitiesByType as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { id: 'entity-bram', type: 'Character', title: 'Bram Holt', summary: '', aliases: [] },
+      ]);
       (addRelation as ReturnType<typeof vi.fn>).mockClear();
+
       openAddForm();
 
-      // Required: entity picker must exist
-      fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'bram' } });
-      fireEvent.click(screen.getByText('Bram Holt'));
-
-      // Do NOT toggle GM-only — leave as public (default)
-      fireEvent.click(screen.getByRole('button', { name: /save|confirm|add/i }));
+      // Do NOT toggle GM-only — leave as public (default). Selecting the entity submits.
+      fireEvent.change(await screen.findByRole('searchbox'), { target: { value: 'bram' } });
+      fireEvent.click(await screen.findByText('Bram Holt'));
 
       expect(addRelation).toHaveBeenCalledWith(
         expect.anything(),
@@ -479,7 +498,7 @@ describe('issue-66 relation visibility toggle in add-relation form', () => {
   describe('gm_only badge on created relation', () => {
     it('a gm_only relation shows the GM-only badge in the relations list', async () => {
       const { getRelations } = await import('../src/services/relation-service');
-      (getRelations as ReturnType<typeof vi.fn>).mockReturnValueOnce([
+      (getRelations as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
         {
           id: 'r-gm', source_id: 'entity-ada', target_id: 'char-bram',
           relation_type: 'ally_of', inverse_type: 'ally_of',
@@ -489,7 +508,7 @@ describe('issue-66 relation visibility toggle in add-relation form', () => {
 
       render(<RelationsTab entityId="entity-ada" database={mockDb as never} />);
 
-      expect(screen.getByText(/gm.?only|gm only/i)).toBeInTheDocument();
+      expect(await screen.findByText(/gm.?only|gm only/i)).toBeInTheDocument();
     });
   });
 
@@ -502,4 +521,3 @@ describe('issue-66 relation visibility toggle in add-relation form', () => {
     });
   });
 });
-

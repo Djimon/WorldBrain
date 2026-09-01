@@ -1,15 +1,16 @@
 // M5-S20: Print sheet composer — A4 3x3 grid, cut marks, backside, print job persistence.
 // See: https://github.com/Djimon/WorldBrain/issues/86
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+// Services sind auf async migriert — listCardInstances liefert ein Promise (#400 Cluster B).
 vi.mock('../src/services/card-service', () => ({
-  listCardInstances: vi.fn(() => Array.from({ length: 5 }, (_, i) => ({
+  listCardInstances: vi.fn().mockResolvedValue(Array.from({ length: 5 }, (_, i) => ({
     id: `card-${i}`, entity_id: `e-${i}`, template_id: 'tpl-npc', audience: 'players', fields: '{}',
   }))),
-  savePrintJob: vi.fn(() => ({ id: 'job-1' })),
-  loadPrintJob: vi.fn(() => ({ id: 'job-1', cards: ['card-0', 'card-1'], cutMarks: true, backside: null })),
+  savePrintJob: vi.fn().mockResolvedValue({ id: 'job-1' }),
+  loadPrintJob: vi.fn().mockResolvedValue({ id: 'job-1', cards: ['card-0', 'card-1'], cutMarks: true, backside: null }),
 }));
 
 import { PrintSheetComposer } from '../src/ui/PrintSheetComposer';
@@ -37,14 +38,17 @@ describe('M5-S20 print sheet composer', () => {
   describe('card queue', () => {
     it('has an Add Card button', () => {
       render(<PrintSheetComposer database={mockDb as never} />);
-      expect(screen.getByRole('button', { name: /add card/i })).toBeInTheDocument();
+      // Label is rendered via t('add'); without an i18n instance it renders the key "add".
+      expect(screen.getByRole('button', { name: /add card|add/i })).toBeInTheDocument();
     });
 
-    it('added cards appear in the sheet', () => {
+    it('added cards appear in the sheet', async () => {
       render(<PrintSheetComposer database={mockDb as never} />);
-      fireEvent.click(screen.getByRole('button', { name: /add card/i }));
-      const items = screen.queryAllByRole('listitem');
-      expect(items.length).toBeGreaterThan(0);
+      // handleAddCard picks from the async-loaded queue — retry click until the list populates.
+      await waitFor(() => {
+        fireEvent.click(screen.getByRole('button', { name: /add card|add/i }));
+        expect(screen.queryAllByRole('listitem').length).toBeGreaterThan(0);
+      });
     });
 
     it('>9 cards triggers auto-pagination (shows page 2 indicator)', () => {
