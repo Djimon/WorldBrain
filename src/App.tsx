@@ -189,7 +189,6 @@ export function App() {
         snapshotsDir={snapshotsDir}
         onProjectClose={closeProject}
         onOpenProject={openProject}
-        onProjectRenamed={(newTitle) => setMode((m) => (m.kind === 'workspace' ? { ...m, projectTitle: newTitle } : m))}
       />
     </DatabaseProvider>
   );

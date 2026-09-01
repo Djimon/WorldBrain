@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { appDataDir } from '@tauri-apps/api/path';
 import { stat } from '@tauri-apps/plugin-fs';
-import { openPath } from '@tauri-apps/plugin-opener';
+import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
 import { version as appVersion } from '../../package.json';
 import { useDatabase } from '../services/DatabaseContext';
 import { readAppConfig, registerProject } from '../services/app-config-service';
@@ -35,6 +35,18 @@ function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// Open a folder in the OS file manager. `openPath` throws for directories in some
+// setups, so fall back to `revealItemInDir` (same pattern as ThemePicker). Guarded
+// so non-Tauri (test/browser) just no-ops.
+async function openFolder(path: string): Promise<void> {
+  try {
+    try { await openPath(path); }
+    catch { await revealItemInDir(path); }
+  } catch (err) {
+    console.warn('[settings] openFolder', err);
+  }
 }
 
 const CATS: readonly { id: Category; icon: string; soon?: boolean }[] = [
@@ -121,8 +133,6 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
     }
   }
 
-  const otherProjects = projects.filter((p) => p.id !== projectId);
-
   return (
     <div className="settings">
       <header className="settings__topbar">
@@ -176,8 +186,9 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
                 )}
 
                 {projectDir && (
-                  <div className="settings__path">
-                    <span className="settings__path-label">{t('settingsProjectFolder', 'Projekt-Ordner')}:</span> {projectDir}
+                  <div className="settings__datafolder">
+                    <span className="settings__path"><span className="settings__path-label">{t('settingsProjectFolder', 'Projekt-Ordner')}:</span> {projectDir}</span>
+                    <Button variant="ghost" size="compact" onClick={() => void openFolder(projectDir)}>{t('settingsOpenFolder', 'Öffnen')}</Button>
                   </div>
                 )}
               </div>
@@ -191,16 +202,19 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
               <hr className="settings__divider" />
               <Button tone="danger" variant="outline" onClick={() => onProjectClose?.()}>{t('closeProject')}</Button>
 
-              {otherProjects.length > 0 && (
+              {projects.length > 0 && (
                 <div className="u-stack u-gap-2">
                   <div className="settings__block-label">{t('settingsSwitchProject', 'Projekt wechseln')}</div>
                   <ListSurface>
-                    {otherProjects.map((p) => (
-                      <ListRow key={p.id} as="button" interactive onClick={() => onOpenProject?.(p.id)}>
-                        <span className="u-flex-1">{p.title}</span>
-                        <StatusChip tone="muted">{t('settingsOpenProject', 'Öffnen')}</StatusChip>
-                      </ListRow>
-                    ))}
+                    {projects.map((p) => {
+                      const active = p.id === projectId;
+                      return (
+                        <ListRow key={p.id} as="button" selected={active} interactive={!active} aria-disabled={active || undefined} onClick={() => { if (!active) onOpenProject?.(p.id); }}>
+                          <span className="u-flex-1">{p.title}</span>
+                          <StatusChip tone={active ? 'accent' : 'muted'}>{active ? t('settingsActive', 'Aktiv') : t('settingsOpenProject', 'Öffnen')}</StatusChip>
+                        </ListRow>
+                      );
+                    })}
                   </ListSurface>
                 </div>
               )}
@@ -231,7 +245,7 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
                   <div><dt>{t('settingsAbout.dataFolder', 'Datenordner')}</dt>
                     <dd className="settings__datafolder">
                       <span className="settings__path">{dataDir}</span>
-                      <Button variant="ghost" size="compact" onClick={() => void openPath(dataDir).catch(() => { /* not in Tauri */ })}>{t('settingsOpenFolder', 'Öffnen')}</Button>
+                      <Button variant="ghost" size="compact" onClick={() => void openFolder(dataDir)}>{t('settingsOpenFolder', 'Öffnen')}</Button>
                     </dd>
                   </div>
                 )}
