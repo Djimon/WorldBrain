@@ -10,7 +10,12 @@ vi.mock('../src/services/session-service', () => ({
   activateSession: vi.fn(),
 }));
 
-import { PlayModeScreen } from '../src/ui/PlayModeScreen';
+// #400: PlayModeScreen (M8-S03 Play-Mode-Screen + GM-Whiteboard) wurde im späteren
+// Redesign entfernt/aufgeteilt (Nachfolger: PlayModeView/DmScreen/EncounterMode mit
+// anderer API). Diese Datei prüft die entfernte Komponente; sie ist als PENDING
+// (describe.skip) markiert, bis sie gegen die Nachfolger neu geschrieben wird. Der
+// Stub hält die Datei ladbar + typkonform, ohne die alte Komponente zu re-implementieren.
+const PlayModeScreen = (_props: Record<string, unknown>) => null;
 
 const MOCK_SESSION = {
   id: 's1',
@@ -24,7 +29,7 @@ const MOCK_SESSION = {
   system_plugin_id: null,
 };
 
-describe('M8-S03 play-mode screen & GM whiteboard', () => {
+describe.skip('M8-S03 play-mode screen & GM whiteboard', () => {
   describe('mode toggle', () => {
     it('renders a mode toggle button (Create ↔ Play)', () => {
       render(<PlayModeScreen session={MOCK_SESSION} projectDir="/p" onSwitchToCreate={vi.fn()} />);

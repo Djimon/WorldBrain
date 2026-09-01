@@ -4,6 +4,7 @@
 // TipTap component integration is in m2-s03-body-editor.dom.test.tsx.
 // See: https://github.com/Djimon/WorldBrain/issues/24
 
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 async function getBlockConversion() {

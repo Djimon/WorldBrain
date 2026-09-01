@@ -8,7 +8,11 @@ vi.mock('../src/services/session-log-service', () => ({
   addLogEntry: vi.fn(),
 }));
 
-import { CharacterPanel } from '../src/ui/CharacterPanel';
+// #400: CharacterPanel (M8-S08) wurde im M10-Redesign entfernt (Nachfolger:
+// PlayerCharacterSheet mit anderer API). Diese Datei prüft die entfernte Komponente
+// und ist als PENDING (describe.skip) markiert, bis sie gegen den Nachfolger neu
+// geschrieben wird. Stub hält die Datei ladbar + typkonform.
+const CharacterPanel = (_props: Record<string, unknown>) => null;
 
 const PLAYER_CHARACTERS = [
   {
@@ -29,7 +33,7 @@ const PLAYER_CHARACTERS = [
   },
 ];
 
-describe('M8-S08 character panel', () => {
+describe.skip('M8-S08 character panel', () => {
   describe('character list', () => {
     it('shows all entities with is_player_character: true', () => {
       render(<CharacterPanel sessionId="s1" characters={PLAYER_CHARACTERS} systemPlugin={null} />);
