@@ -1,8 +1,9 @@
 // M15-S15: Scenes — ganzer Board-Snapshot speichern/laden/umschalten
 // See: https://github.com/Djimon/WorldBrain/issues/286
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
 import { SceneSwitcher } from '../src/ui/SceneSwitcher';
 import { stopSceneAudio } from '../src/services/stop-scene-audio';
 import type { SceneWithChannels } from '../src/services/audio-service';
@@ -93,7 +94,8 @@ describe('M15-S15 SceneSwitcher', () => {
     it('confirming deletes the scene', async () => {
       render(<SceneSwitcher database={fakeDb} activeSceneId={null} onSelectScene={vi.fn()} />);
       fireEvent.click((await screen.findAllByRole('button', { name: 'Löschen' }))[0]);
-      fireEvent.click(screen.getByRole('button', { name: 'Löschen', }));
+      const dialog = screen.getByRole('dialog', { name: 'Szene löschen?' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
       await waitFor(() => expect(serviceMocks.deleteScene).toHaveBeenCalledWith(fakeDb, 'scene_1'));
     });
 

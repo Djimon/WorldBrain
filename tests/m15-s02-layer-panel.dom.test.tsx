@@ -100,7 +100,7 @@ describe('M15-S02 layer panel', () => {
     const { container } = renderPanel();
     const row = await getRow(container, 'layer_mid');
     expandRow(row);
-    fireEvent.click(within(row).getByRole('button', { name: /^löschen$/i }));
+    fireEvent.click(within(row).getByRole('button', { name: /^delete$/i }));
     expect(deleteLayer).not.toHaveBeenCalled();
     fireEvent.click(await within(row).findByRole('button', { name: /^ja, löschen$/i }));
     await waitFor(() => expect(deleteLayer).toHaveBeenCalledWith(mockDb, 'layer_mid'));

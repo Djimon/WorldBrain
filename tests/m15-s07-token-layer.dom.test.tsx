@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import type { ComponentProps } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
 import { MapToken } from '../src/ui/MapTokenLayer';
 import { TokenEditor } from '../src/ui/TokenEditor';
 import type { MapTokenRow } from '../src/services/map-token-service';

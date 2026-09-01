@@ -20,6 +20,11 @@ function renderForm(schema: PropertiesSchema, values: Record<string, unknown>, o
   return render(<PropertiesForm schema={schema} values={values} onChange={onChange} />);
 }
 
+// Bug #33: array-valued tag field (aliases) rendered by TagField.
+const tagSchema: PropertiesSchema = {
+  aliases: { type: 'array', items: { type: 'string' }, title: 'Aliases' },
+};
+
 describe('M2-S05 properties form-from-schema', () => {
   describe('string field → text input', () => {
     it('renders a text input for a string property', () => {
@@ -148,13 +153,15 @@ describe('M2-S05 properties form-from-schema', () => {
         { alpha: '', beta: '', gamma: '' },
       );
 
+      // String fields render via MentionInput wrapped in a <label>; the
+      // accessible name comes from label association, not an aria-label attr.
       const fields = screen.getAllByRole('textbox');
-      const labels = fields.map((f) => f.getAttribute('aria-label') ?? f.id ?? '');
+      const alphaIdx = fields.indexOf(screen.getByLabelText(/alpha/i));
+      const betaIdx = fields.indexOf(screen.getByLabelText(/beta/i));
+      const gammaIdx = fields.indexOf(screen.getByLabelText(/gamma/i));
 
       // Schema-defined order must be preserved
-      const alphaIdx = labels.findIndex((l) => /alpha/i.test(l));
-      const betaIdx = labels.findIndex((l) => /beta/i.test(l));
-      const gammaIdx = labels.findIndex((l) => /gamma/i.test(l));
+      expect(alphaIdx).toBeGreaterThanOrEqual(0);
       expect(alphaIdx).toBeLessThan(betaIdx);
       expect(betaIdx).toBeLessThan(gammaIdx);
     });

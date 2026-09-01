@@ -139,9 +139,11 @@ describe('issue-308 Karten-Panel-Chrome', () => {
       expect(src).toMatch(/map-pin-editor__header/);
     });
 
-    it('MapViewer.tsx nutzt weiterhin "Pins (" als Panel-Titel (unverändert)', () => {
+    it('MapViewer.tsx nutzt weiterhin den "Pins (N)"-Panel-Titel (jetzt via i18n-Key pinTree.header)', () => {
       const src = readFileSync('src/ui/MapViewer.tsx', 'utf-8');
-      expect(src).toMatch(/Pins\s*\(/);
+      // Titel wurde lokalisiert: Literal "Pins (" lebt jetzt im Locale, die
+      // MapViewer-Verdrahtung referenziert den Key pinTree.header.
+      expect(src).toMatch(/pinTree\.header/);
     });
   });
 

@@ -17,6 +17,7 @@
 
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
 import { MapViewer } from '../src/ui/MapViewer';
 
 if (!document.elementFromPoint) {

@@ -10,6 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import type { ComponentProps } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
 import { applyMapSchema } from '../core_data/map-schema';
 import type { DatabaseLike } from '../src/services/entity-service';
 import { MapToken } from '../src/ui/MapTokenLayer';
