@@ -1,4 +1,7 @@
-// M5-S02: Calendar wizard UI — step-by-step creation, preset prefill, import/export.
+// M5-S02: Calendar editor UI — einseitige Tab-Maske (Monate/Wochentage/Ären),
+// Preset-Vorbelegung, Speichern. #400: der ursprüngliche Mehrschritt-„Wizard" +
+// JSON-Import/Export (#68) war eine ungewollte AI-Erfindung und wurde durch diese
+// einfache Editor-Maske ersetzt — die zugehörigen Tests sind entfernt.
 // See: https://github.com/Djimon/WorldBrain/issues/68
 
 import { readFileSync } from 'node:fs';
@@ -25,42 +28,6 @@ describe('M5-S02 calendar wizard', () => {
     });
   });
 
-  // #400: Der Kalender-Wizard wurde vom Mehrschritt-Flow (Next/Back/Finish) + JSON-
-  // Import/Export (#68) auf einen einseitigen, DB-gestützten Tab-Editor (Speichern;
-  // Monate/Wochentage/Ären-Tabs) umgebaut. Die Schritt-Navigation und der JSON-
-  // Import/Export existieren in der ausgelieferten Komponente nicht mehr. Diese
-  // Tests prüfen die entfernten Controls und sind als PENDING markiert (kein grün-
-  // frisieren); ob Import/Export bewusst descoped oder später neu gefasst wird, ist
-  // ein Produkt-Entscheid.
-  describe.skip('step navigation', () => {
-    it('has a Next button to advance steps', () => {
-      render(<CalendarWizard onComplete={vi.fn()} />);
-      expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument();
-    });
-
-    it('clicking Next advances to Step 2: month structure', () => {
-      render(<CalendarWizard onComplete={vi.fn()} />);
-      fireEvent.click(screen.getByRole('button', { name: /next/i }));
-      expect(screen.getByText(/month|step 2/i)).toBeInTheDocument();
-    });
-
-    it('has a Back button after Step 1', () => {
-      render(<CalendarWizard onComplete={vi.fn()} />);
-      fireEvent.click(screen.getByRole('button', { name: /next/i }));
-      expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument();
-    });
-
-    it('completes in 3 steps for simple cases (no optional steps)', () => {
-      render(<CalendarWizard onComplete={vi.fn()} />);
-      // Step 1 → 2 → 3 (weekdays) → finish
-      fireEvent.click(screen.getByRole('button', { name: /next/i }));
-      fireEvent.click(screen.getByRole('button', { name: /next/i }));
-      const finishOrNext = screen.queryByRole('button', { name: /finish|done|complete/i })
-        ?? screen.queryByRole('button', { name: /next/i });
-      expect(finishOrNext).toBeInTheDocument();
-    });
-  });
-
   describe('preset selector', () => {
     it('renders a preset selector', () => {
       render(<CalendarWizard onComplete={vi.fn()} database={{} as never} />);
@@ -77,18 +44,6 @@ describe('M5-S02 calendar wizard', () => {
           ?? screen.queryByDisplayValue('365');
         expect(yearInput).toBeInTheDocument();
       }
-    });
-  });
-
-  describe.skip('import/export', () => {
-    it('renders an Import from JSON button', () => {
-      render(<CalendarWizard onComplete={vi.fn()} />);
-      expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
-    });
-
-    it('renders an Export to JSON button', () => {
-      render(<CalendarWizard onComplete={vi.fn()} />);
-      expect(screen.getByRole('button', { name: /export/i })).toBeInTheDocument();
     });
   });
 
@@ -147,24 +102,6 @@ describe('M5-S02 calendar wizard', () => {
     it('source has no window.alert() or alert()', () => {
       const src = readFileSync('src/ui/CalendarWizard.tsx', 'utf8');
       expect(src).not.toMatch(/window\.alert\s*\(|(?<!\w)alert\s*\(/);
-    });
-
-    it.skip('Export does not call window.alert', () => { // #400: Export-Button entfernt (Redesign)
-      const alertSpy = vi.spyOn(globalThis, 'alert').mockImplementation(() => {});
-      render(<CalendarWizard onComplete={vi.fn()} />);
-      fireEvent.click(screen.getByRole('button', { name: /export/i }));
-      expect(alertSpy).not.toHaveBeenCalled();
-      alertSpy.mockRestore();
-    });
-
-    it.skip('Import shows file input or textarea — not prompt dialog', () => { // #400: Import entfernt (Redesign)
-      const promptSpy = vi.spyOn(globalThis, 'prompt').mockReturnValue(null);
-      render(<CalendarWizard onComplete={vi.fn()} />);
-      fireEvent.click(screen.getByRole('button', { name: /import/i }));
-      expect(promptSpy).not.toHaveBeenCalled();
-      const input = document.querySelector('input[type="file"]') ?? screen.queryByRole('textbox');
-      expect(input).not.toBeNull();
-      promptSpy.mockRestore();
     });
   });
 });
