@@ -62,7 +62,7 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
   const { t, i18n } = useTranslation('nav');
   const database = useDatabase();
   const [cat, setCat] = useState<Category>('project');
-  const [stats, setStats] = useState<{ db: string; entities: number; maps: number } | null>(null);
+  const [stats, setStats] = useState<{ db: string; entities: number | null; maps: number | null } | null>(null);
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
   const [dataDir, setDataDir] = useState<string>('');
   // Editable project metadata (title/description) loaded from project.json.
@@ -72,22 +72,32 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
   const [draftTitle, setDraftTitle] = useState('');
   const [draftDesc, setDraftDesc] = useState('');
   const [saving, setSaving] = useState(false);
+  // Two-step switcher: a row click only PREVIEWS that project here; the actual switch
+  // happens on the explicit "Open" button. Defaults to the current project.
+  const [selectedId, setSelectedId] = useState<string>(projectId);
+  const selectedEntry = projects.find((p) => p.id === selectedId);
+  const isCurrent = selectedId === projectId;
+  const selectedDir = isCurrent ? projectDir : (selectedEntry?.path ?? projectDir);
 
   // Project stats — DB file size + row counts (guarded; stays null on non-Tauri/test).
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       let db = '—';
-      try { db = formatBytes((await stat(`${projectDir}/world.db`)).size); } catch { /* not in Tauri */ }
-      let entities = 0, maps = 0;
-      try {
-        entities = (await database.select<{ n: number }>('SELECT COUNT(*) AS n FROM base_entities'))[0]?.n ?? 0;
-        maps = (await database.select<{ n: number }>('SELECT COUNT(*) AS n FROM maps'))[0]?.n ?? 0;
-      } catch { /* table may be absent in some harnesses */ }
+      try { db = formatBytes((await stat(`${selectedDir}/world.db`)).size); } catch { /* not in Tauri */ }
+      // Entity/map counts come from the OPEN db connection → only the current project.
+      // A previewed other project shows its db size but "—" for counts.
+      let entities: number | null = null, maps: number | null = null;
+      if (isCurrent) {
+        try {
+          entities = (await database.select<{ n: number }>('SELECT COUNT(*) AS n FROM base_entities'))[0]?.n ?? 0;
+          maps = (await database.select<{ n: number }>('SELECT COUNT(*) AS n FROM maps'))[0]?.n ?? 0;
+        } catch { /* table may be absent in some harnesses */ }
+      }
       if (!cancelled) setStats({ db, entities, maps });
     })();
     return () => { cancelled = true; };
-  }, [database, projectDir]);
+  }, [database, selectedDir, isCurrent]);
 
   // Project list for the switcher + data-folder path. app-config.json lives at an
   // ABSOLUTE <appDataDir>/app-config.json (same as App.tsx). readAppConfig()'s default
@@ -109,13 +119,13 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
   // Project metadata (title/description) from project.json.
   useEffect(() => {
     let cancelled = false;
-    void readProjectMeta(projectDir).then((m) => {
+    void readProjectMeta(selectedDir).then((m) => {
       if (cancelled || !m) return;
       setTitle(m.title);
       setDescription(m.description ?? '');
     }).catch(() => { /* not in Tauri */ });
     return () => { cancelled = true; };
-  }, [projectDir]);
+  }, [selectedDir]);
 
   function beginEdit() {
     setDraftTitle(title);
@@ -128,12 +138,13 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
     if (!nextTitle || saving) return;
     setSaving(true);
     try {
-      await updateProjectMeta(projectDir, { title: nextTitle, description: draftDesc });
-      const entry = projects.find((p) => p.id === projectId);
+      await updateProjectMeta(selectedDir, { title: nextTitle, description: draftDesc });
+      const entry = projects.find((p) => p.id === selectedId);
       if (entry) await registerProject({ ...entry, title: nextTitle }, await join(await appDataDir(), 'app-config.json'));
       setTitle(nextTitle);
       setDescription(draftDesc.trim());
-      onProjectRenamed?.(nextTitle);
+      setProjects((prev) => prev.map((p) => (p.id === selectedId ? { ...p, title: nextTitle } : p)));
+      if (isCurrent) onProjectRenamed?.(nextTitle);
       setEditing(false);
     } catch (e) {
       console.error('[SettingsPanel] saveEdit failed', e);
@@ -194,36 +205,40 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
                   </p>
                 )}
 
-                {projectDir && (
+                {selectedDir && (
                   <div className="settings__datafolder">
-                    <span className="settings__path"><span className="settings__path-label">{t('settingsProjectFolder', 'Projekt-Ordner')}:</span> {projectDir}</span>
-                    <Button variant="ghost" size="compact" onClick={() => void openFolder(projectDir)}>{t('settingsOpenFolder', 'Öffnen')}</Button>
+                    <span className="settings__path"><span className="settings__path-label">{t('settingsProjectFolder', 'Projekt-Ordner')}:</span> {selectedDir}</span>
+                    <Button variant="ghost" size="compact" onClick={() => void openFolder(selectedDir)}>{t('settingsOpenFolder', 'Öffnen')}</Button>
                   </div>
                 )}
               </div>
 
               <div className="settings__stats">
                 <Panel className="settings__stat"><div className="settings__stat-n">{stats ? stats.db : '—'}</div><div className="settings__stat-l">{t('settingsStat.database', 'Datenbank')}</div></Panel>
-                <Panel className="settings__stat"><div className="settings__stat-n">{stats ? stats.entities : '—'}</div><div className="settings__stat-l">{t('settingsStat.entities', 'Entitäten')}</div></Panel>
-                <Panel className="settings__stat"><div className="settings__stat-n">{stats ? stats.maps : '—'}</div><div className="settings__stat-l">{t('settingsStat.maps', 'Karten')}</div></Panel>
+                <Panel className="settings__stat"><div className="settings__stat-n">{stats && stats.entities !== null ? stats.entities : '—'}</div><div className="settings__stat-l">{t('settingsStat.entities', 'Entitäten')}</div></Panel>
+                <Panel className="settings__stat"><div className="settings__stat-n">{stats && stats.maps !== null ? stats.maps : '—'}</div><div className="settings__stat-l">{t('settingsStat.maps', 'Karten')}</div></Panel>
               </div>
 
               <hr className="settings__divider" />
-              <Button tone="danger" variant="outline" onClick={() => onProjectClose?.()}>{t('closeProject')}</Button>
+              {isCurrent ? (
+                <Button tone="danger" variant="outline" onClick={() => onProjectClose?.()}>{t('closeProject')}</Button>
+              ) : (
+                <div className="u-row u-gap-2">
+                  <Button onClick={() => onOpenProject?.(selectedId)}>{t('settingsOpenProject', 'Öffnen')}</Button>
+                  <Button variant="ghost" onClick={() => { setSelectedId(projectId); setTitle(projectTitle ?? projectId); setEditing(false); }}>{t('cancel', { ns: 'common' })}</Button>
+                </div>
+              )}
 
               {projects.length > 0 && (
                 <div className="u-stack u-gap-2">
                   <div className="settings__block-label">{t('settingsSwitchProject', 'Projekt wechseln')}</div>
                   <ListSurface>
-                    {projects.map((p) => {
-                      const active = p.id === projectId;
-                      return (
-                        <ListRow key={p.id} as="button" selected={active} interactive={!active} aria-disabled={active || undefined} onClick={() => { if (!active) onOpenProject?.(p.id); }}>
-                          <span className="u-flex-1">{p.title}</span>
-                          <StatusChip tone={active ? 'accent' : 'muted'}>{active ? t('settingsActive', 'Aktiv') : t('settingsOpenProject', 'Öffnen')}</StatusChip>
-                        </ListRow>
-                      );
-                    })}
+                    {projects.map((p) => (
+                      <ListRow key={p.id} as="button" selected={p.id === selectedId} aria-current={p.id === selectedId} onClick={() => { setSelectedId(p.id); setTitle(p.title); setEditing(false); }}>
+                        <span className="u-flex-1">{p.title}</span>
+                        {p.id === projectId && <StatusChip tone="accent">{t('settingsActive', 'Aktiv')}</StatusChip>}
+                      </ListRow>
+                    ))}
                   </ListSurface>
                 </div>
               )}
