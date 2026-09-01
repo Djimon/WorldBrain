@@ -220,23 +220,20 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
               </div>
 
               <hr className="settings__divider" />
-              {isCurrent ? (
-                <Button tone="danger" variant="outline" onClick={() => onProjectClose?.()}>{t('closeProject')}</Button>
-              ) : (
-                <div className="u-row u-gap-2">
-                  <Button onClick={() => onOpenProject?.(selectedId)}>{t('settingsOpenProject', 'Öffnen')}</Button>
-                  <Button variant="ghost" onClick={() => { setSelectedId(projectId); setTitle(projectTitle ?? projectId); setEditing(false); }}>{t('cancel', { ns: 'common' })}</Button>
-                </div>
-              )}
+              {isCurrent
+                ? <Button tone="danger" variant="outline" onClick={() => onProjectClose?.()}>{t('closeProject')}</Button>
+                : <Button variant="ghost" onClick={() => { setSelectedId(projectId); setTitle(projectTitle ?? projectId); setEditing(false); }}>{t('back', { ns: 'common' })}</Button>}
 
               {projects.length > 0 && (
                 <div className="u-stack u-gap-2">
                   <div className="settings__block-label">{t('settingsSwitchProject', 'Projekt wechseln')}</div>
                   <ListSurface>
                     {projects.map((p) => (
-                      <ListRow key={p.id} as="button" selected={p.id === selectedId} aria-current={p.id === selectedId} onClick={() => { setSelectedId(p.id); setTitle(p.title); setEditing(false); }}>
+                      <ListRow key={p.id} as="div" selected={p.id === selectedId} aria-current={p.id === selectedId} onClick={() => { setSelectedId(p.id); setTitle(p.title); setEditing(false); }}>
                         <span className="u-flex-1">{p.title}</span>
-                        {p.id === projectId && <StatusChip tone="accent">{t('settingsActive', 'Aktiv')}</StatusChip>}
+                        {p.id === projectId
+                          ? <StatusChip tone="accent">{t('settingsActive', 'Aktiv')}</StatusChip>
+                          : <Button size="compact" variant="outline" onClick={(e) => { e.stopPropagation(); onOpenProject?.(p.id); }}>{t('settingsOpenProject', 'Öffnen')}</Button>}
                       </ListRow>
                     ))}
                   </ListSurface>
