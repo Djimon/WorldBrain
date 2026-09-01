@@ -3,5 +3,6 @@
   "cards": true,
   "plugins": true,
   "rules": true,
-  "audio": true
+  "audio": true,
+  "graph": true
 }

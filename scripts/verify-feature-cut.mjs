@@ -23,6 +23,8 @@ const FEATURE_CHUNKS = {
   cards: ['CardList', 'CardCreationFlow', 'PrintSheetComposer'],
   plugins: ['PluginManager'],
   rules: ['RulesArea'],
+  audio: ['AudioSoundboardWindow'],
+  graph: ['GlobalGraphView'],
 };
 
 if (!existsSync(distAssets)) {

@@ -1,9 +1,16 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { registerEntityTab } from './ui/EntityDetailView';
 import { RelationsTab } from './ui/RelationsTab';
 import { BacklinksTab } from './ui/BacklinksTab';
-import { GlobalGraphView } from './ui/GlobalGraphView';
 import type { DatabaseLike } from './services/entity-service';
+
+// pre-release S2 (#404): the ego-graph tab is the SAME GlobalGraphView as the graph
+// area — gated by the same 'graph' flag. Lazy + directly-inlined constant so a release
+// build with "graph": false tree-shakes GlobalGraphView (sigma/pixi/graphology) out of
+// dist/ AND drops this tab from the entity view. See src/config/features.ts.
+const GlobalGraphView = import.meta.env.DEV || __FEATURE_GRAPH__
+  ? lazy(() => import('./ui/GlobalGraphView').then((m) => ({ default: m.GlobalGraphView })))
+  : null;
 
 registerEntityTab({
   id: 'relations',
@@ -21,9 +28,16 @@ registerEntityTab({
 
 // Ego-Graph = the SAME GlobalGraphView + user settings, only filtered to the
 // focus entity's neighborhood (egoFocusId). No ego-specific renderer code.
-registerEntityTab({
-  id: 'graph',
-  label: 'Graph',
-  render: ({ entityId, database, onNavigate }: { entityId: string; database?: DatabaseLike; onNavigate?: (id: string) => void }) =>
-    database ? <GlobalGraphView database={database} onNavigate={onNavigate ?? (() => {})} egoFocusId={entityId} /> : null,
-});
+// Registered only when the 'graph' feature is on (GlobalGraphView is null otherwise).
+if (GlobalGraphView) {
+  registerEntityTab({
+    id: 'graph',
+    label: 'Graph',
+    render: ({ entityId, database, onNavigate }: { entityId: string; database?: DatabaseLike; onNavigate?: (id: string) => void }) =>
+      database ? (
+        <Suspense fallback={null}>
+          <GlobalGraphView database={database} onNavigate={onNavigate ?? (() => {})} egoFocusId={entityId} />
+        </Suspense>
+      ) : null,
+  });
+}

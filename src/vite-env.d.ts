@@ -8,3 +8,4 @@ declare const __FEATURE_CARDS__: boolean;
 declare const __FEATURE_PLUGINS__: boolean;
 declare const __FEATURE_RULES__: boolean;
 declare const __FEATURE_AUDIO__: boolean;
+declare const __FEATURE_GRAPH__: boolean;

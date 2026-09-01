@@ -20,7 +20,6 @@ import { CalendarLinkPanel } from './CalendarLinkPanel';
 import { createEventEntity } from '../services/event-entity-service';
 import { SettingsPanel } from './SettingsPanel';
 import { MapViewer } from './MapViewer';
-import { GlobalGraphView } from './GlobalGraphView';
 import { LayerPanel } from './LayerPanel';
 import { MapsSidebarTabs } from './MapsSidebarTabs';
 import { MapFolderTree } from './MapFolderTree';
@@ -70,6 +69,9 @@ const PluginManager = import.meta.env.DEV || __FEATURE_PLUGINS__
   : null;
 const RulesArea = import.meta.env.DEV || __FEATURE_RULES__
   ? lazy(() => import('./RulesArea').then((m) => ({ default: m.RulesArea })))
+  : null;
+const GlobalGraphView = import.meta.env.DEV || __FEATURE_GRAPH__
+  ? lazy(() => import('./GlobalGraphView').then((m) => ({ default: m.GlobalGraphView })))
   : null;
 
 type Area =
@@ -817,11 +819,12 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
         ) : null;
 
       case 'graph':
-        return (
+        // pre-release S2 (#404): lazy + feature-gated (sigma/pixi/graphology tree-shaken when off).
+        return GlobalGraphView ? (
           <div className="workspace-area">
-            <GlobalGraphView database={database} onNavigate={navigateToEntity} />
+            <Suspense fallback={null}><GlobalGraphView database={database} onNavigate={navigateToEntity} /></Suspense>
           </div>
-        );
+        ) : null;
 
       case 'project':
         return (
