@@ -26,43 +26,49 @@ describe('M13-S02 house-rule module as overlay plugin', () => {
     });
   });
 
+  // Target-ID existence is validated by overlay-conflict-service.validateModuleTargets
+  // against the base-system declaration registry (the loader's own
+  // validateOverlayManifest is shape-only — see its header comment).
   describe('overlay module loads and validates target IDs against the base system', () => {
+    async function getConflictService() { return import('../src/services/overlay-conflict-service'); }
+
     it('an overlay with all-existing target IDs is valid', async () => {
-      const { registerDeclaration } = await getRegistry();
+      const { registerDeclaration, listDeclarationIds } = await getRegistry();
       registerDeclaration('dnd5e_srd', 'transition', 'long_rest', { on: 'long_rest', action: { type: 'reset' } });
-      const { validateOverlayManifest } = await getOverlayLoader();
-      const manifest = {
+      const { validateModuleTargets } = await getConflictService();
+      const knownIds = new Set(listDeclarationIds('dnd5e_srd'));
+      const mod = {
         id: 'gritty_realism',
         overlays: 'dnd5e_srd',
-        type: 'overlay' as const,
         overrides: [{ target: 'transition:long_rest', op: 'replace' as const, value: {} }],
       };
-      const result = validateOverlayManifest(manifest);
-      expect(result.valid).toBe(true);
+      expect(validateModuleTargets(mod, knownIds)).toHaveLength(0);
     });
 
     it('an overlay targeting a nonexistent base ID is rejected', async () => {
-      const { validateOverlayManifest } = await getOverlayLoader();
-      const manifest = {
+      const { registerDeclaration, listDeclarationIds } = await getRegistry();
+      registerDeclaration('dnd5e_srd', 'transition', 'long_rest', { on: 'long_rest', action: { type: 'reset' } });
+      const { validateModuleTargets } = await getConflictService();
+      const knownIds = new Set(listDeclarationIds('dnd5e_srd'));
+      const mod = {
         id: 'broken_overlay',
         overlays: 'dnd5e_srd',
-        type: 'overlay' as const,
         overrides: [{ target: 'transition:nonexistent', op: 'patch' as const, value: {} }],
       };
-      const result = validateOverlayManifest(manifest);
-      expect(result.valid).toBe(false);
-      expect(result.errors?.join(' ')).toContain('transition:nonexistent');
+      const errors = validateModuleTargets(mod, knownIds);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors.join(' ')).toContain('transition:nonexistent');
     });
 
-    it('an "add" override entry does not require the target to pre-exist', async () => {
-      const { validateOverlayManifest } = await getOverlayLoader();
-      const manifest = {
+    it('a new target under a known prefix does not require the base ID to pre-exist (prefix-only validation)', async () => {
+      const { validateModuleTargets } = await getConflictService();
+      const mod = {
         id: 'hero_points_module',
         overlays: 'dnd5e_srd',
-        type: 'overlay' as const,
-        overrides: [{ target: 'resource:hero_points', op: 'add' as const, value: {} }],
+        overrides: [{ target: 'resource:hero_points', op: 'patch' as const, value: {} }],
       };
-      expect(validateOverlayManifest(manifest).valid).toBe(true);
+      // No knownIds supplied → prefix-only check; a brand-new resource is allowed.
+      expect(validateModuleTargets(mod)).toHaveLength(0);
     });
   });
 });

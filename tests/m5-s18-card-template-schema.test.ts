@@ -86,7 +86,14 @@ describe('M5-S18 card template schema', () => {
 
     it('all 9 templates load from seed data into DB', async () => {
       const { applyCardSchema, seedBuiltInCardTemplates } = await getSchema();
-      const db = openDb(); applyCardSchema(db); seedBuiltInCardTemplates(db);
+      const db = openDb(); applyCardSchema(db);
+      // seedBuiltInCardTemplates now takes the async DatabaseLike interface.
+      const asyncDb = {
+        execute: async (sql: string, args: unknown[] = []) => { db.prepare(sql).run(...(args as never[])); },
+        select: async <T = Record<string, unknown>>(sql: string, args: unknown[] = []): Promise<T[]> =>
+          db.prepare(sql).all(...(args as never[])) as T[],
+      };
+      await seedBuiltInCardTemplates(asyncDb);
       const rows = db.prepare('SELECT id FROM card_templates').all();
       expect(rows.length).toBe(9);
     });

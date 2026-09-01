@@ -11,9 +11,16 @@ async function getSavedViewsService() {
 
 async function openDb() {
   const { applySavedViewsSchema } = await import('../core_data/saved-views-schema');
-  const db = new DatabaseSync(':memory:');
-  applySavedViewsSchema(db);
-  return db;
+  const raw = new DatabaseSync(':memory:');
+  applySavedViewsSchema(raw);
+  // Async DatabaseLike wrapper around the sync handle; `prepare` passthrough
+  // keeps the raw schema/table assertions working.
+  return {
+    execute: async (sql: string, args: unknown[] = []) => { raw.prepare(sql).run(...(args as never[])); },
+    select: async <T = Record<string, unknown>>(sql: string, args: unknown[] = []): Promise<T[]> =>
+      raw.prepare(sql).all(...(args as never[])) as T[],
+    prepare: (sql: string) => raw.prepare(sql),
+  };
 }
 
 describe('M3-S05 saved views', () => {
@@ -56,7 +63,7 @@ describe('M3-S05 saved views', () => {
       const { saveView } = await getSavedViewsService();
       const db = await openDb();
 
-      saveView(db, {
+      await saveView(db, {
         name: 'All Characters',
         view_type: 'table',
         config: { entityType: 'Character', columns: ['title', 'role'], filters: {}, sort: [] },
@@ -70,7 +77,7 @@ describe('M3-S05 saved views', () => {
       const { saveView } = await getSavedViewsService();
       const db = await openDb();
 
-      const result = saveView(db, {
+      const result = await saveView(db, {
         name: 'My View',
         view_type: 'graph',
         config: { entityTypes: ['Character'], relationTypes: ['ally_of'] },
@@ -84,8 +91,8 @@ describe('M3-S05 saved views', () => {
       const { saveView } = await getSavedViewsService();
       const db = await openDb();
 
-      expect(() => saveView(db, { name: 'Table', view_type: 'table', config: {} })).not.toThrow();
-      expect(() => saveView(db, { name: 'Graph', view_type: 'graph', config: {} })).not.toThrow();
+      await expect(saveView(db, { name: 'Table', view_type: 'table', config: {} })).resolves.toBeDefined();
+      await expect(saveView(db, { name: 'Graph', view_type: 'graph', config: {} })).resolves.toBeDefined();
     });
   });
 
@@ -99,10 +106,10 @@ describe('M3-S05 saved views', () => {
       const { saveView, listViews } = await getSavedViewsService();
       const db = await openDb();
 
-      saveView(db, { name: 'View A', view_type: 'table', config: {} });
-      saveView(db, { name: 'View B', view_type: 'graph', config: {} });
+      await saveView(db, { name: 'View A', view_type: 'table', config: {} });
+      await saveView(db, { name: 'View B', view_type: 'graph', config: {} });
 
-      const views = listViews(db);
+      const views = await listViews(db);
 
       expect(views.length).toBe(2);
       expect(views[0]).toHaveProperty('name');
@@ -122,8 +129,8 @@ describe('M3-S05 saved views', () => {
       const db = await openDb();
       const config = { entityType: 'Character', columns: ['title', 'role'] };
 
-      const { id } = saveView(db, { name: 'My Config', view_type: 'table', config });
-      const loaded = loadView(db, id);
+      const { id } = await saveView(db, { name: 'My Config', view_type: 'table', config });
+      const loaded = await loadView(db, id);
 
       expect(loaded?.config).toMatchObject(config);
     });
@@ -132,7 +139,7 @@ describe('M3-S05 saved views', () => {
       const { loadView } = await getSavedViewsService();
       const db = await openDb();
 
-      expect(loadView(db, 'nonexistent-id')).toBeNull();
+      expect(await loadView(db, 'nonexistent-id')).toBeNull();
     });
   });
 
@@ -146,9 +153,9 @@ describe('M3-S05 saved views', () => {
       const { saveView, renameView, loadView } = await getSavedViewsService();
       const db = await openDb();
 
-      const { id } = saveView(db, { name: 'Old Name', view_type: 'table', config: {} });
-      renameView(db, id, 'New Name');
-      const view = loadView(db, id);
+      const { id } = await saveView(db, { name: 'Old Name', view_type: 'table', config: {} });
+      await renameView(db, id, 'New Name');
+      const view = await loadView(db, id);
 
       expect(view?.name).toBe('New Name');
     });
@@ -164,10 +171,10 @@ describe('M3-S05 saved views', () => {
       const { saveView, deleteView, listViews } = await getSavedViewsService();
       const db = await openDb();
 
-      const { id } = saveView(db, { name: 'To Delete', view_type: 'table', config: {} });
-      deleteView(db, id);
+      const { id } = await saveView(db, { name: 'To Delete', view_type: 'table', config: {} });
+      await deleteView(db, id);
 
-      expect(listViews(db).length).toBe(0);
+      expect((await listViews(db)).length).toBe(0);
     });
   });
 });

@@ -10,8 +10,16 @@ async function getApplyRelationsSchema() {
   return mod.applyRelationsSchema;
 }
 
+// Async DatabaseLike wrapper around the sync in-memory node:sqlite handle,
+// plus a `prepare` passthrough so the raw PRAGMA/INSERT assertions keep working.
 function openMemoryDb() {
-  return new DatabaseSync(':memory:');
+  const raw = new DatabaseSync(':memory:');
+  return {
+    execute: async (sql: string, args: unknown[] = []) => { raw.prepare(sql).run(...(args as never[])); },
+    select: async <T = Record<string, unknown>>(sql: string, args: unknown[] = []): Promise<T[]> =>
+      raw.prepare(sql).all(...(args as never[])) as T[],
+    prepare: (sql: string) => raw.prepare(sql),
+  };
 }
 
 describe('M2-S08 relations SQLite schema', () => {
@@ -19,13 +27,13 @@ describe('M2-S08 relations SQLite schema', () => {
     it('creates a relations table without throwing', async () => {
       const applyRelationsSchema = await getApplyRelationsSchema();
       const db = openMemoryDb();
-      expect(() => applyRelationsSchema(db)).not.toThrow();
+      await expect(applyRelationsSchema(db)).resolves.toBeUndefined();
     });
 
     it('relations table has all required columns', async () => {
       const applyRelationsSchema = await getApplyRelationsSchema();
       const db = openMemoryDb();
-      applyRelationsSchema(db);
+      await applyRelationsSchema(db);
 
       const cols = db.prepare('PRAGMA table_info(relations)').all() as Array<{ name: string }>;
       const names = cols.map((c) => c.name);
@@ -47,7 +55,7 @@ describe('M2-S08 relations SQLite schema', () => {
     it('active column defaults to 1 (true)', async () => {
       const applyRelationsSchema = await getApplyRelationsSchema();
       const db = openMemoryDb();
-      applyRelationsSchema(db);
+      await applyRelationsSchema(db);
 
       db.prepare(
         `INSERT INTO relations (id, source_id, target_id, relation_type, inverse_type, visibility_json)
@@ -61,7 +69,7 @@ describe('M2-S08 relations SQLite schema', () => {
     it('notes column is nullable', async () => {
       const applyRelationsSchema = await getApplyRelationsSchema();
       const db = openMemoryDb();
-      applyRelationsSchema(db);
+      await applyRelationsSchema(db);
 
       expect(() =>
         db.prepare(
@@ -76,7 +84,7 @@ describe('M2-S08 relations SQLite schema', () => {
     it('creates campaign_relation_log table', async () => {
       const applyRelationsSchema = await getApplyRelationsSchema();
       const db = openMemoryDb();
-      applyRelationsSchema(db);
+      await applyRelationsSchema(db);
 
       const cols = db.prepare('PRAGMA table_info(campaign_relation_log)').all() as Array<{ name: string }>;
       expect(cols.length).toBeGreaterThan(0);
@@ -85,7 +93,7 @@ describe('M2-S08 relations SQLite schema', () => {
     it('campaign_relation_log has all required columns', async () => {
       const applyRelationsSchema = await getApplyRelationsSchema();
       const db = openMemoryDb();
-      applyRelationsSchema(db);
+      await applyRelationsSchema(db);
 
       const cols = db.prepare('PRAGMA table_info(campaign_relation_log)').all() as Array<{ name: string }>;
       const names = cols.map((c) => c.name);
@@ -100,7 +108,7 @@ describe('M2-S08 relations SQLite schema', () => {
     it('session_id column in campaign_relation_log is nullable', async () => {
       const applyRelationsSchema = await getApplyRelationsSchema();
       const db = openMemoryDb();
-      applyRelationsSchema(db);
+      await applyRelationsSchema(db);
 
       db.prepare(
         `INSERT INTO relations (id, source_id, target_id, relation_type, inverse_type, visibility_json)
@@ -121,21 +129,21 @@ describe('M2-S08 relations SQLite schema', () => {
       const applyRelationsSchema = await getApplyRelationsSchema();
       const db = openMemoryDb();
 
-      applyRelationsSchema(db);
-      expect(() => applyRelationsSchema(db)).not.toThrow();
+      await applyRelationsSchema(db);
+      await expect(applyRelationsSchema(db)).resolves.toBeUndefined();
     });
 
     it('existing relations rows are preserved on second schema application', async () => {
       const applyRelationsSchema = await getApplyRelationsSchema();
       const db = openMemoryDb();
-      applyRelationsSchema(db);
+      await applyRelationsSchema(db);
 
       db.prepare(
         `INSERT INTO relations (id, source_id, target_id, relation_type, inverse_type, visibility_json)
          VALUES ('r4', 'e1', 'e2', 'knows_secret', 'secret_known_by', '"public"')`,
       ).run();
 
-      applyRelationsSchema(db);
+      await applyRelationsSchema(db);
 
       const rows = db.prepare('SELECT * FROM relations').all() as unknown[];
       expect(rows.length).toBe(1);
@@ -146,7 +154,7 @@ describe('M2-S08 relations SQLite schema', () => {
     it('relation log table uses campaign_ prefix for durable data', async () => {
       const applyRelationsSchema = await getApplyRelationsSchema();
       const db = openMemoryDb();
-      applyRelationsSchema(db);
+      await applyRelationsSchema(db);
 
       const tables = db
         .prepare(`SELECT name FROM sqlite_master WHERE type='table'`)

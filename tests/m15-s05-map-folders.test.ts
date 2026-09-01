@@ -37,7 +37,7 @@ describe('M15-S05 map folders schema & service', () => {
       const { db } = createDatabase();
       try {
         const cols = (db.prepare('PRAGMA table_info(map_folders)').all() as Array<{ name: string }>).map((c) => c.name);
-        expect(cols.sort()).toEqual(['created_at', 'id', 'name', 'parent_id'].sort());
+        expect(cols.sort()).toEqual(['color', 'created_at', 'id', 'name', 'parent_id'].sort());
       } finally {
         db.close();
       }
@@ -100,7 +100,7 @@ describe('M15-S05 map folders schema & service', () => {
       const { db, asyncDb } = createDatabase();
       const { createFolder, deleteFolder, moveMap } = await getMapFolderService();
       try {
-        db.prepare(`INSERT INTO maps (id, title, asset_id) VALUES (?, ?, ?)`).run('map-1', 'Test Map', 'a.png');
+        db.prepare(`INSERT INTO maps (id, title) VALUES (?, ?)`).run('map-1', 'Test Map');
         const { id: folderId } = await createFolder(asyncDb, { name: 'Temp' });
         await moveMap(asyncDb, 'map-1', folderId);
         await deleteFolder(asyncDb, folderId);
@@ -131,7 +131,7 @@ describe('M15-S05 map folders schema & service', () => {
       const { db, asyncDb } = createDatabase();
       const { createFolder, moveMap } = await getMapFolderService();
       try {
-        db.prepare(`INSERT INTO maps (id, title, asset_id) VALUES (?, ?, ?)`).run('map-1', 'Test Map', 'a.png');
+        db.prepare(`INSERT INTO maps (id, title) VALUES (?, ?)`).run('map-1', 'Test Map');
         const { id: folderId } = await createFolder(asyncDb, { name: 'Dungeons' });
         await moveMap(asyncDb, 'map-1', folderId);
         const row = db.prepare('SELECT folder_id FROM maps WHERE id = ?').get('map-1') as { folder_id: string | null };
@@ -145,7 +145,7 @@ describe('M15-S05 map folders schema & service', () => {
       const { db, asyncDb } = createDatabase();
       const { createFolder, moveMap } = await getMapFolderService();
       try {
-        db.prepare(`INSERT INTO maps (id, title, asset_id, folder_id) VALUES (?, ?, ?, ?)`).run('map-1', 'Test Map', 'a.png', 'mapfolder_x');
+        db.prepare(`INSERT INTO maps (id, title, folder_id) VALUES (?, ?, ?)`).run('map-1', 'Test Map', 'mapfolder_x');
         await moveMap(asyncDb, 'map-1', null);
         const row = db.prepare('SELECT folder_id FROM maps WHERE id = ?').get('map-1') as { folder_id: string | null };
         expect(row.folder_id).toBeNull();

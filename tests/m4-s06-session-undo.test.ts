@@ -7,10 +7,17 @@ import { describe, expect, it } from 'vitest';
 
 async function openDb() {
   const { applySessionSchema } = await import('../core_data/session-schema');
-  const db = new DatabaseSync(':memory:');
-  applySessionSchema(db);
-  db.prepare(`INSERT INTO sessions (id, title, created_at) VALUES ('s1', 'Test', '2026-06-24')`).run();
-  return db;
+  const raw = new DatabaseSync(':memory:');
+  applySessionSchema(raw);
+  raw.prepare(`INSERT INTO sessions (id, title, created_at) VALUES ('s1', 'Test', '2026-06-24')`).run();
+  // Async DatabaseLike wrapper around the sync handle; `prepare` passthrough
+  // keeps the raw session_log assertions working.
+  return {
+    execute: async (sql: string, args: unknown[] = []) => { raw.prepare(sql).run(...(args as never[])); },
+    select: async <T = Record<string, unknown>>(sql: string, args: unknown[] = []): Promise<T[]> =>
+      raw.prepare(sql).all(...(args as never[])) as T[],
+    prepare: (sql: string) => raw.prepare(sql),
+  };
 }
 
 async function getUndoService() {
@@ -34,15 +41,15 @@ describe('M4-S06 session undo', () => {
     it('canUndo returns false when session_log is empty', async () => {
       const { canUndo } = await getUndoService();
       const db = await openDb();
-      expect(canUndo(db, 's1')).toBe(false);
+      expect(await canUndo(db, 's1')).toBe(false);
     });
 
     it('canUndo returns true when session_log has entries', async () => {
       const { canUndo } = await getUndoService();
       const { setVar } = await import('../src/services/session-variable-service');
       const db = await openDb();
-      setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 10 });
-      expect(canUndo(db, 's1')).toBe(true);
+      await setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 10 });
+      expect(await canUndo(db, 's1')).toBe(true);
     });
   });
 
@@ -52,12 +59,12 @@ describe('M4-S06 session undo', () => {
       const { setVar, getVar } = await import('../src/services/session-variable-service');
       const db = await openDb();
 
-      setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 10 });
-      setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 5 });
+      await setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 10 });
+      await setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 5 });
 
-      undoLastAction(db, 's1');
+      await undoLastAction(db, 's1');
 
-      expect(getVar(db, 's1', 'v1')?.value).toBe(10);
+      expect((await getVar(db, 's1', 'v1'))?.value).toBe(10);
     });
 
     it('undo itself is logged to session_log', async () => {
@@ -65,10 +72,10 @@ describe('M4-S06 session undo', () => {
       const { setVar } = await import('../src/services/session-variable-service');
       const db = await openDb();
 
-      setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 10 });
+      await setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 10 });
       const logCountBefore = (db.prepare(`SELECT COUNT(*) as cnt FROM session_log WHERE session_id = 's1'`).get() as { cnt: number }).cnt;
 
-      undoLastAction(db, 's1');
+      await undoLastAction(db, 's1');
 
       const logCountAfter = (db.prepare(`SELECT COUNT(*) as cnt FROM session_log WHERE session_id = 's1'`).get() as { cnt: number }).cnt;
       expect(logCountAfter).toBeGreaterThan(logCountBefore);
@@ -77,7 +84,7 @@ describe('M4-S06 session undo', () => {
     it('undoLastAction does nothing when log is empty', async () => {
       const { undoLastAction } = await getUndoService();
       const db = await openDb();
-      expect(() => undoLastAction(db, 's1')).not.toThrow();
+      await expect(undoLastAction(db, 's1')).resolves.toBeUndefined();
     });
   });
 
@@ -87,11 +94,11 @@ describe('M4-S06 session undo', () => {
       const { setVar, getVar } = await import('../src/services/session-variable-service');
       const db = await openDb();
 
-      setVar(db, 's1', { id: 'vundo', type: 'boolean', label: 'Flag', value: true });
-      setVar(db, 's1', { id: 'vundo', type: 'boolean', label: 'Flag', value: false });
-      undoLastAction(db, 's1');
+      await setVar(db, 's1', { id: 'vundo', type: 'boolean', label: 'Flag', value: true });
+      await setVar(db, 's1', { id: 'vundo', type: 'boolean', label: 'Flag', value: false });
+      await undoLastAction(db, 's1');
 
-      expect(getVar(db, 's1', 'vundo')?.value).toBe(true);
+      expect((await getVar(db, 's1', 'vundo'))?.value).toBe(true);
     });
   });
 });
@@ -103,10 +110,10 @@ describe('issue #118: session undo — resetVar logged, future action types not 
     const { setVar, resetVar } = await import('../src/services/session-variable-service');
     const db = await openDb();
 
-    setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 42 });
+    await setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 42 });
     const countBefore = (db.prepare(`SELECT COUNT(*) as cnt FROM session_log WHERE session_id = 's1'`).get() as { cnt: number }).cnt;
 
-    resetVar(db, 's1', 'v1');
+    await resetVar(db, 's1', 'v1');
 
     const countAfter = (db.prepare(`SELECT COUNT(*) as cnt FROM session_log WHERE session_id = 's1'`).get() as { cnt: number }).cnt;
     expect(countAfter).toBeGreaterThan(countBefore);
@@ -116,8 +123,8 @@ describe('issue #118: session undo — resetVar logged, future action types not 
     const { setVar, resetVar } = await import('../src/services/session-variable-service');
     const db = await openDb();
 
-    setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 42 });
-    resetVar(db, 's1', 'v1');
+    await setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 42 });
+    await resetVar(db, 's1', 'v1');
 
     const entry = db.prepare(
       `SELECT action_type, prev_value FROM session_log WHERE session_id = 's1' AND action_type = 'var_reset' ORDER BY id DESC LIMIT 1`
@@ -131,8 +138,8 @@ describe('issue #118: session undo — resetVar logged, future action types not 
     const { setVar, resetVar } = await import('../src/services/session-variable-service');
     const db = await openDb();
 
-    setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 42 });
-    resetVar(db, 's1', 'v1');
+    await setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 42 });
+    await resetVar(db, 's1', 'v1');
 
     const entry = db.prepare(
       `SELECT prev_value FROM session_log WHERE session_id = 's1' AND action_type = 'var_reset' ORDER BY id DESC LIMIT 1`
@@ -148,11 +155,11 @@ describe('issue #118: session undo — resetVar logged, future action types not 
     const { setVar, resetVar } = await import('../src/services/session-variable-service');
     const db = await openDb();
 
-    setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 42 });
-    resetVar(db, 's1', 'v1');
+    await setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 42 });
+    await resetVar(db, 's1', 'v1');
 
     // canUndo must see var_reset entries, not just var_set
-    expect(canUndo(db, 's1')).toBe(true);
+    expect(await canUndo(db, 's1')).toBe(true);
   });
 
   it('undoLastAction can undo a var_reset by restoring the previous value', async () => {
@@ -160,11 +167,11 @@ describe('issue #118: session undo — resetVar logged, future action types not 
     const { setVar, resetVar, getVar } = await import('../src/services/session-variable-service');
     const db = await openDb();
 
-    setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 42 });
-    resetVar(db, 's1', 'v1');
-    undoLastAction(db, 's1');
+    await setVar(db, 's1', { id: 'v1', type: 'number', label: 'HP', value: 42 });
+    await resetVar(db, 's1', 'v1');
+    await undoLastAction(db, 's1');
 
-    expect(getVar(db, 's1', 'v1')?.value).toBe(42);
+    expect((await getVar(db, 's1', 'v1'))?.value).toBe(42);
   });
 
   it('canUndo query does not filter on a single hardcoded action_type', async () => {
@@ -178,6 +185,6 @@ describe('issue #118: session undo — resetVar logged, future action types not 
     ).run();
 
     // canUndo must return true — the hardcoded var_set filter would miss this row
-    expect(canUndo(db, 's1')).toBe(true);
+    expect(await canUndo(db, 's1')).toBe(true);
   });
 });

@@ -2,17 +2,30 @@
 // M2-S10: Relation service layer — CRUD, deactivate/reactivate, campaign log.
 // See: https://github.com/Djimon/WorldBrain/issues/38
 
+import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 async function getRelationService() {
   return import('../src/services/relation-service');
 }
 
+// Async DatabaseLike wrapper around the sync in-memory node:sqlite handle,
+// plus a `prepare` passthrough so the raw assertions below keep working.
+function makeDb() {
+  const raw = new DatabaseSync(':memory:');
+  return {
+    execute: async (sql: string, args: unknown[] = []) => { raw.prepare(sql).run(...(args as never[])); },
+    select: async <T = Record<string, unknown>>(sql: string, args: unknown[] = []): Promise<T[]> =>
+      raw.prepare(sql).all(...(args as never[])) as T[],
+    prepare: (sql: string) => raw.prepare(sql),
+  };
+}
+
 async function openPopulatedDb() {
   const { applyRelationsSchema } = await import('../core_data/relations-schema');
-  const db = new DatabaseSync(':memory:');
-  applyRelationsSchema(db);
+  const db = makeDb();
+  await applyRelationsSchema(db);
   return db;
 }
 
@@ -22,7 +35,7 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation } = await getRelationService();
       const db = await openPopulatedDb();
 
-      addRelation(db, {
+      await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
@@ -37,7 +50,7 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation } = await getRelationService();
       const db = await openPopulatedDb();
 
-      addRelation(db, {
+      await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
@@ -52,7 +65,7 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation } = await getRelationService();
       const db = await openPopulatedDb();
 
-      addRelation(db, {
+      await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
@@ -68,7 +81,7 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation } = await getRelationService();
       const db = await openPopulatedDb();
 
-      addRelation(db, {
+      await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
@@ -84,7 +97,7 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation } = await getRelationService();
       const db = await openPopulatedDb();
 
-      const result = addRelation(db, {
+      const result = await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
@@ -101,14 +114,14 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation, getRelations } = await getRelationService();
       const db = await openPopulatedDb();
 
-      addRelation(db, {
+      await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'knows_secret',
         visibility: 'public',
       });
 
-      const relations = getRelations(db, 'entity-ada', { includeInactive: false });
+      const relations = await getRelations(db, 'entity-ada', { includeInactive: false });
       expect(relations.length).toBe(1);
     });
 
@@ -116,14 +129,14 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation, getRelations } = await getRelationService();
       const db = await openPopulatedDb();
 
-      addRelation(db, {
+      await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ranks_above',
         visibility: 'public',
       });
 
-      const relations = getRelations(db, 'entity-bram', { includeInactive: false });
+      const relations = await getRelations(db, 'entity-bram', { includeInactive: false });
       expect(relations.length).toBe(1);
     });
 
@@ -131,15 +144,15 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation, deactivateRelation, getRelations } = await getRelationService();
       const db = await openPopulatedDb();
 
-      const { id } = addRelation(db, {
+      const { id } = await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
         visibility: 'public',
       });
-      deactivateRelation(db, id);
+      await deactivateRelation(db, id);
 
-      const relations = getRelations(db, 'entity-ada', { includeInactive: false });
+      const relations = await getRelations(db, 'entity-ada', { includeInactive: false });
       expect(relations.length).toBe(0);
     });
 
@@ -147,15 +160,15 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation, deactivateRelation, getRelations } = await getRelationService();
       const db = await openPopulatedDb();
 
-      const { id } = addRelation(db, {
+      const { id } = await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
         visibility: 'public',
       });
-      deactivateRelation(db, id);
+      await deactivateRelation(db, id);
 
-      const relations = getRelations(db, 'entity-ada', { includeInactive: true });
+      const relations = await getRelations(db, 'entity-ada', { includeInactive: true });
       expect(relations.length).toBe(1);
     });
   });
@@ -165,14 +178,14 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation, deactivateRelation } = await getRelationService();
       const db = await openPopulatedDb();
 
-      const { id } = addRelation(db, {
+      const { id } = await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
         visibility: 'public',
       });
 
-      deactivateRelation(db, id);
+      await deactivateRelation(db, id);
 
       const row = db.prepare('SELECT active FROM relations WHERE id = ?').get(id) as { active: number };
       expect(row.active).toBe(0);
@@ -182,14 +195,14 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation, deactivateRelation } = await getRelationService();
       const db = await openPopulatedDb();
 
-      const { id } = addRelation(db, {
+      const { id } = await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
         visibility: 'public',
       });
 
-      deactivateRelation(db, id);
+      await deactivateRelation(db, id);
 
       const log = db.prepare('SELECT event FROM campaign_relation_log ORDER BY rowid DESC LIMIT 1').get() as { event: string };
       expect(log.event).toBe('removed');
@@ -199,7 +212,7 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation, deactivateRelation } = await getRelationService();
       const db = await openPopulatedDb();
 
-      const { id } = addRelation(db, {
+      const { id } = await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
@@ -207,7 +220,7 @@ describe('M2-S10 relation service layer', () => {
         notes: 'Old alliance.',
       });
 
-      deactivateRelation(db, id);
+      await deactivateRelation(db, id);
 
       const row = db.prepare('SELECT notes FROM relations WHERE id = ?').get(id) as { notes: string };
       expect(row.notes).toBe('Old alliance.');
@@ -219,14 +232,14 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation, deactivateRelation, reactivateRelation } = await getRelationService();
       const db = await openPopulatedDb();
 
-      const { id } = addRelation(db, {
+      const { id } = await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
         visibility: 'public',
       });
-      deactivateRelation(db, id);
-      reactivateRelation(db, id);
+      await deactivateRelation(db, id);
+      await reactivateRelation(db, id);
 
       const row = db.prepare('SELECT active FROM relations WHERE id = ?').get(id) as { active: number };
       expect(row.active).toBe(1);
@@ -236,14 +249,14 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation, deactivateRelation, reactivateRelation } = await getRelationService();
       const db = await openPopulatedDb();
 
-      const { id } = addRelation(db, {
+      const { id } = await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
         visibility: 'public',
       });
-      deactivateRelation(db, id);
-      reactivateRelation(db, id);
+      await deactivateRelation(db, id);
+      await reactivateRelation(db, id);
 
       const log = db.prepare('SELECT event FROM campaign_relation_log ORDER BY rowid DESC LIMIT 1').get() as { event: string };
       expect(log.event).toBe('added');
@@ -255,15 +268,15 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation, getRelations } = await getRelationService();
       const db = await openPopulatedDb();
 
-      addRelation(db, {
+      await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
         visibility: 'public',
       });
 
-      const fromAdaPerspective = getRelations(db, 'entity-ada', { includeInactive: false });
-      const fromBramPerspective = getRelations(db, 'entity-bram', { includeInactive: false });
+      const fromAdaPerspective = await getRelations(db, 'entity-ada', { includeInactive: false });
+      const fromBramPerspective = await getRelations(db, 'entity-bram', { includeInactive: false });
 
       expect(fromAdaPerspective.length).toBe(1);
       expect(fromBramPerspective.length).toBe(1);
@@ -273,7 +286,7 @@ describe('M2-S10 relation service layer', () => {
       const { addRelation } = await getRelationService();
       const db = await openPopulatedDb();
 
-      addRelation(db, {
+      await addRelation(db, {
         source_id: 'entity-ada',
         target_id: 'entity-bram',
         relation_type: 'ally_of',
@@ -309,11 +322,11 @@ describe('issue-61 relation ID collision safety', () => {
     async function addTwoRelations() {
       const { applyRelationsSchema } = await import('../core_data/relations-schema');
       const { addRelation } = await import('../src/services/relation-service');
-      const db = new DatabaseSync(':memory:');
-      applyRelationsSchema(db);
+      const db = makeDb();
+      await applyRelationsSchema(db);
 
-      const r1 = addRelation(db, { source_id: 'e1', target_id: 'e2', relation_type: 'ally_of', visibility: 'public' });
-      const r2 = addRelation(db, { source_id: 'e1', target_id: 'e3', relation_type: 'ally_of', visibility: 'public' });
+      const r1 = await addRelation(db, { source_id: 'e1', target_id: 'e2', relation_type: 'ally_of', visibility: 'public' });
+      const r2 = await addRelation(db, { source_id: 'e1', target_id: 'e3', relation_type: 'ally_of', visibility: 'public' });
       return { r1, r2 };
     }
 
@@ -335,12 +348,12 @@ describe('issue-61 relation ID collision safety', () => {
     it('100 generated IDs are all unique', async () => {
       const { applyRelationsSchema } = await import('../core_data/relations-schema');
       const { addRelation } = await import('../src/services/relation-service');
-      const db = new DatabaseSync(':memory:');
-      applyRelationsSchema(db);
+      const db = makeDb();
+      await applyRelationsSchema(db);
 
       const ids = new Set<string>();
       for (let i = 0; i < 100; i++) {
-        const { id } = addRelation(db, { source_id: `e${i}`, target_id: 'e-target', relation_type: 'ally_of', visibility: 'public' });
+        const { id } = await addRelation(db, { source_id: `e${i}`, target_id: 'e-target', relation_type: 'ally_of', visibility: 'public' });
         ids.add(id);
       }
 
