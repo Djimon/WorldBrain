@@ -1,10 +1,17 @@
-import { StrictMode } from 'react';
+import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import './i18n';
 import { App } from './App';
-import { AudioSoundboardWindow } from './ui/AudioSoundboardWindow';
 import { initTheme, bootstrapUserThemes, getStoredThemeId } from './theme';
 import { isBuiltinThemeId } from './styles/theme-registry';
+
+// pre-release S2 (#404): the audio feature (soundboard window + its services) is
+// reached only via this dynamic import, gated by the __FEATURE_AUDIO__ compile
+// constant, so a release build with "audio": false tree-shakes it out of dist/.
+// import.meta.env.DEV keeps it in the dev run. See src/config/features.ts.
+const AudioSoundboardWindow = import.meta.env.DEV || __FEATURE_AUDIO__
+  ? lazy(() => import('./ui/AudioSoundboardWindow').then((m) => ({ default: m.AudioSoundboardWindow })))
+  : null;
 
 // Apply the persisted theme before first render (no flash) and keep this window
 // in sync with theme changes from other windows. Runs for EVERY window — the
@@ -33,7 +40,9 @@ function mountApp(): void {
   createRoot(rootElement as HTMLElement).render(
     <StrictMode>
       {isSoundboardWindow
-        ? <AudioSoundboardWindow dbPath={soundboardDbPath} projectDir={soundboardProjectDir} />
+        ? (AudioSoundboardWindow
+            ? <Suspense fallback={null}><AudioSoundboardWindow dbPath={soundboardDbPath} projectDir={soundboardProjectDir} /></Suspense>
+            : null)
         : <App />}
     </StrictMode>,
   );

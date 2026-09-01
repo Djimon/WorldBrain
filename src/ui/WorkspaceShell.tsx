@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDatabase } from '../services/DatabaseContext';
 import { listEntityTypes } from '../services/plugin-entity-service';
@@ -8,23 +8,16 @@ import { copyMapAsset } from '../services/map-asset';
 import type { MapRow } from '../services/map-service';
 import { listViews } from '../services/saved-views-service';
 import type { SavedViewRow } from '../services/saved-views-service';
-import { importRules } from '../services/rule-import-service';
-import { detectMysteryBreakers, analyzeRoleCoverage, detectQuestBlockers } from '../services/rule-evaluations';
+import { feature, isGatedFeature } from '../config/features';
 import { EntityMasterDetail } from './EntityMasterDetail';
 import { EntityDetailView } from './EntityDetailView';
 import { GlobalSearch } from './GlobalSearch';
-import { ChronicleView } from './ChronicleView';
 import { CalendarWizard } from './CalendarWizard';
 import { listCalendars, setActiveCalendar as persistActiveCalendar, deleteCalendar } from '../services/calendar-service';
 import { formatCalendarDate } from '../../core_data/calendar-schema';
 import { CalendarMonthView } from './CalendarMonthView';
 import { CalendarLinkPanel } from './CalendarLinkPanel';
 import { createEventEntity } from '../services/event-entity-service';
-import { CardList } from './CardList';
-import { CardCreationFlow } from './CardCreationFlow';
-import { PrintSheetComposer } from './PrintSheetComposer';
-import { PluginManager } from './PluginManager';
-import { DmScreen, DmScreenSelector } from './DmScreen';
 import { SettingsPanel } from './SettingsPanel';
 import { MapViewer } from './MapViewer';
 import { GlobalGraphView } from './GlobalGraphView';
@@ -49,11 +42,35 @@ import { listCampaigns, createCampaign, type Campaign } from '../services/campai
 import { getPlayContext, setPlayContext, clearPlayContext } from '../services/play-context-store';
 import { PlayModeView } from './PlayModeView';
 import { PlayerJoinView } from './PlayerJoinView';
-import { ModuleLibrary } from './ModuleLibrary';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
 
 const SOUNDBOARD_WINDOW_LABEL = 'audio-soundboard';
+
+// pre-release S2 (#404): cut-able features are reached via dynamic import(), gated by
+// the __FEATURE_<ID>__ compile constant read DIRECTLY here (not via feature()), because
+// only a directly-inlined constant lets Rollup fold the dead branch and drop the
+// import() chunk — a release build with the flag off tree-shakes the feature's code AND
+// its libraries out of dist/. import.meta.env.DEV keeps every feature in the dev run.
+// See src/config/features.ts + features.json.
+const ChronicleView = import.meta.env.DEV || __FEATURE_CHRONICLE__
+  ? lazy(() => import('./ChronicleView').then((m) => ({ default: m.ChronicleView })))
+  : null;
+const CardList = import.meta.env.DEV || __FEATURE_CARDS__
+  ? lazy(() => import('./CardList').then((m) => ({ default: m.CardList })))
+  : null;
+const CardCreationFlow = import.meta.env.DEV || __FEATURE_CARDS__
+  ? lazy(() => import('./CardCreationFlow').then((m) => ({ default: m.CardCreationFlow })))
+  : null;
+const PrintSheetComposer = import.meta.env.DEV || __FEATURE_CARDS__
+  ? lazy(() => import('./PrintSheetComposer').then((m) => ({ default: m.PrintSheetComposer })))
+  : null;
+const PluginManager = import.meta.env.DEV || __FEATURE_PLUGINS__
+  ? lazy(() => import('./PluginManager').then((m) => ({ default: m.PluginManager })))
+  : null;
+const RulesArea = import.meta.env.DEV || __FEATURE_RULES__
+  ? lazy(() => import('./RulesArea').then((m) => ({ default: m.RulesArea })))
+  : null;
 
 type Area =
   | 'entities'
@@ -152,7 +169,6 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   const [activeArea, setActiveArea] = useState<Area>(activePanel ?? 'entities');
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | null>('Character');
-  const [selectedScreenId, setSelectedScreenId] = useState<string | null>(null);
   const [maps, setMaps] = useState<MapRow[]>([]);
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
@@ -172,7 +188,6 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // Day clicked, not yet an entity — title required before createEventEntity.
   const [calendarNewDay, setCalendarNewDay] = useState<number | null>(null);
   const [calendarNewTitle, setCalendarNewTitle] = useState('');
-  const [evalResult, setEvalResult] = useState<string | null>(null);
   const [mapImporting, setMapImporting] = useState(false);
   // Resizable maps sidebar (same drag pattern as MapViewer's pin tree).
   const [mapsSidebarWidth, setMapsSidebarWidth] = useState(240);
@@ -398,36 +413,6 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     const { id } = await createFogLayer(database, { map_id: selectedMapId, name: 'Fog' });
     setEditingFogLayerId(id); // select the new fog layer for painting right away
     setLayerReloadKey((n) => n + 1);
-  }
-
-  function runEvaluation(kind: 'mystery' | 'role' | 'quest') {
-    try {
-      if (kind === 'mystery') {
-        const result = detectMysteryBreakers({ quest: { id: '' }, party: [] });
-        setEvalResult(JSON.stringify(result, null, 2));
-      } else if (kind === 'role') {
-        const result = analyzeRoleCoverage({ party: [] });
-        setEvalResult(JSON.stringify(result, null, 2));
-      } else {
-        const result = detectQuestBlockers({ questId: '', graph: { quest: { id: '' }, clues: [], npcs: [] } });
-        setEvalResult(JSON.stringify(result, null, 2));
-      }
-    } catch (err) {
-      setEvalResult(err instanceof Error ? err.message : 'Fehler');
-    }
-  }
-
-  function handleRuleImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const params = JSON.parse(ev.target?.result as string) as Parameters<typeof importRules>[1];
-        void importRules(database, params);
-      } catch { /* ignore parse errors */ }
-    };
-    reader.readAsText(file);
   }
 
 
@@ -752,85 +737,71 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
         );
 
       case 'chronicle':
-        return (
+        // pre-release S2 (#404): lazy + feature-gated (tree-shaken when released off).
+        return ChronicleView ? (
           <div className="workspace-area">
-            <ChronicleView database={database} />
+            <Suspense fallback={null}><ChronicleView database={database} /></Suspense>
           </div>
-        );
+        ) : null;
 
       case 'cards':
         if (showPrintSheet) {
           return (
             <div className="workspace-area">
               <button onClick={() => setShowPrintSheet(false)}>← {t('back', { ns: 'common' })}</button>
-              <PrintSheetComposer database={database} initialCards={selectedCardIds} />
+              {PrintSheetComposer && (
+                <Suspense fallback={null}>
+                  <PrintSheetComposer database={database} initialCards={selectedCardIds} />
+                </Suspense>
+              )}
             </div>
           );
         }
         if (showCardCreation) {
           return (
             <div className="workspace-area">
-              <CardCreationFlow
-                database={database}
-                onComplete={(id) => {
-                  setSelectedCardIds((prev) => [...prev, id]);
-                  setShowCardCreation(false);
-                }}
-              />
+              {CardCreationFlow && (
+                <Suspense fallback={null}>
+                  <CardCreationFlow
+                    database={database}
+                    onComplete={(id) => {
+                      setSelectedCardIds((prev) => [...prev, id]);
+                      setShowCardCreation(false);
+                    }}
+                  />
+                </Suspense>
+              )}
             </div>
           );
         }
-        return (
+        return CardList ? (
           <div className="workspace-area">
             <div className="workspace-area__toolbar">
               <button onClick={() => setShowCardCreation(true)}>{t('cardNew')}</button>
               <button onClick={() => setShowPrintSheet(true)}>{t('cardPrint')}</button>
             </div>
-            <CardList database={database} />
+            <Suspense fallback={null}><CardList database={database} /></Suspense>
           </div>
-        );
+        ) : null;
 
       case 'plugins':
-        return (
+        return PluginManager ? (
           <div className="workspace-area">
-            <PluginManager />
+            <Suspense fallback={null}><PluginManager /></Suspense>
           </div>
-        );
+        ) : null;
 
       case 'rules':
-        return (
+        return RulesArea ? (
           <div className="workspace-area">
-            {/* #189: rule import */}
-            <div className="workspace-area__toolbar">
-              <label>
-                {t('ruleImport')}
-                <input type="file" accept=".json" onChange={handleRuleImport} />
-              </label>
-            </div>
-            {/* #189: rule evaluations */}
-            <div>
-              <button onClick={() => runEvaluation('mystery')}>{t('ruleEvalMystery')}</button>
-              <button onClick={() => runEvaluation('role')}>{t('ruleEvalRole')}</button>
-              <button onClick={() => runEvaluation('quest')}>{t('ruleEvalQuest')}</button>
-              {evalResult && <pre>{evalResult}</pre>}
-            </div>
-            <hr />
-            {/* M13-S07 (#242): house-rule overlay library + per-session toggle. */}
-            <ModuleLibrary database={database} />
-            <hr />
-            {selectedScreenId ? (
-              <>
-                <button onClick={() => setSelectedScreenId(null)}>{t('dmScreensBack')}</button>
-                <DmScreen screenId={selectedScreenId} database={database} />
-              </>
-            ) : (
-              <DmScreenSelector database={database} onSelectScreen={setSelectedScreenId} />
-            )}
+            <Suspense fallback={null}><RulesArea database={database} /></Suspense>
           </div>
-        );
+        ) : null;
 
       case 'audio':
-        return (
+        // pre-release S2 (#404): feature-gated launcher; the soundboard window code
+        // itself is lazy + gated in main.tsx (that is where audio tree-shakes out).
+        return feature('audio') ? (
           <div className="workspace-area">
             <div className="workspace-area__main">
               <h2>{t('audio')}</h2>
@@ -843,7 +814,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
               </Button>
             </div>
           </div>
-        );
+        ) : null;
 
       case 'graph':
         return (
@@ -910,9 +881,11 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   }
 
   const activeAreaLabel = t(activeArea);
-  const visibleAreas = mode === 'play'
+  const visibleAreas = (mode === 'play'
     ? AREAS.filter((a) => PLAY_AREAS.includes(a.id))
-    : AREAS.filter((a) => a.id !== 'play-settings'); // #390: hide play-only in edit
+    : AREAS.filter((a) => a.id !== 'play-settings')) // #390: hide play-only in edit
+    // pre-release S2 (#404): hide cut-able features when their release flag is off.
+    .filter((a) => (isGatedFeature(a.id) ? feature(a.id) : true));
 
   // M10-S22 (D25) + #390: click on the mode toggle.
   // edit → if a play context is remembered, go DIRECTLY in (no dialog);

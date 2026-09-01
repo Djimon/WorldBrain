@@ -31,6 +31,17 @@ npm run desktop:build   # build a release .exe + installer
 
 Full setup instructions: [DEVELOPMENT.md](DEVELOPMENT.md)
 
+### Release feature toggles
+
+Which in-development features ship in a release build is controlled by the flat
+[`features.json`](features.json) at the repo root — one line per feature, `true` = ships,
+`false` = removed. Editing is safe for non-developers: set a feature to `false` and the
+next release build leaves its code out entirely (dev runs always show everything). Example:
+
+```json
+{ "chronicle": false, "cards": true, "plugins": true, "rules": true }
+```
+
 ---
 
 ## Milestones
