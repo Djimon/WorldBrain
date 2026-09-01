@@ -1,18 +1,17 @@
 // M4-S09: In-app player screen (presentation mode) — second Tauri window, live projection.
 // See: https://github.com/Djimon/WorldBrain/issues/57
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { PlayerScreenLauncher } from '../src/ui/PlayerScreen';
 
 // Mock Tauri window API — not available in test environment
 vi.mock('@tauri-apps/api/window', () => ({
-  WebviewWindow: vi.fn().mockImplementation(() => ({
-    once: vi.fn(),
-    listen: vi.fn(),
-    emit: vi.fn(),
-    close: vi.fn(),
-  })),
+  // Regular function (not arrow): vitest invokes the implementation as a
+  // constructor for `new WebviewWindow(...)`, and arrow functions cannot be `new`-ed.
+  WebviewWindow: vi.fn(function () {
+    return { once: vi.fn(), listen: vi.fn(), emit: vi.fn(), close: vi.fn() };
+  }),
   getCurrent: vi.fn(() => ({ emit: vi.fn(), listen: vi.fn() })),
 }));
 
@@ -24,7 +23,7 @@ vi.mock('../src/services/visibility-service', () => ({
 }));
 
 vi.mock('../src/services/entity-service', () => ({
-  getEffectiveEntity: vi.fn(({ entityId }: { entityId: string }) => ({
+  getEffectiveEntity: vi.fn(async ({ entityId }: { entityId: string }) => ({
     found: true, entityId,
     entity: {
       id: entityId, type: 'Character', title: 'Ada Thorn', summary: 'Archivist.',
@@ -61,9 +60,10 @@ describe('M4-S09 in-app player screen', () => {
   });
 
   describe('visibility projection', () => {
-    it('shows public content', () => {
-      render(<PlayerScreen context={playerContext} entityId="char-ada" />);
-      expect(screen.getByText('Public content.')).toBeInTheDocument();
+    it('shows public content', async () => {
+      // PlayerScreen only loads (async) when both database and entityId are set.
+      render(<PlayerScreen context={playerContext} entityId="char-ada" database={{} as never} />);
+      expect(await screen.findByText('Public content.')).toBeInTheDocument();
     });
 
     it('hides gm_only content from player screen', () => {
@@ -84,7 +84,8 @@ describe('M4-S09 in-app player screen', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /open player screen|presentation/i }));
 
-      expect(WebviewWindow).toHaveBeenCalled();
+      // handleOpen is async (dynamic import of the Tauri API) — wait for the ctor.
+      await waitFor(() => expect(WebviewWindow).toHaveBeenCalled());
     });
   });
 

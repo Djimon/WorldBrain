@@ -17,9 +17,13 @@ const characterSchema = {
 };
 
 vi.mock('../src/services/entity-service', () => ({
-  listEntitiesByType: vi.fn(() => characters),
-  updateEntityProperties: vi.fn(),
+  // EntityTable loads rows async: listEntitiesByType({database, type}).then(...).
+  listEntitiesByType: vi.fn(async () => characters),
+  updateEntityProperties: vi.fn(async () => undefined),
 }));
+
+// EntityTable only fetches when a database is provided (useEffect guard).
+const db = {} as never;
 
 describe('M3-S04 table view', () => {
   describe('basic rendering', () => {
@@ -28,10 +32,10 @@ describe('M3-S04 table view', () => {
       expect(screen.getByRole('table')).toBeInTheDocument();
     });
 
-    it('renders all entities of the selected type as rows', () => {
-      render(<EntityTable entityType="Character" propertiesSchema={characterSchema} />);
+    it('renders all entities of the selected type as rows', async () => {
+      render(<EntityTable entityType="Character" propertiesSchema={characterSchema} database={db} />);
 
-      expect(screen.getByText('Ada Thorn')).toBeInTheDocument();
+      expect(await screen.findByText('Ada Thorn')).toBeInTheDocument();
       expect(screen.getByText('Bram Holt')).toBeInTheDocument();
       expect(screen.getByText('Silas')).toBeInTheDocument();
     });
@@ -74,8 +78,9 @@ describe('M3-S04 table view', () => {
   });
 
   describe('sorting', () => {
-    it('clicking a column header sorts the table', () => {
-      render(<EntityTable entityType="Character" propertiesSchema={characterSchema} />);
+    it('clicking a column header sorts the table', async () => {
+      render(<EntityTable entityType="Character" propertiesSchema={characterSchema} database={db} />);
+      await screen.findByText('Ada Thorn');
 
       const titleHeader = screen.getByRole('columnheader', { name: /title/i });
       fireEvent.click(titleHeader);
@@ -85,8 +90,9 @@ describe('M3-S04 table view', () => {
       expect(rows[0]).toHaveTextContent(/ada/i);
     });
 
-    it('clicking sorted column again reverses sort order', () => {
-      render(<EntityTable entityType="Character" propertiesSchema={characterSchema} />);
+    it('clicking sorted column again reverses sort order', async () => {
+      render(<EntityTable entityType="Character" propertiesSchema={characterSchema} database={db} />);
+      await screen.findByText('Ada Thorn');
 
       const titleHeader = screen.getByRole('columnheader', { name: /title/i });
       fireEvent.click(titleHeader);
@@ -107,8 +113,9 @@ describe('M3-S04 table view', () => {
       expect(filterInputs.length).toBeGreaterThan(0);
     });
 
-    it('typing in a column filter narrows visible rows', () => {
-      render(<EntityTable entityType="Character" propertiesSchema={characterSchema} />);
+    it('typing in a column filter narrows visible rows', async () => {
+      render(<EntityTable entityType="Character" propertiesSchema={characterSchema} database={db} />);
+      await screen.findByText('Ada Thorn');
 
       // Find the filter input for title column
       const filterInputs = screen.getAllByRole('textbox');
@@ -124,10 +131,10 @@ describe('M3-S04 table view', () => {
   });
 
   describe('inline editing', () => {
-    it('double-clicking a cell makes it editable', () => {
-      render(<EntityTable entityType="Character" propertiesSchema={characterSchema} />);
+    it('double-clicking a cell makes it editable', async () => {
+      render(<EntityTable entityType="Character" propertiesSchema={characterSchema} database={db} />);
 
-      const roleCell = screen.getAllByText('archivist')[0];
+      const roleCell = (await screen.findAllByText('archivist'))[0];
       fireEvent.doubleClick(roleCell);
 
       // Cell should now contain an input or become contenteditable

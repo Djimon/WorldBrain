@@ -18,6 +18,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
 import type { DatabaseLike } from '../src/services/entity-service';
 import { formatCalendarDate } from '../core_data/calendar-schema';
 
@@ -167,7 +168,7 @@ describe('#293 (B): WorkspaceShell day-click gate creates an event and opens the
     expect(gate.textContent).not.toContain(String(counter));
 
     // Blank title: the primary confirm is disabled and Enter creates nothing.
-    const primary = view.container.querySelector('.cal-inline-event-editor__new-form button.btn--primary') as HTMLButtonElement;
+    const primary = view.container.querySelector('.cal-inline-event-editor__new-form button.ui-button[data-tone="accent"]') as HTMLButtonElement;
     expect(primary.disabled).toBe(true);
     const input = screen.getByRole('textbox');
     fireEvent.keyDown(input, { key: 'Enter' });

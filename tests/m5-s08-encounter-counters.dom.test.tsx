@@ -3,6 +3,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
 import { EncounterCounters } from '../src/ui/EncounterCounters';
 
 // #378: EncounterCounters darf NICHT mehr in base_entities schreiben — die
@@ -33,18 +34,18 @@ describe('M5-S08 encounter counters', () => {
 
     it('has a Next Round button', () => {
       render(<EncounterCounters sessionId="s1" database={mockDb as never} />);
-      expect(screen.getByRole('button', { name: /next round|advance round|\+/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /nächste runde|next round|advance round|\+/i })).toBeInTheDocument();
     });
 
     it('clicking Next Round increments the round count', () => {
       render(<EncounterCounters sessionId="s1" database={mockDb as never} />);
-      fireEvent.click(screen.getByRole('button', { name: /next round|advance round/i }));
+      fireEvent.click(screen.getByRole('button', { name: /nächste runde|next round|advance round/i }));
       expect(screen.getByText(/round.*2|2.*round/i)).toBeInTheDocument();
     });
 
     it('shows elapsed time based on seconds-per-round (default 6s)', () => {
       render(<EncounterCounters sessionId="s1" database={mockDb as never} />);
-      fireEvent.click(screen.getByRole('button', { name: /next round|advance round/i }));
+      fireEvent.click(screen.getByRole('button', { name: /nächste runde|next round|advance round/i }));
       expect(screen.getByText(/6s|6 sec|elapsed/i)).toBeInTheDocument();
     });
   });
@@ -128,7 +129,7 @@ describe('M5-S08 encounter counters', () => {
 
     it('encounter counters are not persisted after end — component resets', () => {
       render(<EncounterCounters sessionId="s1" database={mockDb as never} />);
-      fireEvent.click(screen.getByRole('button', { name: /next round|advance round/i }));
+      fireEvent.click(screen.getByRole('button', { name: /nächste runde|next round|advance round/i }));
       fireEvent.click(screen.getByRole('button', { name: /end encounter/i }));
       // After end, round counter should reset to start
       expect(screen.queryByText(/round.*2|2.*round/i)).not.toBeInTheDocument();
@@ -140,18 +141,20 @@ describe('M5-S08 encounter counters', () => {
 describe('issue #130: EncounterCounters elapsed vs total time', () => {
   it('elapsed and total values differ after round 1', () => {
     render(<EncounterCounters sessionId="s1" database={mockDb as never} />);
-    fireEvent.click(screen.getByRole('button', { name: /next round|advance round/i }));
-    // After advance: elapsed = (round-1)*6, total = round*6 — they must differ
-    const timeTexts = screen.getAllByText(/\d+s/i).map(el => el.textContent ?? '');
-    const numbers = timeTexts.map(t => parseInt(t)).filter(n => !isNaN(n));
+    fireEvent.click(screen.getByRole('button', { name: /nächste runde|next round|advance round/i }));
+    // After advance: elapsed = (round-1)*6, total = round*6 — they must differ.
+    // Both values render in a single line ("Elapsed: 6s (12s total)"), so read
+    // every "<n>s" token from the rendered text rather than per-element.
+    const allText = document.body.textContent ?? '';
+    const numbers = [...allText.matchAll(/(\d+)s/g)].map(m => parseInt(m[1]));
     expect(numbers.length).toBeGreaterThanOrEqual(2);
     expect(new Set(numbers).size).toBeGreaterThan(1);
   });
 
   it('total time display is strictly greater than elapsed time in round 2+', () => {
     render(<EncounterCounters sessionId="s1" database={mockDb as never} />);
-    fireEvent.click(screen.getByRole('button', { name: /next round|advance round/i }));
-    fireEvent.click(screen.getByRole('button', { name: /next round|advance round/i }));
+    fireEvent.click(screen.getByRole('button', { name: /nächste runde|next round|advance round/i }));
+    fireEvent.click(screen.getByRole('button', { name: /nächste runde|next round|advance round/i }));
     // Round 3: elapsed = 12s, total = 18s
     const allText = document.body.textContent ?? '';
     const nums = [...allText.matchAll(/(\d+)s/g)].map(m => parseInt(m[1]));

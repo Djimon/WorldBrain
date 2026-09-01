@@ -9,8 +9,9 @@
 // AP-008 (RTL): anchored queries; within() wo Namen kollidieren könnten.
 
 import { readFileSync } from 'node:fs';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
 import { MapFolderTree } from '../src/ui/MapFolderTree';
 
 if (!document.elementFromPoint) {
@@ -149,7 +150,10 @@ describe('M15-S05/#307 map folder tree — NestedTree-Konsument', () => {
     it('Löschen-Button zeigt Sicherheitsdialog (kein confirm())', async () => {
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
       await waitFor(() => expect(folderNameEl('Dungeons')).toBeInTheDocument());
-      fireEvent.click(screen.getAllByRole('button', { name: /löschen/i })[0]);
+      // Delete lives behind the folder's "⋮" menu (NestedTree) — open it first.
+      const dungeons = within(folderHeader('Dungeons'));
+      fireEvent.click(dungeons.getByRole('button', { name: '⋮' }));
+      fireEvent.click(within(folderHeader('Dungeons')).getByRole('button', { name: 'Löschen' }));
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
@@ -157,14 +161,18 @@ describe('M15-S05/#307 map folder tree — NestedTree-Konsument', () => {
       const { deleteFolder } = await import('../src/services/map-folder-service');
       render(<MapFolderTree database={mockDb} maps={MAPS} />);
       await waitFor(() => expect(folderNameEl('Dungeons')).toBeInTheDocument());
-      fireEvent.click(screen.getAllByRole('button', { name: /löschen/i })[0]);
+      const dungeons = within(folderHeader('Dungeons'));
+      fireEvent.click(dungeons.getByRole('button', { name: '⋮' }));
+      fireEvent.click(within(folderHeader('Dungeons')).getByRole('button', { name: 'Löschen' }));
       fireEvent.click(screen.getByRole('button', { name: /bestätigen|ja|löschen/i }));
       await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith(mockDb, 'mapfolder_dungeons'));
     });
 
     it('MapFolderTree.tsx hat kein ON DELETE CASCADE (kein Kaskaden-Löschen)', () => {
       const src = readFileSync('src/ui/MapFolderTree.tsx', 'utf-8');
-      expect(src).not.toMatch(/cascade|deleteMap|delete.*map/i);
+      // Guard against an actual SQL cascade or a map-deleting call. (`onMapsChanged`
+      // — a legit refetch callback on the deleteFolder().then chain — must not trip this.)
+      expect(src).not.toMatch(/cascade|deleteMap\s*\(/i);
     });
   });
 

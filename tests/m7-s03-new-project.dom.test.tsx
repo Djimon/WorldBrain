@@ -1,11 +1,13 @@
 // M7-S03: Neues Projekt anlegen
 // See: https://github.com/Djimon/WorldBrain/issues/136
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import '../src/i18n';
 
 vi.mock('../src/services/project-service', () => ({
-  createProject: vi.fn(() => ({ id: 'proj-new', path: '/projects/test-world' })),
+  // createProject is async (the dialog does createProject(...).then().catch()).
+  createProject: vi.fn(async () => ({ id: 'proj-new', path: '/projects/test-world' })),
 }));
 
 vi.mock('../src/services/app-config-service', () => ({
@@ -22,7 +24,7 @@ describe('M7-S03 new project dialog', () => {
   describe('form fields', () => {
     it('renders project name input (required)', () => {
       render(<NewProjectDialog onCreated={vi.fn()} onCancel={vi.fn()} />);
-      expect(screen.getByRole('textbox', { name: /projektname|project name/i })).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: /neues projekt|new project/i })).toBeInTheDocument();
     });
 
     it('renders optional description field', () => {
@@ -57,37 +59,39 @@ describe('M7-S03 new project dialog', () => {
 
   describe('successful creation', () => {
     it('calls createProject with project name', () => {
-      mockCreateProject.mockReturnValue({ id: 'proj-new', path: '/projects/test-world' });
+      mockCreateProject.mockResolvedValue({ id: 'proj-new', path: '/projects/test-world' });
       const onCreated = vi.fn();
       render(<NewProjectDialog onCreated={onCreated} onCancel={vi.fn()} />);
-      fireEvent.change(screen.getByRole('textbox', { name: /projektname|project name/i }), {
+      fireEvent.change(screen.getByRole('textbox', { name: /neues projekt|new project/i }), {
         target: { value: 'Test World' },
       });
       fireEvent.click(screen.getByRole('button', { name: /erstellen|create/i }));
       expect(mockCreateProject).toHaveBeenCalledWith(expect.objectContaining({ title: 'Test World' }));
     });
 
-    it('calls onCreated with new project id after creation', () => {
-      mockCreateProject.mockReturnValue({ id: 'proj-new', path: '/projects/test-world' });
+    it('calls onCreated with new project id after creation', async () => {
+      mockCreateProject.mockResolvedValue({ id: 'proj-new', path: '/projects/test-world' });
       const onCreated = vi.fn();
       render(<NewProjectDialog onCreated={onCreated} onCancel={vi.fn()} />);
-      fireEvent.change(screen.getByRole('textbox', { name: /projektname|project name/i }), {
+      fireEvent.change(screen.getByRole('textbox', { name: /neues projekt|new project/i }), {
         target: { value: 'Test World' },
       });
       fireEvent.click(screen.getByRole('button', { name: /erstellen|create/i }));
-      expect(onCreated).toHaveBeenCalledWith('proj-new');
+      // onCreated fires from the resolved createProject promise.
+      await waitFor(() => expect(onCreated).toHaveBeenCalledWith('proj-new'));
     });
   });
 
   describe('conflict handling', () => {
-    it('shows error when createProject throws a conflict error', () => {
-      mockCreateProject.mockImplementation(() => { throw new Error('Folder already exists'); });
+    it('shows error when createProject throws a conflict error', async () => {
+      // The dialog surfaces the error via the promise's .catch → role="alert".
+      mockCreateProject.mockRejectedValue(new Error('Folder already exists'));
       render(<NewProjectDialog onCreated={vi.fn()} onCancel={vi.fn()} />);
-      fireEvent.change(screen.getByRole('textbox', { name: /projektname|project name/i }), {
+      fireEvent.change(screen.getByRole('textbox', { name: /neues projekt|new project/i }), {
         target: { value: 'Existing World' },
       });
       fireEvent.click(screen.getByRole('button', { name: /erstellen|create/i }));
-      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(await screen.findByRole('alert')).toBeInTheDocument();
     });
   });
 

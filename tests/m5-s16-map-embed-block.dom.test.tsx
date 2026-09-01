@@ -9,8 +9,13 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/services/map-service', () => ({
-  getMap: vi.fn(() => ({ id: 'map-1', title: 'World Map', asset_id: 'asset-1', image_width_px: 1000, image_height_px: 800, calibration_json: null })),
+  getMap: vi.fn(async () => ({ id: 'map-1', title: 'World Map', asset_id: 'asset-1', image_width_px: 1000, image_height_px: 800, calibration_json: null })),
   getAssetUrl: vi.fn(() => '/assets/map.png'),
+}));
+
+// #291: MapEmbedBlock resolves the base image via the layer service.
+vi.mock('../src/services/map-layer-service', () => ({
+  listLayers: vi.fn(async () => [{ id: 'layer-1', layer_type: 'image', asset_id: 'asset-1' }]),
 }));
 
 describe('E8-S08 map embed block', () => {
@@ -41,14 +46,15 @@ describe('E8-S08 map embed block', () => {
 
     it('shows map title', async () => {
       const { MapEmbedBlock } = await import('../src/blocks/MapEmbedBlock');
-      render(<MapEmbedBlock mapId="map-1" />);
-      expect(screen.getByText(/World Map/i)).toBeInTheDocument();
+      // Loading is async and gated on the database prop.
+      render(<MapEmbedBlock mapId="map-1" database={{} as never} />);
+      expect(await screen.findByText(/World Map/i)).toBeInTheDocument();
     });
 
     it('renders the map image', async () => {
       const { MapEmbedBlock } = await import('../src/blocks/MapEmbedBlock');
-      render(<MapEmbedBlock mapId="map-1" />);
-      expect(screen.getByRole('img')).toBeInTheDocument();
+      render(<MapEmbedBlock mapId="map-1" database={{} as never} />);
+      expect(await screen.findByRole('img')).toBeInTheDocument();
     });
 
     it('shows a fallback when mapId is missing', async () => {
