@@ -192,6 +192,6 @@
   "settingsCat": { "project": "Project", "plugins": "Plugins", "appearance": "Appearance", "backup": "Backup", "shortcuts": "Shortcuts", "about": "About" },
   "settingsStat": { "database": "Database", "entities": "Entities", "maps": "Maps" },
   "settingsAbout": { "version": "Version", "engine": "Engine", "language": "Language", "dataFolder": "Data folder" },
-  "settingsPlugins": { "title": "Plugins & custom rule systems", "body": "Extend WorldBuilderX with rule systems, custom entity types and content. Coming after the 0.1 release — you'll manage them here." },
+  "settingsPlugins": { "title": "Plugins & custom rule systems", "body": "Extend Beyond Worlds with rule systems, custom entity types and content. Coming after the 0.1 release — you'll manage them here." },
   "settingsShortcuts": { "title": "Shortcuts", "body": "Freely bindable shortcuts to switch between areas quickly. Coming in an upcoming update." }
 }

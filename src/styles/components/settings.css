@@ -25,7 +25,8 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 208px 1fr;
+  /* sidebar takes exactly the width its nav needs — no fixed width, no h-scroll */
+  grid-template-columns: max-content 1fr;
   overflow: hidden;
 }
 
@@ -34,7 +35,9 @@
   border-right: 1px solid var(--color-border);
   padding: var(--space-3) var(--space-2);
   overflow-y: auto;
+  overflow-x: hidden;
 }
+.settings__nav-label { white-space: nowrap; padding-right: var(--space-2); }
 .settings__nav-title {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
@@ -64,8 +67,8 @@
 .settings__stat-n { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .settings__stat-l { font-size: 0.7rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; font-weight: 600; }
 
-/* about key/value list */
-.settings__about { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-5); }
+/* about key/value list — everything stacked vertically */
+.settings__about { display: flex; flex-direction: column; gap: var(--space-4); }
 .settings__about dt { font-size: 0.7rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 3px; }
 .settings__about dd { font-size: 0.875rem; }
 .settings__datafolder { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }

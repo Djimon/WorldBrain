@@ -84,15 +84,15 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
       <div className="settings__body">
         <nav className="settings__nav" aria-label={t('settingsNavAria', 'Einstellungen')}>
           <div className="settings__nav-title">{t('settingsNavAria', 'Einstellungen')}</div>
-          <ListSurface>
+          <div className="u-stack u-gap-1">
             {CATS.map((c) => (
               <ListRow key={c.id} as="button" selected={cat === c.id} aria-current={cat === c.id} onClick={() => setCat(c.id)}>
                 <span className="settings__nav-icon" aria-hidden="true">{c.icon}</span>
-                <span className="u-flex-1">{t(`settingsCat.${c.id}`)}</span>
+                <span className="settings__nav-label">{t(`settingsCat.${c.id}`)}</span>
                 {c.soon && <StatusChip tone="warning">{t('settingsSoon', 'Bald')}</StatusChip>}
               </ListRow>
             ))}
-          </ListSurface>
+          </div>
         </nav>
 
         <div className="settings__detail">
