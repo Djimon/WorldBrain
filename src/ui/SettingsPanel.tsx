@@ -6,7 +6,7 @@
 // Mini-features (project stats, switcher) come from existing services.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { appDataDir } from '@tauri-apps/api/path';
+import { appDataDir, join } from '@tauri-apps/api/path';
 import { stat } from '@tauri-apps/plugin-fs';
 import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
 import { version as appVersion } from '../../package.json';
@@ -89,11 +89,20 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
     return () => { cancelled = true; };
   }, [database, projectDir]);
 
-  // Project list for the switcher + data-folder path.
+  // Project list for the switcher + data-folder path. app-config.json lives at an
+  // ABSOLUTE <appDataDir>/app-config.json (same as App.tsx). readAppConfig()'s default
+  // is a RELATIVE path that does NOT resolve there → it silently yields an empty list.
   useEffect(() => {
     let cancelled = false;
-    void readAppConfig().then((c) => { if (!cancelled) setProjects(c.projects); }).catch(() => { /* no config yet */ });
-    void appDataDir().then((d) => { if (!cancelled) setDataDir(d); }).catch(() => { /* not in Tauri */ });
+    void (async () => {
+      try {
+        const base = await appDataDir();
+        if (cancelled) return;
+        setDataDir(base);
+        const c = await readAppConfig(await join(base, 'app-config.json'));
+        if (!cancelled) setProjects(c.projects);
+      } catch { /* not in Tauri */ }
+    })();
     return () => { cancelled = true; };
   }, []);
 
@@ -121,7 +130,7 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
     try {
       await updateProjectMeta(projectDir, { title: nextTitle, description: draftDesc });
       const entry = projects.find((p) => p.id === projectId);
-      if (entry) await registerProject({ ...entry, title: nextTitle });
+      if (entry) await registerProject({ ...entry, title: nextTitle }, await join(await appDataDir(), 'app-config.json'));
       setTitle(nextTitle);
       setDescription(draftDesc.trim());
       onProjectRenamed?.(nextTitle);
