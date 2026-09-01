@@ -89,6 +89,7 @@ interface Props {
   snapshotsDir?: string;
   onProjectClose?: () => void;
   onOpenProject?: (projectId: string) => void;
+  onProjectRenamed?: (title: string) => void;
   activePanel?: Area;
 }
 
@@ -118,7 +119,7 @@ const CORE_ENTITY_TYPES = [
   'Quest', 'Event', 'Scene', 'Rule', 'Resource', 'Culture', 'Lore',
 ];
 
-export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snapshotsDir, onProjectClose, onOpenProject, activePanel }: Props) {
+export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snapshotsDir, onProjectClose, onOpenProject, onProjectRenamed, activePanel }: Props) {
   const { t } = useTranslation('nav');
   const database = useDatabase();
   // M10-S22 (D25): app-mode shell. `edit` = full author workspace, `play` =
@@ -861,6 +862,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
               snapshotsDir={snapshotsDir ?? ''}
               onProjectClose={onProjectClose}
               onOpenProject={onOpenProject}
+              onProjectRenamed={onProjectRenamed}
             />
           </div>
         );

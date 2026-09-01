@@ -1,4 +1,4 @@
-import { exists, mkdir, writeTextFile } from '@tauri-apps/plugin-fs';
+import { exists, mkdir, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { appDataDir, join } from '@tauri-apps/api/path';
 
 export interface ProjectMeta {
@@ -46,4 +46,38 @@ export async function createProject(opts: {
   await writeTextFile(await join(projectPath, 'project.json'), JSON.stringify(meta, null, 2));
 
   return { id, path: projectPath };
+}
+
+/** Read a project's `project.json` metadata; null if absent/unreadable (non-Tauri, test). */
+export async function readProjectMeta(projectDir: string): Promise<ProjectMeta | null> {
+  try {
+    return JSON.parse(await readTextFile(await join(projectDir, 'project.json'))) as ProjectMeta;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Update title/description in a project's `project.json` (bumps `updated_at`).
+ * The on-disk folder keeps its original creation slug — only the metadata changes,
+ * so no folder rename is needed. A blank description clears the key.
+ */
+export async function updateProjectMeta(
+  projectDir: string,
+  patch: { title?: string; description?: string },
+): Promise<ProjectMeta> {
+  const metaPath = await join(projectDir, 'project.json');
+  const meta = JSON.parse(await readTextFile(metaPath)) as ProjectMeta;
+  const next: ProjectMeta = {
+    ...meta,
+    ...(patch.title !== undefined ? { title: patch.title } : {}),
+    updated_at: new Date().toISOString(),
+  };
+  if (patch.description !== undefined) {
+    const trimmed = patch.description.trim();
+    if (trimmed) next.description = trimmed;
+    else delete next.description;
+  }
+  await writeTextFile(metaPath, JSON.stringify(next, null, 2));
+  return next;
 }

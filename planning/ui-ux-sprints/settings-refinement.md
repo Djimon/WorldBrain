@@ -52,8 +52,15 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   persistiert → nächster Start öffnet das Projekt direkt statt Welcome-Screen.
 - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n-Scanner 0/0, Parität 30/30.
 
+- **Projekt-Pane-Ausbau (Increment 2):** Titel **+ Beschreibung inline editierbar** (Edit-Button
+  neben dem Titel; `save`/`cancel` aus `common`). Neuer Service `readProjectMeta`/`updateProjectMeta`
+  (schreibt `project.json`, bumpt `updated_at`, **kein** Ordner-Rename — Slug bleibt); Titel wird
+  zusätzlich in `app-config` (`registerProject`) gesynct. Live-Header-Update via `onProjectRenamed`
+  (App → Shell → Panel). Pfad zeigt jetzt den **echten `projectDir`** mit Label „Projekt-Ordner:"
+  (vorher fälschlich der gemeinsame App-Ordner `…\projects`). Projekt-Switcher **unter** „Close
+  project" verschoben und listet nur die **anderen** Projekte.
+
 ### Offen (nächste Sprint-Increments)
-- Projekt **Umbenennen/Bearbeiten** (Rename-Service + Pencil-Action).
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - SnapshotManager/UpdateNotification-interne rohe Buttons (F3/F4) auf Primitives (falls
   UpdateNotification woanders bleibt).

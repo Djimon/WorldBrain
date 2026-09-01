@@ -11,8 +11,9 @@ import { stat } from '@tauri-apps/plugin-fs';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { version as appVersion } from '../../package.json';
 import { useDatabase } from '../services/DatabaseContext';
-import { readAppConfig } from '../services/app-config-service';
+import { readAppConfig, registerProject } from '../services/app-config-service';
 import type { ProjectEntry } from '../services/app-config-service';
+import { readProjectMeta, updateProjectMeta } from '../services/project-service';
 import { Button, Panel, StatusChip, ListSurface, ListRow } from './primitives';
 import { ThemePicker } from './ThemePicker';
 import { SnapshotManager } from './SnapshotManager';
@@ -26,6 +27,8 @@ export interface SettingsPanelProps {
   snapshotsDir: string;
   onProjectClose?: () => void;
   onOpenProject?: (projectId: string) => void;
+  /** Called after a successful title edit so the shell/header can reflect it live. */
+  onProjectRenamed?: (title: string) => void;
 }
 
 function formatBytes(n: number): string {
@@ -43,13 +46,20 @@ const CATS: readonly { id: Category; icon: string; soon?: boolean }[] = [
   { id: 'about', icon: 'ℹ️' },
 ];
 
-export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDir, onProjectClose, onOpenProject }: SettingsPanelProps) {
+export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDir, onProjectClose, onOpenProject, onProjectRenamed }: SettingsPanelProps) {
   const { t, i18n } = useTranslation('nav');
   const database = useDatabase();
   const [cat, setCat] = useState<Category>('project');
   const [stats, setStats] = useState<{ db: string; entities: number; maps: number } | null>(null);
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
   const [dataDir, setDataDir] = useState<string>('');
+  // Editable project metadata (title/description) loaded from project.json.
+  const [title, setTitle] = useState<string>(projectTitle ?? projectId);
+  const [description, setDescription] = useState<string>('');
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState('');
+  const [draftDesc, setDraftDesc] = useState('');
+  const [saving, setSaving] = useState(false);
 
   // Project stats — DB file size + row counts (guarded; stays null on non-Tauri/test).
   useEffect(() => {
@@ -75,6 +85,44 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
     return () => { cancelled = true; };
   }, []);
 
+  // Project metadata (title/description) from project.json.
+  useEffect(() => {
+    let cancelled = false;
+    void readProjectMeta(projectDir).then((m) => {
+      if (cancelled || !m) return;
+      setTitle(m.title);
+      setDescription(m.description ?? '');
+    }).catch(() => { /* not in Tauri */ });
+    return () => { cancelled = true; };
+  }, [projectDir]);
+
+  function beginEdit() {
+    setDraftTitle(title);
+    setDraftDesc(description);
+    setEditing(true);
+  }
+
+  async function saveEdit() {
+    const nextTitle = draftTitle.trim();
+    if (!nextTitle || saving) return;
+    setSaving(true);
+    try {
+      await updateProjectMeta(projectDir, { title: nextTitle, description: draftDesc });
+      const entry = projects.find((p) => p.id === projectId);
+      if (entry) await registerProject({ ...entry, title: nextTitle });
+      setTitle(nextTitle);
+      setDescription(draftDesc.trim());
+      onProjectRenamed?.(nextTitle);
+      setEditing(false);
+    } catch (e) {
+      console.error('[SettingsPanel] saveEdit failed', e);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const otherProjects = projects.filter((p) => p.id !== projectId);
+
   return (
     <div className="settings">
       <header className="settings__topbar">
@@ -98,33 +146,64 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
         <div className="settings__detail">
           {cat === 'project' && (
             <section className="settings__pane u-stack u-gap-4">
-              <div>
-                <h2 className="settings__pane-title">{projectTitle ?? projectId}</h2>
-                {dataDir && <div className="settings__path">{dataDir}projects</div>}
+              <div className="u-stack u-gap-2">
+                <div className="settings__project-head">
+                  <h2 className="settings__pane-title">{title}</h2>
+                  {!editing && (
+                    <Button variant="ghost" size="icon" onClick={beginEdit} aria-label={t('edit', { ns: 'common' })} title={t('edit', { ns: 'common' })}>✏️</Button>
+                  )}
+                </div>
+
+                {editing ? (
+                  <div className="u-stack u-gap-2">
+                    <label className="settings__field">
+                      <span className="settings__field-label">{t('settingsTitleLabel', 'Titel')}</span>
+                      <input className="settings__input" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} autoFocus />
+                    </label>
+                    <label className="settings__field">
+                      <span className="settings__field-label">{t('description', { ns: 'common' })}</span>
+                      <textarea className="settings__textarea" value={draftDesc} onChange={(e) => setDraftDesc(e.target.value)} rows={3} />
+                    </label>
+                    <div className="u-row u-gap-2">
+                      <Button onClick={() => void saveEdit()} disabled={saving || !draftTitle.trim()}>{t('save', { ns: 'common' })}</Button>
+                      <Button variant="ghost" onClick={() => setEditing(false)}>{t('cancel', { ns: 'common' })}</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className={description ? 'settings__project-desc' : 'settings__project-desc settings__muted'}>
+                    {description || t('settingsNoDescription', 'Noch keine Beschreibung.')}
+                  </p>
+                )}
+
+                {projectDir && (
+                  <div className="settings__path">
+                    <span className="settings__path-label">{t('settingsProjectFolder', 'Projekt-Ordner')}:</span> {projectDir}
+                  </div>
+                )}
               </div>
+
               <div className="settings__stats">
                 <Panel className="settings__stat"><div className="settings__stat-n">{stats ? stats.db : '—'}</div><div className="settings__stat-l">{t('settingsStat.database', 'Datenbank')}</div></Panel>
                 <Panel className="settings__stat"><div className="settings__stat-n">{stats ? stats.entities : '—'}</div><div className="settings__stat-l">{t('settingsStat.entities', 'Entitäten')}</div></Panel>
                 <Panel className="settings__stat"><div className="settings__stat-n">{stats ? stats.maps : '—'}</div><div className="settings__stat-l">{t('settingsStat.maps', 'Karten')}</div></Panel>
               </div>
-              {projects.length > 1 && (
+
+              <hr className="settings__divider" />
+              <Button tone="danger" variant="outline" onClick={() => onProjectClose?.()}>{t('closeProject')}</Button>
+
+              {otherProjects.length > 0 && (
                 <div className="u-stack u-gap-2">
                   <div className="settings__block-label">{t('settingsSwitchProject', 'Projekt wechseln')}</div>
                   <ListSurface>
-                    {projects.map((p) => {
-                      const active = p.id === projectId;
-                      return (
-                        <ListRow key={p.id} as="button" selected={active} interactive={!active} aria-disabled={active || undefined} onClick={() => { if (!active) onOpenProject?.(p.id); }}>
-                          <span className="u-flex-1">{p.title}</span>
-                          <StatusChip tone={active ? 'accent' : 'muted'}>{active ? t('settingsActive', 'Aktiv') : t('settingsOpenProject', 'Öffnen')}</StatusChip>
-                        </ListRow>
-                      );
-                    })}
+                    {otherProjects.map((p) => (
+                      <ListRow key={p.id} as="button" interactive onClick={() => onOpenProject?.(p.id)}>
+                        <span className="u-flex-1">{p.title}</span>
+                        <StatusChip tone="muted">{t('settingsOpenProject', 'Öffnen')}</StatusChip>
+                      </ListRow>
+                    ))}
                   </ListSurface>
                 </div>
               )}
-              <hr className="settings__divider" />
-              <Button tone="danger" variant="outline" onClick={() => onProjectClose?.()}>{t('closeProject')}</Button>
             </section>
           )}
 
