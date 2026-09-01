@@ -1,7 +1,7 @@
 // M5-S07: Session clock & global counters — world time advance, counter panel.
 // See: https://github.com/Djimon/WorldBrain/issues/73
 
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { SessionClock } from '../src/ui/SessionClock';
 
@@ -9,14 +9,15 @@ vi.mock('../src/services/calendar-service', () => ({
   formatAbsoluteDay: vi.fn((day: number) => `Day ${day}, Year 1`),
 }));
 
+// Services sind auf async migriert — listVars liefert ein Promise (#400 Cluster B).
 vi.mock('../src/services/session-variable-service', () => ({
-  setGlobalVar: vi.fn(),
-  getGlobalVar: vi.fn(() => null),
-  listVars: vi.fn(() => [
+  setGlobalVar: vi.fn().mockResolvedValue(undefined),
+  getGlobalVar: vi.fn().mockResolvedValue(null),
+  listVars: vi.fn().mockResolvedValue([
     { id: 'counter-bastion', type: 'number', label: 'Bastion Turns', value: 3, default_value: 0 },
     { id: 'counter-market', type: 'number', label: 'Market Days', value: 1, default_value: 0 },
   ]),
-  setVar: vi.fn(),
+  setVar: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockDb = {};
@@ -36,33 +37,33 @@ describe('M5-S07 session clock', () => {
 
     it('has an "Advance time" control', () => {
       render(<SessionClock sessionId="s1" calendar={earthCalendar} worldTimeStart={1000} database={mockDb as never} />);
-      expect(screen.getByRole('button', { name: /advance|forward|\+.*day/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /nextround|n.?chste runde|next.?round|advance|forward/i })).toBeInTheDocument();
     });
 
     it('clicking advance calls onWorldTimeChange with incremented day', () => {
       const onChange = vi.fn();
       render(<SessionClock sessionId="s1" calendar={earthCalendar} worldTimeStart={1000} database={mockDb as never} onWorldTimeChange={onChange} />);
-      fireEvent.click(screen.getByRole('button', { name: /advance|forward|\+.*day/i }));
+      fireEvent.click(screen.getByRole('button', { name: /nextround|n.?chste runde|next.?round|advance|forward/i }));
       expect(onChange).toHaveBeenCalledWith(1001);
     });
   });
 
   describe('global counters panel', () => {
-    it('renders global counters', () => {
+    it('renders global counters', async () => {
       render(<SessionClock sessionId="s1" calendar={earthCalendar} worldTimeStart={1000} database={mockDb as never} />);
-      expect(screen.getByText('Bastion Turns')).toBeInTheDocument();
+      expect(await screen.findByText('Bastion Turns')).toBeInTheDocument();
       expect(screen.getByText('Market Days')).toBeInTheDocument();
     });
 
-    it('shows current counter values', () => {
+    it('shows current counter values', async () => {
       render(<SessionClock sessionId="s1" calendar={earthCalendar} worldTimeStart={1000} database={mockDb as never} />);
-      expect(screen.getByText('3')).toBeInTheDocument();
+      expect(await screen.findByText('3')).toBeInTheDocument();
     });
 
-    it('each counter has + and - controls', () => {
+    it('each counter has + and - controls', async () => {
       render(<SessionClock sessionId="s1" calendar={earthCalendar} worldTimeStart={1000} database={mockDb as never} />);
       // mock has 2 counters — expect exactly 2 increment and 2 decrement buttons
-      expect(screen.getAllByRole('button', { name: /increment/i })).toHaveLength(2);
+      await waitFor(() => expect(screen.getAllByRole('button', { name: /increment/i })).toHaveLength(2));
       expect(screen.getAllByRole('button', { name: /decrement/i })).toHaveLength(2);
     });
 
@@ -70,7 +71,7 @@ describe('M5-S07 session clock', () => {
       const { setGlobalVar } = await import('../src/services/session-variable-service');
       render(<SessionClock sessionId="s1" calendar={earthCalendar} worldTimeStart={1000} database={mockDb as never} />);
       // Scope to the Bastion Turns row to avoid ambiguity between counters
-      const bastionRow = screen.getByText('Bastion Turns').closest('[data-counter]') as HTMLElement;
+      const bastionRow = (await screen.findByText('Bastion Turns')).closest('div') as HTMLElement;
       expect(bastionRow).not.toBeNull();
       fireEvent.click(within(bastionRow).getByRole('button', { name: /increment/i }));
       expect(setGlobalVar).toHaveBeenCalledWith(expect.anything(), 'counter-bastion', 4);
@@ -86,17 +87,21 @@ describe('issue #131: SessionClock counter changes written to session_log', () =
     // The component must either call a logging-aware variant or insert directly.
     // Verify setGlobalVar is called (service-level logging is the fix target).
     render(<SessionClock sessionId="s1" calendar={earthCalendar} worldTimeStart={1000} database={mockDb as never} />);
-    const bastionRow = screen.getByText('Bastion Turns').closest('[data-counter]') as HTMLElement;
+    const bastionRow = (await screen.findByText('Bastion Turns')).closest('div') as HTMLElement;
     fireEvent.click(within(bastionRow).getByRole('button', { name: /increment/i }));
     // After fix: setGlobalVar must be replaced or augmented to also write session_log.
     // Test that the call happens — logging verification requires implementation.
     expect(setGlobalVar).toHaveBeenCalled();
   });
 
-  it('source does not use setGlobalVar without a session_log write nearby', async () => {
+  it('counter changes are logged to session_log by the service layer (#131)', async () => {
     const { readFileSync } = await import('node:fs');
-    const src = readFileSync('src/ui/SessionClock.tsx', 'utf8');
-    // After fix, the counter handler must write to session_log (directly or via helper)
-    expect(src).toMatch(/session_log|logCounterChange|insertLog|setGlobalVarLogged/i);
+    // #400: die Protokollierung lebt jetzt im Service (setGlobalVar → session_log),
+    // nicht in der Komponente. SessionClock ruft setGlobalVar; der Guard prüft die
+    // richtige Schicht.
+    const svc = readFileSync('src/services/session-variable-service.ts', 'utf8');
+    expect(svc).toMatch(/session_log/i);
+    const clock = readFileSync('src/ui/SessionClock.tsx', 'utf8');
+    expect(clock).toMatch(/setGlobalVar/);
   });
 });
