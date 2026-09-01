@@ -74,7 +74,8 @@ describe('SpotifyClipPlayer', () => {
   it('mounts a hidden embed controller and calls play', async () => {
     const { container } = render(<SpotifyClipPlayer uri="spotify:track:abc" paused={false} />);
     await flush();
-    expect((container.firstChild as HTMLElement).style.display).toBe('none');
+    // Hiding moved from an inline style to the u-hidden utility class (.u-hidden { display: none }).
+    expect((container.firstChild as HTMLElement).classList.contains('u-hidden')).toBe(true);
     expect(FakeController.instances[0].calls.play).toBe(1);
   });
 
@@ -167,7 +168,7 @@ describe('SpotifyTierEngine', () => {
     const { container } = render(<SpotifyChannelPlayers channelId="chan_1" engine={engine} />);
     await flush();
     expect(container.querySelectorAll('input')).toHaveLength(0);
-    expect(container.querySelectorAll('[style]')).toHaveLength(1);
+    expect(container.querySelectorAll('.u-hidden')).toHaveLength(1);
   });
 
   describe('pauseChannel/resumeChannel (real pause — unlike stopChannel, the slot stays)', () => {

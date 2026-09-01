@@ -10,7 +10,7 @@ const LOCALES_ROOT = 'src/locales';
 // Files that already exist in the repo:
 const EXISTING_FILES: Array<[string, string]> = [
   ['MapViewer', 'src/ui/MapViewer.tsx'],
-  ['MapMarkers', 'src/ui/MapMarkers.tsx'],
+  ['MapTokenLayer', 'src/ui/MapTokenLayer.tsx'],
   ['PlayerScreen', 'src/ui/PlayerScreen.tsx'],
   ['ChronicleView', 'src/ui/ChronicleView.tsx'],
   ['SessionClock', 'src/ui/SessionClock.tsx'],

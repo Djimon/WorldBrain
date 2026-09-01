@@ -66,11 +66,12 @@ describe('M15-S13 YouTube tier', () => {
   });
 
   describe('YoutubeClipPlayer', () => {
-    it('mounts a hidden IFrame player (display:none)', () => {
+    it('mounts a hidden IFrame player (u-hidden → display:none)', () => {
       const { container } = render(
         <YoutubeClipPlayer videoUrl="https://www.youtube.com/watch?v=abc123" targetVolume={80} rampSeconds={0} loop={false} />,
       );
-      expect((container.firstChild as HTMLElement).style.display).toBe('none');
+      // Hiding moved from an inline style to the u-hidden utility class (.u-hidden { display: none }).
+      expect((container.firstChild as HTMLElement).classList.contains('u-hidden')).toBe(true);
     });
 
     it('volume (channel x base, already computed by the caller) maps to setVolume on ready', async () => {
@@ -132,7 +133,7 @@ describe('M15-S13 YouTube tier', () => {
       const { container } = render(<YoutubeChannelPlayers channelId="chan_1" engine={engine} />);
       await flush();
       expect(container.querySelectorAll('input')).toHaveLength(0);
-      expect(container.querySelectorAll('[style]')).toHaveLength(1);
+      expect(container.querySelectorAll('.u-hidden')).toHaveLength(1);
     });
   });
 

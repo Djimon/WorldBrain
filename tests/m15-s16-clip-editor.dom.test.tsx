@@ -3,6 +3,11 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+// ClipEditor now localizes its labels via useTranslation; without an initialized
+// i18n instance t('save', { ns: 'common' }) returns the raw key, so the German
+// button queries below fail. Importing the app i18n config (default lang 'de')
+// makes t() resolve to the real strings the test asserts on.
+import '../src/i18n';
 import { ClipEditor } from '../src/ui/ClipEditor';
 import type { DatabaseLike } from '../src/services/entity-service';
 

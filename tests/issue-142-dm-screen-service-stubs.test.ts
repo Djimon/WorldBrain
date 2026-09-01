@@ -5,48 +5,57 @@
 
 import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
+import type { DatabaseLike } from '../src/services/entity-service';
 
+// applyDmScreenSchema moved into dm-screen-service and the whole service is now
+// async against the DatabaseLike (execute/select) contract, not raw node:sqlite.
 async function getDmScreenService() { return import('../src/services/dm-screen-service'); }
-async function getDmScreenSchema() { return import('../core_data/dm-screen-schema'); }
 
-function openDb() { return new DatabaseSync(':memory:'); }
+// Wrap an in-memory node:sqlite DatabaseSync as an async DatabaseLike.
+function openDb(): DatabaseLike {
+  const db = new DatabaseSync(':memory:');
+  return {
+    async execute(sql: string, args: unknown[] = []): Promise<void> {
+      db.prepare(sql).run(...(args as never[]));
+    },
+    async select<T = Record<string, unknown>>(sql: string, args: unknown[] = []): Promise<T[]> {
+      return db.prepare(sql).all(...(args as never[])) as T[];
+    },
+  };
+}
 
 describe('issue #142: dm-screen-service read path (not stubs)', () => {
   it('listScreens returns screens previously saved with saveScreen', async () => {
-    const { applyDmScreenSchema } = await getDmScreenSchema();
-    const { saveScreen, listScreens } = await getDmScreenService();
+    const { applyDmScreenSchema, saveScreen, listScreens } = await getDmScreenService();
     const db = openDb();
-    applyDmScreenSchema(db);
-    saveScreen(db, { title: 'Combat Screen', layout: { columns: 2 }, panels: [] });
-    const screens = listScreens(db);
+    await applyDmScreenSchema(db);
+    await saveScreen(db, { title: 'Combat Screen', layout: { columns: 2 }, panels: [] });
+    const screens = await listScreens(db);
     expect(screens.length).toBeGreaterThan(0);
     expect(screens[0].title).toBe('Combat Screen');
   });
 
   it('getScreen returns the screen by id', async () => {
-    const { applyDmScreenSchema } = await getDmScreenSchema();
-    const { saveScreen, getScreen } = await getDmScreenService();
+    const { applyDmScreenSchema, saveScreen, getScreen } = await getDmScreenService();
     const db = openDb();
-    applyDmScreenSchema(db);
-    const { id } = saveScreen(db, { title: 'Travel Screen', layout: { columns: 1 }, panels: [] });
-    const screen = getScreen(db, id);
+    await applyDmScreenSchema(db);
+    const { id } = await saveScreen(db, { title: 'Travel Screen', layout: { columns: 1 }, panels: [] });
+    const screen = await getScreen(db, id);
     expect(screen).not.toBeNull();
     expect(screen?.title).toBe('Travel Screen');
   });
 
   it('getScreen returns null for unknown id', async () => {
-    const { applyDmScreenSchema } = await getDmScreenSchema();
-    const { getScreen } = await getDmScreenService();
+    const { applyDmScreenSchema, getScreen } = await getDmScreenService();
     const db = openDb();
-    applyDmScreenSchema(db);
-    expect(getScreen(db, 'nonexistent')).toBeNull();
+    await applyDmScreenSchema(db);
+    expect(await getScreen(db, 'nonexistent')).toBeNull();
   });
 
   it('listScreens returns empty array when no screens saved', async () => {
-    const { applyDmScreenSchema } = await getDmScreenSchema();
-    const { listScreens } = await getDmScreenService();
+    const { applyDmScreenSchema, listScreens } = await getDmScreenService();
     const db = openDb();
-    applyDmScreenSchema(db);
-    expect(listScreens(db)).toEqual([]);
+    await applyDmScreenSchema(db);
+    expect(await listScreens(db)).toEqual([]);
   });
 });

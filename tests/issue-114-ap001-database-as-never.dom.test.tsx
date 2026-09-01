@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('../src/services/search-service', () => ({
   searchEntities: vi.fn(async () => []),
   getSearchFacets: vi.fn(async () => ({})),
+  rebuildSearchIndex: vi.fn(async () => undefined),
 }));
 vi.mock('../src/services/entity-service', () => ({
   listEntitiesByType: vi.fn(async () => []),

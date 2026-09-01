@@ -22,6 +22,19 @@ function readSrc(filePath: string): string {
   return fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : '';
 }
 
+// src/services now has subdirectories (e.g. signaling/) — a flat readdirSync
+// yields directory entries that readFileSync chokes on with EISDIR. Walk the
+// tree and return only .ts source files so every service is still scanned.
+function listServiceFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) out.push(...listServiceFiles(full));
+    else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) out.push(full);
+  }
+  return out;
+}
+
 describe('MI-S00 Tauri plugin migration', () => {
   describe('package.json: required Tauri plugins', () => {
     const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
@@ -90,7 +103,7 @@ describe('MI-S00 Tauri plugin migration', () => {
     });
 
     it('no service imports better-sqlite3', () => {
-      const serviceFiles = fs.readdirSync('src/services').map(f => `src/services/${f}`);
+      const serviceFiles = listServiceFiles('src/services');
       for (const f of serviceFiles) {
         const src = readSrc(f);
         expect(src, `${f} should not use better-sqlite3`).not.toMatch(/better-sqlite3/);
