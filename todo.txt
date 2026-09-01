@@ -15,12 +15,21 @@
 
 6. UX-session für Settings.
 
-7. 0.1 Release Beta-version
+7. 
+0.1 Release Beta-version
 aktive Feature: 
-	-entities
-	-search
-	-maps
-	-calender
-	-audio
-	-graph
-	-settings
+	Edit-mode:
+		-entities
+		-search
+		-maps
+		-calender
+		-audio
+		-graph
+		-settings (needs clenaup/ polish)
+	Play-mode:
+		-entities
+		-search
+		-maps
+		-calender
+		-lobby (needs refienment and clarification)
+		-settings (needs clenaup/ polish)
