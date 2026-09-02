@@ -9,6 +9,7 @@
     "fs:allow-appdata-write-recursive",
     "fs:allow-document-read-recursive",
     "fs:allow-document-write-recursive",
+    "fs:allow-resource-read-recursive",
     "sql:default",
     "sql:allow-execute",
     "sql:allow-select",

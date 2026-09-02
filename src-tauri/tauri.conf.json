@@ -30,6 +30,11 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
-    "icon": []
+    "icon": [],
+    "resources": {
+      "../docs/theme-tester.html": "theme-tester.html",
+      "../docs/user-guide_de.md": "user-guide_de.md",
+      "../docs/user-guide_en.md": "user-guide_en.md"
+    }
   }
 }

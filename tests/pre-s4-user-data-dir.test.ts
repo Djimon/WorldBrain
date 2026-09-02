@@ -48,16 +48,25 @@ describe('#406 — user data dir location', () => {
 });
 
 describe('#406 — ensureUserDataDirs first-run bootstrap', () => {
-  it('creates projects/plugins/themes when they do not exist', async () => {
+  it('creates projects/plugins/themes/help when they do not exist', async () => {
     existsMock.mockResolvedValue(false); // nothing exists yet
     await ensureUserDataDirs();
     const made = mkdirMock.mock.calls.map((c) => c[0]);
     expect(made).toContain('/docs/WorldsAndBeyond/projects');
     expect(made).toContain('/docs/WorldsAndBeyond/plugins');
     expect(made).toContain('/docs/WorldsAndBeyond/themes');
+    expect(made).toContain('/docs/WorldsAndBeyond/help');
     for (const call of mkdirMock.mock.calls) {
       expect(call[1]).toEqual({ recursive: true });
     }
+  });
+
+  it('seeds the how-to guides into help\\ when the resources exist (#408)', async () => {
+    existsMock.mockImplementation(async (p: string) =>
+      p === '/res/user-guide_de.md' || p === '/res/user-guide_en.md');
+    await ensureUserDataDirs();
+    expect(copyFileMock).toHaveBeenCalledWith('/res/user-guide_de.md', '/docs/WorldsAndBeyond/help/user-guide_de.md');
+    expect(copyFileMock).toHaveBeenCalledWith('/res/user-guide_en.md', '/docs/WorldsAndBeyond/help/user-guide_en.md');
   });
 
   it('is idempotent — does not re-create existing dirs', async () => {
