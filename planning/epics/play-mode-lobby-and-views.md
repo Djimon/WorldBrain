@@ -152,9 +152,10 @@ dieses Thema — dieses Epic ist dessen Design-Vorlage. #409 wird auf „Design 
 und in folgende Stories gesplittet. Abhängigkeit: **S1 zuerst** (schafft die Mount-Punkte).
 
 **Angelegt (Milestone `pre-release` #21):** S1 **#420** · S2 **#421** · S3 **#422** · S4 **#423** ·
-S5 **#424** · S6 **#425** · S7 **#426** · **S8 #427** (Datenquellen-Membran). Status: S1 (#420) +
-S5 (#424) `ready`; S2/S3/S4/S6/S7 `blocked` bis S1 steht (S6 zusätzlich hinter S5); S8 (#427)
-`needs-design`, hängt an S1.
+S5 **#424** · S6 **#425** · S7 **#426** · **S8 #427** (Datenquellen-Membran) · **S9 #432**
+(WorkspaceShell-Extraktion). Status: S1 (#420) + S5 (#424) `ready`; S2/S3/S4/S6/S7 `blocked` bis
+S1 steht (S6 zusätzlich hinter S5); S9 (#432) `blocked` hinter S1; S8 (#427) `needs-design`,
+hängt an S1. **Reihenfolge der Struktur-/Daten-Kette: S1 → S9 → S8.**
 
 - **S1 — Play-Navigation: Sammel-`session`-Area → einzelne Play-Sidebar-Views** (`WorkspaceShell`).
   `PLAY_AREAS` → `entities·search·maps·calendar·lobby·combatlog·spotlight·play-settings`;
@@ -185,6 +186,15 @@ S5 (#424) `ready`; S2/S3/S4/S6/S7 `blocked` bis S1 steht (S6 zusätzlich hinter 
   Remote-Multiplayer — ein beitretender Spieler liest sonst live die Host-DB (Membran-Bruch im
   Release), nicht erst bei #414. Hängt an **S1** (S1 zuerst), speist #414. Groß/übergreifend → vor
   Umsetzung in kleinere pre-release-Stories zu zerlegen. `type: story · area: core · area: multiplayer · area: session-mode`.
+- **S9 — WorkspaceShell-Extraktion (`usePlaySession`)** — **#432**, `blocked` (hinter S1), **pre-release**.
+  `WorkspaceShell.tsx` ist auf ~1096 Zeilen / 34 State-Hooks / 13 Effekte gewachsen. **Kein** binärer
+  edit/play-Shell-Split (dupliziert `renderArea()` + arbeitet gegen #427/D30) — stattdessen die
+  ~30% **Play-Session-Orchestrierung** (sessionRole/activeSessionId/playerStore/Transport/Rolle +
+  Host-/playerStore-Effekt + `enterPlay`/`exitPlay`/`pickRole`) in einen `usePlaySession()`-Hook +
+  `<RoleSelectPanel>`/`<PlaySurface>`; **eine** Shell behält Chrome + `renderArea()`. **Läuft nach S1,
+  vor S8:** gibt #427 eine saubere Naht (Hook besitzt playerStore/Transport) und de-riskt dessen
+  `needs-design`. Nach S1: kurzer Schnittstellen-Design-Pass über die State-Atome, dann TDD-fähig.
+  `type: chore · area: core · area: session-mode · area: ui-integration`.
 
 ## Nächster Schritt
 Story-Split gegenlesen → Issues anlegen (jede cold-reader-self-contained, Epic-Entscheidungen
