@@ -1,6 +1,6 @@
 # Worlds and Beyond
 
-![Status](https://img.shields.io/badge/Status-In%20Development-F5C542) ![Platform](https://img.shields.io/badge/Platform-Windows-5C5C5C) ![Stack](https://img.shields.io/badge/Stack-Tauri%20v2%20%7C%20React%20%7C%20TypeScript-2B90D9?logo=react&logoColor=white) ![License](https://img.shields.io/badge/License-Proprietary-red)
+![Status](https://img.shields.io/badge/Status-0.1%20Beta%20(in%20prep)-F5C542) ![Platform](https://img.shields.io/badge/Platform-Windows-5C5C5C) ![Stack](https://img.shields.io/badge/Stack-Tauri%20v2%20%7C%20React%20%7C%20TypeScript-2B90D9?logo=react&logoColor=white) ![License](https://img.shields.io/badge/License-Proprietary-red)
 
 > A local-first desktop app for game masters and writers to build, organize, and run fictional worlds — with full rules support, live session tools, and optional co-op multiplayer.
 
@@ -16,6 +16,21 @@ Worlds and Beyond keeps your world data as plain JSON on disk — readable, port
 - **Manage rules** — Plugin system with formula engine, character sheets, condition logic, and house-rule overlays for any game system
 - **Present and share** — Export cards, handouts, and session logs; fog-of-war maps with canvas rendering; soundboard panel with clip editor
 - **Play together** — Local network and remote WebRTC multiplayer (Trystero/Nostr, P2P end-to-end encrypted); player identity and invitation codes (M10, in progress)
+
+---
+
+## Current focus — 0.1 Beta
+
+The first public build is a **0.1 Beta** centered on the core author-and-run loop.
+Which features ship is set in [`features.json`](features.json); for 0.1 the active set is:
+
+- **Edit mode** — entities · search · maps · calendar · audio · graph · settings
+- **Play mode** — entities · search · maps · calendar · lobby · settings
+
+Chronicle, cards, the plugin-manager UI, and the rules reference are built but switched
+**off** for 0.1 and return in a later build — the plugin *substrate* that powers entity
+types stays on. Everything under "What it does" above is the full product vision; the list
+here is what the first Beta actually ships.
 
 ---
 
@@ -36,10 +51,14 @@ Full setup instructions: [DEVELOPMENT.md](DEVELOPMENT.md)
 Which in-development features ship in a release build is controlled by the flat
 [`features.json`](features.json) at the repo root — one line per feature, `true` = ships,
 `false` = removed. Editing is safe for non-developers: set a feature to `false` and the
-next release build leaves its code out entirely (dev runs always show everything). Example:
+next release build leaves its code out entirely (dev runs always show everything). The
+current 0.1 values:
 
 ```json
-{ "chronicle": false, "cards": true, "plugins": true, "rules": true }
+{
+  "chronicle": false, "cards": false, "plugins": false, "rules": false,
+  "audio": true, "graph": true, "maps": true, "session": true
+}
 ```
 
 ---
