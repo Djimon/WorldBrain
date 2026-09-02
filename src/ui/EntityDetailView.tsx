@@ -108,6 +108,9 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
   const [editVisibility, setEditVisibility] = useState('public');
   const [editCategory, setEditCategory] = useState<string | undefined>(undefined);
   const [deletePrompt, setDeletePrompt] = useState(false);
+  // Bumped after each save so PromoteControl re-checks whether an override now exists
+  // (a DM edit in campaign context just created one → the promote button should appear).
+  const [promoteReloadTick, setPromoteReloadTick] = useState(0);
   // #292 follow-up: a day-counter is meaningless without a calendar to
   // project it through. If the caller didn't hand one down explicitly (e.g.
   // viewed via the Entity-Browser, not the calendar area), resolve the
@@ -222,6 +225,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
       onSaved?.();
     }
     setEditing(false);
+    setPromoteReloadTick((n) => n + 1);
     load();
   }
 
@@ -446,7 +450,7 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
         {/* M10-S21 (#365): promote switch only in the campaign context + not
             read-only. Lifts this entity's campaign override into the world. */}
         {campaignId !== undefined && !overviewOnly && !readOnly && database !== undefined && (
-          <PromoteControl database={database} campaignId={campaignId} entityId={entityId} onChanged={onSaved} />
+          <PromoteControl database={database} campaignId={campaignId} entityId={entityId} onChanged={onSaved} reloadToken={promoteReloadTick} />
         )}
       </div>
       {!overviewOnly && (

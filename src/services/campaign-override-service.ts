@@ -127,6 +127,21 @@ export async function unpromoteOverride(
 }
 
 /**
+ * Does a campaign override row exist for this entity? (For the UI: only then is there
+ * something to promote — the promote button must not show / must not error otherwise.)
+ */
+export async function hasOverride(
+  db: DatabaseLike,
+  params: { campaignId: string; entityId: string },
+): Promise<boolean> {
+  const rows = await db.select<{ one: number }>(
+    `SELECT 1 AS one FROM campaign_entity_overrides WHERE campaign_id = ? AND entity_id = ? LIMIT 1`,
+    [params.campaignId, params.entityId],
+  );
+  return rows.length > 0;
+}
+
+/**
  * Is a campaign entity's override currently promoted into the world?
  * (For the UI toggle state.)
  */

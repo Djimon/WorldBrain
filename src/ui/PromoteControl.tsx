@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
-import { promoteOverride, unpromoteOverride, isPromoted } from '../services/campaign-override-service';
+import { promoteOverride, unpromoteOverride, isPromoted, hasOverride } from '../services/campaign-override-service';
 import { Button, StatusChip } from './primitives';
 
 export interface PromoteControlProps {
@@ -14,21 +14,32 @@ export interface PromoteControlProps {
   entityId: string;
   /** After promote/unpromote — the parent can reload its effective view. */
   onChanged?: () => void;
+  /** Bump to re-check override existence after the parent saved an edit (which may have
+   *  just created the campaign override). */
+  reloadToken?: number;
 }
 
-export function PromoteControl({ database, campaignId, entityId, onChanged }: PromoteControlProps) {
+export function PromoteControl({ database, campaignId, entityId, onChanged, reloadToken }: PromoteControlProps) {
   const { t } = useTranslation('multiplayer');
   const [promoted, setPromoted] = useState<boolean>(false);
+  const [overrideExists, setOverrideExists] = useState<boolean>(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void isPromoted(database, { campaignId, entityId })
-      .then((p) => { if (!cancelled) setPromoted(p); })
-      .catch(() => { if (!cancelled) setPromoted(false); });
+    void Promise.all([
+      isPromoted(database, { campaignId, entityId }),
+      hasOverride(database, { campaignId, entityId }),
+    ])
+      .then(([p, h]) => { if (!cancelled) { setPromoted(p); setOverrideExists(h); } })
+      .catch(() => { if (!cancelled) { setPromoted(false); setOverrideExists(false); } });
     return () => { cancelled = true; };
-  }, [database, campaignId, entityId]);
+  }, [database, campaignId, entityId, reloadToken]);
+
+  // Nothing to promote when there is no override (and it isn't already promoted) — showing
+  // the button here only produced a "No override to promote" error on click.
+  if (!overrideExists && !promoted) return null;
 
   async function handlePromote() {
     setBusy(true);
