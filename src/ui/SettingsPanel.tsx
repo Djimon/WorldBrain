@@ -10,7 +10,7 @@ import { appDataDir, join } from '@tauri-apps/api/path';
 import { stat } from '@tauri-apps/plugin-fs';
 import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
 import { version as appVersion } from '../../package.json';
-import { ENGINE_VERSION } from '../branding/brand';
+import { ENGINE_VERSION, COPYRIGHT_START_YEAR } from '../branding/brand';
 import { useDatabase } from '../services/DatabaseContext';
 import { readAppConfig, registerProject } from '../services/app-config-service';
 import type { ProjectEntry } from '../services/app-config-service';
@@ -61,6 +61,15 @@ const CATS: readonly { id: Category; icon: string; soon?: boolean }[] = [
 
 export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDir, onProjectClose, onOpenProject, onProjectRenamed }: SettingsPanelProps) {
   const { t, i18n } = useTranslation('nav');
+  // "© 2026 …" while still 2026; widens to "2026–<year>" once the year rolls over.
+  const currentYear = new Date().getFullYear();
+  const copyrightYears = currentYear > COPYRIGHT_START_YEAR ? `${COPYRIGHT_START_YEAR}–${currentYear}` : `${COPYRIGHT_START_YEAR}`;
+  const companyName = t('brand.company', { ns: 'common' });
+  const copyrightLine = t('settingsCopyright', {
+    years: copyrightYears,
+    company: companyName,
+    defaultValue: '© {{years}} {{company}}. Alle Rechte vorbehalten.',
+  });
   const database = useDatabase();
   const [cat, setCat] = useState<Category>('project');
   const [stats, setStats] = useState<{ db: string; entities: number | null; maps: number | null } | null>(null);
@@ -271,6 +280,7 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
               <h2 className="settings__pane-title">{t('settingsCat.about')}</h2>
               <dl className="settings__about">
                 <div><dt>{t('settingsAbout.version', 'Version')}</dt><dd>{t('brand.platform', { ns: 'common' })} {appVersion}</dd></div>
+                <div><dt>{t('settingsAbout.company', 'Firma')}</dt><dd>{t('brand.company', { ns: 'common' })}</dd></div>
                 <div><dt>{t('settingsAbout.language', 'Sprache')}</dt><dd>{i18n.language === 'en' ? 'English' : 'Deutsch'}</dd></div>
                 {dataDir && (
                   <div><dt>{t('settingsAbout.dataFolder', 'Datenordner')}</dt>
@@ -281,6 +291,7 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
                   </div>
                 )}
               </dl>
+              <p className="settings__copyright">{copyrightLine}</p>
             </section>
           )}
 

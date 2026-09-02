@@ -91,6 +91,7 @@
 .settings__about dt { font-size: 0.7rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 3px; }
 .settings__about dd { font-size: 0.875rem; }
 .settings__datafolder { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.settings__copyright { margin: 0; font-size: 0.75rem; color: var(--color-text-muted); }
 
 /* coming-soon empty state */
 .settings__soon {

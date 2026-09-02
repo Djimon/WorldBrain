@@ -118,6 +118,17 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
     neuer Label-Key `settingsPluginsEngine` (de+en); `settingsAbout.engine` entfernt.
   - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n 0/0, Nav-Strings 15 + Branding 8 grün.
 
+- **Increment 7 (Feedback: Firmenname + Copyright in About):**
+  - **Firma „Aethermages" ins Brand-Modul** (`brand.ts`): `Brand.company` + `useBrand().company`
+    + Locale-Key `brand.company` (common, de+en). Schließt die #381-Lücke (der Firmen-/
+    Gruppenname war damals „raus-optimiert", weil nirgends verwendet).
+  - **About-Pane:** neue Zeile **Firma: Aethermages** + Copyright-Zeile unten
+    **„© 2026 Aethermages. Alle Rechte vorbehalten."** (en: „All rights reserved.").
+  - Startjahr als Konstante `COPYRIGHT_START_YEAR = 2026`; die Zeile weitet sich automatisch
+    zu „2026–<Jahr>", sobald das Jahr wechselt. i18n `settingsAbout.company` +
+    `settingsCopyright` (nav, de+en, `{{years}}`/`{{company}}`).
+  - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n 0/0, Nav-Strings 15 + Branding 8 grün.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - **Automatische Backups** (Scheduler + Persistenz) — aktuell Teaser.

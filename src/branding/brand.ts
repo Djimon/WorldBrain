@@ -11,6 +11,10 @@ import { useTranslation } from 'react-i18next';
  *  the app's About screen. Language-neutral, hence a plain constant (not i18n). */
 export const ENGINE_VERSION = '1.0';
 
+/** Year the copyright runs from ("© 2026 …"). The About screen widens this to a
+ *  range (2026–<current>) automatically once the year rolls over. */
+export const COPYRIGHT_START_YEAR = 2026;
+
 export interface Brand {
   /** Platform brand — the umbrella over both modes. */
   platform: string;
@@ -21,6 +25,8 @@ export interface Brand {
   /** System-agnostic rule engine (the USP feature). Placeholder value,
    *  final name still open — swappable in ONE line (default + locale). */
   engine: string;
+  /** Company / group behind the product — shown in About + copyright line. */
+  company: string;
 }
 
 /**
@@ -35,5 +41,6 @@ export function useBrand(): Brand {
     editMode: t('brand.mode.edit', 'RealmForge'),
     playMode: t('brand.mode.play', 'Adventure Nexus'),
     engine: t('brand.engine', 'RuleLoom'),
+    company: t('brand.company', 'Aethermages'),
   };
 }

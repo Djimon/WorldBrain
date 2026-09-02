@@ -50,6 +50,7 @@
       "edit": "RealmForge",
       "play": "Adventure Nexus"
     },
-    "engine": "RuleLoom"
+    "engine": "RuleLoom",
+    "company": "Aethermages"
   }
 }
