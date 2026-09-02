@@ -1,6 +1,9 @@
 // M7-S01: App-Config-Service — Tauri Plugin Mocks
 // Ersetzt m7-s01-app-config-registry.test.ts.deprecated nach Tauri-Migration (#190)
 // See: https://github.com/Djimon/WorldBrain/issues/191
+// Hinweis: die Projekt-Registry (projects[] / registerProject / unregisterProject) ist mit
+// der Umstellung auf Ordner-basierte Discovery entfallen — Projekte werden gescannt, nicht
+// in der Config gelistet. app-config haelt nur noch last_opened_project_id + data_dir.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -25,7 +28,6 @@ const mockWriteTextFile = tauriFs.writeTextFile as ReturnType<typeof vi.fn>;
 const mockExists = tauriFs.exists as ReturnType<typeof vi.fn>;
 
 async function getAppConfigService() {
-  // Reset module registry so each test starts fresh
   return import('../src/services/app-config-service');
 }
 
@@ -47,38 +49,36 @@ describe('M7-S01 app-config-service (Tauri)', () => {
     });
 
     it('calls readTextFile from @tauri-apps/plugin-fs', async () => {
-      mockExists.mockResolvedValue(true);
-      mockReadTextFile.mockResolvedValue(JSON.stringify({ last_opened_project_id: null, projects: [] }));
+      mockReadTextFile.mockResolvedValue(JSON.stringify({ last_opened_project_id: null, data_dir: null }));
       const { readAppConfig } = await getAppConfigService();
       await readAppConfig();
       expect(mockReadTextFile).toHaveBeenCalled();
     });
 
-    it('returns default config when file does not exist', async () => {
-      mockExists.mockResolvedValue(false);
+    it('returns default config when file does not exist / read throws', async () => {
+      mockReadTextFile.mockRejectedValue(new Error('ENOENT'));
       const { readAppConfig } = await getAppConfigService();
       const config = await readAppConfig();
-      expect(config).toHaveProperty('last_opened_project_id');
-      expect(config).toHaveProperty('projects');
-      expect(config.projects).toEqual([]);
-    });
-
-    it('returns default config when readTextFile throws (corrupt file)', async () => {
-      mockExists.mockResolvedValue(true);
-      mockReadTextFile.mockRejectedValue(new Error('parse error'));
-      const { readAppConfig } = await getAppConfigService();
-      const config = await readAppConfig();
-      expect(config).toHaveProperty('projects');
+      expect(config).toHaveProperty('last_opened_project_id', null);
+      expect(config).toHaveProperty('data_dir', null);
     });
 
     it('parses and returns config from readTextFile result', async () => {
-      const stored = { last_opened_project_id: 'proj-1', projects: [{ id: 'proj-1', title: 'World', path: '/p' }] };
-      mockExists.mockResolvedValue(true);
+      const stored = { last_opened_project_id: 'proj-1', data_dir: 'C:/docs/WorldsAndBeyond' };
       mockReadTextFile.mockResolvedValue(JSON.stringify(stored));
       const { readAppConfig } = await getAppConfigService();
       const config = await readAppConfig();
       expect(config.last_opened_project_id).toBe('proj-1');
-      expect(config.projects.length).toBe(1);
+      expect(config.data_dir).toBe('C:/docs/WorldsAndBeyond');
+    });
+
+    it('ignores a legacy projects[] key still present in an old config file', async () => {
+      const legacy = { last_opened_project_id: 'p', projects: [{ id: 'x', title: 'X', path: '/p' }], data_dir: null };
+      mockReadTextFile.mockResolvedValue(JSON.stringify(legacy));
+      const { readAppConfig } = await getAppConfigService();
+      const config = await readAppConfig();
+      expect(config).not.toHaveProperty('projects');
+      expect(config.last_opened_project_id).toBe('p');
     });
   });
 
@@ -86,21 +86,21 @@ describe('M7-S01 app-config-service (Tauri)', () => {
     it('is async (returns a Promise)', async () => {
       mockWriteTextFile.mockResolvedValue(undefined);
       const { writeAppConfig } = await getAppConfigService();
-      const result = writeAppConfig({ last_opened_project_id: null, projects: [] });
+      const result = writeAppConfig({ last_opened_project_id: null, data_dir: null });
       expect(result).toBeInstanceOf(Promise);
     });
 
     it('calls writeTextFile from @tauri-apps/plugin-fs', async () => {
       mockWriteTextFile.mockResolvedValue(undefined);
       const { writeAppConfig } = await getAppConfigService();
-      await writeAppConfig({ last_opened_project_id: null, projects: [] });
+      await writeAppConfig({ last_opened_project_id: null, data_dir: null });
       expect(mockWriteTextFile).toHaveBeenCalled();
     });
 
     it('writes valid JSON string to writeTextFile', async () => {
       mockWriteTextFile.mockResolvedValue(undefined);
       const { writeAppConfig } = await getAppConfigService();
-      await writeAppConfig({ last_opened_project_id: 'p1', projects: [] });
+      await writeAppConfig({ last_opened_project_id: 'p1', data_dir: null });
       const written = mockWriteTextFile.mock.calls[0][1] as string;
       expect(() => JSON.parse(written)).not.toThrow();
       expect(JSON.parse(written).last_opened_project_id).toBe('p1');
@@ -109,36 +109,7 @@ describe('M7-S01 app-config-service (Tauri)', () => {
     it('propagates errors from writeTextFile', async () => {
       mockWriteTextFile.mockRejectedValue(new Error('disk full'));
       const { writeAppConfig } = await getAppConfigService();
-      await expect(writeAppConfig({ last_opened_project_id: null, projects: [] })).rejects.toThrow();
-    });
-  });
-
-  describe('registerProject', () => {
-    it('reads config, adds project entry, writes back', async () => {
-      const initial = { last_opened_project_id: null, projects: [] };
-      mockExists.mockResolvedValue(true);
-      mockReadTextFile.mockResolvedValue(JSON.stringify(initial));
-      mockWriteTextFile.mockResolvedValue(undefined);
-      const { registerProject } = await getAppConfigService();
-      await registerProject({ id: 'proj-new', title: 'New World', path: '/worlds/new' });
-      const written = JSON.parse(mockWriteTextFile.mock.calls[0][1] as string);
-      expect(written.projects.some((p: { id: string }) => p.id === 'proj-new')).toBe(true);
-    });
-  });
-
-  describe('unregisterProject', () => {
-    it('reads config, removes project entry by id, writes back', async () => {
-      const initial = {
-        last_opened_project_id: 'proj-1',
-        projects: [{ id: 'proj-1', title: 'World', path: '/p' }],
-      };
-      mockExists.mockResolvedValue(true);
-      mockReadTextFile.mockResolvedValue(JSON.stringify(initial));
-      mockWriteTextFile.mockResolvedValue(undefined);
-      const { unregisterProject } = await getAppConfigService();
-      await unregisterProject('proj-1');
-      const written = JSON.parse(mockWriteTextFile.mock.calls[0][1] as string);
-      expect(written.projects.every((p: { id: string }) => p.id !== 'proj-1')).toBe(true);
+      await expect(writeAppConfig({ last_opened_project_id: null, data_dir: null })).rejects.toThrow();
     });
   });
 

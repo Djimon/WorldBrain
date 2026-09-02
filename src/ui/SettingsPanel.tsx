@@ -6,14 +6,13 @@
 // Mini-features (project stats, switcher) come from existing services.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { appDataDir, join } from '@tauri-apps/api/path';
 import { stat } from '@tauri-apps/plugin-fs';
 import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
 import { version as appVersion } from '../../package.json';
 import { ENGINE_VERSION, COPYRIGHT_START_YEAR } from '../branding/brand';
 import { useDatabase } from '../services/DatabaseContext';
-import { readAppConfig, registerProject } from '../services/app-config-service';
 import type { ProjectEntry } from '../services/app-config-service';
+import { scanProjects } from '../services/project-discovery';
 import { readProjectMeta, updateProjectMeta } from '../services/project-service';
 import { userDataDir } from '../services/user-data-dir';
 import { Button, Panel, StatusChip, ListSurface, ListRow } from './primitives';
@@ -110,19 +109,15 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
     return () => { cancelled = true; };
   }, [database, selectedDir, isCurrent]);
 
-  // Project list for the switcher + user-facing data folder.
-  // app-config.json still lives at an ABSOLUTE <appDataDir>/app-config.json (internal,
-  // same as App.tsx). readAppConfig()'s default is a RELATIVE path that does NOT resolve
-  // there → it silently yields an empty list.
-  // The displayed "data folder", however, is the user's own content (projects/themes/
-  // plugins/help) which #406 moved to Documents\WorldsAndBeyond — NOT the internal AppData.
+  // Project list for the switcher + user-facing data folder. Discovery is filesystem-driven:
+  // the switcher list comes from scanning <data_dir>\projects (the folder is the source of
+  // truth), and the displayed data folder is userDataDir() (Documents\WorldsAndBeyond, #406).
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const base = await appDataDir();
-        const c = await readAppConfig(await join(base, 'app-config.json'));
-        if (!cancelled) setProjects(c.projects);
+        const found = await scanProjects();
+        if (!cancelled) setProjects(found);
       } catch { /* not in Tauri */ }
       try {
         const userDir = await userDataDir();
@@ -154,9 +149,9 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
     if (!nextTitle || saving) return;
     setSaving(true);
     try {
+      // Title/description live in project.json only — the folder is the source of truth,
+      // so a rescan (e.g. the switcher, or next open) reflects the new title. No registry sync.
       await updateProjectMeta(selectedDir, { title: nextTitle, description: draftDesc });
-      const entry = projects.find((p) => p.id === selectedId);
-      if (entry) await registerProject({ ...entry, title: nextTitle }, await join(await appDataDir(), 'app-config.json'));
       setTitle(nextTitle);
       setDescription(draftDesc.trim());
       setProjects((prev) => prev.map((p) => (p.id === selectedId ? { ...p, title: nextTitle } : p)));

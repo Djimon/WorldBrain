@@ -165,6 +165,20 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   - TDD: `tests/pre-project-scan.test.ts` (8 Fälle). Verifiziert: tsc 0, eslint 0,
     Farb-Gate 0, i18n 0/0, 60 verwandte Tests grün.
 
+- **Option B umgesetzt (reiner Scan — Registry-Redundanz raus):** die persistierte Projekt-
+  Liste (`projects[]`) ist entfernt. Der `projects\`-Ordner ist jetzt die **einzige** Wahrheit;
+  Divergenz ist strukturell unmöglich (löst die „2 Projekte für 1 Ordner"-Klasse endgültig).
+  - `app-config-service`: `AppConfig` = nur noch `last_opened_project_id` + `data_dir`;
+    `registerProject`/`unregisterProject` entfernt; `readAppConfig` ignoriert ein evtl. noch
+    vorhandenes altes `projects[]`.
+  - `project-discovery`: `reconcileProjects` entfernt; neu `findProjectById(id)` (Scan → id).
+  - `App.tsx`: Öffnen/Start/Anlegen/ZIP-Import laufen über `findProjectById` bzw.
+    `scanProjects`, kein Registry-Schreiben mehr (nur noch `last_opened_project_id`).
+  - `WelcomeScreen`/`SettingsPanel`-Switcher: Liste aus `scanProjects()`; Rename schreibt nur
+    `project.json` (kein Registry-Sync).
+  - Tests migriert (m7-s01, m7-s02, pre-project-scan); +findProjectById-Fälle.
+  - Verifiziert: tsc 0, voller Lint 0, 121 verwandte Tests grün.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - **Automatische Backups** (Scheduler + Persistenz) — aktuell Teaser.

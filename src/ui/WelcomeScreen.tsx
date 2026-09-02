@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { AppConfig, ProjectEntry } from '../services/app-config-service';
-import { reconcileProjects } from '../services/project-discovery';
+import { readAppConfig } from '../services/app-config-service';
+import type { ProjectEntry } from '../services/app-config-service';
+import { scanProjects } from '../services/project-discovery';
 import { Button } from './primitives';
 
 interface WelcomeScreenProps {
@@ -11,20 +12,20 @@ interface WelcomeScreenProps {
   onOpenProject: (projectId: string) => void;
 }
 
-const EMPTY_CONFIG: AppConfig = { last_opened_project_id: null, projects: [], data_dir: null };
-
 export function WelcomeScreen({ configPath = 'app-config.json', onCreateProject, onImportZip, onOpenProject }: WelcomeScreenProps) {
   const { t } = useTranslation('nav');
-  const [config, setConfig] = useState<AppConfig>(EMPTY_CONFIG);
+  const [projects, setProjects] = useState<ProjectEntry[]>([]);
+  const [lastOpened, setLastOpened] = useState<string | null>(null);
 
   useEffect(() => {
-    // Re-scan the projects folder on entry, so a folder dropped in while the app was
-    // running shows up without a full restart.
-    reconcileProjects(configPath).then(setConfig).catch(() => setConfig(EMPTY_CONFIG));
+    // Discovery is filesystem-driven: the list comes from scanning <data_dir>\projects
+    // (drop a folder in → it shows up); only last_opened_project_id comes from the config.
+    Promise.all([readAppConfig(configPath), scanProjects()])
+      .then(([cfg, found]) => { setLastOpened(cfg.last_opened_project_id); setProjects(found); })
+      .catch(() => { setLastOpened(null); setProjects([]); });
   }, [configPath]);
 
-  const { last_opened_project_id, projects } = config;
-  const isStale = last_opened_project_id != null && !projects.some((p) => p.id === last_opened_project_id);
+  const isStale = lastOpened != null && !projects.some((p) => p.id === lastOpened);
 
   return (
     <div className="welcome-screen">

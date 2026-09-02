@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { appDataDir, join } from '@tauri-apps/api/path';
-import { exists, readDir, readTextFile } from '@tauri-apps/plugin-fs';
 import type { DatabaseLike } from './services/entity-service';
-import { readAppConfig, registerProject, writeAppConfig } from './services/app-config-service';
+import { readAppConfig, writeAppConfig } from './services/app-config-service';
 import type { ProjectEntry } from './services/app-config-service';
-import { reconcileProjects } from './services/project-discovery';
-import { userProjectsDir } from './services/user-data-dir';
+import { findProjectById } from './services/project-discovery';
 import { openProjectDb } from './services/db-init';
 import { scanPlugins } from './services/plugin-loader';
 import { loadPluginEntityTypes } from './services/plugin-schema-loader';
@@ -43,20 +41,6 @@ async function initWorkspace(projectEntry: ProjectEntry): Promise<AppMode & { ki
   return { kind: 'workspace', projectId: projectEntry.id, projectTitle: projectEntry.title, projectDir: projectEntry.path, db };
 }
 
-async function findProjectPath(projectId: string, baseDir: string): Promise<string | null> {
-  if (!(await exists(baseDir))) return null;
-  for (const dirent of await readDir(baseDir)) {
-    if (!dirent.isDirectory) continue;
-    const metaPath = await join(baseDir, dirent.name, 'project.json');
-    if (!(await exists(metaPath))) continue;
-    try {
-      const meta = JSON.parse(await readTextFile(metaPath)) as { id?: string; title?: string };
-      if (meta.id === projectId) return await join(baseDir, dirent.name);
-    } catch { /* skip */ }
-  }
-  return null;
-}
-
 export function App() {
   const [mode, setMode] = useState<AppMode>({ kind: 'loading' });
   const appBase = useRef<string>('');
@@ -69,11 +53,11 @@ export function App() {
       // #393: user themes are now registered in the shared bootstrap (main.tsx →
       // bootstrapUserThemes) for EVERY window — no longer needed here.
       const configPath = await join(base, APP_CONFIG_FILENAME);
-      // Filesystem-driven discovery: pick up folders dropped into <data_dir>\projects and
-      // heal paths after a data-folder move, then persist the reconciled registry.
-      const config = await reconcileProjects(configPath);
+      const config = await readAppConfig(configPath);
+      // Discovery is filesystem-driven: the last-opened project is located by scanning
+      // <data_dir>\projects for its id (no persisted project list).
       if (config.last_opened_project_id) {
-        const entry = config.projects.find((p) => p.id === config.last_opened_project_id);
+        const entry = await findProjectById(config.last_opened_project_id);
         if (entry) {
           try {
             const workspace = await initWorkspace(entry);
@@ -91,9 +75,7 @@ export function App() {
 
   function openProject(projectId: string) {
     setMode({ kind: 'loading' });
-    join(appBase.current, APP_CONFIG_FILENAME).then(async (configPath) => {
-      const config = await readAppConfig(configPath);
-      const entry = config.projects.find((p) => p.id === projectId);
+    findProjectById(projectId).then(async (entry) => {
       if (!entry) { setMode({ kind: 'welcome' }); return; }
       setMode(await initWorkspace(entry));
     }).catch((e: unknown) => { console.error('[openProject]', e); setMode({ kind: 'welcome' }); });
@@ -103,32 +85,15 @@ export function App() {
     setMode({ kind: 'welcome' });
   }
 
-  function handleProjectCreated(projectId: string) {
+  // A freshly created or imported project already lives on disk (folder + project.json),
+  // so it is discovered by id via a scan — no registry write. The workspace-mode effect
+  // below persists last_opened_project_id.
+  function openFreshProject(projectId: string) {
     setMode({ kind: 'loading' });
-    userProjectsDir().then(async (projectsBase) => {
-      const projectPath = await findProjectPath(projectId, projectsBase);
-      if (!projectPath) { setMode({ kind: 'welcome' }); return; }
-      const metaPath = await join(projectPath, 'project.json');
-      const meta = JSON.parse(await readTextFile(metaPath)) as { title: string };
-      const configPath = await join(appBase.current, APP_CONFIG_FILENAME);
-      await registerProject({ id: projectId, title: meta.title, path: projectPath }, configPath);
-      const db = await openProjectDb(await join(projectPath, 'world.db'));
-      setMode({ kind: 'workspace', projectId, projectTitle: meta.title, projectDir: projectPath, db });
-    }).catch((e: unknown) => { console.error('[handleProjectCreated]', e); setMode({ kind: 'welcome' }); });
-  }
-
-  function handleZipImported(projectId: string) {
-    setMode({ kind: 'loading' });
-    userProjectsDir().then(async (projectsBase) => {
-      const projectPath = await findProjectPath(projectId, projectsBase);
-      if (!projectPath) { setMode({ kind: 'welcome' }); return; }
-      const metaPath = await join(projectPath, 'project.json');
-      const meta = JSON.parse(await readTextFile(metaPath)) as { title: string };
-      const configPath = await join(appBase.current, APP_CONFIG_FILENAME);
-      await registerProject({ id: projectId, title: meta.title, path: projectPath }, configPath);
-      const db = await openProjectDb(await join(projectPath, 'world.db'));
-      setMode({ kind: 'workspace', projectId, projectTitle: meta.title, projectDir: projectPath, db });
-    }).catch(() => setMode({ kind: 'welcome' }));
+    findProjectById(projectId).then(async (entry) => {
+      if (!entry) { setMode({ kind: 'welcome' }); return; }
+      setMode(await initWorkspace(entry));
+    }).catch((e: unknown) => { console.error('[openFreshProject]', e); setMode({ kind: 'welcome' }); });
   }
 
   // Remember the last opened project so the next launch reopens it directly,
@@ -161,7 +126,7 @@ export function App() {
   if (mode.kind === 'new-project') {
     return (
       <NewProjectDialog
-        onCreated={handleProjectCreated}
+        onCreated={openFreshProject}
         onCancel={() => setMode({ kind: 'welcome' })}
       />
     );
@@ -170,7 +135,7 @@ export function App() {
   if (mode.kind === 'import-zip') {
     return (
       <ZipImportDialog
-        onImported={handleZipImported}
+        onImported={openFreshProject}
         onCancel={() => setMode({ kind: 'welcome' })}
       />
     );
