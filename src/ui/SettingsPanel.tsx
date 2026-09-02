@@ -206,7 +206,7 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
                 {selectedDir && (
                   <div className="settings__datafolder">
                     <span className="settings__path"><span className="settings__path-label">{t('settingsProjectFolder', 'Projekt-Ordner')}:</span> {selectedDir}</span>
-                    <Button variant="ghost" size="compact" onClick={() => void openFolder(selectedDir)}>{t('settingsOpenFolder', 'Öffnen')}</Button>
+                    <Button variant="outline" size="compact" onClick={() => void openFolder(selectedDir)}>{t('settingsOpenFolder', 'Öffnen')}</Button>
                   </div>
                 )}
               </div>

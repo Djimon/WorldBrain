@@ -48,7 +48,7 @@ export function AboutSection() {
           <div><dt>{t('settingsAbout.dataFolder', 'Datenordner')}</dt>
             <dd className="settings__datafolder">
               <span className="settings__path">{dataDir}</span>
-              <Button variant="ghost" size="compact" onClick={() => void openFolder(dataDir)}>{t('settingsOpenFolder', 'Öffnen')}</Button>
+              <Button variant="outline" size="compact" onClick={() => void openFolder(dataDir)}>{t('settingsOpenFolder', 'Öffnen')}</Button>
             </dd>
           </div>
         )}

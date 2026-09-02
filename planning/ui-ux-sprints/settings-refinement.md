@@ -237,6 +237,13 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   projectId/projectTitle bereinigt.
   - Verifiziert: tsc 0, voller Lint 0, Play-/Mode-Tests 14 grün.
 
+- **Konsistenz-Fix „Öffnen"-Buttons:** die Ordner-/Öffnen-Aktionen im Settings-Bereich waren
+  gemischt (`ghost`+`compact` beim Projekt-/Datenordner, `outline` ohne size bei den
+  Themes-Buttons, `outline`+`compact` beim Projekt-Switcher). Alle auf **`outline`+`compact`**
+  vereinheitlicht (SettingsPanel Projekt-Ordner, AboutSection Datenordner, ThemePicker
+  Ordner öffnen/neu einlesen). Alles Primitive/Tokens — kein Bespoke-CSS.
+  - Verifiziert: tsc 0, eslint 0, Farb-Gate 0.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - **Automatische Backups** (Scheduler + Persistenz) — aktuell Teaser.

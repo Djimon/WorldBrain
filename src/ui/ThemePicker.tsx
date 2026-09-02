@@ -131,10 +131,10 @@ export function ThemePicker() {
           {t('themesOwnHint', 'Lege eigene .json-Theme-Dateien in den Ordner und lies sie neu ein — sie erscheinen oben als weitere Buttons.')}
         </p>
         <div className="u-row u-gap-2 u-wrap">
-          <Button variant="outline" onClick={() => void openThemesFolder()}>
+          <Button variant="outline" size="compact" onClick={() => void openThemesFolder()}>
             {t('themesFolderOpen', 'Themes-Ordner öffnen')}
           </Button>
-          <Button variant="outline" onClick={() => void reloadThemes()}>
+          <Button variant="outline" size="compact" onClick={() => void reloadThemes()}>
             {t('themesReload', 'Themes neu einlesen')}
           </Button>
         </div>
