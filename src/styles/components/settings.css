@@ -115,11 +115,6 @@
 .snapshot__actions { flex: 0 0 auto; }
 .snapshot__empty { color: var(--color-text-muted); font-style: italic; font-size: 0.875rem; margin: 0; }
 
-/* Inline "coming soon" teaser (e.g. automatic backups) — left-aligned, unlike the
-   full-pane settings__soon centred empty state. */
-.settings__teaser-icon { font-size: 1.1rem; opacity: 0.75; }
-.settings__teaser-title { font-weight: 600; }
-
 /* Confirm overlay — centred modal over a dimmed backdrop. */
 .snapshot__overlay {
   position: fixed;
