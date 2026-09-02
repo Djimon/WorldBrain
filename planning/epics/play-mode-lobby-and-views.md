@@ -152,8 +152,9 @@ dieses Thema — dieses Epic ist dessen Design-Vorlage. #409 wird auf „Design 
 und in folgende Stories gesplittet. Abhängigkeit: **S1 zuerst** (schafft die Mount-Punkte).
 
 **Angelegt (Milestone `pre-release` #21):** S1 **#420** · S2 **#421** · S3 **#422** · S4 **#423** ·
-S5 **#424** · S6 **#425** · S7 **#426**. Status: S1 (#420) + S5 (#424) `ready`; S2/S3/S4/S6/S7
-`blocked` bis S1 steht (S6 zusätzlich hinter S5).
+S5 **#424** · S6 **#425** · S7 **#426** · **S8 #427** (Datenquellen-Membran). Status: S1 (#420) +
+S5 (#424) `ready`; S2/S3/S4/S6/S7 `blocked` bis S1 steht (S6 zusätzlich hinter S5); S8 (#427)
+`needs-design`, hängt an S1.
 
 - **S1 — Play-Navigation: Sammel-`session`-Area → einzelne Play-Sidebar-Views** (`WorkspaceShell`).
   `PLAY_AREAS` → `entities·search·maps·calendar·lobby·combatlog·spotlight·play-settings`;
@@ -176,6 +177,14 @@ S5 **#424** · S6 **#425** · S7 **#426**. Status: S1 (#420) + S5 (#424) `ready`
   ecken-verankert, z-über-allem, optionaler Puls) in `src/ui/primitives.tsx` + der Fokus-Drop-in
   nutzt es (opt-in, Klick → Fokus). DM-„Präsentieren"-Aktion in der Maps-View speist ihn
   (`pushPresentedMapSnapshot`). Hängt an **S1**. `area: session-mode · area: multiplayer · area: ui`.
+- **S8 — Datenquellen-Membran (DB-los für Spieler)** — **#427**, `needs-design`, **pre-release**.
+  S1 löst das Cockpit **strukturell** auf und bewahrt den Client-Store; **S8 stellt die
+  wiederverwendeten Play-Views** (entities/search/maps/calendar via `renderArea()`) **von `database`
+  auf die DB-lose Datenquelle** (Client-Store statt Host-DB) um — via Read-Interface (list/get) mit
+  DB- und Client-Store-Impl, kein `if(player)` pro View. **Warum 0.1:** 0.1 hat echten
+  Remote-Multiplayer — ein beitretender Spieler liest sonst live die Host-DB (Membran-Bruch im
+  Release), nicht erst bei #414. Hängt an **S1** (S1 zuerst), speist #414. Groß/übergreifend → vor
+  Umsetzung in kleinere pre-release-Stories zu zerlegen. `type: story · area: core · area: multiplayer · area: session-mode`.
 
 ## Nächster Schritt
 Story-Split gegenlesen → Issues anlegen (jede cold-reader-self-contained, Epic-Entscheidungen
