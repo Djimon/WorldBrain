@@ -4,6 +4,7 @@ import { exists, readDir, readTextFile } from '@tauri-apps/plugin-fs';
 import type { DatabaseLike } from './services/entity-service';
 import { readAppConfig, registerProject, writeAppConfig } from './services/app-config-service';
 import type { ProjectEntry } from './services/app-config-service';
+import { userProjectsDir } from './services/user-data-dir';
 import { openProjectDb } from './services/db-init';
 import { scanPlugins } from './services/plugin-loader';
 import { loadPluginEntityTypes } from './services/plugin-schema-loader';
@@ -16,7 +17,6 @@ import './styles/index.css';
 import './tab-wiring';
 
 const APP_CONFIG_FILENAME = 'app-config.json';
-const PROJECTS_SUBDIR = 'projects';
 
 type AppMode =
   | { kind: 'welcome' }
@@ -68,7 +68,6 @@ export function App() {
       // #393: user themes are now registered in the shared bootstrap (main.tsx →
       // bootstrapUserThemes) for EVERY window — no longer needed here.
       const configPath = await join(base, APP_CONFIG_FILENAME);
-      const projectsBase = await join(base, PROJECTS_SUBDIR);
       const config = await readAppConfig(configPath);
       if (config.last_opened_project_id) {
         const entry = config.projects.find((p) => p.id === config.last_opened_project_id);
@@ -80,7 +79,6 @@ export function App() {
           } catch { /* fall through to welcome */ }
         }
       }
-      void projectsBase; // resolved but only needed later
       if (!cancelled) setMode({ kind: 'welcome' });
     }).catch(() => {
       if (!cancelled) setMode({ kind: 'welcome' });
@@ -104,7 +102,7 @@ export function App() {
 
   function handleProjectCreated(projectId: string) {
     setMode({ kind: 'loading' });
-    join(appBase.current, PROJECTS_SUBDIR).then(async (projectsBase) => {
+    userProjectsDir().then(async (projectsBase) => {
       const projectPath = await findProjectPath(projectId, projectsBase);
       if (!projectPath) { setMode({ kind: 'welcome' }); return; }
       const metaPath = await join(projectPath, 'project.json');
@@ -118,7 +116,7 @@ export function App() {
 
   function handleZipImported(projectId: string) {
     setMode({ kind: 'loading' });
-    join(appBase.current, PROJECTS_SUBDIR).then(async (projectsBase) => {
+    userProjectsDir().then(async (projectsBase) => {
       const projectPath = await findProjectPath(projectId, projectsBase);
       if (!projectPath) { setMode({ kind: 'welcome' }); return; }
       const metaPath = await join(projectPath, 'project.json');
@@ -162,7 +160,6 @@ export function App() {
       <NewProjectDialog
         onCreated={handleProjectCreated}
         onCancel={() => setMode({ kind: 'welcome' })}
-        baseDir={appBase.current ? `${appBase.current}/${PROJECTS_SUBDIR}` : undefined}
       />
     );
   }

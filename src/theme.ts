@@ -6,13 +6,12 @@
 // DOM attributes (Decision 5). A dark/light switch NEVER changes the theme and
 // vice versa. A single-appearance theme (e.g. Teal = dark) forces its
 // appearance; the dark/light toggle then has no effect.
-import { appDataDir, join } from '@tauri-apps/api/path';
+import { userThemesDir } from './services/user-data-dir';
 import { getTheme, forcedAppearance, type Appearance, type ShellMode } from './styles/theme-registry';
 import { scanUserThemes } from './services/user-theme-loader';
 
 const APPEARANCE_KEY = 'appearance';
 const THEME_KEY = 'theme';
-const THEMES_SUBDIR = 'themes';
 
 /** Attribute in which the applier remembers the names of the currently inline-set
  *  user-theme vars — so a theme switch can cleanly clear them again (#388). */
@@ -128,11 +127,11 @@ export function applyStoredTheme(): void {
  */
 export async function bootstrapUserThemes(): Promise<void> {
   try {
-    const themesDir = await join(await appDataDir(), THEMES_SUBDIR);
+    const themesDir = await userThemesDir();
     const scan = await scanUserThemes(themesDir);
     if (scan.registered.length > 0) applyStoredTheme();
   } catch {
-    // no Tauri / no appDataDir → only built-in themes (no error).
+    // no Tauri / no documentDir → only built-in themes (no error).
   }
 }
 

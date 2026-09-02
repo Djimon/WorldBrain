@@ -1,6 +1,7 @@
 import { exists, mkdir, readFile, writeFile } from '@tauri-apps/plugin-fs';
 import { dirname, join } from '@tauri-apps/api/path';
 import { readZip } from './_zip-utils';
+import { userProjectsDir } from './user-data-dir';
 
 export interface ZipValidationResult {
   valid: boolean;
@@ -52,7 +53,9 @@ export async function importProjectZip(opts: {
   const projectJson = validation.projectJson;
   const id = String(projectJson.id);
   const title = String(projectJson.title);
-  const baseDir = opts.baseDir ?? 'projects';
+  // #406: default to the user-visible Documents\WorldsAndBeyond\projects (absolute),
+  // consistent with createProject and the post-import registry scan in App.tsx.
+  const baseDir = opts.baseDir ?? await userProjectsDir();
   const slug = titleToSlug(title);
 
   const destPath = opts.conflictStrategy === 'keep-both'

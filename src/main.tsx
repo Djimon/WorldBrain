@@ -4,6 +4,7 @@ import './i18n';
 import { App } from './App';
 import { initTheme, bootstrapUserThemes, getStoredThemeId } from './theme';
 import { isBuiltinThemeId } from './styles/theme-registry';
+import { ensureUserDataDirs } from './services/user-data-dir';
 
 // pre-release S2 (#404): the audio feature (soundboard window + its services) is
 // reached only via this dynamic import, gated by the __FEATURE_AUDIO__ compile
@@ -35,6 +36,14 @@ const isSoundboardWindow = window.location.hash === '#/audio-soundboard';
 const soundboardParams = new URLSearchParams(window.location.search);
 const soundboardDbPath = soundboardParams.get('db');
 const soundboardProjectDir = soundboardParams.get('projectDir');
+
+// pre-release S4 (#406): first-run bootstrap of the user-visible data dirs
+// (Documents\WorldsAndBeyond\{projects,plugins,themes} + theme-tester seed). Main
+// window only — the detached soundboard window shares the same index.html. Idempotent
+// and non-Tauri-safe; runs before theme scan so the themes dir exists.
+if (!isSoundboardWindow) {
+  void ensureUserDataDirs();
+}
 
 function mountApp(): void {
   createRoot(rootElement as HTMLElement).render(

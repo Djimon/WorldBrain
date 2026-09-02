@@ -1,20 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CSSProperties } from 'react';
-import { appDataDir, join } from '@tauri-apps/api/path';
 import { mkdir } from '@tauri-apps/plugin-fs';
 import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
+import { userThemesDir } from '../services/user-data-dir';
 import { Button, Segmented } from './primitives';
 import { getStoredThemeId, setThemeId, THEME_CHANGE_EVENT } from '../theme';
 import { listThemes, previewAccent } from '../styles/theme-registry';
 
 // #388 follow-up: open the folder where user theme files belong
-// (<appDataDir>/themes/). Ensure the folder exists, then open it in the OS file manager;
+// (Documents\WorldsAndBeyond\themes\, #406). Ensure the folder exists, then open it in the OS file manager;
 // if openPath is not permitted/available, fall back to revealItemInDir.
 // In non-Tauri environments (test/browser) the call fails → guarded.
 async function openThemesFolder(): Promise<void> {
   try {
-    const dir = await join(await appDataDir(), 'themes');
+    const dir = await userThemesDir();
     await mkdir(dir, { recursive: true }).catch(() => { /* already exists */ });
     try {
       await openPath(dir);

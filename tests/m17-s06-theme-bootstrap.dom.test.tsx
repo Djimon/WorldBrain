@@ -13,13 +13,18 @@ const CARBON = JSON.stringify({
 });
 const files: Record<string, string> = { 'carbon.json': CARBON };
 
+// #406: themes now live under Documents\WorldsAndBeyond\themes (documentDir), not appDataDir.
 vi.mock('@tauri-apps/api/path', () => ({
-  appDataDir: vi.fn(() => Promise.resolve('/app')),
+  documentDir: vi.fn(() => Promise.resolve('/docs')),
+  resourceDir: vi.fn(() => Promise.resolve('/res')),
   join: vi.fn((...parts: string[]) => Promise.resolve(parts.join('/'))),
 }));
 vi.mock('@tauri-apps/plugin-fs', () => ({
   readDir: vi.fn(async () => Object.keys(files).map((name) => ({ name, isFile: true, isDirectory: false }))),
   readTextFile: vi.fn(async (path: string) => files[path.split('/').pop() ?? path]),
+  exists: vi.fn(() => Promise.resolve(false)),
+  mkdir: vi.fn(() => Promise.resolve()),
+  copyFile: vi.fn(() => Promise.resolve()),
 }));
 
 afterEach(() => {

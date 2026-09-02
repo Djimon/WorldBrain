@@ -1,5 +1,6 @@
 import { exists, mkdir, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
-import { appDataDir, join } from '@tauri-apps/api/path';
+import { join } from '@tauri-apps/api/path';
+import { userProjectsDir } from './user-data-dir';
 
 export interface ProjectMeta {
   id: string;
@@ -19,7 +20,8 @@ export async function createProject(opts: {
   description?: string;
   baseDir?: string;
 }): Promise<{ id: string; path: string }> {
-  const baseDir = opts.baseDir ?? await join(await appDataDir(), 'projects');
+  // #406: default to the user-visible Documents\WorldsAndBeyond\projects.
+  const baseDir = opts.baseDir ?? await userProjectsDir();
   const slug = titleToSlug(opts.title);
   const projectPath = await join(baseDir, slug);
 
