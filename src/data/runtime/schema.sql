@@ -8,17 +8,20 @@ CREATE TABLE IF NOT EXISTS base_entity_types (
   updated_at TEXT NOT NULL
 );
 
+-- Column defaults mirror db-init.ts (the runtime's own CREATE) so that partial INSERTs
+-- (e.g. the legacy createEntity, which omits aliases_json/body_json/visibility) succeed
+-- against this schema too — the two must not drift.
 CREATE TABLE IF NOT EXISTS base_entities (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL,
-  title TEXT NOT NULL,
-  summary TEXT NOT NULL,
-  aliases_json TEXT NOT NULL,
-  properties_json TEXT NOT NULL,
-  body_json TEXT NOT NULL,
-  visibility TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  title TEXT NOT NULL DEFAULT '',
+  summary TEXT NOT NULL DEFAULT '',
+  aliases_json TEXT NOT NULL DEFAULT '[]',
+  properties_json TEXT NOT NULL DEFAULT '{}',
+  body_json TEXT NOT NULL DEFAULT '{"format":"portable_blocks_v1","blocks":[]}',
+  visibility TEXT NOT NULL DEFAULT 'public',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- M10-S20 (#349): campaign bracket (D23). One world → multiple campaigns.

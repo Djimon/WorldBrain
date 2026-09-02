@@ -57,4 +57,18 @@ describe('#415 create through the real EntityMasterDetail mount', () => {
       expect(ov[0].campaign_created).toBe(1);
     } finally { db.close(); }
   });
+
+  it('edit mode still creates a world base entity (unchanged)', async () => {
+    const { asyncDb, db } = createDatabase();
+    try {
+      render(withMode(
+        { mode: 'edit', sessionRole: null, activeSessionId: null },
+        <EntityMasterDetail initialType="Character" database={asyncDb} />,
+      ));
+      await createViaUi('World NPC');
+      await waitFor(() => expect(screen.getByText('World NPC')).toBeInTheDocument());
+      expect(count(db, 'base_entities')).toBe(1);
+      expect(count(db, 'campaign_entity_overrides')).toBe(0);
+    } finally { db.close(); }
+  });
 });
