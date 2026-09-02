@@ -1,4 +1,5 @@
 import { readEffectiveEntity } from '../../core_data/effective-entity';
+import { listCampaignCreatedEntities } from './campaign-override-service';
 
 export type DatabaseLike = {
   execute(sql: string, args?: unknown[]): Promise<void>;
@@ -16,7 +17,9 @@ export async function getEffectiveEntity({ database, entityId }: { database: Dat
   return readEffectiveEntity({ database, entityId });
 }
 
-export async function listEntitiesByType({ database, type }: { database: DatabaseLike; type: string | null }): Promise<EntityListItem[]> {
+export async function listEntitiesByType(
+  { database, type, campaignId }: { database: DatabaseLike; type: string | null; campaignId?: string },
+): Promise<EntityListItem[]> {
   const sql = type === null
     ? 'SELECT id, type, title, summary FROM base_entities ORDER BY title'
     : 'SELECT id, type, title, summary FROM base_entities WHERE type = ? ORDER BY title';
@@ -25,12 +28,22 @@ export async function listEntitiesByType({ database, type }: { database: Databas
     ? await database.select<EntityListItem>(sql)
     : await database.select<EntityListItem>(sql, [type]);
 
-  return rows.map((row) => ({
+  const baseItems = rows.map((row) => ({
     id: String(row.id),
     type: String(row.type),
     title: String(row.title),
     summary: String(row.summary),
   }));
+
+  // #415: without a campaign, the list is the world base only (edit mode / world author).
+  // Inside a campaign, merge in that campaign's own not-yet-promoted campaign-created
+  // entities — they live in overrides, not base, so they surface nowhere else.
+  if (!campaignId) return baseItems;
+  const created = await listCampaignCreatedEntities(database, campaignId).catch(() => []);
+  const createdItems = created
+    .filter((c) => type === null || c.type === type)
+    .map((c) => ({ id: c.id, type: c.type, title: c.title, summary: c.summary }));
+  return [...baseItems, ...createdItems].sort((a, b) => a.title.localeCompare(b.title));
 }
 
 export async function updateEntityProperties(

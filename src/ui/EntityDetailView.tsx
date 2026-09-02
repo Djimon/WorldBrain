@@ -21,7 +21,7 @@ import { useReadOnly } from './useReadOnly';
 import { VisibilityScopePicker, type BaseScope } from './VisibilityScopePicker';
 import { PromoteControl } from './PromoteControl';
 import { useAppMode } from './AppModeContext';
-import { upsertCampaignOverride } from '../services/campaign-override-service';
+import { upsertCampaignOverride, isCampaignCreated, updateCampaignCreatedEntity } from '../services/campaign-override-service';
 
 type EffectiveResult = Awaited<ReturnType<typeof getEffectiveEntity>>;
 
@@ -202,28 +202,45 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
 
   async function commitEdit() {
     if (!database || !result?.found) return;
-    if (result.entity.type === 'Event') {
+    const db = database as DatabaseLike;
+    const isEvent = result.entity.type === 'Event';
+
+    if (campaignId !== undefined) {
+      // #415 / M10-S21: a DM editing inside a campaign NEVER writes the world base.
+      // A campaign-created entity (no base row) merges into its own full override row; an
+      // existing world entity gets a campaign override (base untouched, promote can lift it).
+      const created = await isCampaignCreated(db, { campaignId, entityId });
+      if (isEvent) {
+        const eventKind = deriveEventKind(editStartDay, editEndDay);
+        const eventProps: Record<string, unknown> = { event_kind: eventKind, start_day: editStartDay, effects: [] };
+        if (eventKind === 'phase' && editEndDay !== undefined) eventProps.end_day = editEndDay;
+        if (editCategory !== undefined && editCategory !== '') eventProps.category = editCategory;
+        if (created) {
+          await updateCampaignCreatedEntity(db, { campaignId, entityId,
+            patch: { title: editTitle, summary: editSummary, visibility: editVisibility, properties: eventProps } });
+        } else {
+          await upsertCampaignOverride(db, { campaignId, entityId,
+            patchJson: JSON.stringify({ title: editTitle, summary: editSummary, visibility: editVisibility, properties: eventProps }) });
+        }
+      } else if (created) {
+        await updateCampaignCreatedEntity(db, { campaignId, entityId,
+          patch: { title: editTitle, summary: editSummary, visibility: editVisibility, properties: editProps } });
+      } else {
+        await upsertCampaignOverride(db, { campaignId, entityId, patchJson: JSON.stringify(editProps) });
+      }
+      onSaved?.();
+    } else if (isEvent) {
       const eventKind = deriveEventKind(editStartDay, editEndDay);
-      await updateEventEntity(database as DatabaseLike, entityId, {
+      await updateEventEntity(db, entityId, {
         title: editTitle,
         end_day: editEndDay,
         event_kind: eventKind,
         category: editCategory,
       });
-      await saveEntity(database as DatabaseLike, entityId, { summary: editSummary, visibility: editVisibility });
-      onSaved?.();
-    } else if (campaignId !== undefined) {
-      // M10-S21: edit in the active DM-play campaign context → campaign override
-      // (properties), base world UNTOUCHED. The promote switch can later lift
-      // the override into the world.
-      await upsertCampaignOverride(database as DatabaseLike, {
-        campaignId,
-        entityId,
-        patchJson: JSON.stringify(editProps),
-      });
+      await saveEntity(db, entityId, { summary: editSummary, visibility: editVisibility });
       onSaved?.();
     } else {
-      await saveEntity(database as DatabaseLike, entityId, {
+      await saveEntity(db, entityId, {
         title: editTitle,
         summary: editSummary,
         properties: editProps,

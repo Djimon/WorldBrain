@@ -91,17 +91,41 @@ function applyPatch(entity: BaseEntity, patch: Record<string, unknown>): BaseEnt
   return next;
 }
 
+/** #415: build a base-entity-shaped row from a campaign_created override's full patch_json. */
+function synthRowFromCampaignCreated(entityId: string, patchJson: unknown): Record<string, unknown> {
+  const e = parseJsonField<Record<string, unknown>>(patchJson, {});
+  return {
+    id: entityId,
+    type: e.type ?? '',
+    title: e.title ?? '',
+    summary: e.summary ?? '',
+    aliases_json: JSON.stringify(e.aliases ?? []),
+    properties_json: JSON.stringify(e.properties ?? {}),
+    body_json: JSON.stringify(e.body ?? { format: 'portable_blocks_v1', blocks: [] }),
+    visibility: e.visibility ?? 'public',
+    created_at: '',
+    updated_at: '',
+  };
+}
+
 export async function readEffectiveEntity({ database, entityId }: ReadEffectiveEntityInput): Promise<EffectiveEntityResult> {
   const baseRows = await database.select<Record<string, unknown>>(
     'SELECT * FROM base_entities WHERE id = ?',
     [entityId],
   );
   const overrideRows = await database.select<Record<string, unknown>>(
-    'SELECT patch_json FROM campaign_entity_overrides WHERE entity_id = ? ORDER BY id',
+    'SELECT patch_json, campaign_created FROM campaign_entity_overrides WHERE entity_id = ? ORDER BY id',
     [entityId],
   ).catch(() => [] as Record<string, unknown>[]);
 
   if (baseRows.length === 0) {
+    // #415: a campaign-created entity has no base row — synthesize it from the override's
+    // full patch_json. Without such a row it is genuinely missing.
+    const created = overrideRows.find((r) => Number(r.campaign_created) === 1);
+    if (created) {
+      const synth = rowToBaseEntity(synthRowFromCampaignCreated(entityId, created.patch_json));
+      return { found: true, entityId, entity: synth, baseEntity: synth, overriddenFields: [], orphanedOverrideCount: 0 };
+    }
     return { found: false, entityId, reason: 'base_entity_missing', orphanedOverrideCount: overrideRows.length };
   }
 

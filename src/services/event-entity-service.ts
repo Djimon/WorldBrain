@@ -4,6 +4,7 @@
 // in properties: event_kind, start_day (may be negative), end_day (phase
 // only), effects (always [] in β).
 import type { DatabaseLike } from './entity-service';
+import { createCampaignEntity, listCampaignCreatedEntities } from './campaign-override-service';
 
 export type EventKind = 'single' | 'phase';
 
@@ -88,11 +89,37 @@ export async function createEventEntity(
   return { id };
 }
 
-export async function listEventEntities(db: DatabaseLike): Promise<EventEntitySummary[]> {
+/**
+ * #415: creates an event as a campaign-owned entity (campaign_created override, no
+ * base_entities write). Used by the calendar day-click create when a DM is in a campaign.
+ */
+export async function createCampaignEventEntity(
+  db: DatabaseLike,
+  params: { campaignId: string } & CreateEventEntityParams,
+): Promise<{ id: string }> {
+  const id = `event-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const properties = toProperties(params);
+  await createCampaignEntity(db, {
+    campaignId: params.campaignId,
+    id,
+    entity: { type: 'Event', title: params.title, properties: properties as unknown as Record<string, unknown> },
+  });
+  return { id };
+}
+
+export async function listEventEntities(db: DatabaseLike, campaignId?: string): Promise<EventEntitySummary[]> {
   const rows = await db.select<{ id: string; title: string; properties_json: string }>(
     `SELECT id, title, properties_json FROM base_entities WHERE type = 'Event'`,
   );
-  return rows.map(toSummary);
+  const baseItems = rows.map(toSummary);
+  // #415: inside a campaign, also show that campaign's own campaign-created events (they
+  // live in overrides, not base). Without a campaign, the calendar shows the world base only.
+  if (!campaignId) return baseItems;
+  const created = await listCampaignCreatedEntities(db, campaignId).catch(() => []);
+  const createdEvents = created
+    .filter((c) => c.type === 'Event')
+    .map((c) => toSummary({ id: c.id, title: c.title, properties_json: c.properties_json }));
+  return [...baseItems, ...createdEvents];
 }
 
 export async function getEventEntity(db: DatabaseLike, id: string): Promise<EventEntitySummary | null> {

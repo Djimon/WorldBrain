@@ -8,6 +8,7 @@ import { listEras } from '../services/era-service';
 import type { EraRow } from '../services/era-service';
 import { Segmented } from './primitives';
 import { useReadOnly } from './useReadOnly';
+import { useCampaignContext } from './useCampaignContext';
 
 interface MonthDef { name: string; days: number }
 interface Calendar {
@@ -44,6 +45,7 @@ interface Props {
 export function CalendarMonthView({ calendar, database, onCreateEvent, onEventClick, refreshToken }: Props) {
   const { t } = useTranslation('session');
   const readOnly = useReadOnly(); // M10-S23: Player-Modus deaktiviert Event-Create-Click.
+  const campaignId = useCampaignContext(); // #415: show this campaign's own campaign-created events.
   const months = calendar.months.length > 0 ? calendar.months : [{ name: 'Month 1', days: calendar.year_length_days }];
   const startYear = calendar.start_year ?? 1;
   const startMonthIdx = (calendar.start_month ?? 1) - 1;
@@ -71,8 +73,8 @@ export function CalendarMonthView({ calendar, database, onCreateEvent, onEventCl
   }, [calendar.id, calendar.start_year, calendar.start_month]);
 
   useEffect(() => {
-    listEventEntities(database).then(rows => setAllEvents(rows as EventItem[])).catch(console.error);
-  }, [database, refreshToken]);
+    listEventEntities(database, campaignId).then(rows => setAllEvents(rows as EventItem[])).catch(console.error);
+  }, [database, refreshToken, campaignId]);
 
   useEffect(() => {
     listEras(database, calendar.id).then(setEras).catch(console.error);

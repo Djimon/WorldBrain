@@ -54,6 +54,7 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
       patch_json TEXT NOT NULL DEFAULT '{}',
       promoted_at TEXT,
       pre_promote_json TEXT,
+      campaign_created INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
@@ -64,6 +65,9 @@ export async function openProjectDb(dbPath: string): Promise<DatabaseLike> {
   // dev DBs (idempotent via catch), CREATE columns above for fresh DBs.
   await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN promoted_at TEXT`).catch(() => {});
   await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN pre_promote_json TEXT`).catch(() => {});
+  // #415: campaign-created entities live entirely in an override row (campaign_created=1,
+  // no base_entities row; patch_json holds the full entity). Idempotent for existing DBs.
+  await adapter.execute(`ALTER TABLE campaign_entity_overrides ADD COLUMN campaign_created INTEGER NOT NULL DEFAULT 0`).catch(() => {});
   await adapter.execute(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_campaign_entity_overrides_key ON campaign_entity_overrides (campaign_id, entity_id)`,
   ).catch(() => {});

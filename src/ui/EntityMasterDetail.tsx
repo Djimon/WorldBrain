@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseLike } from '../services/entity-service';
 import { listEntitiesByType } from '../services/entity-service';
+import { createCampaignEntity } from '../services/campaign-override-service';
 import { EntityDetailView } from './EntityDetailView';
 import { Button, ListRow } from './primitives';
 import { stripMarkdown } from '../utils/markdown';
 import { useReadOnly } from './useReadOnly';
+import { useCampaignContext } from './useCampaignContext';
 
 type EntityListItem = { id: string; type: string; title: string; summary: string };
 
@@ -33,6 +35,9 @@ async function createEntity(db: DatabaseLike, type: string, title: string): Prom
 export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySelect, onNavigateToEntity, database }: Props) {
   const { t } = useTranslation('entity');
   const readOnly = useReadOnly(); // M10-S23: player mode hides create affordances.
+  // #415: in a DM-play campaign, create/list are campaign-scoped (campaign-created entities
+  // live in overrides, not the world base). Undefined in edit mode → world base as before.
+  const campaignId = useCampaignContext();
   const [selectedId, setSelectedId] = useState<string | null>(selectedEntityId ?? null);
   const [entities, setEntities] = useState<EntityListItem[]>([]);
   const [creating, setCreating] = useState(false);
@@ -42,13 +47,13 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
 
   function reload() {
     if (!database) return;
-    listEntitiesByType({ database, type: initialType }).then(setEntities).catch(console.error);
+    listEntitiesByType({ database, type: initialType, campaignId }).then(setEntities).catch(console.error);
   }
 
   useEffect(() => {
     setSelectedId(null);
     reload();
-  }, [database, initialType]);
+  }, [database, initialType, campaignId]);
 
   // Keep the list selection in sync when the parent drives navigation
   // (mention/backlink click switches type + id from outside).
@@ -63,7 +68,11 @@ export function EntityMasterDetail({ initialType, selectedEntityId, onEntitySele
 
   async function handleCreate() {
     if (!database || !newTitle.trim() || !initialType) return;
-    const id = await createEntity(database, initialType, newTitle.trim());
+    // #415: in a campaign, a new entity is campaign-owned (override, no base write); only
+    // an explicit promote lifts it into the world. In edit mode it goes straight to base.
+    const id = campaignId
+      ? await createCampaignEntity(database, { campaignId, entity: { type: initialType, title: newTitle.trim() } })
+      : await createEntity(database, initialType, newTitle.trim());
     setNewTitle('');
     setCreating(false);
     reload();

@@ -13,7 +13,7 @@ import { listCalendars, setActiveCalendar as persistActiveCalendar, deleteCalend
 import { formatCalendarDate } from '../../core_data/calendar-schema';
 import { CalendarMonthView } from './CalendarMonthView';
 import { CalendarLinkPanel } from './CalendarLinkPanel';
-import { createEventEntity } from '../services/event-entity-service';
+import { createEventEntity, createCampaignEventEntity } from '../services/event-entity-service';
 import { SettingsPanel } from './SettingsPanel';
 import { PlaySettingsPanel } from './PlaySettingsPanel';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -141,6 +141,14 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   const [mode, setMode] = useState<AppMode>('edit');
   const [sessionRole, setSessionRole] = useState<SessionRole>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  // #415: a DM in a live campaign creates campaign-owned events (override, no base write).
+  // Outside that (edit mode / world author) events go straight to the world base.
+  const calendarCampaignId = mode === 'play' && sessionRole === 'dm' && activeSessionId !== null ? activeSessionId : undefined;
+  function createCalendarEvent(params: { title: string; start_day: number; event_kind: 'single' }): Promise<{ id: string }> {
+    return calendarCampaignId
+      ? createCampaignEventEntity(database, { campaignId: calendarCampaignId, ...params })
+      : createEventEntity(database, params);
+  }
   const [showRoleSelect, setShowRoleSelect] = useState(false);
   // M10-S05/S08: after the player join, token+playerId+displayName are fixed;
   // the play view then switches to PlayerCharacterSheet.
@@ -490,7 +498,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                           onKeyDown={(e) => {
                             if (e.key === 'Escape') { setCalendarNewDay(null); return; }
                             if (e.key !== 'Enter' || !calendarNewTitle.trim()) return;
-                            createEventEntity(database, { title: calendarNewTitle.trim(), start_day: calendarNewDay, event_kind: 'single' })
+                            createCalendarEvent({ title: calendarNewTitle.trim(), start_day: calendarNewDay, event_kind: 'single' })
                               .then(({ id }) => {
                                 setCalendarNewDay(null);
                                 setCalendarRefreshToken((n) => n + 1);
@@ -504,7 +512,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                           tone="accent"
                           disabled={!calendarNewTitle.trim()}
                           onClick={() => {
-                            createEventEntity(database, { title: calendarNewTitle.trim(), start_day: calendarNewDay, event_kind: 'single' })
+                            createCalendarEvent({ title: calendarNewTitle.trim(), start_day: calendarNewDay, event_kind: 'single' })
                               .then(({ id }) => {
                                 setCalendarNewDay(null);
                                 setCalendarRefreshToken((n) => n + 1);
