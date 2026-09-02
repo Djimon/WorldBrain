@@ -15,6 +15,7 @@ import { useDatabase } from '../services/DatabaseContext';
 import { readAppConfig, registerProject } from '../services/app-config-service';
 import type { ProjectEntry } from '../services/app-config-service';
 import { readProjectMeta, updateProjectMeta } from '../services/project-service';
+import { userDataDir } from '../services/user-data-dir';
 import { Button, Panel, StatusChip, ListSurface, ListRow } from './primitives';
 import { ThemePicker } from './ThemePicker';
 import { SnapshotManager } from './SnapshotManager';
@@ -109,18 +110,23 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
     return () => { cancelled = true; };
   }, [database, selectedDir, isCurrent]);
 
-  // Project list for the switcher + data-folder path. app-config.json lives at an
-  // ABSOLUTE <appDataDir>/app-config.json (same as App.tsx). readAppConfig()'s default
-  // is a RELATIVE path that does NOT resolve there → it silently yields an empty list.
+  // Project list for the switcher + user-facing data folder.
+  // app-config.json still lives at an ABSOLUTE <appDataDir>/app-config.json (internal,
+  // same as App.tsx). readAppConfig()'s default is a RELATIVE path that does NOT resolve
+  // there → it silently yields an empty list.
+  // The displayed "data folder", however, is the user's own content (projects/themes/
+  // plugins/help) which #406 moved to Documents\WorldsAndBeyond — NOT the internal AppData.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const base = await appDataDir();
-        if (cancelled) return;
-        setDataDir(base);
         const c = await readAppConfig(await join(base, 'app-config.json'));
         if (!cancelled) setProjects(c.projects);
+      } catch { /* not in Tauri */ }
+      try {
+        const userDir = await userDataDir();
+        if (!cancelled) setDataDir(userDir);
       } catch { /* not in Tauri */ }
     })();
     return () => { cancelled = true; };

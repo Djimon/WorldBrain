@@ -129,6 +129,12 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
     `settingsCopyright` (nav, de+en, `{{years}}`/`{{company}}`).
   - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n 0/0, Nav-Strings 15 + Branding 8 grün.
 
+- **Fix (Feedback: About zeigt noch AppData):** die „Datenordner"-Zeile zeigte weiter
+  `<appDataDir>\WorldsAndBeyond` (interner Config-Ort), obwohl #406 die Nutzerdaten
+  (projects/themes/plugins/help) nach `Documents\WorldsAndBeyond` verschoben hat.
+  `dataDir` liest jetzt `userDataDir()` (Documents); `app-config.json` wird weiterhin aus
+  `appDataDir()` gelesen (intern, unverändert). „Öffnen" öffnet damit den richtigen Ordner.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - **Automatische Backups** (Scheduler + Persistenz) — aktuell Teaser.
