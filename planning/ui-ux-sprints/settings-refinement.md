@@ -217,6 +217,10 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   resettet Play auf Cockpit). Test-Mock m10-s23 um `ListRow` ergänzt.
   - Verifiziert: tsc 0, voller Lint 0, Mode-Toggle/Fast-Switch-Tests grün.
 
+- **Build-Counter wieder aktiv:** pre-commit-Hook (`.githooks/pre-commit` → `bump-build.mjs`)
+  war nie installiert; Wert rekonstruiert auf 98 (24 @ bc6fd58 + 74 Commits). Version wird in
+  Settings jetzt als `v{version}.{build}` gezeigt (Topbar-Chip + About).
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - **Automatische Backups** (Scheduler + Persistenz) — aktuell Teaser.
