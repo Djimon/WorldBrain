@@ -25,6 +25,7 @@ const FEATURE_CHUNKS = {
   rules: ['RulesArea'],
   audio: ['AudioSoundboardWindow'],
   graph: ['GlobalGraphView'],
+  maps: ['MapsArea', 'MapViewer', 'PlayCockpitMap'],
 };
 
 if (!existsSync(distAssets)) {

@@ -17,7 +17,7 @@
 //     the dead branch and drop the import() chunk. A function call there would not
 //     be statically analyzable and the code would stay in the bundle.
 
-export const FEATURE_IDS = ['chronicle', 'cards', 'plugins', 'rules', 'audio', 'graph'] as const;
+export const FEATURE_IDS = ['chronicle', 'cards', 'plugins', 'rules', 'audio', 'graph', 'maps'] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 
 // Release values from the compile constants (see vite-env.d.ts). Never read in the
@@ -29,6 +29,7 @@ const RELEASED: Record<FeatureId, boolean> = {
   rules: __FEATURE_RULES__,
   audio: __FEATURE_AUDIO__,
   graph: __FEATURE_GRAPH__,
+  maps: __FEATURE_MAPS__,
 };
 
 /** True if the feature is available in the current build. Dev = all features. */

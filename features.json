@@ -4,5 +4,6 @@
   "plugins": true,
   "rules": true,
   "audio": true,
-  "graph": true
+  "graph": true,
+  "maps": true
 }

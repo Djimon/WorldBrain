@@ -7,8 +7,9 @@
 //   browse, lobby roster).
 // - Player: reads EXCLUSIVELY from the transport-fed `store` (no
 //   local DB access). The store receives snapshot/delta from the host.
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { feature } from '../config/features';
 import type { DatabaseLike } from '../services/entity-service';
 import { onVisibilityChange } from '../services/visibility-service';
 import { LobbyPanel } from './LobbyPanel';
@@ -19,9 +20,16 @@ import { listEntries, type CombatLogEntry } from '../services/combat-log-service
 import type { PlayClientStoreImpl } from '../services/play-client-store';
 import { Button, ListSurface, Panel, Tabs } from './primitives';
 import { SplitView } from './SplitView';
-import { PlayCockpitMap } from './PlayCockpitMap';
 import type { SessionTransport } from '../services/session-transport';
 import type { SessionRole } from './AppModeContext';
+
+// pre-release S2-Folge (#412): the play-side map (Map tab + split) is part of the `maps`
+// feature — gated by the same flag as the edit maps area. Lazy + directly-inlined constant
+// so a release build with "maps": false tree-shakes PlayCockpitMap (and MapViewer) out of
+// dist/ AND drops the Map tab from the play cockpit. See src/config/features.ts.
+const PlayCockpitMap = import.meta.env.DEV || __FEATURE_MAPS__
+  ? lazy(() => import('./PlayCockpitMap').then((m) => ({ default: m.PlayCockpitMap })))
+  : null;
 
 export interface PlayModeViewProps {
   role: SessionRole; // 'dm' | 'player' | null
@@ -43,7 +51,8 @@ interface BaseEntityRow { id: string; title: string; type: string }
 
 export function PlayModeView({ role, activeSessionId, database, store, playerId, playerGroupIds: _pgs = [], transport }: PlayModeViewProps) {
   const { t } = useTranslation('multiplayer');
-  const [activeTab, setActiveTab] = useState<CockpitTab>('map');
+  const mapsEnabled = feature('maps');
+  const [activeTab, setActiveTab] = useState<CockpitTab>(mapsEnabled ? 'map' : 'combatlog');
   const [browseItems, setBrowseItems] = useState<EntityRef[]>([]);
   const [logEntries, setLogEntries] = useState<CombatLogEntry[]>([]);
   const [logTick, setLogTick] = useState(0);
@@ -116,16 +125,18 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
   // (in-app, no OS pop-out). DM only (the use case from D21).
   const [splitMode, setSplitMode] = useState(false);
 
-  const mapPane = (
-    <PlayCockpitMap
-      role={role === 'player' ? 'player' : 'dm'}
-      campaignId={campaignId}
-      database={database}
-      store={store}
-      transport={transport}
-      playerId={playerId}
-    />
-  );
+  const mapPane = PlayCockpitMap ? (
+    <Suspense fallback={null}>
+      <PlayCockpitMap
+        role={role === 'player' ? 'player' : 'dm'}
+        campaignId={campaignId}
+        database={database}
+        store={store}
+        transport={transport}
+        playerId={playerId}
+      />
+    </Suspense>
+  ) : null;
 
   const combatPane = (
     <Panel className="play-cockpit__pane u-stack u-gap-2">
@@ -154,7 +165,7 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
 
   // The player additionally sees the "Sheet" tab (D13/D14).
   const tabOptions = [
-    { id: 'map', label: t('cockpit.tabMap', 'Map') },
+    ...(mapsEnabled ? [{ id: 'map' as const, label: t('cockpit.tabMap', 'Map') }] : []),
     { id: 'combatlog', label: t('cockpit.tabCombatLog', 'Kampflog') },
     { id: 'spotlight', label: t('cockpit.tabSpotlight', 'Spotlight') },
     { id: 'browse', label: t('cockpit.tabBrowse', 'Free-Browse') },
@@ -185,7 +196,7 @@ export function PlayModeView({ role, activeSessionId, database, store, playerId,
           options={tabOptions}
           onSelect={(id) => setActiveTab(id as CockpitTab)}
         />
-        {role === 'dm' && (
+        {role === 'dm' && mapsEnabled && (
           <Button
             size="compact"
             tone={splitMode ? 'accent' : 'neutral'}

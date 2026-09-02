@@ -2,10 +2,6 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDatabase } from '../services/DatabaseContext';
 import { listEntityTypes } from '../services/plugin-entity-service';
-import { listMaps, importMapImage } from '../services/map-service';
-import { open as openDialog } from '@tauri-apps/plugin-dialog';
-import { copyMapAsset } from '../services/map-asset';
-import type { MapRow } from '../services/map-service';
 import { listViews } from '../services/saved-views-service';
 import type { SavedViewRow } from '../services/saved-views-service';
 import { feature, isGatedFeature } from '../config/features';
@@ -19,11 +15,6 @@ import { CalendarMonthView } from './CalendarMonthView';
 import { CalendarLinkPanel } from './CalendarLinkPanel';
 import { createEventEntity } from '../services/event-entity-service';
 import { SettingsPanel } from './SettingsPanel';
-import { MapViewer } from './MapViewer';
-import { LayerPanel } from './LayerPanel';
-import { MapsSidebarTabs } from './MapsSidebarTabs';
-import { MapFolderTree } from './MapFolderTree';
-import { importImageLayer, createFogLayer } from '../services/map-layer-service';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 import { applyThemeVars } from '../theme';
@@ -72,6 +63,9 @@ const RulesArea = import.meta.env.DEV || __FEATURE_RULES__
   : null;
 const GlobalGraphView = import.meta.env.DEV || __FEATURE_GRAPH__
   ? lazy(() => import('./GlobalGraphView').then((m) => ({ default: m.GlobalGraphView })))
+  : null;
+const MapsArea = import.meta.env.DEV || __FEATURE_MAPS__
+  ? lazy(() => import('./MapsArea').then((m) => ({ default: m.MapsArea })))
   : null;
 
 type Area =
@@ -171,7 +165,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   const [activeArea, setActiveArea] = useState<Area>(activePanel ?? 'entities');
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | null>('Character');
-  const [maps, setMaps] = useState<MapRow[]>([]);
+  // #412: maps is a lazy, feature('maps')-gated area (MapsArea). Only selectedMapId
+  // stays lifted here so the selection persists across area switches (#315); all
+  // other maps state + handlers live in MapsArea.
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   const [showCardCreation, setShowCardCreation] = useState(false);
@@ -190,37 +186,10 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // Day clicked, not yet an entity — title required before createEventEntity.
   const [calendarNewDay, setCalendarNewDay] = useState<number | null>(null);
   const [calendarNewTitle, setCalendarNewTitle] = useState('');
-  const [mapImporting, setMapImporting] = useState(false);
-  // Resizable maps sidebar (same drag pattern as MapViewer's pin tree).
-  const [mapsSidebarWidth, setMapsSidebarWidth] = useState(240);
-  const [mapsSidebarCollapsed, setMapsSidebarCollapsed] = useState(false);
-  // Bumped whenever layers change (add / opacity / visibility / reorder / fog
-  // stroke) -> MapViewer and LayerPanel reload their layer list live, no remount
-  // (view/zoom preserved; markers/grid/cells untouched).
-  const [layerReloadKey, setLayerReloadKey] = useState(0);
-  // Fog layer currently selected for painting (shared: LayerPanel selects it,
-  // MapViewer paints it).
-  const [editingFogLayerId, setEditingFogLayerId] = useState<string | null>(null);
-  // Image layer currently in move mode (shared: LayerPanel selects, MapViewer drags).
-  const [movingLayerId, setMovingLayerId] = useState<string | null>(null);
   const [savedViews, setSavedViews] = useState<SavedViewRow[]>([]);
   // Detached audio-soundboard window (EPIC-024/D1) — one instance at a time;
   // the launcher button is disabled while it's open, re-enabled once closed.
   const [soundboardOpen, setSoundboardOpen] = useState(false);
-
-  useEffect(() => {
-    listMaps(database).then(setMaps).catch(console.error);
-  }, [database]);
-
-  // Fog/move selections belong to one map — drop them when the map changes.
-  useEffect(() => { setEditingFogLayerId(null); setMovingLayerId(null); }, [selectedMapId]);
-
-  // #315: also drop them when leaving the maps area — selectedMapId stays
-  // the same across an area switch, so the effect above alone doesn't fire,
-  // and fog-paint mode would otherwise still be active on returning.
-  useEffect(() => {
-    if (activeArea !== 'maps') { setEditingFogLayerId(null); setMovingLayerId(null); }
-  }, [activeArea]);
 
   useEffect(() => {
     listViews(database).then(setSavedViews).catch(console.error);
@@ -364,59 +333,6 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     if (activeArea !== 'calendar') { setWizardCal(null); setDeletePrompt(false); setShowPicker(false); }
   }, [activeArea]);
 
-  async function handleMapImport() {
-    const selected = await openDialog({ filters: [{ name: t('fileFilterImages'), extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
-    if (typeof selected !== 'string') return;
-    setMapImporting(true);
-    try {
-      const title = selected.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? 'Karte';
-      const result = await importMapImage(database, { srcPath: selected, title, projectDir: projectDir ?? '' });
-      const updatedMaps = await listMaps(database);
-      setMaps(updatedMaps);
-      setSelectedMapId(result.id);
-    } finally {
-      setMapImporting(false);
-    }
-  }
-
-  async function handleAddImageLayer() {
-    if (!selectedMapId) return;
-    const selected = await openDialog({ filters: [{ name: t('fileFilterImages'), extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
-    if (typeof selected !== 'string') return;
-    const name = selected.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? 'Bild-Layer';
-    await importImageLayer(database, { map_id: selectedMapId, srcPath: selected, projectDir: projectDir ?? '', name });
-    setLayerReloadKey((n) => n + 1);
-  }
-
-  // Drag the splitter to resize the maps sidebar.
-  function handleMapsSidebarResize(e: React.MouseEvent) {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startW = mapsSidebarWidth;
-    const onMove = (ev: MouseEvent) => setMapsSidebarWidth(Math.max(180, Math.min(480, startW + (ev.clientX - startX))));
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }
-
-  // #298: token art upload — opens the Tauri dialog, copies the image via the
-  // shared asset flow, returns the asset id for the TokenEditor to store.
-  async function handlePickTokenArt(): Promise<string | null> {
-    const selected = await openDialog({ filters: [{ name: t('fileFilterImages'), extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], multiple: false });
-    if (typeof selected !== 'string') return null;
-    return copyMapAsset(selected, projectDir ?? '', `token-${crypto.randomUUID()}`);
-  }
-
-  async function handleAddFogLayer() {
-    if (!selectedMapId) return;
-    const { id } = await createFogLayer(database, { map_id: selectedMapId, name: 'Fog' });
-    setEditingFogLayerId(id); // select the new fog layer for painting right away
-    setLayerReloadKey((n) => n + 1);
-  }
-
 
   function renderArea() {
     switch (activeArea) {
@@ -467,103 +383,20 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
         );
 
       case 'maps':
-        return (
-          <div className="workspace-area">
-            <div className="workspace-area__sidebar maps-sidebar" style={{ width: mapsSidebarCollapsed ? 32 : mapsSidebarWidth, padding: mapsSidebarCollapsed ? 'var(--space-2) 0' : undefined }}>
-              {!mapsSidebarCollapsed && (
-                <Button
-                  tone="accent"
-                  variant="outline"
-                  className="maps-sidebar__import"
-                  onClick={() => void handleMapImport()}
-                  disabled={mapImporting}
-                >
-                  {mapImporting ? t('mapImporting', '⏳ Importiere…') : t('importMap', '+ Karte importieren')}
-                </Button>
-              )}
-              <MapsSidebarTabs
-                selectedMapId={selectedMapId}
-                collapsed={mapsSidebarCollapsed}
-                onToggleCollapse={() => setMapsSidebarCollapsed((v) => !v)}
-                mapsTabContent={
-                  <>
-                    {mapImporting && (
-                      <div className="workspace-shell__info-note">
-                        {t('mapImportProgress', 'Bild wird kopiert und vorbereitet…')}
-                      </div>
-                    )}
-                    <MapFolderTree
-                      database={database}
-                      maps={maps}
-                      selectedMapId={selectedMapId}
-                      onSelectMap={setSelectedMapId}
-                      onImportMap={() => void handleMapImport()}
-                      importing={mapImporting}
-                      onMapsChanged={() => { void listMaps(database).then(setMaps); }}
-                    />
-                    {maps.length === 0 && (
-                      <p className="workspace-shell__empty-note">
-                        {t('noMaps')}
-                      </p>
-                    )}
-                  </>
-                }
-                layersTabContent={
-                  selectedMapId && (
-                    <div className="maps-layer-section">
-                      <LayerPanel
-                        key={`lp-${selectedMapId}`}
-                        database={database}
-                        mapId={selectedMapId}
-                        editingFogLayerId={editingFogLayerId}
-                        onEditFogLayer={(id) => { setMovingLayerId(null); setEditingFogLayerId((cur) => (cur === id ? null : id)); }}
-                        movingLayerId={movingLayerId}
-                        onMoveLayer={(id) => { setEditingFogLayerId(null); setMovingLayerId((cur) => (cur === id ? null : id)); }}
-                        onAddImageLayer={() => void handleAddImageLayer()}
-                        onAddFogLayer={() => void handleAddFogLayer()}
-                        onLayerDeleted={(id) => {
-                          setEditingFogLayerId((cur) => (cur === id ? null : cur));
-                          setMovingLayerId((cur) => (cur === id ? null : cur));
-                        }}
-                        reloadKey={layerReloadKey}
-                        onLayersChanged={() => setLayerReloadKey((n) => n + 1)}
-                      />
-                    </div>
-                  )
-                }
-              />
-            </div>
-            {!mapsSidebarCollapsed && (
-              <div
-                className="maps-sidebar__resize-handle"
-                role="separator"
-                aria-orientation="vertical"
-                onMouseDown={handleMapsSidebarResize}
-              />
-            )}
-            <div className="workspace-shell__stage">
-              {selectedMapId ? (
-                <MapViewer
-                  key={`mv-${selectedMapId}`}
-                  mapId={selectedMapId}
-                  sessionId={projectId}
-                  database={database}
-                  showCoordinates
-                  onNavigateToEntity={navigateToEntity}
-                  editFogLayerId={editingFogLayerId}
-                  moveLayerId={movingLayerId}
-                  reloadKey={layerReloadKey}
-                  onLayersChanged={() => setLayerReloadKey((n) => n + 1)}
-                  onPickTokenArt={handlePickTokenArt}
-                />
-              ) : (
-                <div className="workspace-shell__empty-center">
-                  {t('mapsEmptySelect')}
-                </div>
-              )}
-            </div>
-          </div>
-        );
+        // pre-release S2-Folge (#412): lazy + feature-gated; MapViewer/pixi + layer/
+        // sidebar/folder-tree + map services tree-shaken when maps released off.
+        return MapsArea ? (
+          <Suspense fallback={null}>
+            <MapsArea
+              database={database}
+              projectId={projectId}
+              projectDir={projectDir}
+              selectedMapId={selectedMapId}
+              onSelectMap={setSelectedMapId}
+              onNavigateToEntity={navigateToEntity}
+            />
+          </Suspense>
+        ) : null;
 
       case 'session':
         // M10-S22: the session icon is part of the play subset (D25). In edit mode
