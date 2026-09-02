@@ -107,6 +107,18 @@ Docs/Planning/.md) gehört nicht in den Release; `theme-tester.html` wird gesond
 - **D10 — Ausgelieferte Docs = EIN neues, kurzes User-How-To** (Kapitel „Für DMs" / „Für
   Player", je aktives Feature knapp erklärt) — als Resource gebündelt. `theme-tester.html`
   wird in den `themes/`-Ordner (unter `Dokumente\WorldsAndBeyond\themes\`) gelegt.
+- **D11 — Gate-barer Feature-Umfang über die 0.1-Cut-Liste hinaus erweitert** (Orchestrator-
+  Entscheid während S2-Umsetzung): der Mechanismus ist allgemein, daher werden zusätzlich zu
+  chronicle/cards/plugins/rules auch **audio** und **graph** togglebar gemacht (beide in S2
+  #404 mit umgesetzt + Bundle-Nachweis). **graph** gilt als EIN Feature über beide
+  Nutzungsstellen — Graph-Bereich **und** Ego-Graph-Tab in der Entity-Ansicht verschwinden
+  gemeinsam (GlobalGraphView + sigma/pixi/graphology tree-geshaked). **maps** und **session**
+  sollen ebenfalls als je EIN ganzes Feature togglebar werden, sind aber groß + quer verdrahtet
+  (maps: 7 MapViewer-Stellen + Play-Cockpit; session: Play-Cockpit + Transport) → eigene
+  Folge-Stories **#412 (maps)** und **#413 (session)**, nicht Teil von S2. Befund dabei:
+  `src/blocks/MapEmbedBlock.tsx` ist toter Code (kein Map-in-Entity-Text-Embed) — keine
+  Fallback-Entscheidung nötig, kann im maps-Cut gelöscht werden. Der Immer-an-Kern bleibt
+  (entities/search/calendar/settings/play-settings) — bewusst nicht gegatet (YAGNI + Footgun).
 
 ## Cut-Liste bestätigt ✅
 
@@ -213,7 +225,9 @@ chronicle · cards · **plugins-UI (Substrat bleibt!)** · rules — raus in bei
 | Story | Issue | Titel | Status |
 |---|---|---|---|
 | S1 | [#403](https://github.com/Djimon/WorldBrain/issues/403) | Spike: Kapselung & Tree-Shaking-Review | ready (Gate) |
-| S2 | [#404](https://github.com/Djimon/WorldBrain/issues/404) | Feature-Config-Mechanismus (features.json + Vite) | blocked (S1) |
+| S2 | [#404](https://github.com/Djimon/WorldBrain/issues/404) | Feature-Config-Mechanismus (features.json + Vite) + chronicle/cards/plugins/rules/audio/graph gegatet | patch-verified |
+| S2a | [#412](https://github.com/Djimon/WorldBrain/issues/412) | maps als ganzes Feature gaten (Folge zu S2) | needs-design |
+| S2b | [#413](https://github.com/Djimon/WorldBrain/issues/413) | session/Play-Cockpit als ganzes Feature gaten (Folge zu S2) | needs-design |
 | S3 | [#405](https://github.com/Djimon/WorldBrain/issues/405) | 0.1-Cut anwenden (chronicle/cards/plugins-UI/rules) | blocked (S1,S2; +S7 play) |
 | S4 | [#406](https://github.com/Djimon/WorldBrain/issues/406) | Nutzerdaten → Documents + First-Run-Seeding | ready |
 | S5 | [#407](https://github.com/Djimon/WorldBrain/issues/407) | User-How-To (DMs/Player) | ready |
