@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { readAppConfig } from '../services/app-config-service';
 import type { AppConfig, ProjectEntry } from '../services/app-config-service';
+import { reconcileProjects } from '../services/project-discovery';
 import { Button } from './primitives';
 
 interface WelcomeScreenProps {
@@ -18,7 +18,9 @@ export function WelcomeScreen({ configPath = 'app-config.json', onCreateProject,
   const [config, setConfig] = useState<AppConfig>(EMPTY_CONFIG);
 
   useEffect(() => {
-    readAppConfig(configPath).then(setConfig).catch(() => setConfig(EMPTY_CONFIG));
+    // Re-scan the projects folder on entry, so a folder dropped in while the app was
+    // running shows up without a full restart.
+    reconcileProjects(configPath).then(setConfig).catch(() => setConfig(EMPTY_CONFIG));
   }, [configPath]);
 
   const { last_opened_project_id, projects } = config;

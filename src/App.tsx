@@ -4,6 +4,7 @@ import { exists, readDir, readTextFile } from '@tauri-apps/plugin-fs';
 import type { DatabaseLike } from './services/entity-service';
 import { readAppConfig, registerProject, writeAppConfig } from './services/app-config-service';
 import type { ProjectEntry } from './services/app-config-service';
+import { reconcileProjects } from './services/project-discovery';
 import { userProjectsDir } from './services/user-data-dir';
 import { openProjectDb } from './services/db-init';
 import { scanPlugins } from './services/plugin-loader';
@@ -68,7 +69,9 @@ export function App() {
       // #393: user themes are now registered in the shared bootstrap (main.tsx →
       // bootstrapUserThemes) for EVERY window — no longer needed here.
       const configPath = await join(base, APP_CONFIG_FILENAME);
-      const config = await readAppConfig(configPath);
+      // Filesystem-driven discovery: pick up folders dropped into <data_dir>\projects and
+      // heal paths after a data-folder move, then persist the reconciled registry.
+      const config = await reconcileProjects(configPath);
       if (config.last_opened_project_id) {
         const entry = config.projects.find((p) => p.id === config.last_opened_project_id);
         if (entry) {

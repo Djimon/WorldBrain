@@ -150,6 +150,21 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   nicht schreibbar → übersprungen, Fallback greift weiter). Kein UI zum Ändern des Ordners
   (bewusst nicht nötig). +2 TDD-Fälle (schreibt Default / überschreibt bestehenden nicht).
 
+- **Feature (Feedback: Ordner-Drop soll erkannt werden):** Projekt-Erkennung war rein
+  Registry-basiert (nur `app-config.json → projects[]`, kein Scan). Neues Modul
+  `services/project-discovery.ts`:
+  - `scanProjects(dir?)` liest jedes Unterverzeichnis mit gültiger `project.json` (id/title,
+    Pfad = echter Ort) aus `<data_dir>\projects`.
+  - `reconcileProjects(configPath?, dir?)` mischt den Scan in die Registry: Scan gewinnt
+    (neue Drop-ins rein, verschobene Pfade geheilt), Registry-Einträge außerhalb `data_dir`
+    bleiben solange ihr Ordner existiert, nur **positiv** verschwundene werden entfernt,
+    `last_opened_project_id` bleibt unangetastet (Welcome zeigt ggf. den „fehlt"-Hinweis).
+    Schreibt nur bei echter Änderung; best-effort in Nicht-Tauri.
+  - Verdrahtet in `App.tsx` (Start) + `WelcomeScreen` (bei Eintritt) → Ordner in
+    `Documents\WorldsAndBeyond\projects` werfen und die App liest sie beim (Neu-)Start ein.
+  - TDD: `tests/pre-project-scan.test.ts` (8 Fälle). Verifiziert: tsc 0, eslint 0,
+    Farb-Gate 0, i18n 0/0, 60 verwandte Tests grün.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - **Automatische Backups** (Scheduler + Persistenz) — aktuell Teaser.
