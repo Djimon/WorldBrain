@@ -101,16 +101,20 @@ export function GlobalGraphView({ database, onNavigate, egoFocusId }: GlobalGrap
   const focusNonce = useRef(0);
   // canvas is alpha:true -> follows the page theme. Track it so edge colors use
   // the right per-theme value (light bg needs darker edges than dark bg).
+  // #M17: dark/light lives on `data-appearance` ('light'|'dark'); `data-theme` is now only
+  // the skin id (default/teal). Reading `data-theme==='dark'` here was left over from before
+  // the theming refactor → isDark was always false → the hover-fade always took the light
+  // (brighten) branch in BOTH modes. Watch the correct attribute.
   const [isDark, setIsDark] = useState<boolean>(
-    () => typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark',
+    () => typeof document !== 'undefined' && document.documentElement.getAttribute('data-appearance') === 'dark',
   );
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const el = document.documentElement;
-    const read = () => setIsDark(el.getAttribute('data-theme') === 'dark');
+    const read = () => setIsDark(el.getAttribute('data-appearance') === 'dark');
     read();
     const obs = typeof MutationObserver !== 'undefined' ? new MutationObserver(read) : null;
-    obs?.observe(el, { attributes: true, attributeFilter: ['data-theme'] });
+    obs?.observe(el, { attributes: true, attributeFilter: ['data-appearance'] });
     return () => obs?.disconnect();
   }, []);
   const patch = useCallback((p: Partial<GraphSettings>) => setSettings((s) => {
