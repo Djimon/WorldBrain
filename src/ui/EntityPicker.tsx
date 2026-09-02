@@ -16,18 +16,20 @@ interface Props {
   onSelect: (entityId: string) => void;
   typeFilter?: string | null;
   database: DatabaseLike;
+  /** #418/#415: in a campaign, also offer that campaign's campaign-created entities. */
+  campaignId?: string;
 }
 
-export function EntityPicker({ onSelect, typeFilter = null, database }: Props) {
+export function EntityPicker({ onSelect, typeFilter = null, database, campaignId }: Props) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
   const [all, setAll] = useState<EntityListItem[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    listEntitiesByType({ database, type: typeFilter ?? null })
+    listEntitiesByType({ database, type: typeFilter ?? null, campaignId })
       .then(rows => setAll(rows as EntityListItem[])).catch(console.error);
-  }, [database, typeFilter]);
+  }, [database, typeFilter, campaignId]);
 
   const lower = query.toLowerCase();
   const filtered = query

@@ -75,6 +75,8 @@
   "relations.inactive": "Inaktive Beziehungen",
   "relations.addRelation": "Beziehung hinzufügen",
   "relations.none": "Keine Relationen",
+  "relations.campaignScoped": "Kampagne",
+  "relations.promote": "In die Welt übernehmen",
   "backlinks.empty": "Keine Verlinkungen.",
   "backlinks.jump": "Zur Entity springen",
   "type.character": "Charakter",

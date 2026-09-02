@@ -75,6 +75,8 @@
   "relations.inactive": "Inactive relations",
   "relations.addRelation": "Add relation",
   "relations.none": "No relations",
+  "relations.campaignScoped": "Campaign",
+  "relations.promote": "Promote to world",
   "backlinks.empty": "No backlinks.",
   "backlinks.jump": "Jump to entity",
   "type.character": "Character",

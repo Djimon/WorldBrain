@@ -27,4 +27,24 @@ export async function applyRelationsSchema(db: DatabaseLike): Promise<void> {
       timestamp TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
+
+  // #418: campaign-local relations mirror the world `relations` shape but live in their own
+  // table, scoped by campaign_id (same membrane idea as #415: the world table stays clean;
+  // a campaign-local relation reaches the world only via an explicit promote, which INSERTs
+  // it into `relations` and removes it here — clean absorb).
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS campaign_relations (
+      id TEXT PRIMARY KEY NOT NULL,
+      campaign_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      relation_type TEXT NOT NULL,
+      inverse_type TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1,
+      visibility_json TEXT NOT NULL DEFAULT '"public"',
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
 }
