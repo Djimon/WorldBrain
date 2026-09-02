@@ -228,6 +228,15 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   „Worlds and Beyond v0.0.27 · Build 99" (neuer Label-Key `settingsAbout.build`); der
   kompakte `v0.0.27.99` bleibt im Topbar-Chip beider Seiten.
 
+- **Play-Settings: „Session info" → „Über" (geteilte AboutSection):** die Info-Pane war
+  redundant (dieselben Werte wie Session). Ersetzt durch die **gemeinsame** `AboutSection`
+  (neue Komponente, aus dem Edit-About extrahiert) — nötig für die geplante leichte
+  Player-only-Edition, wo About die einzige Stelle für Version/Firma/Datenordner ist.
+  Edit-About nutzt jetzt dieselbe Komponente (kein Duplikat mehr). i18n
+  `playSettingsInfo`/`playSettingsProject` entfernt; PlaySettingsPanel-Props um
+  projectId/projectTitle bereinigt.
+  - Verifiziert: tsc 0, voller Lint 0, Play-/Mode-Tests 14 grün.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - **Automatische Backups** (Scheduler + Persistenz) — aktuell Teaser.

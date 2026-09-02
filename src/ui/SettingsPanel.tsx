@@ -8,13 +8,13 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { stat } from '@tauri-apps/plugin-fs';
 import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
-import { appVersion, appBuild, appBuildVersion } from '../branding/version';
-import { ENGINE_VERSION, COPYRIGHT_START_YEAR } from '../branding/brand';
+import { appBuildVersion } from '../branding/version';
+import { ENGINE_VERSION } from '../branding/brand';
 import { useDatabase } from '../services/DatabaseContext';
 import type { ProjectEntry } from '../services/app-config-service';
 import { scanProjects } from '../services/project-discovery';
 import { readProjectMeta, updateProjectMeta } from '../services/project-service';
-import { userDataDir } from '../services/user-data-dir';
+import { AboutSection } from './AboutSection';
 import { Button, Panel, StatusChip, ListSurface, ListRow } from './primitives';
 import { ThemePicker } from './ThemePicker';
 import { SnapshotManager } from './SnapshotManager';
@@ -60,21 +60,11 @@ const CATS: readonly { id: Category; icon: string; soon?: boolean }[] = [
 ];
 
 export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDir, onProjectClose, onOpenProject, onProjectRenamed }: SettingsPanelProps) {
-  const { t, i18n } = useTranslation('nav');
-  // "© 2026 …" while still 2026; widens to "2026–<year>" once the year rolls over.
-  const currentYear = new Date().getFullYear();
-  const copyrightYears = currentYear > COPYRIGHT_START_YEAR ? `${COPYRIGHT_START_YEAR}–${currentYear}` : `${COPYRIGHT_START_YEAR}`;
-  const companyName = t('brand.company', { ns: 'common' });
-  const copyrightLine = t('settingsCopyright', {
-    years: copyrightYears,
-    company: companyName,
-    defaultValue: '© {{years}} {{company}}. Alle Rechte vorbehalten.',
-  });
+  const { t } = useTranslation('nav');
   const database = useDatabase();
   const [cat, setCat] = useState<Category>('project');
   const [stats, setStats] = useState<{ db: string; entities: number | null; maps: number | null } | null>(null);
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
-  const [dataDir, setDataDir] = useState<string>('');
   // Editable project metadata (title/description) loaded from project.json.
   const [title, setTitle] = useState<string>(projectTitle ?? projectId);
   const [description, setDescription] = useState<string>('');
@@ -109,19 +99,15 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
     return () => { cancelled = true; };
   }, [database, selectedDir, isCurrent]);
 
-  // Project list for the switcher + user-facing data folder. Discovery is filesystem-driven:
-  // the switcher list comes from scanning <data_dir>\projects (the folder is the source of
-  // truth), and the displayed data folder is userDataDir() (Documents\WorldsAndBeyond, #406).
+  // Project list for the switcher. Discovery is filesystem-driven: the list comes from
+  // scanning <data_dir>\projects (the folder is the source of truth). The data folder itself
+  // is shown by the About section (AboutSection), which fetches it on its own.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const found = await scanProjects();
         if (!cancelled) setProjects(found);
-      } catch { /* not in Tauri */ }
-      try {
-        const userDir = await userDataDir();
-        if (!cancelled) setDataDir(userDir);
       } catch { /* not in Tauri */ }
     })();
     return () => { cancelled = true; };
@@ -278,25 +264,7 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
             </section>
           )}
 
-          {cat === 'about' && (
-            <section className="settings__pane u-stack u-gap-3">
-              <h2 className="settings__pane-title">{t('settingsCat.about')}</h2>
-              <dl className="settings__about">
-                <div><dt>{t('settingsAbout.version', 'Version')}</dt><dd>{t('brand.platform', { ns: 'common' })} v{appVersion} · {t('settingsAbout.build', 'Build')} {appBuild}</dd></div>
-                <div><dt>{t('settingsAbout.company', 'Firma')}</dt><dd>{t('brand.company', { ns: 'common' })}</dd></div>
-                <div><dt>{t('settingsAbout.language', 'Sprache')}</dt><dd>{i18n.language === 'en' ? 'English' : 'Deutsch'}</dd></div>
-                {dataDir && (
-                  <div><dt>{t('settingsAbout.dataFolder', 'Datenordner')}</dt>
-                    <dd className="settings__datafolder">
-                      <span className="settings__path">{dataDir}</span>
-                      <Button variant="ghost" size="compact" onClick={() => void openFolder(dataDir)}>{t('settingsOpenFolder', 'Öffnen')}</Button>
-                    </dd>
-                  </div>
-                )}
-              </dl>
-              <p className="settings__copyright">{copyrightLine}</p>
-            </section>
-          )}
+          {cat === 'about' && <AboutSection />}
 
           {(cat === 'plugins' || cat === 'shortcuts') && (
             <section className="settings__pane settings__soon">

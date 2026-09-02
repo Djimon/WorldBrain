@@ -2,22 +2,22 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Segmented, StatusChip, ListRow } from './primitives';
 import { ThemePicker } from './ThemePicker';
+import { AboutSection } from './AboutSection';
 import { appBuildVersion } from '../branding/version';
 
-/** Play-mode settings ("Session Context"). Same sidebar + detail shell as the edit-side
- *  SettingsPanel (#410), so the two settings screens feel identical. Categories:
- *  Session (campaign/role/leave) · Appearance (theme) · Info (context + multiplayer teaser). */
-type PlayCategory = 'session' | 'appearance' | 'info';
+/** Play-mode settings. Same sidebar + detail shell as the edit-side SettingsPanel (#410),
+ *  so the two settings screens feel identical. Categories:
+ *  Session (campaign/role/leave) · Appearance (theme) · About (shared with edit — needed
+ *  for the planned light player-only edition). */
+type PlayCategory = 'session' | 'appearance' | 'about';
 
 const CATS: readonly { id: PlayCategory; icon: string; labelKey: string }[] = [
   { id: 'session', icon: '🎲', labelKey: 'session' },
   { id: 'appearance', icon: '🎨', labelKey: 'settingsCat.appearance' },
-  { id: 'info', icon: 'ℹ️', labelKey: 'playSettingsInfo' },
+  { id: 'about', icon: 'ℹ️', labelKey: 'settingsCat.about' },
 ];
 
 interface PlaySettingsPanelProps {
-  projectId: string;
-  projectTitle?: string;
   availableCampaigns: { id: string; title: string }[];
   activeSessionId: string | null;
   sessionRole: 'dm' | 'player' | null;
@@ -27,8 +27,6 @@ interface PlaySettingsPanelProps {
 }
 
 export function PlaySettingsPanel({
-  projectId,
-  projectTitle,
   availableCampaigns,
   activeSessionId,
   sessionRole,
@@ -38,9 +36,6 @@ export function PlaySettingsPanel({
 }: PlaySettingsPanelProps) {
   const { t } = useTranslation('nav');
   const [cat, setCat] = useState<PlayCategory>('session');
-
-  const activeCampaign = availableCampaigns.find((c) => c.id === activeSessionId);
-  const roleLabel = sessionRole === 'player' ? t('modeRolePlayer', 'Als Player') : t('modeRoleDm', 'Als DM');
 
   return (
     <div className="settings">
@@ -108,17 +103,7 @@ export function PlaySettingsPanel({
             </section>
           )}
 
-          {cat === 'info' && (
-            <section className="settings__pane u-stack u-gap-3">
-              <h2 className="settings__pane-title">{t('playSettingsInfo', 'Session-Info')}</h2>
-              {/* Multiplayer/connection is NOT here — it belongs to the Lobby (separate issue). */}
-              <dl className="settings__about">
-                <div><dt>{t('playSettingsProject', 'Projekt')}</dt><dd>{projectTitle ?? projectId}</dd></div>
-                <div><dt>{t('playSettingsCampaign', 'Campaign')}</dt><dd>{activeCampaign?.title ?? '—'}</dd></div>
-                <div><dt>{t('playSettingsRole', 'Rolle')}</dt><dd>{roleLabel}</dd></div>
-              </dl>
-            </section>
-          )}
+          {cat === 'about' && <AboutSection />}
         </div>
       </div>
     </div>

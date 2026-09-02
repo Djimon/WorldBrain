@@ -1,7 +1,7 @@
 {
   "name": "worlds-and-beyond",
   "version": "0.0.27",
-  "build": 100,
+  "build": 101,
   "private": true,
   "license": "UNLICENSED",
   "type": "module",

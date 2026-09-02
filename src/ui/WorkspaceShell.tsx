@@ -684,8 +684,6 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
         return (
           <div className="workspace-area">
             <PlaySettingsPanel
-              projectId={projectId}
-              projectTitle={projectTitle}
               availableCampaigns={availableCampaigns}
               activeSessionId={activeSessionId}
               sessionRole={sessionRole === 'dm' || sessionRole === 'player' ? sessionRole : null}
