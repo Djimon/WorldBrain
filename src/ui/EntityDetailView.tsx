@@ -155,7 +155,14 @@ export function EntityDetailView({ entityId, database, onNavigateToEntity, calen
   // the same entity (e.g. after commitEdit's own load() call).
   const autoEditAppliedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (startInEditMode && !readOnly && result?.found && autoEditAppliedFor.current !== entityId) {
+    // `result` may still hold the PREVIOUS entity for a render or two after
+    // entityId changes (load() is async). Auto-editing then would populate the
+    // form from the stale entity — the "clicking event B opens event A's edit"
+    // bug. Only fire once `result` actually corresponds to the current entityId.
+    if (
+      startInEditMode && !readOnly && result?.found && result.entity.id === entityId
+      && autoEditAppliedFor.current !== entityId
+    ) {
       autoEditAppliedFor.current = entityId;
       startEdit();
     }
