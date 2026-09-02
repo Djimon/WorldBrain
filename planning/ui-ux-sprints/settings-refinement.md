@@ -209,6 +209,14 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   Info-Pane. `WorkspaceShell` delegiert nur noch an die Komponente.
   - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n 0/0, Mode-/Nav-Tests 25 grün.
 
+- **Bugfix (Mode-Wechsel merkt sich die Ansicht):** Play landete immer im Cockpit
+  (`setActiveArea('session')` hart) und Edit war nach dem Zurückschalten verbugt (activeArea
+  blieb auf einer Play-only-Area). Jetzt merkt sich `WorkspaceShell` pro Modus die zuletzt
+  aktive Ansicht (`lastAreaByMode` Ref, via Effect gepflegt) und stellt sie beim Wechsel
+  wieder her (Edit-Default `entities`, Play-Default `session`/Cockpit; „Session verlassen"
+  resettet Play auf Cockpit). Test-Mock m10-s23 um `ListRow` ergänzt.
+  - Verifiziert: tsc 0, voller Lint 0, Mode-Toggle/Fast-Switch-Tests grün.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - **Automatische Backups** (Scheduler + Persistenz) — aktuell Teaser.

@@ -89,6 +89,8 @@ vi.mock('../src/ui/primitives', () => ({
   Field: (props: Record<string, unknown>) => React.createElement('input', props),
   StatusChip: ({ children, ...props }: { children?: React.ReactNode } & Record<string, unknown>) =>
     React.createElement('span', props, children),
+  ListRow: ({ children, ...props }: { children?: React.ReactNode } & Record<string, unknown>) =>
+    React.createElement('button', props, children),
   Segmented: ({ label, value, options, onChange }: {
     label: string; value: string; options: readonly { id: string; label: React.ReactNode }[]; onChange: (id: string) => void;
   }) => React.createElement('div', { role: 'group', 'aria-label': label },

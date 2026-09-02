@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDatabase } from '../services/DatabaseContext';
 import { listEntityTypes } from '../services/plugin-entity-service';
@@ -164,6 +164,10 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   const [selectedCampaignForPlay, setSelectedCampaignForPlay] = useState<string>('');
   const [newCampaignTitle, setNewCampaignTitle] = useState('');
   const [activeArea, setActiveArea] = useState<Area>(activePanel ?? 'entities');
+  // Remember the last active area PER mode, so toggling edit⇄play restores the view you
+  // were on in that mode (instead of always dropping into the play cockpit, and instead of
+  // edit trying to render a play-only area). In-session memory (per mounted project).
+  const lastAreaByMode = useRef<{ edit: Area; play: Area }>({ edit: activePanel ?? 'entities', play: 'session' });
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | null>('Character');
   // #412: maps is a lazy, feature('maps')-gated area (MapsArea). Only selectedMapId
@@ -333,6 +337,12 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   useEffect(() => {
     if (activeArea !== 'calendar') { setWizardCal(null); setDeletePrompt(false); setShowPicker(false); }
   }, [activeArea]);
+
+  // Keep the current mode's remembered area up to date on every area change, so a later
+  // mode toggle can restore it. (The mode-switch handlers read lastAreaByMode.)
+  useEffect(() => {
+    lastAreaByMode.current[mode] = activeArea;
+  }, [activeArea, mode]);
 
 
   function renderArea() {
@@ -712,6 +722,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       setSessionRole(null);
       setActiveSessionId(null);
       setShowRoleSelect(false);
+      setActiveArea(lastAreaByMode.current.edit); // restore the last edit view
     }
   }
 
@@ -741,7 +752,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     setActiveSessionId(campaignId);
     setSelectedCampaignForPlay(campaignId);
     setShowRoleSelect(false);
-    setActiveArea('session');
+    setActiveArea(lastAreaByMode.current.play); // restore the last play view (default: cockpit)
   }
 
   async function pickRole(role: 'dm' | 'player') {
@@ -762,7 +773,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     setActiveSessionId(campaignId);
     setSelectedCampaignForPlay(campaignId);
     setShowRoleSelect(false);
-    setActiveArea('session');
+    setActiveArea(lastAreaByMode.current.play); // restore the last play view (default: cockpit)
     setPlayContext(projectId, { campaignId, role }); // #390: remember context
   }
 
@@ -790,7 +801,8 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     setSessionRole(null);
     setActiveSessionId(null);
     setShowRoleSelect(false);
-    setActiveArea('entities');
+    lastAreaByMode.current.play = 'session'; // deliberate exit → next play starts at the cockpit
+    setActiveArea(lastAreaByMode.current.edit);
   }
   async function createAndPickCampaign() {
     if (newCampaignTitle.trim() === '') return;
