@@ -119,6 +119,17 @@ Docs/Planning/.md) gehört nicht in den Release; `theme-tester.html` wird gesond
   `src/blocks/MapEmbedBlock.tsx` ist toter Code (kein Map-in-Entity-Text-Embed) — keine
   Fallback-Entscheidung nötig, kann im maps-Cut gelöscht werden. Der Immer-an-Kern bleibt
   (entities/search/calendar/settings/play-settings) — bewusst nicht gegatet (YAGNI + Footgun).
+- **D12 — `session` ist eine bewusste Tree-Shaking-Ausnahme: Runtime-Hide statt echtem
+  Entfernen** (#413). Das Play/Multiplayer-Subsystem (~200 Zeilen Transport-Orchestrierung:
+  `WebRtcTransport` + Sync-Bridges + `play-client-store` + `campaign`/`play-context`, plus
+  `enterPlay`/`handleModeToggle`/Join-Flow) ist zu tief in WorkspaceShell + das edit↔play-
+  Modus-System verwoben, um es jetzt sicher in ein lazy Modul zu extrahieren (umkämpfte Datei,
+  M10 in-progress, shippt in 0.1 an). Daher: `session=false` blendet via `feature('session')`
+  den „Spielen"-Toggle aus (Cockpit unerreichbar) + `visibleAreas` versteckt den session-
+  Bereich — der **Code bleibt im Bundle** (P2P-Libs nicht tree-geshaked). Das echte Entfernen
+  (PlayShell-Extraktion) bleibt ein späterer Refactor, wenn der Shell nicht mehr umkämpft ist.
+  **maps** dagegen (#412) ist voll tree-geshaked (MapsArea/MapViewer/PlayCockpitMap fallen bei
+  `maps=false` aus `dist/` — edit **und** play-seitig).
 
 ## Cut-Liste bestätigt ✅
 
@@ -226,8 +237,8 @@ chronicle · cards · **plugins-UI (Substrat bleibt!)** · rules — raus in bei
 |---|---|---|---|
 | S1 | [#403](https://github.com/Djimon/WorldBrain/issues/403) | Spike: Kapselung & Tree-Shaking-Review | ready (Gate) |
 | S2 | [#404](https://github.com/Djimon/WorldBrain/issues/404) | Feature-Config-Mechanismus (features.json + Vite) + chronicle/cards/plugins/rules/audio/graph gegatet | patch-verified |
-| S2a | [#412](https://github.com/Djimon/WorldBrain/issues/412) | maps als ganzes Feature gaten (Folge zu S2) | needs-design |
-| S2b | [#413](https://github.com/Djimon/WorldBrain/issues/413) | session/Play-Cockpit als ganzes Feature gaten (Folge zu S2) | needs-design |
+| S2a | [#412](https://github.com/Djimon/WorldBrain/issues/412) | maps als ganzes Feature gaten (Folge zu S2) — **umgesetzt + tree-shaken** | patch-verified |
+| S2b | [#413](https://github.com/Djimon/WorldBrain/issues/413) | session als Feature gaten — **Runtime-Hide-Ausnahme (D12)** | patch-verified |
 | S3 | [#405](https://github.com/Djimon/WorldBrain/issues/405) | 0.1-Cut anwenden (chronicle/cards/plugins-UI/rules) | blocked (S1,S2; +S7 play) |
 | S4 | [#406](https://github.com/Djimon/WorldBrain/issues/406) | Nutzerdaten → Documents + First-Run-Seeding | ready |
 | S5 | [#407](https://github.com/Djimon/WorldBrain/issues/407) | User-How-To (DMs/Player) | ready |
