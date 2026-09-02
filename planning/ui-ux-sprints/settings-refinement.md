@@ -191,6 +191,17 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   als Nächstes gemeinsam durchgegangen.
   - Verifiziert: tsc 0, eslint 0, Farb-Gate 0.
 
+- **Inhalt-Pass 1 (Bereiche gemäß Abstimmung: alle vier gewählt):**
+  - **Session-Pane:** Campaign + Rolle in einer Pane gruppiert (je `settings__block-label`).
+  - **Darstellung-Pane:** `<ThemePicker />` (dieselbe Kontrolle wie im Edit-Settings).
+  - **Session-Info-Pane:** `dl` mit Projekt · aktive Campaign · Rolle; darunter Multiplayer-
+    „Bald"-Chip + Hinweis (Host/Beitreten/Code kommt später).
+  - **Session verlassen:** roter Button (unverändert).
+  - Neue i18n (nav de+en): playSettingsInfo/Project/Multiplayer/MultiplayerHint.
+  - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n 0/0, Mode-/Nav-/Session-Tests 55 grün.
+  - Offen zum gemeinsamen Verfeinern: Multiplayer/Verbindung (Host/Join, Code) real bauen;
+    ggf. Sidebar-Layout wie Edit, falls mehr Bereiche dazukommen.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - **Automatische Backups** (Scheduler + Persistenz) — aktuell Teaser.
