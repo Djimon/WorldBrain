@@ -62,14 +62,12 @@
 /* inline edit form (token-styled inputs, matching the entity-detail pattern) */
 .settings__field { display: flex; flex-direction: column; gap: 3px; }
 .settings__field-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); font-weight: 600; }
-.settings__input,
 .settings__textarea {
   background: var(--color-surface); border: 1px solid var(--color-border);
   border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2);
   color: var(--color-text); font-size: 0.9rem; width: 100%;
+  resize: vertical; min-height: 4.5rem; font-family: inherit;
 }
-.settings__textarea { resize: vertical; min-height: 4.5rem; font-family: inherit; }
-.settings__input:focus,
 .settings__textarea:focus { border-color: var(--mode-accent); outline: none; }
 .settings__block-label {
   font-size: 0.7rem;

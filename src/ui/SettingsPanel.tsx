@@ -15,7 +15,7 @@ import type { ProjectEntry } from '../services/app-config-service';
 import { scanProjects } from '../services/project-discovery';
 import { readProjectMeta, updateProjectMeta } from '../services/project-service';
 import { AboutSection } from './AboutSection';
-import { Button, Panel, StatusChip, ListSurface, ListRow } from './primitives';
+import { Button, Field, Panel, StatusChip, ListSurface, ListRow } from './primitives';
 import { ThemePicker } from './ThemePicker';
 import { SnapshotManager } from './SnapshotManager';
 
@@ -89,10 +89,20 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
       // A previewed other project shows its db size but "—" for counts.
       let entities: number | null = null, maps: number | null = null;
       if (isCurrent) {
-        try {
+        // AP-006: the schema is the guard, not a swallowed catch. Ask sqlite_master which
+        // tables exist (bare harness DBs have neither → counts stay null → UI shows "—"),
+        // then count only present tables. Real DB errors propagate to the caller.
+        const tables = new Set(
+          (await database.select<{ name: string }>(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('base_entities', 'maps')",
+          )).map((r) => r.name),
+        );
+        if (tables.has('base_entities')) {
           entities = (await database.select<{ n: number }>('SELECT COUNT(*) AS n FROM base_entities'))[0]?.n ?? 0;
+        }
+        if (tables.has('maps')) {
           maps = (await database.select<{ n: number }>('SELECT COUNT(*) AS n FROM maps'))[0]?.n ?? 0;
-        } catch { /* table may be absent in some harnesses */ }
+        }
       }
       if (!cancelled) setStats({ db, entities, maps });
     })();
@@ -184,10 +194,8 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
 
                 {editing ? (
                   <div className="u-stack u-gap-2">
-                    <label className="settings__field">
-                      <span className="settings__field-label">{t('settingsTitleLabel', 'Titel')}</span>
-                      <input className="settings__input" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} autoFocus />
-                    </label>
+                    <Field label={t('settingsTitleLabel', 'Titel')} value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} autoFocus />
+
                     <label className="settings__field">
                       <span className="settings__field-label">{t('description', { ns: 'common' })}</span>
                       <textarea className="settings__textarea" value={draftDesc} onChange={(e) => setDraftDesc(e.target.value)} rows={3} />
