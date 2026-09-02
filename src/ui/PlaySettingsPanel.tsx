@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Segmented, StatusChip, ListRow } from './primitives';
+import { Button, Segmented, ListRow } from './primitives';
 import { ThemePicker } from './ThemePicker';
 
 /** Play-mode settings ("Session Context"). Same sidebar + detail shell as the edit-side
@@ -109,18 +109,12 @@ export function PlaySettingsPanel({
           {cat === 'info' && (
             <section className="settings__pane u-stack u-gap-3">
               <h2 className="settings__pane-title">{t('playSettingsInfo', 'Session-Info')}</h2>
+              {/* Multiplayer/connection is NOT here — it belongs to the Lobby (separate issue). */}
               <dl className="settings__about">
                 <div><dt>{t('playSettingsProject', 'Projekt')}</dt><dd>{projectTitle ?? projectId}</dd></div>
                 <div><dt>{t('playSettingsCampaign', 'Campaign')}</dt><dd>{activeCampaign?.title ?? '—'}</dd></div>
                 <div><dt>{t('playSettingsRole', 'Rolle')}</dt><dd>{roleLabel}</dd></div>
               </dl>
-              <hr className="settings__divider" />
-              <div className="settings__soon">
-                <div className="settings__soon-emoji" aria-hidden="true">🌐</div>
-                <StatusChip tone="warning">{t('settingsSoon', 'Bald')}</StatusChip>
-                <h3 className="settings__pane-title">{t('playSettingsMultiplayer', 'Multiplayer')}</h3>
-                <p className="settings__soon-body">{t('playSettingsMultiplayerHint', 'Gemeinsame Sessions (Host/Beitreten, Code) — kommt in einem der nächsten Updates.')}</p>
-              </div>
             </section>
           )}
         </div>
