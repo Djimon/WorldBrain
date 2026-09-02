@@ -139,7 +139,8 @@
     "placeholder": "Search entities… (Ctrl+K)",
     "noResults": "No results for “{{query}}”",
     "indexing": "Updating index…",
-    "hint": "Type to search entities, places, factions and more."
+    "hint": "Type to search entities, places, factions and more.",
+    "campaignBadge": "Campaign: {{name}}"
   },
   "savedViews": "Saved views",
   "mapsEmptySelect": "Select a map from the list or import one",

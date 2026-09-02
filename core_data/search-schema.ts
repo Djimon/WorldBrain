@@ -11,23 +11,41 @@ export interface SearchEntry {
   properties_text: string;
 }
 
+const CREATE_ENTITY_SEARCH = `
+  CREATE VIRTUAL TABLE entity_search USING fts5(
+    title,
+    aliases,
+    summary,
+    body,
+    tags,
+    properties_text,
+    entity_id UNINDEXED,
+    entity_type UNINDEXED,
+    campaign_id UNINDEXED
+  )
+`;
+
 export async function applySearchSchema(db: DatabaseLike): Promise<void> {
   const existing = await db.select<{ name: string }>(
     `SELECT name FROM sqlite_master WHERE type='table' AND name='entity_search'`,
   );
   if (existing.length === 0) {
-    await db.execute(`
-      CREATE VIRTUAL TABLE entity_search USING fts5(
-        title,
-        aliases,
-        summary,
-        body,
-        tags,
-        properties_text,
-        entity_id UNINDEXED,
-        entity_type UNINDEXED
-      )
-    `);
+    await db.execute(CREATE_ENTITY_SEARCH);
+    return;
+  }
+  // #419: older DBs have entity_search WITHOUT the campaign_id column. FTS5 can't ALTER ADD
+  // COLUMN, but the index is fully derivable — drop and recreate, then it is repopulated by
+  // the next rebuildSearchIndex (the search view rebuilds on mount). No data loss.
+  // Detect the column robustly: a missing column may surface as a rejected promise (async
+  // DB) OR a synchronous throw (sync DB wrapper) — try/catch covers both.
+  let hasCampaignId = false;
+  try {
+    await db.select<{ campaign_id: unknown }>(`SELECT campaign_id FROM entity_search LIMIT 0`);
+    hasCampaignId = true;
+  } catch { hasCampaignId = false; }
+  if (!hasCampaignId) {
+    await db.execute(`DROP TABLE entity_search`);
+    await db.execute(CREATE_ENTITY_SEARCH);
   }
 }
 

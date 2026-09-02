@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Chip, ListRow } from './primitives';
+import { Chip, ListRow, StatusChip } from './primitives';
 import { stripMarkdown } from '../utils/markdown';
 import { searchEntities, getSearchFacets, rebuildSearchIndex } from '../services/search-service';
 import type { SearchResult, SearchFacets } from '../services/search-service';
 import type { DatabaseLike } from '../services/entity-service';
 import { EntityDetailView } from './EntityDetailView';
+import { useCampaignContext } from './useCampaignContext';
 
 interface Props {
   onNavigate: (entityId: string) => void;
@@ -21,8 +22,21 @@ export function GlobalSearch({ onNavigate, database }: Props) {
   const [facets, setFacets] = useState<SearchFacets | null>(null);
   const [indexing, setIndexing] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
+  // #419: DM in a campaign also finds this campaign's campaign-created entities; results are
+  // marked with the campaign name. Undefined outside a campaign → world-only search.
+  const campaignId = useCampaignContext();
+  const [campaignTitle, setCampaignTitle] = useState('');
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  useEffect(() => {
+    if (!database || !campaignId) { setCampaignTitle(''); return; }
+    let cancelled = false;
+    database.select<{ title: string }>('SELECT title FROM campaigns WHERE id = ?', [campaignId])
+      .then((rows) => { if (!cancelled) setCampaignTitle(rows[0]?.title ?? ''); })
+      .catch(() => { /* no campaigns table / not found */ });
+    return () => { cancelled = true; };
+  }, [database, campaignId]);
 
   // The FTS index has no incremental writers/triggers, so refresh it whenever
   // the search view mounts (or the project db changes) — picks up entities
@@ -39,17 +53,17 @@ export function GlobalSearch({ onNavigate, database }: Props) {
 
   useEffect(() => {
     if (results.length > 0) {
-      getSearchFacets(database!, query, {}).then(setFacets).catch(console.error);
+      getSearchFacets(database!, query, {}, results, campaignId).then(setFacets).catch(console.error);
     } else {
       setFacets(null);
     }
-  }, [results, database, query]);
+  }, [results, database, query, campaignId]);
 
   async function handleChange(value: string) {
     setQuery(value);
     setSelectedIndex(-1);
     if (!value.trim()) { setResults([]); return; }
-    const res = await searchEntities(database!, value, {});
+    const res = await searchEntities(database!, value, {}, campaignId);
     setResults(res);
   }
 
@@ -57,7 +71,7 @@ export function GlobalSearch({ onNavigate, database }: Props) {
   // during indexing are not stuck empty.
   useEffect(() => {
     if (indexing || !database || !query.trim()) return;
-    searchEntities(database, query, {}).then(setResults).catch(console.error);
+    searchEntities(database, query, {}, campaignId).then(setResults).catch(console.error);
   }, [indexing]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -128,6 +142,9 @@ export function GlobalSearch({ onNavigate, database }: Props) {
               >
                 <span className="gsearch__result-title">{r.title}</span>
                 <span className="gsearch__result-type">{r.entityType}</span>
+                {r.campaignId && (
+                  <StatusChip tone="accent">{t('globalSearch.campaignBadge', { name: campaignTitle || r.campaignId })}</StatusChip>
+                )}
                 {r.summary && <span className="gsearch__result-summary">{stripMarkdown(r.summary)}</span>}
               </ListRow>
             ))}
