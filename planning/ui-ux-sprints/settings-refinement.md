@@ -199,8 +199,15 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   - **Session verlassen:** roter Button (unverändert).
   - Neue i18n (nav de+en): playSettingsInfo/Project/Multiplayer/MultiplayerHint.
   - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n 0/0, Mode-/Nav-/Session-Tests 55 grün.
-  - Offen zum gemeinsamen Verfeinern: Multiplayer/Verbindung (Host/Join, Code) real bauen;
-    ggf. Sidebar-Layout wie Edit, falls mehr Bereiche dazukommen.
+  - Offen zum gemeinsamen Verfeinern: Multiplayer/Verbindung (Host/Join, Code) real bauen.
+
+- **Sidebar-Layout nachgezogen (Feedback: „Seiten-Navigation fehlt"):** die lange Scroll-Liste
+  war falsch — jetzt **dieselbe Sidebar+Detail-Shell wie Edit**. Neue Komponente
+  `PlaySettingsPanel.tsx` (mirror von `SettingsPanel`): Kategorien links (🎲 Session ·
+  🎨 Darstellung · ℹ️ Info), Detail rechts. „Session verlassen" sitzt in der Session-Pane
+  (analog zu „Close project" im Projekt-Pane). Multiplayer als zentrierter „Bald"-Block im
+  Info-Pane. `WorkspaceShell` delegiert nur noch an die Komponente.
+  - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n 0/0, Mode-/Nav-Tests 25 grün.
 
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.

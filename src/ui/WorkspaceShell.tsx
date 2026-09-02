@@ -15,7 +15,7 @@ import { CalendarMonthView } from './CalendarMonthView';
 import { CalendarLinkPanel } from './CalendarLinkPanel';
 import { createEventEntity } from '../services/event-entity-service';
 import { SettingsPanel } from './SettingsPanel';
-import { ThemePicker } from './ThemePicker';
+import { PlaySettingsPanel } from './PlaySettingsPanel';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 import { applyThemeVars } from '../theme';
@@ -668,82 +668,23 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             />
           </div>
         );
-      case 'play-settings': {
-        // #390 / play-settings UX sprint: play-scoped settings — same shell as the edit side.
-        // Areas: Session (campaign+role) · Appearance (theme) · Session info · Leave.
-        const activeCampaign = availableCampaigns.find((c) => c.id === activeSessionId);
-        const roleLabel = sessionRole === 'player' ? t('modeRolePlayer', 'Als Player') : t('modeRoleDm', 'Als DM');
+      case 'play-settings':
+        // #390 / play-settings UX sprint: play-scoped settings in the same sidebar+detail
+        // shell as the edit side (its own component, mirroring SettingsPanel).
         return (
           <div className="workspace-area">
-            <div className="settings">
-              <div className="settings__topbar">
-                <h1 className="settings__title">{t('play-settings')}</h1>
-              </div>
-              <div className="settings__detail u-stack u-gap-4">
-                {/* Session — active campaign + role. */}
-                <section className="settings__pane u-stack u-gap-3">
-                  <h2 className="settings__pane-title">{t('session', 'Session')}</h2>
-                  <div className="u-stack u-gap-1">
-                    <span className="settings__block-label">{t('playSettingsCampaign', 'Campaign')}</span>
-                    {availableCampaigns.length > 0 ? (
-                      <Segmented
-                        label={t('playSettingsCampaign', 'Campaign')}
-                        value={activeSessionId ?? ''}
-                        onChange={switchPlayCampaign}
-                        size="compact"
-                        options={availableCampaigns.map((c) => ({ id: c.id, label: c.title }))}
-                      />
-                    ) : (
-                      <p className="settings__muted">{t('playSettingsNoCampaigns', 'Keine Campaigns vorhanden.')}</p>
-                    )}
-                  </div>
-                  <div className="u-stack u-gap-1">
-                    <span className="settings__block-label">{t('playSettingsRole', 'Rolle')}</span>
-                    <Segmented
-                      label={t('playSettingsRole', 'Rolle')}
-                      value={sessionRole ?? 'dm'}
-                      onChange={(id) => switchPlayRole(id === 'player' ? 'player' : 'dm')}
-                      size="compact"
-                      options={[
-                        { id: 'dm', label: t('modeRoleDm', 'Als DM') },
-                        { id: 'player', label: t('modeRolePlayer', 'Als Player') },
-                      ]}
-                    />
-                  </div>
-                </section>
-
-                {/* Appearance — same theme control as the edit settings. */}
-                <section className="settings__pane u-stack u-gap-3">
-                  <h2 className="settings__pane-title">{t('settingsCat.appearance')}</h2>
-                  <ThemePicker />
-                </section>
-
-                {/* Session info — current context; multiplayer/connection is coming. */}
-                <section className="settings__pane u-stack u-gap-3">
-                  <h2 className="settings__pane-title">{t('playSettingsInfo', 'Session-Info')}</h2>
-                  <dl className="settings__about">
-                    <div><dt>{t('playSettingsProject', 'Projekt')}</dt><dd>{projectTitle ?? projectId}</dd></div>
-                    <div><dt>{t('playSettingsCampaign', 'Campaign')}</dt><dd>{activeCampaign?.title ?? '—'}</dd></div>
-                    <div><dt>{t('playSettingsRole', 'Rolle')}</dt><dd>{roleLabel}</dd></div>
-                  </dl>
-                  <div className="u-row u-gap-2">
-                    <span className="settings__block-label">{t('playSettingsMultiplayer', 'Multiplayer')}</span>
-                    <StatusChip tone="warning">{t('settingsSoon', 'Bald')}</StatusChip>
-                  </div>
-                  <p className="settings__soon-body">{t('playSettingsMultiplayerHint', 'Gemeinsame Sessions (Host/Beitreten, Code) — kommt in einem der nächsten Updates.')}</p>
-                </section>
-
-                {/* Leave session. */}
-                <section className="settings__pane">
-                  <Button tone="danger" variant="outline" onClick={leavePlaySession}>
-                    {t('playSettingsLeave', 'Session verlassen')}
-                  </Button>
-                </section>
-              </div>
-            </div>
+            <PlaySettingsPanel
+              projectId={projectId}
+              projectTitle={projectTitle}
+              availableCampaigns={availableCampaigns}
+              activeSessionId={activeSessionId}
+              sessionRole={sessionRole === 'dm' || sessionRole === 'player' ? sessionRole : null}
+              onSwitchCampaign={switchPlayCampaign}
+              onSwitchRole={switchPlayRole}
+              onLeave={leavePlaySession}
+            />
           </div>
         );
-      }
     }
   }
 
