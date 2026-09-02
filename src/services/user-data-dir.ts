@@ -6,7 +6,7 @@
 // first run. app-config.json stays in appDataDir (app config, not user content).
 import { documentDir, appDataDir, resourceDir, join } from '@tauri-apps/api/path';
 import { copyFile, exists, mkdir } from '@tauri-apps/plugin-fs';
-import { readAppConfig } from './app-config-service';
+import { readAppConfig, writeAppConfig } from './app-config-service';
 
 export const USER_DATA_ROOT = 'WorldsAndBeyond';
 export const APP_CONFIG_FILE = 'app-config.json';
@@ -69,6 +69,9 @@ export async function ensureUserDataDirs(): Promise<void> {
   } catch {
     return; // no Tauri / no documentDir (tests, browser) → nothing to create
   }
+  // Make the resolved location explicit in the config so it is visible/editable and the
+  // displayed path can never drift from the used one. Only on first run (data_dir unset).
+  await persistResolvedDataDir(base);
   for (const sub of [PROJECTS_SUBDIR, PLUGINS_SUBDIR, THEMES_SUBDIR, HELP_SUBDIR]) {
     const dir = await join(base, sub);
     if (!(await exists(dir))) {
@@ -78,6 +81,22 @@ export async function ensureUserDataDirs(): Promise<void> {
   await seedResource(THEME_TESTER_FILE, await join(base, THEMES_SUBDIR));
   for (const file of HOWTO_FILES) {
     await seedResource(file, await join(base, HELP_SUBDIR));
+  }
+}
+
+/** First-run: write the resolved data location into app-config.json so it is explicit
+ *  (visible + editable) and the displayed path can never drift from the used one. Writes
+ *  only when no data_dir is set yet — a user's own choice is never overwritten. Best-effort:
+ *  in a non-Tauri env or when the config isn't writable, userDataDir() still resolves via
+ *  the platform-default fallback. */
+async function persistResolvedDataDir(resolved: string): Promise<void> {
+  try {
+    const cfgPath = await appConfigPath();
+    const cfg = await readAppConfig(cfgPath);
+    if (cfg.data_dir) return; // already explicit → leave the user's choice alone
+    await writeAppConfig({ ...cfg, data_dir: resolved }, cfgPath);
+  } catch {
+    // no Tauri / not writable → skip; the fallback in userDataDir() keeps things working
   }
 }
 

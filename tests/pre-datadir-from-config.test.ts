@@ -9,10 +9,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const readTextFileMock = vi.fn<(p: string) => Promise<string>>();
+const writeTextFileMock = vi.fn<(p: string, c: string) => Promise<void>>();
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
   readTextFile: (p: string) => readTextFileMock(p),
-  writeTextFile: vi.fn(),
+  writeTextFile: (p: string, c: string) => writeTextFileMock(p, c),
   exists: vi.fn(async () => true),
   mkdir: vi.fn(),
   copyFile: vi.fn(),
@@ -25,9 +26,9 @@ vi.mock('@tauri-apps/api/path', () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { userDataDir, userProjectsDir, userThemesDir, defaultUserDataDir } from '../src/services/user-data-dir';
+import { userDataDir, userProjectsDir, userThemesDir, defaultUserDataDir, ensureUserDataDirs } from '../src/services/user-data-dir';
 
-beforeEach(() => readTextFileMock.mockReset());
+beforeEach(() => { readTextFileMock.mockReset(); writeTextFileMock.mockReset(); });
 afterEach(() => vi.clearAllMocks());
 
 describe('#406 follow-up — data dir resolves from config', () => {
@@ -56,5 +57,22 @@ describe('#406 follow-up — data dir resolves from config', () => {
 
   it('defaultUserDataDir() is the Documents location regardless of config', async () => {
     expect(await defaultUserDataDir()).toBe('/docs/WorldsAndBeyond');
+  });
+});
+
+describe('#406 follow-up — first run persists the default data_dir', () => {
+  it('writes the resolved default into app-config.json when data_dir is unset', async () => {
+    readTextFileMock.mockResolvedValue(JSON.stringify({ projects: [] }));
+    await ensureUserDataDirs();
+    expect(writeTextFileMock).toHaveBeenCalledTimes(1);
+    const [path, content] = writeTextFileMock.mock.calls[0];
+    expect(path).toBe('/appdata/app-config.json');
+    expect(JSON.parse(content).data_dir).toBe('/docs/WorldsAndBeyond');
+  });
+
+  it('does NOT overwrite an existing data_dir (never clobbers a user choice)', async () => {
+    readTextFileMock.mockResolvedValue(JSON.stringify({ data_dir: '/custom/place', projects: [] }));
+    await ensureUserDataDirs();
+    expect(writeTextFileMock).not.toHaveBeenCalled();
   });
 });

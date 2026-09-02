@@ -144,6 +144,11 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   kompatibel (kein `data_dir` gesetzt → identisches Verhalten wie bisher).
   TDD: `tests/pre-datadir-from-config.test.ts` (5 Fälle). Verifiziert: tsc 0, eslint 0,
   Farb-Gate 0, i18n 0/0, 77 verwandte Tests grün.
+- **Nachtrag (Default persistieren):** `ensureUserDataDirs()` schreibt den aufgelösten
+  Default beim First-Run **explizit** in `app-config.json` (`data_dir`), sofern noch keiner
+  gesetzt ist — eine spätere Nutzer-Wahl wird nie überschrieben; best-effort (non-Tauri /
+  nicht schreibbar → übersprungen, Fallback greift weiter). Kein UI zum Ändern des Ordners
+  (bewusst nicht nötig). +2 TDD-Fälle (schreibt Default / überschreibt bestehenden nicht).
 
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
