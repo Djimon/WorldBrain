@@ -398,16 +398,10 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           </Suspense>
         ) : null;
 
-      case 'session':
-        // M10-S22: the session icon is part of the play subset (D25). In edit mode
-        // it is normally not visible, only when activePanel='session'
-        // was set — then a hint that play mode is reached via the
-        // toggle.
-        return (
-          <div className="workspace-area">
-            <p>{t('sessionAreaEditHint', 'Play-Cockpit über den „Spielen"-Toggle in der Kopfzeile öffnen.')}</p>
-          </div>
-        );
+      // #405: the edit-mode session pointer (redirect hint) is removed — the edit
+      // feature list has no session/play entry (play is reached via the header
+      // toggle). session stays in PLAY_AREAS for the play cockpit (mode === 'play',
+      // rendered via the inPlayCockpit path, not renderArea).
 
       case 'calendar':
         return (
@@ -719,7 +713,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   const activeAreaLabel = t(activeArea);
   const visibleAreas = (mode === 'play'
     ? AREAS.filter((a) => PLAY_AREAS.includes(a.id))
-    : AREAS.filter((a) => a.id !== 'play-settings')) // #390: hide play-only in edit
+    : AREAS.filter((a) => a.id !== 'play-settings' && a.id !== 'session')) // #390 + #405: hide play-only + session pointer in edit
     // pre-release S2 (#404): hide cut-able features when their release flag is off.
     .filter((a) => (isGatedFeature(a.id) ? feature(a.id) : true));
 

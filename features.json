@@ -1,8 +1,8 @@
 {
-  "chronicle": true,
-  "cards": true,
-  "plugins": true,
-  "rules": true,
+  "chronicle": false,
+  "cards": false,
+  "plugins": false,
+  "rules": false,
   "audio": true,
   "graph": true,
   "maps": true,

@@ -42,10 +42,12 @@ describe('#404 AC1 — features.json (flat, single source)', () => {
     }
   });
 
-  it('has an entry per gate-able feature, all default true', () => {
+  it('has a boolean entry for every gate-able feature', () => {
+    // NOTE: the concrete on/off values are the 0.1-cut decision, asserted in
+    // tests/pre-s3-feature-cut.test.ts. Here we only pin the shape/presence.
     const cfg = readFeaturesJson();
     for (const id of GATED) {
-      expect(cfg[id]).toBe(true);
+      expect(cfg[id]).toBeTypeOf('boolean');
     }
   });
 });
