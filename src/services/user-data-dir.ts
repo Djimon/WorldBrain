@@ -4,10 +4,12 @@
 // Epic decision D7. (The issue text says "WorldBuilderX"; the binding brand/Epic value
 // is "WorldsAndBeyond" — user-facing rename.) The app creates + seeds these dirs at
 // first run. app-config.json stays in appDataDir (app config, not user content).
-import { documentDir, resourceDir, join } from '@tauri-apps/api/path';
+import { documentDir, appDataDir, resourceDir, join } from '@tauri-apps/api/path';
 import { copyFile, exists, mkdir } from '@tauri-apps/plugin-fs';
+import { readAppConfig } from './app-config-service';
 
 export const USER_DATA_ROOT = 'WorldsAndBeyond';
+export const APP_CONFIG_FILE = 'app-config.json';
 export const PROJECTS_SUBDIR = 'projects';
 export const PLUGINS_SUBDIR = 'plugins';
 export const THEMES_SUBDIR = 'themes';
@@ -16,9 +18,34 @@ export const THEME_TESTER_FILE = 'theme-tester.html';
 // #408: user how-to shipped as bundle.resources, seeded into help\ so the user finds it.
 export const HOWTO_FILES = ['user-guide_de.md', 'user-guide_en.md'];
 
-/** `Documents\WorldsAndBeyond\`. Throws in a non-Tauri env (no documentDir). */
-export async function userDataDir(): Promise<string> {
+/** Bootstrap location of the config file itself: `<appDataDir>\app-config.json`.
+ *  This is fixed (chicken/egg — the config can't say where the config lives), and is
+ *  the SAME path App.tsx / SettingsPanel read. Only the DATA dir inside it is variable. */
+async function appConfigPath(): Promise<string> {
+  return join(await appDataDir(), APP_CONFIG_FILE);
+}
+
+/** Platform default when the config does not pin a location: `Documents\WorldsAndBeyond\`.
+ *  Throws in a non-Tauri env (no documentDir). */
+export async function defaultUserDataDir(): Promise<string> {
   return join(await documentDir(), USER_DATA_ROOT);
+}
+
+/**
+ * The user data root — the ONE source of truth for where projects/themes/plugins/help
+ * live. An explicit `data_dir` in app-config.json wins; otherwise the platform default
+ * (Documents\WorldsAndBeyond). Reading it from config means the displayed path and the
+ * actually-used path never diverge. Falls back to the default in a non-Tauri env or when
+ * no config exists yet (first run). Throws only if even the default can't be resolved.
+ */
+export async function userDataDir(): Promise<string> {
+  try {
+    const cfg = await readAppConfig(await appConfigPath());
+    if (cfg.data_dir) return cfg.data_dir;
+  } catch {
+    // no Tauri / no config yet → platform default below
+  }
+  return defaultUserDataDir();
 }
 
 export async function userProjectsDir(): Promise<string> {

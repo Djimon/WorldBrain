@@ -134,6 +134,16 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   (projects/themes/plugins/help) nach `Documents\WorldsAndBeyond` verschoben hat.
   `dataDir` liest jetzt `userDataDir()` (Documents); `app-config.json` wird weiterhin aus
   `appDataDir()` gelesen (intern, unverändert). „Öffnen" öffnet damit den richtigen Ordner.
+- **Fix (Feedback: nicht hart verdrahten — Datenpfad aus der Config):** der Datenpfad war an
+  mehreren Stellen hart `Documents\WorldsAndBeyond` (→ Anzeige und tatsächlich genutzter Pfad
+  konnten divergieren, „kann überall knallen"). Jetzt **eine Quelle der Wahrheit**: neues
+  Feld `data_dir` in `app-config.json`; `userDataDir()` liest es (Fallback = Plattform-Default
+  `Documents\WorldsAndBeyond`). Damit folgen **alle** Verbraucher (Projekte, Themes, ZIP-Import,
+  About) automatisch der Config. Die Config-Datei selbst bleibt im `appDataDir` (Bootstrap —
+  kann sich nicht selbst verorten); nur die Daten-Location ist konfigurierbar. Rückwärts-
+  kompatibel (kein `data_dir` gesetzt → identisches Verhalten wie bisher).
+  TDD: `tests/pre-datadir-from-config.test.ts` (5 Fälle). Verifiziert: tsc 0, eslint 0,
+  Farb-Gate 0, i18n 0/0, 77 verwandte Tests grün.
 
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.

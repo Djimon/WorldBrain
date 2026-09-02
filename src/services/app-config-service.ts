@@ -9,9 +9,13 @@ export interface ProjectEntry {
 export interface AppConfig {
   last_opened_project_id: string | null;
   projects: ProjectEntry[];
+  /** Absolute path to the user data root (projects/themes/plugins/help). When null,
+   *  the platform default (Documents\WorldsAndBeyond) applies — see user-data-dir.ts.
+   *  This is the ONE source of truth for the data location. */
+  data_dir: string | null;
 }
 
-const DEFAULT_CONFIG: AppConfig = { last_opened_project_id: null, projects: [] };
+const DEFAULT_CONFIG: AppConfig = { last_opened_project_id: null, projects: [], data_dir: null };
 const DEFAULT_CONFIG_PATH = 'app-config.json';
 
 export async function readAppConfig(configPath = DEFAULT_CONFIG_PATH): Promise<AppConfig> {
@@ -21,6 +25,7 @@ export async function readAppConfig(configPath = DEFAULT_CONFIG_PATH): Promise<A
     return {
       last_opened_project_id: parsed.last_opened_project_id ?? null,
       projects: Array.isArray(parsed.projects) ? parsed.projects : [],
+      data_dir: typeof parsed.data_dir === 'string' ? parsed.data_dir : null,
     };
   } catch {
     // AP-006 exception: filesystem read at app startup boundary — return safe default

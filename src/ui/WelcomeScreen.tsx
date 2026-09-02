@@ -11,7 +11,7 @@ interface WelcomeScreenProps {
   onOpenProject: (projectId: string) => void;
 }
 
-const EMPTY_CONFIG: AppConfig = { last_opened_project_id: null, projects: [] };
+const EMPTY_CONFIG: AppConfig = { last_opened_project_id: null, projects: [], data_dir: null };
 
 export function WelcomeScreen({ configPath = 'app-config.json', onCreateProject, onImportZip, onOpenProject }: WelcomeScreenProps) {
   const { t } = useTranslation('nav');
