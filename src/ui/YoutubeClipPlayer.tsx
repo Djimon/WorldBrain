@@ -85,9 +85,11 @@ export function YoutubeClipPlayer({ videoUrl, targetVolume, rampSeconds, loop, p
   }, [videoUrl]);
 
   useEffect(() => {
-    // Only (re)act when the target actually changed. A rampSeconds-only change (reload/
-    // mixer re-sync forcing instant) on the same target must leave a running fade alone.
-    if (lastAppliedTargetRef.current === targetVolume) return;
+    // Skip ONLY a rampSeconds-only re-sync (same target) that would otherwise snap a
+    // *currently running* fade to full. When no fade is in progress (first play, or fade
+    // already done) the re-apply must proceed — it's what reliably sets the volume once the
+    // player is ready (otherwise the first click stays silent until you nudge the volume).
+    if (rampTimerRef.current !== null && lastAppliedTargetRef.current === targetVolume) return;
     lastAppliedTargetRef.current = targetVolume;
 
     const player = playerRef.current;
