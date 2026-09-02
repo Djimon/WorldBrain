@@ -1,12 +1,13 @@
 {
   "name": "worlds-and-beyond",
   "version": "0.0.27",
-  "build": 24,
+  "build": 98,
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
   "packageManager": "npm@11.13.0",
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || exit 0",
     "lint": "eslint src core_data && npm run lint:colors && npm run lint:i18n",
     "lint:colors": "node scripts/check-hardcoded-colors.mjs",
     "lint:i18n": "node scripts/check-i18n-missing-keys.mjs",

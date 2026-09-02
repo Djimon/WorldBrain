@@ -1,0 +1,2 @@
+# Git hooks must stay LF — a CRLF shebang breaks `sh` ("bad interpreter").
+.githooks/pre-commit text eol=lf

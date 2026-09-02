@@ -1,0 +1,6 @@
+#!/bin/sh
+# Auto-increment package.json `build` on every commit (+ sync Cargo version).
+# See scripts/bump-build.mjs. Never blocks a commit: if node is missing or the
+# script errors, the commit proceeds without a bump.
+command -v node >/dev/null 2>&1 || exit 0
+node scripts/bump-build.mjs || exit 0
