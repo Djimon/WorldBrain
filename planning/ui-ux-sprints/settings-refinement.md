@@ -179,6 +179,18 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   - Tests migriert (m7-s01, m7-s02, pre-project-scan); +findProjectById-Fälle.
   - Verifiziert: tsc 0, voller Lint 0, 121 verwandte Tests grün.
 
+## Zweite Hälfte: Play-Mode-Settings (`play-settings` / „Session Context")
+
+- **Struktur-Pass (Grundprinzipien vom Edit-Settings übernommen):** der `play-settings`-Case
+  in `WorkspaceShell` lag direkt in `.workspace-area` (flex-row) → Sektionen/`<hr>`/Button
+  liefen als gequetschte Spalten nebeneinander (gleicher F1-GAU wie Edit zu Beginn). Jetzt
+  dieselbe Shell wie die Edit-Seite: `.settings` (Topbar mit `settings__title` +
+  `settings__detail` als vertikale `settings__pane`-Stapel, `settings__divider`,
+  `settings__muted` für den Leer-Hinweis). Reine Wiederverwendung bestehender Klassen, kein
+  neues CSS. Inhalt unverändert (Campaign/Rolle/Session verlassen) — Funktionsumfang wird
+  als Nächstes gemeinsam durchgegangen.
+  - Verifiziert: tsc 0, eslint 0, Farb-Gate 0.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - **Automatische Backups** (Scheduler + Persistenz) — aktuell Teaser.

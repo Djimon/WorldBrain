@@ -668,43 +668,56 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           </div>
         );
       case 'play-settings':
-        // #390: play-scoped settings area — switch campaign/role,
-        // leave the session. Built from primitives, colors from tokens.
+        // #390 / play-settings UX sprint: play-scoped settings — switch campaign/role,
+        // leave the session. Reuses the same settings shell as the edit side (topbar +
+        // vertical detail panes) so it no longer collapses into cramped flex-row columns.
         return (
           <div className="workspace-area">
-            <h2>{t('play-settings')}</h2>
-            <section className="u-stack u-gap-2">
-              <h3>{t('playSettingsCampaign', 'Campaign')}</h3>
-              {availableCampaigns.length > 0 ? (
-                <Segmented
-                  label={t('playSettingsCampaign', 'Campaign')}
-                  value={activeSessionId ?? ''}
-                  onChange={switchPlayCampaign}
-                  size="compact"
-                  options={availableCampaigns.map((c) => ({ id: c.id, label: c.title }))}
-                />
-              ) : (
-                <p className="workspace-shell__empty-note">{t('playSettingsNoCampaigns', 'Keine Campaigns vorhanden.')}</p>
-              )}
-            </section>
-            <hr />
-            <section className="u-stack u-gap-2">
-              <h3>{t('playSettingsRole', 'Rolle')}</h3>
-              <Segmented
-                label={t('playSettingsRole', 'Rolle')}
-                value={sessionRole ?? 'dm'}
-                onChange={(id) => switchPlayRole(id === 'player' ? 'player' : 'dm')}
-                size="compact"
-                options={[
-                  { id: 'dm', label: t('modeRoleDm', 'Als DM') },
-                  { id: 'player', label: t('modeRolePlayer', 'Als Player') },
-                ]}
-              />
-            </section>
-            <hr />
-            <Button tone="danger" variant="outline" onClick={leavePlaySession}>
-              {t('playSettingsLeave', 'Session verlassen')}
-            </Button>
+            <div className="settings">
+              <div className="settings__topbar">
+                <h1 className="settings__title">{t('play-settings')}</h1>
+              </div>
+              <div className="settings__detail u-stack u-gap-4">
+                <section className="settings__pane u-stack u-gap-3">
+                  <h2 className="settings__pane-title">{t('playSettingsCampaign', 'Campaign')}</h2>
+                  {availableCampaigns.length > 0 ? (
+                    <Segmented
+                      label={t('playSettingsCampaign', 'Campaign')}
+                      value={activeSessionId ?? ''}
+                      onChange={switchPlayCampaign}
+                      size="compact"
+                      options={availableCampaigns.map((c) => ({ id: c.id, label: c.title }))}
+                    />
+                  ) : (
+                    <p className="settings__muted">{t('playSettingsNoCampaigns', 'Keine Campaigns vorhanden.')}</p>
+                  )}
+                </section>
+
+                <hr className="settings__divider" />
+
+                <section className="settings__pane u-stack u-gap-3">
+                  <h2 className="settings__pane-title">{t('playSettingsRole', 'Rolle')}</h2>
+                  <Segmented
+                    label={t('playSettingsRole', 'Rolle')}
+                    value={sessionRole ?? 'dm'}
+                    onChange={(id) => switchPlayRole(id === 'player' ? 'player' : 'dm')}
+                    size="compact"
+                    options={[
+                      { id: 'dm', label: t('modeRoleDm', 'Als DM') },
+                      { id: 'player', label: t('modeRolePlayer', 'Als Player') },
+                    ]}
+                  />
+                </section>
+
+                <hr className="settings__divider" />
+
+                <section className="settings__pane">
+                  <Button tone="danger" variant="outline" onClick={leavePlaySession}>
+                    {t('playSettingsLeave', 'Session verlassen')}
+                  </Button>
+                </section>
+              </div>
+            </div>
           </div>
         );
     }
