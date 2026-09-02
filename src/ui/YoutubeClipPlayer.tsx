@@ -33,6 +33,11 @@ export function YoutubeClipPlayer({ videoUrl, targetVolume, rampSeconds, loop, p
   // last-applied value instead of re-reading it from the IFrame API.
   const currentVolumeRef = useRef(0);
   const rampTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // The last targetVolume this effect actually acted on. A reload / mixer re-sync
+  // re-applies the SAME target with rampSeconds=0; without this guard that re-run would
+  // take the instant branch and snap an in-progress fade-in straight to full volume
+  // (the "suddenly louder on the 2nd interaction" bug).
+  const lastAppliedTargetRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +85,11 @@ export function YoutubeClipPlayer({ videoUrl, targetVolume, rampSeconds, loop, p
   }, [videoUrl]);
 
   useEffect(() => {
+    // Only (re)act when the target actually changed. A rampSeconds-only change (reload/
+    // mixer re-sync forcing instant) on the same target must leave a running fade alone.
+    if (lastAppliedTargetRef.current === targetVolume) return;
+    lastAppliedTargetRef.current = targetVolume;
+
     const player = playerRef.current;
     if (rampTimerRef.current) { clearInterval(rampTimerRef.current); rampTimerRef.current = null; }
 
