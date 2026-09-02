@@ -188,6 +188,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // #292: entityId of the event being created/edited inline in the calendar
   // area (day-click) — NOT a navigation to the Entities area, same page.
   const [calendarEditingEventId, setCalendarEditingEventId] = useState<string | null>(null);
+  // Only a FRESHLY-created event opens straight in edit mode (fill in details right away).
+  // Clicking an existing event opens the overview (read view) — auto-edit there was intrusive.
+  const [calendarEditingStartInEdit, setCalendarEditingStartInEdit] = useState(false);
   // Day clicked, not yet an entity — title required before createEventEntity.
   const [calendarNewDay, setCalendarNewDay] = useState<number | null>(null);
   const [calendarNewTitle, setCalendarNewTitle] = useState('');
@@ -468,7 +471,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                       setCalendarNewDay(day);
                       setCalendarNewTitle('');
                     }}
-                    onEventClick={(id) => setCalendarEditingEventId(id)}
+                    onEventClick={(id) => { setCalendarEditingStartInEdit(false); setCalendarEditingEventId(id); }}
                     refreshToken={calendarRefreshToken}
                   />
                   {calendarNewDay !== null && (
@@ -491,6 +494,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                               .then(({ id }) => {
                                 setCalendarNewDay(null);
                                 setCalendarRefreshToken((n) => n + 1);
+                                setCalendarEditingStartInEdit(true);
                                 setCalendarEditingEventId(id);
                               })
                               .catch(console.error);
@@ -504,6 +508,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                               .then(({ id }) => {
                                 setCalendarNewDay(null);
                                 setCalendarRefreshToken((n) => n + 1);
+                                setCalendarEditingStartInEdit(true);
                                 setCalendarEditingEventId(id);
                               })
                               .catch(console.error);
@@ -533,7 +538,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                         database={database}
                         onNavigateToEntity={navigateToEntity}
                         calendar={activeCalendar}
-                        startInEditMode
+                        startInEditMode={calendarEditingStartInEdit}
                         onSaved={() => setCalendarRefreshToken((n) => n + 1)}
                         onDeleted={() => {
                           setCalendarEditingEventId(null);
