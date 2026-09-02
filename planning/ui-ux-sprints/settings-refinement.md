@@ -75,6 +75,20 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   - Neue token-basierte Klassen `theme-picker__group-label`/`__hint` (keine Hex/Inline).
   - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n 0/0, Theme-DOM-Tests 17 grün.
 
+- **Increment 4 (Feedback: Themes untereinander + Support-Info):**
+  - **Theme-Switcher = vertikale Liste** (`ThemePicker.tsx`): statt `Segmented` jetzt eine
+    `role="radiogroup"` mit einer `ListRow` pro Theme (`role="radio"` + `aria-checked`,
+    Klick → `pick`). Links weiterhin Akzent-Swatch + Theme-Name; **rechts** zwei `StatusChip`-
+    Badges, die zeigen, was das Theme unterstützt: **Modus-Achse** (`modeSupport`:
+    „Einheitlich"/„Pro Modus") und **Hell/Dunkel-Achse** (`appearanceSupport`:
+    „Hell & Dunkel"/„Nur Hell"/„Nur Dunkel"). Über `u-justify-between` an die Kanten gelegt.
+  - Neue i18n-Gruppe `themeCap` in `common` (de+en): unified/perMode/appBoth/appDark/appLight.
+  - Token-CSS `theme-picker__row .theme-picker__option` (Name wächst) + `theme-picker__caps`
+    (Badges bleiben rechts intakt) — keine Hex/Inline.
+  - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n 0/0, Theme-DOM-Tests 37 grün.
+    (Visuelle Preview nicht möglich — Projekt-Anlage braucht Tauri-Backend, im reinen
+    Vite-Dev-Server wirft `invoke`.)
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - SnapshotManager/UpdateNotification-interne rohe Buttons (F3/F4) auf Primitives (falls

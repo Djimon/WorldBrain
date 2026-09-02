@@ -137,6 +137,14 @@
   font-size: 0.8rem;
   color: var(--color-text-muted);
 }
+/* #410 UX: vertical theme list — name grows, support badges stay intact on the right. */
+.theme-picker__row .theme-picker__option {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.theme-picker__caps {
+  flex: 0 0 auto;
+}
 
 .workspace-shell__header-controls {
   margin-left: auto;

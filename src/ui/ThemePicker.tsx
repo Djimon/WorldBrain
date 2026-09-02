@@ -5,9 +5,10 @@ import { mkdir } from '@tauri-apps/plugin-fs';
 import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
 import { userThemesDir } from '../services/user-data-dir';
 import { scanUserThemes } from '../services/user-theme-loader';
-import { Button, Segmented } from './primitives';
+import { Button, ListRow, StatusChip } from './primitives';
 import { getStoredThemeId, setThemeId, THEME_CHANGE_EVENT } from '../theme';
 import { listThemes, previewAccent } from '../styles/theme-registry';
+import type { AppearanceSupport, ModeSupport } from '../styles/theme-registry';
 
 // #388 follow-up: open the folder where user theme files belong
 // (Documents\WorldsAndBeyond\themes\, #406). Ensure the folder exists, then open it in the OS file manager;
@@ -33,6 +34,18 @@ async function openThemesFolder(): Promise<void> {
 export function ThemePicker() {
   const { t } = useTranslation();
   const [themeId, setThemeIdState] = useState<string>(getStoredThemeId);
+
+  // #410 UX: human-readable badges for what each theme supports (shown right of the name).
+  // modeSupport — one palette across edit/play ('unified') vs. a distinct palette per mode ('per-mode').
+  const modeSupportLabel = (m: ModeSupport): string =>
+    m === 'unified' ? t('themeCap.unified', 'Einheitlich') : t('themeCap.perMode', 'Pro Modus');
+  // appearanceSupport — which light/dark appearances the theme ships.
+  const appearanceLabel = (a: AppearanceSupport): string =>
+    a === 'both'
+      ? t('themeCap.appBoth', 'Hell & Dunkel')
+      : a === 'light'
+        ? t('themeCap.appLight', 'Nur Hell')
+        : t('themeCap.appDark', 'Nur Dunkel');
   // #410 UX: bump to re-render the theme list after a live folder re-scan, so newly
   // dropped-in theme files show up as buttons without an app restart.
   const [reloadTick, setReloadTick] = useState(0);
@@ -72,28 +85,42 @@ export function ThemePicker() {
 
   return (
     <div className="theme-picker u-stack u-gap-3">
-      {/* Theme switcher — the built-in + imported themes you can switch between live. */}
+      {/* Theme switcher — one row per theme, listed vertically. Left: swatch + name.
+          Right: badges for what the theme supports (mode axis · light/dark axis). */}
       <div className="u-stack u-gap-1">
         <span className="theme-picker__group-label">{t('themePickerLabel', 'Theme')}</span>
-        <Segmented
+        <div
+          className="theme-picker__list u-stack u-gap-1"
+          role="radiogroup"
+          aria-label={t('themePickerLabel', 'Theme')}
           key={`themes-${reloadTick}`}
-          label={t('themePickerLabel', 'Theme')}
-          value={themeId}
-          onChange={pick}
-          size="compact"
-          options={listThemes().map((th) => ({
-            id: th.id,
-            label: (
-              <span className="theme-picker__option">
-                {/* Live preview: the theme's representative accent as a swatch —
-                    the dynamic color travels via the CSS variable, no hex in the JSX. */}
-                <span className="theme-picker__swatch" aria-hidden="true"
-                  style={{ '--swatch': previewAccent(th) } as CSSProperties} />
-                {t(th.labelKey, th.defaultLabel)}
-              </span>
-            ),
-          }))}
-        />
+        >
+          {listThemes().map((th) => {
+            const active = th.id === themeId;
+            return (
+              <ListRow
+                key={th.id}
+                className="theme-picker__row u-justify-between"
+                selected={active}
+                role="radio"
+                aria-checked={active}
+                onClick={() => pick(th.id)}
+              >
+                <span className="theme-picker__option">
+                  {/* Live preview: the theme's representative accent as a swatch —
+                      the dynamic color travels via the CSS variable, no hex in the JSX. */}
+                  <span className="theme-picker__swatch" aria-hidden="true"
+                    style={{ '--swatch': previewAccent(th) } as CSSProperties} />
+                  {t(th.labelKey, th.defaultLabel)}
+                </span>
+                <span className="theme-picker__caps u-row u-gap-1">
+                  <StatusChip>{modeSupportLabel(th.modeSupport)}</StatusChip>
+                  <StatusChip>{appearanceLabel(th.appearanceSupport)}</StatusChip>
+                </span>
+              </ListRow>
+            );
+          })}
+        </div>
       </div>
 
       {/* Own themes — drop .json theme files in the folder, then re-scan to add them

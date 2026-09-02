@@ -28,6 +28,7 @@
   "themesReloadedAdded": "Newly loaded: {{count}}",
   "themesReloadedNone": "No new themes found.",
   "themesReloadFailed": "Themes folder not readable.",
+  "themeCap": { "unified": "Unified", "perMode": "Per mode", "appBoth": "Light & dark", "appDark": "Dark only", "appLight": "Light only" },
   "appearanceForced": "Appearance set by theme",
   "appearanceToLight": "Light appearance",
   "appearanceToDark": "Dark appearance",

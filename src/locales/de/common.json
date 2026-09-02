@@ -28,6 +28,7 @@
   "themesReloadedAdded": "Neu geladen: {{count}}",
   "themesReloadedNone": "Keine neuen Themes gefunden.",
   "themesReloadFailed": "Themes-Ordner nicht lesbar.",
+  "themeCap": { "unified": "Einheitlich", "perMode": "Pro Modus", "appBoth": "Hell & Dunkel", "appDark": "Nur Dunkel", "appLight": "Nur Hell" },
   "appearanceForced": "Erscheinung vom Theme vorgegeben",
   "appearanceToLight": "Helle Erscheinung",
   "appearanceToDark": "Dunkle Erscheinung",
