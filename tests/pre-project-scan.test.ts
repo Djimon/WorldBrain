@@ -155,6 +155,43 @@ describe('reconcileProjects — merge the scan into the registry', () => {
     expect(cfg.last_opened_project_id).toBe('p-dead');
   });
 
+  it('drops a stale registry entry that points at a folder the scan claims for another id', async () => {
+    // Real folder on disk belongs to p-real ("Test Welt"); a stale entry p-ghost ("Test")
+    // points at the SAME path with a different id → must be pruned (no path duplicates).
+    files.set(CONFIG, JSON.stringify({
+      last_opened_project_id: null,
+      projects: [
+        { id: 'p-ghost', title: 'Test', path: `${PROJECTS}/test` },
+        { id: 'p-real', title: 'Test Welt', path: `${PROJECTS}/test` },
+      ],
+      data_dir: '/docs/WAB',
+    }));
+    existsSet.add(PROJECTS);
+    dirents.set(PROJECTS, [{ name: 'test', isDirectory: true }]);
+    projectFolder('test', { id: 'p-real', title: 'Test Welt' });
+
+    const cfg = await reconcileProjects(CONFIG, PROJECTS);
+    expect(cfg.projects).toEqual([{ id: 'p-real', title: 'Test Welt', path: `${PROJECTS}/test` }]);
+  });
+
+  it('does not keep two registry entries for the same folder (path is unique)', async () => {
+    // Same path, two ids, and NO scan (folder not under data_dir scan) → still only one wins.
+    files.set(CONFIG, JSON.stringify({
+      last_opened_project_id: null,
+      projects: [
+        { id: 'p-a', title: 'A', path: '/ext/shared' },
+        { id: 'p-b', title: 'B', path: '/ext/shared' },
+      ],
+      data_dir: '/docs/WAB',
+    }));
+    existsSet.add('/ext/shared');
+    existsSet.add(PROJECTS);
+    dirents.set(PROJECTS, []);
+
+    const cfg = await reconcileProjects(CONFIG, PROJECTS);
+    expect(cfg.projects).toEqual([{ id: 'p-a', title: 'A', path: '/ext/shared' }]);
+  });
+
   it('does not rewrite the config when nothing changed', async () => {
     files.set(CONFIG, JSON.stringify({
       last_opened_project_id: 'p-test',

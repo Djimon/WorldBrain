@@ -48,32 +48,50 @@ export async function scanProjects(projectsDir?: string): Promise<ProjectEntry[]
  * Reconcile the registry with what is actually on disk and persist the result:
  * - the folder scan wins (adds newly dropped-in projects, heals paths after a move),
  * - registry entries whose folder still exists are kept (covers projects outside data_dir),
- * - entries whose folder is verifiably gone and are not rediscovered are pruned.
+ * - entries whose folder is verifiably gone and are not rediscovered are pruned,
+ * - each id AND each folder path appears at most once (the scan's project.json is the truth,
+ *   so a stale entry pointing at a folder the scan claims for another id is dropped).
  * `last_opened_project_id` is left untouched — if it now points nowhere, the welcome screen
  * already shows its "last project missing" hint. Only writes when something actually changed.
  * Best-effort in a non-Tauri env (returns the config unchanged if the scan/write is unavailable).
  */
+function normalizePath(p: string): string {
+  return p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+}
+
 export async function reconcileProjects(configPath?: string, projectsDir?: string): Promise<AppConfig> {
   const cfg = await readAppConfig(configPath);
   const scanned = await scanProjects(projectsDir);
 
-  const byId = new Map<string, ProjectEntry>();
-  // 1. keep registry entries whose folder is still there (covers custom locations). Only
-  //    prune when exists() can POSITIVELY say the folder is gone — if the check itself is
-  //    unavailable (non-Tauri), keep the entry rather than wrongly dropping it.
+  const projects: ProjectEntry[] = [];
+  const seenIds = new Set<string>();
+  const seenPaths = new Set<string>();
+  const claim = (e: ProjectEntry): void => {
+    projects.push(e);
+    seenIds.add(e.id);
+    seenPaths.add(normalizePath(e.path));
+  };
+
+  // 1. the scan is authoritative for its folders — a project.json defines who owns a path.
+  //    (data_dir\projects can't contain duplicate folder names, so paths here are unique.)
+  for (const s of scanned) {
+    if (seenIds.has(s.id)) continue;
+    claim(s);
+  }
+  // 2. keep registry entries that add a NEW id AND a NEW path and whose folder still exists.
+  //    This covers projects outside data_dir, while never producing a second entry for a
+  //    path the scan already claimed (that stale entry is dropped) and never a duplicate id.
   for (const p of cfg.projects) {
+    if (seenIds.has(p.id) || seenPaths.has(normalizePath(p.path))) continue;
     let present = true;
     try {
       present = await exists(p.path);
     } catch {
-      present = true; // can't determine → keep
+      present = true; // can't determine (non-Tauri) → keep rather than wrongly drop
     }
-    if (present) byId.set(p.id, p);
+    if (present) claim(p);
   }
-  // 2. the scan wins — fresh path heals moves, and brand-new folders get added
-  for (const s of scanned) byId.set(s.id, s);
 
-  const projects = [...byId.values()];
   const next: AppConfig = { ...cfg, projects };
 
   if (JSON.stringify(next) !== JSON.stringify(cfg)) {
