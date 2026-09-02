@@ -40,7 +40,9 @@ const soundboardProjectDir = soundboardParams.get('projectDir');
 // pre-release S4 (#406): first-run bootstrap of the user-visible data dirs
 // (Documents\WorldsAndBeyond\{projects,plugins,themes} + theme-tester seed). Main
 // window only — the detached soundboard window shares the same index.html. Idempotent
-// and non-Tauri-safe; runs before theme scan so the themes dir exists.
+// and non-Tauri-safe; fire-and-forget — not sequenced with the theme scan below (no
+// ordering guarantee, and none needed: on a real first run there are no user themes to
+// scan yet, and the seeding is idempotent, so a race is benign).
 if (!isSoundboardWindow) {
   void ensureUserDataDirs();
 }

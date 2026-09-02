@@ -22,12 +22,12 @@
   },
   "snapshot": {
     "title": "Backup",
-    "create": "Create snapshot",
-    "name": "Snapshot name",
+    "create": "Create backup",
+    "name": "Backup name",
     "restore": "Restore",
     "empty": "No backups yet. Create one above.",
     "confirmRestore": "Current changes will be lost — continue?",
-    "confirmDelete": "Delete snapshot “{{name}}”?"
+    "confirmDelete": "Delete backup “{{name}}”?"
   },
   "playMode": {
     "switchToCreate": "Switch to Create mode",

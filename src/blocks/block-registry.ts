@@ -78,7 +78,7 @@ const registry: Map<string, BlockDefinition> = new Map([
   [BlockType.entity_embed, { type: BlockType.entity_embed }],
   [BlockType.secret_block, { type: BlockType.secret_block }],
   [BlockType.rule_reference, { type: BlockType.rule_reference }],
-  [BlockType.map_embed, { type: BlockType.map_embed, renderer: 'MapEmbedBlock' }],
+  [BlockType.map_embed, { type: BlockType.map_embed }],
 ]);
 
 export function getBlockDefinition(type: BlockType): BlockDefinition | undefined {

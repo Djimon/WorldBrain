@@ -22,12 +22,12 @@
   },
   "snapshot": {
     "title": "Backup",
-    "create": "Snapshot erstellen",
-    "name": "Snapshot-Name",
+    "create": "Backup erstellen",
+    "name": "Backup-Name",
     "restore": "Wiederherstellen",
     "empty": "Noch keine Backups. Lege oben eins an.",
     "confirmRestore": "Aktuelle Änderungen gehen verloren — fortfahren?",
-    "confirmDelete": "Speicherstand „{{name}}“ wirklich löschen?"
+    "confirmDelete": "Backup „{{name}}“ wirklich löschen?"
   },
   "playMode": {
     "switchToCreate": "Zu Create-Modus wechseln",

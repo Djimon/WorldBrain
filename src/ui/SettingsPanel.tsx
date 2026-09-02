@@ -234,14 +234,22 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
                 <div className="u-stack u-gap-2">
                   <div className="settings__block-label">{t('settingsSwitchProject', 'Projekt wechseln')}</div>
                   <ListSurface>
-                    {projects.map((p) => (
-                      <ListRow key={p.id} as="div" selected={p.id === selectedId} aria-current={p.id === selectedId} onClick={() => { setSelectedId(p.id); setTitle(p.title); setEditing(false); }}>
-                        <span className="u-flex-1">{p.title}</span>
-                        {p.id === projectId
-                          ? <StatusChip tone="accent">{t('settingsActive', 'Aktiv')}</StatusChip>
-                          : <Button size="compact" variant="outline" onClick={(e) => { e.stopPropagation(); onOpenProject?.(p.id); }}>{t('settingsOpenProject', 'Öffnen')}</Button>}
-                      </ListRow>
-                    ))}
+                    {projects.map((p) => {
+                      // Preview-on-click. The row stays as="div" (not as="button") because it
+                      // contains a real Open <Button> — nesting a button in a button is invalid
+                      // HTML. role/tabIndex/onKeyDown make the preview keyboard-reachable anyway.
+                      const preview = () => { setSelectedId(p.id); setTitle(p.title); setEditing(false); };
+                      return (
+                        <ListRow key={p.id} as="div" selected={p.id === selectedId} aria-current={p.id === selectedId}
+                          role="button" tabIndex={0} onClick={preview}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); preview(); } }}>
+                          <span className="u-flex-1">{p.title}</span>
+                          {p.id === projectId
+                            ? <StatusChip tone="accent">{t('settingsActive', 'Aktiv')}</StatusChip>
+                            : <Button size="compact" variant="outline" onClick={(e) => { e.stopPropagation(); onOpenProject?.(p.id); }}>{t('settingsOpenProject', 'Öffnen')}</Button>}
+                        </ListRow>
+                      );
+                    })}
                   </ListSurface>
                 </div>
               )}

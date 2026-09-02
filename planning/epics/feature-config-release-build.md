@@ -131,6 +131,36 @@ Docs/Planning/.md) gehört nicht in den Release; `theme-tester.html` wird gesond
   **maps** dagegen (#412) ist voll tree-geshaked (MapsArea/MapViewer/PlayCockpitMap fallen bei
   `maps=false` aus `dist/` — edit **und** play-seitig).
 
+## S1-Spike-Findings (Kapselung & Tree-Shaking) — nachgetragen (#431)
+
+> Konsolidiert das S1/#403-Ergebnis als Repo-Artefakt (vorher nur verstreut in D11/D12).
+> **Verdikt: gate-bar OHNE vorgelagerten Entkapselungs-Refactor** — chronicle/cards/
+> plugins-UI/rules liegen an ihren Import-Grenzen sauber genug für Rollup-Tree-Shaking via
+> konditionale/dynamische Imports (in S2 #404 umgesetzt + reproduzierbar per `dist/`-Grep
+> belegt: `scripts/verify-feature-cut.mjs`, `npm run verify:feature-cut`, Teil von `check`).
+
+Import-Karte pro Cut-Feature (Mount-Stelle → Lazy-Chunk, der bei `false` aus `dist/` fällt):
+- **chronicle** → `ChronicleView` — ein Mount, sauber isoliert.
+- **cards** → `CardList` · `CardCreationFlow` · `PrintSheetComposer`. Embed-Abhängigkeit (A3)
+  geklärt: **kein** `CardPreview`-Quergebrauch in maps/entities, der den Cut blockiert.
+- **plugins-UI** → `PluginManager` (nur die Verwaltungs-UI). **Substrat bleibt** verdrahtet
+  (`plugin-entity-service` / `-declaration-registry` / `-schema-loader` / `entity-type-schemas`)
+  — top-level import, nicht hinter dem Gate → Kern-Entity-Typen überleben den Cut.
+- **rules** → `RulesArea` (inkl. DM-Screen + rule-evaluations; nichts Aktives hängt dran).
+
+Zusätzlich in S2 gate-bar gemacht (D11): **audio** → `AudioSoundboardWindow`; **graph** →
+`GlobalGraphView` (ein Feature über Graph-Bereich + Ego-Graph-Tab; sigma/pixi/graphology
+fallen gemeinsam). **maps** (#412) voll tree-geshaked (`MapsArea`/`MapViewer`/`PlayCockpitMap`);
+**session** (#413) bewusste Runtime-Hide-Ausnahme (D12).
+
+**Bekannte Restkopplung (maps, #412-Nachlese via #431):** die statischen Imports
+`host-token-sync` + `presented-map-push` (`src/ui/WorkspaceShell.tsx:27,30`) ziehen die leichte
+DB-Glue von `map-service` + `map-layer-service` (Session-Transport-Schicht) auch bei
+`maps=false` ins Haupt-Bundle. Die **schweren** Map-Chunks (inkl. pixi) fallen korrekt raus
+(`verify-feature-cut` grün) — nur diese Transport-Glue bleibt. Für 0.1 bewusst akzeptiert (kein
+pixi-Ballast); sauberes Lazy-Laden hinter der maps-Grenze bleibt ein späterer Refactor (analog
+D12/session).
+
 ## Cut-Liste bestätigt ✅
 
 chronicle · cards · **plugins-UI (Substrat bleibt!)** · rules — raus in beiden Modi

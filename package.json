@@ -1,7 +1,7 @@
 {
   "name": "worlds-and-beyond",
   "version": "0.0.27",
-  "build": 116,
+  "build": 117,
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
@@ -13,7 +13,8 @@
     "lint:i18n": "node scripts/check-i18n-missing-keys.mjs",
     "lint:prune": "eslint src core_data --prune-suppressions",
     "bump:build": "node scripts/bump-build.mjs",
-    "check": "npm run check:toolchain && npm run check:prerequisites && npm run lint && npm run test && npm run build && npm run desktop:build",
+    "check": "npm run check:toolchain && npm run check:prerequisites && npm run lint && npm run test && npm run build && npm run verify:feature-cut && npm run desktop:build",
+    "verify:feature-cut": "node scripts/verify-feature-cut.mjs",
     "check:prerequisites": "node scripts/check-prerequisites.mjs",
     "check:toolchain": "node scripts/check-toolchain.mjs",
     "dev": "vite",
