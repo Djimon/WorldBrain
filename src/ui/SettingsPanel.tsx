@@ -254,6 +254,16 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
             <section className="settings__pane u-stack u-gap-3">
               <h2 className="settings__pane-title">{t('settingsCat.backup')}</h2>
               <SnapshotManager projectId={projectId} projectDir={projectDir} snapshotsDir={snapshotsDir} onRestored={onProjectClose ?? (() => {})} />
+              <hr className="settings__divider" />
+              {/* Teaser: automatic backups are coming — same "Soon" chip as plugins/shortcuts. */}
+              <div className="settings__teaser u-stack u-gap-1">
+                <div className="u-row u-gap-2">
+                  <span className="settings__teaser-icon" aria-hidden="true">⏱️</span>
+                  <span className="settings__teaser-title">{t('settingsBackupAuto.title')}</span>
+                  <StatusChip tone="warning">{t('settingsSoon', 'Bald')}</StatusChip>
+                </div>
+                <p className="settings__soon-body">{t('settingsBackupAuto.body')}</p>
+              </div>
             </section>
           )}
 

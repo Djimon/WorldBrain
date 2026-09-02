@@ -104,6 +104,12 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n 0/0, Snapshot-DOM-Tests 12 grün,
     Session-Strings-Parität 30 grün.
 
+  - **Nachtrag:** unter der Liste ein inline „Bald"-Teaser **Automatische Backups**
+    (⏱️ + `StatusChip tone=warning` „Bald" + Kurztext, wie Plugins/Shortcuts, aber
+    linksbündig statt zentriert). i18n `settingsBackupAuto.title/body` (de+en),
+    Klassen `settings__teaser-icon/-title`.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
+- **Automatische Backups** (Scheduler + Persistenz) — aktuell Teaser.
 - UpdateNotification-interne rohe Buttons (F4) auf Primitives (falls es woanders bleibt).
