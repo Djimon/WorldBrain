@@ -269,6 +269,8 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
           {cat === 'backup' && (
             <section className="settings__pane u-stack u-gap-3">
               <h2 className="settings__pane-title">{t('settingsCat.backup')}</h2>
+              {/* Backups are per-project (stored in <projectDir>\snapshots) — make the scope explicit. */}
+              <p className="settings__backup-scope">{t('settingsBackupFor', { project: title, defaultValue: 'Backups für „{{project}}"' })}</p>
               <SnapshotManager projectId={projectId} projectDir={projectDir} snapshotsDir={snapshotsDir} onRestored={onProjectClose ?? (() => {})} />
               <hr className="settings__divider" />
               {/* Teaser: automatic backups are coming — centred "Soon" block, same as plugins/shortcuts. */}

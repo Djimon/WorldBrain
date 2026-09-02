@@ -125,6 +125,7 @@
 .snapshot__sub { display: flex; gap: var(--space-1); font-size: 0.75rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .snapshot__actions { flex: 0 0 auto; }
 .snapshot__empty { color: var(--color-text-muted); font-style: italic; font-size: 0.875rem; margin: 0; }
+.settings__backup-scope { margin: 0; font-size: 0.85rem; color: var(--color-text-muted); }
 
 /* Confirm overlay — centred modal over a dimmed backdrop. */
 .snapshot__overlay {

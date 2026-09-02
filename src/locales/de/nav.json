@@ -195,6 +195,7 @@
   "settingsStat": { "database": "Datenbank", "entities": "Entitäten", "maps": "Karten" },
   "settingsAbout": { "version": "Version", "company": "Firma", "language": "Sprache", "dataFolder": "Datenordner" },
   "settingsCopyright": "© {{years}} {{company}}. Alle Rechte vorbehalten.",
+  "settingsBackupFor": "Backups für „{{project}}“",
   "settingsPluginsEngine": "Engine-Version",
   "settingsPlugins": { "title": "Plugins & eigene Regelsysteme", "body": "Erweitere Worlds and Beyond mit Regelsystemen, eigenen Entity-Typen und Inhalten. Kommt nach dem 0.1-Release — hier kannst du sie dann verwalten." },
   "settingsShortcuts": { "title": "Tastenkürzel", "body": "Frei belegbare Kürzel zum schnellen Wechseln zwischen Bereichen. Kommt in einem der nächsten Updates." },

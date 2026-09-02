@@ -195,6 +195,7 @@
   "settingsStat": { "database": "Database", "entities": "Entities", "maps": "Maps" },
   "settingsAbout": { "version": "Version", "company": "Company", "language": "Language", "dataFolder": "Data folder" },
   "settingsCopyright": "© {{years}} {{company}}. All rights reserved.",
+  "settingsBackupFor": "Backups for “{{project}}”",
   "settingsPluginsEngine": "Engine version",
   "settingsPlugins": { "title": "Plugins & custom rule systems", "body": "Extend Worlds and Beyond with rule systems, custom entity types and content. Coming after the 0.1 release — you'll manage them here." },
   "settingsShortcuts": { "title": "Shortcuts", "body": "Freely bindable shortcuts to switch between areas quickly. Coming in an upcoming update." },
