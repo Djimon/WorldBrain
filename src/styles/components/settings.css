@@ -94,6 +94,7 @@
 
 /* coming-soon empty state */
 .settings__soon {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -105,6 +106,15 @@
 }
 .settings__soon-emoji { font-size: 2.2rem; opacity: 0.5; }
 .settings__soon-body { color: var(--color-text-muted); font-size: 0.875rem; }
+/* Engine version tucked into the top-right corner of the plugins pane. */
+.settings__corner-meta {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-4);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
 
 /* Backup / snapshots (SnapshotManager). Atoms (Field/Button/ListRow/Panel) come
    from primitives; only structural one-offs live here. All colours from tokens. */

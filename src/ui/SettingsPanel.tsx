@@ -10,6 +10,7 @@ import { appDataDir, join } from '@tauri-apps/api/path';
 import { stat } from '@tauri-apps/plugin-fs';
 import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
 import { version as appVersion } from '../../package.json';
+import { ENGINE_VERSION } from '../branding/brand';
 import { useDatabase } from '../services/DatabaseContext';
 import { readAppConfig, registerProject } from '../services/app-config-service';
 import type { ProjectEntry } from '../services/app-config-service';
@@ -270,7 +271,6 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
               <h2 className="settings__pane-title">{t('settingsCat.about')}</h2>
               <dl className="settings__about">
                 <div><dt>{t('settingsAbout.version', 'Version')}</dt><dd>{t('brand.platform', { ns: 'common' })} {appVersion}</dd></div>
-                <div><dt>{t('settingsAbout.engine', 'Engine')}</dt><dd>{t('brand.engine', { ns: 'common' })}</dd></div>
                 <div><dt>{t('settingsAbout.language', 'Sprache')}</dt><dd>{i18n.language === 'en' ? 'English' : 'Deutsch'}</dd></div>
                 {dataDir && (
                   <div><dt>{t('settingsAbout.dataFolder', 'Datenordner')}</dt>
@@ -286,6 +286,12 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
 
           {(cat === 'plugins' || cat === 'shortcuts') && (
             <section className="settings__pane settings__soon">
+              {cat === 'plugins' && (
+                /* Engine version lives with the plugin/rule system, not in About. */
+                <span className="settings__corner-meta">
+                  {t('settingsPluginsEngine', 'Engine-Version')}: {t('brand.engine', { ns: 'common' })} v{ENGINE_VERSION}
+                </span>
+              )}
               <div className="settings__soon-emoji" aria-hidden="true">{cat === 'plugins' ? '🔌' : '⌨️'}</div>
               <StatusChip tone="warning">{t('settingsSoon', 'Bald')}</StatusChip>
               <h2 className="settings__pane-title">{cat === 'plugins' ? t('settingsPlugins.title') : t('settingsShortcuts.title')}</h2>

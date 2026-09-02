@@ -109,6 +109,15 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
     linksbündig statt zentriert). i18n `settingsBackupAuto.title/body` (de+en),
     Klassen `settings__teaser-icon/-title`.
 
+- **Increment 6 (Feedback: Engine gehört nicht in About):**
+  - **„Engine"-Zeile aus dem About-Pane entfernt** — RuleLoom ist nur die *Plugin-/Regel-
+    Engine*; bei deaktiviertem Plugin-System ergibt sie in „Über" keinen Sinn.
+  - **Engine-Version zieht in den Plugin-Bereich**: kleines Corner-Label oben rechts im
+    Plugins-Pane (`settings__corner-meta`), Text „Engine-Version: RuleLoom v1.0".
+  - Neue Konstante `ENGINE_VERSION = '1.0'` in `branding/brand.ts` (sprachneutral, kein i18n);
+    neuer Label-Key `settingsPluginsEngine` (de+en); `settingsAbout.engine` entfernt.
+  - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n 0/0, Nav-Strings 15 + Branding 8 grün.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - **Automatische Backups** (Scheduler + Persistenz) — aktuell Teaser.

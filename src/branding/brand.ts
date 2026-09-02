@@ -6,6 +6,11 @@
 // Epic: planning/epics/identity-naming-mode-theming.md (Story S01, Decision 2).
 import { useTranslation } from 'react-i18next';
 
+/** Version of the rule engine (RuleLoom) — distinct from the app version. The engine
+ *  is the plugin/rule-system layer, so its version belongs to the plugin view, not
+ *  the app's About screen. Language-neutral, hence a plain constant (not i18n). */
+export const ENGINE_VERSION = '1.0';
+
 export interface Brand {
   /** Platform brand — the umbrella over both modes. */
   platform: string;
