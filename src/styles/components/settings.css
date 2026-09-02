@@ -106,6 +106,30 @@
 .settings__soon-emoji { font-size: 2.2rem; opacity: 0.5; }
 .settings__soon-body { color: var(--color-text-muted); font-size: 0.875rem; }
 
+/* Backup / snapshots (SnapshotManager). Atoms (Field/Button/ListRow/Panel) come
+   from primitives; only structural one-offs live here. All colours from tokens. */
+.snapshot__create { display: flex; align-items: flex-end; gap: var(--space-2); }
+.snapshot__info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.snapshot__name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.snapshot__sub { display: flex; gap: var(--space-1); font-size: 0.75rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.snapshot__actions { flex: 0 0 auto; }
+.snapshot__empty { color: var(--color-text-muted); font-style: italic; font-size: 0.875rem; margin: 0; }
+
+/* Confirm overlay — centred modal over a dimmed backdrop. */
+.snapshot__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--color-scrim);
+}
+.snapshot__dialog { width: min(420px, 100%); padding: var(--space-5); }
+.snapshot__dialog-text { margin: 0; color: var(--color-text); line-height: 1.5; }
+.snapshot__dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
+
 @media (max-width: 640px) {
   .settings__body { grid-template-columns: 1fr; }
   .settings__nav { border-right: 0; border-bottom: 1px solid var(--color-border); }

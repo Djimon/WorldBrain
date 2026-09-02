@@ -89,7 +89,21 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
     (Visuelle Preview nicht möglich — Projekt-Anlage braucht Tauri-Backend, im reinen
     Vite-Dev-Server wirft `invoke`.)
 
+- **Increment 5 (Feedback: Backup fehlt CSS — F3 behoben):**
+  - **SnapshotManager komplett auf Primitives umgebaut** (`SnapshotManager.tsx`): die 7 rohen
+    `<button>` + rohes `div/label/input/ul/li` sind weg. Jetzt: **Create-Zeile** oben
+    (`Field` + `Button tone=accent`, Enter-to-create, bei leerem Namen disabled) und darunter
+    eine **Liste** (`ListSurface`/`ListRow`) mit je Name + Meta (Datum · Größe) links und den
+    Aktionen **Wiederherstellen** (`Button outline`) + **Löschen** (`Button outline danger`)
+    rechts. Leerzustand als eigener Hinweis (`snapshot.empty`, de+en).
+  - **Bestätigungen** (Restore/Delete) zu **einem** zentrierten Modal-Overlay zusammengefasst
+    (Scrim-Backdrop `--color-scrim`, `Panel` + Cancel/Confirm), Confirm bei Delete in `danger`.
+  - Pane bekommt jetzt einen `settings__pane-title` „Backup" wie die anderen Panes
+    (interner `<h2>` aus dem SnapshotManager entfernt).
+  - Token-CSS `snapshot__*` in `settings.css` (keine Hex/Inline; Scrim/Border/Text aus Tokens).
+  - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n 0/0, Snapshot-DOM-Tests 12 grün,
+    Session-Strings-Parität 30 grün.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
-- SnapshotManager/UpdateNotification-interne rohe Buttons (F3/F4) auf Primitives (falls
-  UpdateNotification woanders bleibt).
+- UpdateNotification-interne rohe Buttons (F4) auf Primitives (falls es woanders bleibt).

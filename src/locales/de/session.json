@@ -25,6 +25,7 @@
     "create": "Snapshot erstellen",
     "name": "Snapshot-Name",
     "restore": "Wiederherstellen",
+    "empty": "Noch keine Backups. Lege oben eins an.",
     "confirmRestore": "Aktuelle Änderungen gehen verloren — fortfahren?",
     "confirmDelete": "Speicherstand „{{name}}“ wirklich löschen?"
   },

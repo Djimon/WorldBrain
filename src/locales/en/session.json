@@ -25,6 +25,7 @@
     "create": "Create snapshot",
     "name": "Snapshot name",
     "restore": "Restore",
+    "empty": "No backups yet. Create one above.",
     "confirmRestore": "Current changes will be lost — continue?",
     "confirmDelete": "Delete snapshot “{{name}}”?"
   },

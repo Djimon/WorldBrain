@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { listSnapshots, createSnapshot, restoreSnapshot, deleteSnapshot } from '../services/snapshot-service';
 import type { SnapshotEntry } from '../services/snapshot-service';
+import { Button, Field, ListRow, ListSurface, Panel } from './primitives';
 
 interface SnapshotManagerProps {
   projectId: string;
@@ -58,51 +59,82 @@ export function SnapshotManager({ projectId, onRestored, projectDir, snapshotsDi
   }
 
   return (
-    <div>
-      <h2>{t('snapshot.title')}</h2>
-
-      <div>
-        <label>
-          {t('snapshot.name')}
-          <input
-            type="text"
-            aria-label={t('snapshot.name')}
+    <div className="snapshot u-stack u-gap-4">
+      {/* Create — name field + action on one row, action aligned to the input baseline. */}
+      <div className="snapshot__create">
+        <div className="u-grow">
+          <Field
+            label={t('snapshot.name')}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
           />
-        </label>
-        <button onClick={handleCreate}>{t('snapshot.create')}</button>
+        </div>
+        <Button tone="accent" onClick={handleCreate} disabled={!newName.trim()}>
+          {t('snapshot.create')}
+        </Button>
       </div>
 
-      <ul>
-        {snapshots.map((snap) => (
-          <li key={snap.id}>
-            <span>{snap.name}</span>
-            <span>{formatDate(snap.createdAt)}</span>
-            <span>{formatSize(snap.sizeBytes)}</span>
-            <button aria-label={t('snapshot.restore')} onClick={() => setDialog({ type: 'restore', snapshot: snap })}>
-              {t('snapshot.restore')}
-            </button>
-            <button aria-label={t('delete', { ns: 'common' })} onClick={() => setDialog({ type: 'delete', snapshot: snap })}>
-              {t('delete', { ns: 'common' })}
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      {dialog?.type === 'restore' && (
-        <div role="dialog" aria-modal="true">
-          <p>{t('snapshot.confirmRestore')}</p>
-          <button onClick={handleConfirmRestore}>{t('yes', { ns: 'common' })}</button>
-          <button onClick={() => setDialog(null)}>{t('cancel', { ns: 'common' })}</button>
-        </div>
+      {/* Saved states — one row each; name + meta on the left, actions on the right. */}
+      {snapshots.length === 0 ? (
+        <p className="snapshot__empty">{t('snapshot.empty')}</p>
+      ) : (
+        <ListSurface>
+          {snapshots.map((snap) => (
+            <ListRow as="div" key={snap.id} interactive={false} className="u-justify-between">
+              <span className="snapshot__info">
+                <span className="snapshot__name">{snap.name}</span>
+                <span className="snapshot__sub">
+                  <span>{formatDate(snap.createdAt)}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{formatSize(snap.sizeBytes)}</span>
+                </span>
+              </span>
+              <span className="snapshot__actions u-row u-gap-2">
+                <Button
+                  variant="outline"
+                  size="compact"
+                  aria-label={t('snapshot.restore')}
+                  onClick={() => setDialog({ type: 'restore', snapshot: snap })}
+                >
+                  {t('snapshot.restore')}
+                </Button>
+                <Button
+                  variant="outline"
+                  tone="danger"
+                  size="compact"
+                  aria-label={t('delete', { ns: 'common' })}
+                  onClick={() => setDialog({ type: 'delete', snapshot: snap })}
+                >
+                  {t('delete', { ns: 'common' })}
+                </Button>
+              </span>
+            </ListRow>
+          ))}
+        </ListSurface>
       )}
 
-      {dialog?.type === 'delete' && (
-        <div role="dialog" aria-modal="true">
-          <p>{t('snapshot.confirmDelete', { name: dialog.snapshot.name })}</p>
-          <button onClick={handleConfirmDelete}>{t('yes', { ns: 'common' })}</button>
-          <button onClick={() => setDialog(null)}>{t('cancel', { ns: 'common' })}</button>
+      {/* Single confirm overlay for both restore and delete. */}
+      {dialog !== null && (
+        <div className="snapshot__overlay" role="dialog" aria-modal="true">
+          <Panel className="snapshot__dialog u-stack u-gap-4">
+            <p className="snapshot__dialog-text">
+              {dialog.type === 'restore'
+                ? t('snapshot.confirmRestore')
+                : t('snapshot.confirmDelete', { name: dialog.snapshot.name })}
+            </p>
+            <div className="snapshot__dialog-actions">
+              <Button variant="outline" onClick={() => setDialog(null)}>
+                {t('cancel', { ns: 'common' })}
+              </Button>
+              <Button
+                tone={dialog.type === 'delete' ? 'danger' : 'accent'}
+                onClick={dialog.type === 'restore' ? handleConfirmRestore : handleConfirmDelete}
+              >
+                {t('yes', { ns: 'common' })}
+              </Button>
+            </div>
+          </Panel>
         </div>
       )}
     </div>

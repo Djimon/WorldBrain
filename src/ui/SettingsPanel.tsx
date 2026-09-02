@@ -251,7 +251,8 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
           )}
 
           {cat === 'backup' && (
-            <section className="settings__pane">
+            <section className="settings__pane u-stack u-gap-3">
+              <h2 className="settings__pane-title">{t('settingsCat.backup')}</h2>
               <SnapshotManager projectId={projectId} projectDir={projectDir} snapshotsDir={snapshotsDir} onRestored={onProjectClose ?? (() => {})} />
             </section>
           )}
