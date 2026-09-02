@@ -5,5 +5,6 @@
   "rules": true,
   "audio": true,
   "graph": true,
-  "maps": true
+  "maps": true,
+  "session": true
 }

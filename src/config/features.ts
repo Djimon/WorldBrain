@@ -17,7 +17,7 @@
 //     the dead branch and drop the import() chunk. A function call there would not
 //     be statically analyzable and the code would stay in the bundle.
 
-export const FEATURE_IDS = ['chronicle', 'cards', 'plugins', 'rules', 'audio', 'graph', 'maps'] as const;
+export const FEATURE_IDS = ['chronicle', 'cards', 'plugins', 'rules', 'audio', 'graph', 'maps', 'session'] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 
 // Release values from the compile constants (see vite-env.d.ts). Never read in the
@@ -30,6 +30,12 @@ const RELEASED: Record<FeatureId, boolean> = {
   audio: __FEATURE_AUDIO__,
   graph: __FEATURE_GRAPH__,
   maps: __FEATURE_MAPS__,
+  // #413 EXCEPTION: 'session' (the whole play/multiplayer MODE) is a runtime HIDE,
+  // not a build-time tree-shake. Its ~200 lines of transport orchestration are woven
+  // too deep into WorkspaceShell to extract safely for now; session=false hides the
+  // "Spielen" toggle + the session area (feature('session')), so the play cockpit is
+  // unreachable, but the code stays in the bundle. Full tree-shaking = later refactor.
+  session: __FEATURE_SESSION__,
 };
 
 /** True if the feature is available in the current build. Dev = all features. */

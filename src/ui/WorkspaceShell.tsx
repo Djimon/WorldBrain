@@ -965,16 +965,22 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             <span className="workspace-shell__project-name">{projectTitle ?? projectId}</span>
             <span className="workspace-shell__area-name">{activeAreaLabel}</span>
             <div className="workspace-shell__header-controls">
-              <Segmented
-                label={t('modeToggleLabel', 'Modus')}
-                value={mode}
-                onChange={(id) => { if (id !== mode) handleModeToggle(); }}
-                size="compact"
-                options={[
-                  { id: 'edit', label: t('modeEdit', 'Bearbeiten') },
-                  { id: 'play', label: t('modePlay', 'Spielen') },
-                ]}
-              />
+              {/* #413 (runtime HIDE, not tree-shaken): the play/multiplayer mode is
+                  gated by feature('session'). session=false hides the edit↔play toggle
+                  so the cockpit is unreachable (the session area is hidden generically
+                  via visibleAreas). Code stays in the bundle by design (see features.ts). */}
+              {feature('session') && (
+                <Segmented
+                  label={t('modeToggleLabel', 'Modus')}
+                  value={mode}
+                  onChange={(id) => { if (id !== mode) handleModeToggle(); }}
+                  size="compact"
+                  options={[
+                    { id: 'edit', label: t('modeEdit', 'Bearbeiten') },
+                    { id: 'play', label: t('modePlay', 'Spielen') },
+                  ]}
+                />
+              )}
               <LanguageSwitcher />
               <ThemeToggle />
             </div>

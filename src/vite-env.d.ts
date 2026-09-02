@@ -10,3 +10,4 @@ declare const __FEATURE_RULES__: boolean;
 declare const __FEATURE_AUDIO__: boolean;
 declare const __FEATURE_GRAPH__: boolean;
 declare const __FEATURE_MAPS__: boolean;
+declare const __FEATURE_SESSION__: boolean;
