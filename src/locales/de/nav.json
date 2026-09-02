@@ -195,7 +195,7 @@
   "settingsTitleLabel": "Titel",
   "settingsCat": { "project": "Projekt", "plugins": "Plugins", "appearance": "Darstellung", "backup": "Backup", "shortcuts": "Tastenkürzel", "about": "Über" },
   "settingsStat": { "database": "Datenbank", "entities": "Entitäten", "maps": "Karten" },
-  "settingsAbout": { "version": "Version", "company": "Firma", "language": "Sprache", "dataFolder": "Datenordner" },
+  "settingsAbout": { "version": "Version", "build": "Build", "company": "Firma", "language": "Sprache", "dataFolder": "Datenordner" },
   "settingsCopyright": "© {{years}} {{company}}. Alle Rechte vorbehalten.",
   "settingsBackupFor": "Backups für „{{project}}“",
   "settingsPluginsEngine": "Engine-Version",

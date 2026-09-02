@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { stat } from '@tauri-apps/plugin-fs';
 import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
-import { version as appVersion, build as appBuild } from '../../package.json';
+import { appVersion, appBuild, appBuildVersion } from '../branding/version';
 import { ENGINE_VERSION, COPYRIGHT_START_YEAR } from '../branding/brand';
 import { useDatabase } from '../services/DatabaseContext';
 import type { ProjectEntry } from '../services/app-config-service';
@@ -170,7 +170,7 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
         {/* #410 UX: the screen title is "Einstellungen" (was "Projekt"); the redundant
             "Einstellungen" heading inside the side-nav is dropped (aria-label kept). */}
         <span className="settings__title">{t('settingsTitle', 'Einstellungen')}</span>
-        <StatusChip>v{appVersion}.{appBuild}</StatusChip>
+        <StatusChip>v{appBuildVersion}</StatusChip>
       </header>
       <div className="settings__body">
         <nav className="settings__nav" aria-label={t('settingsTitle', 'Einstellungen')}>
@@ -282,7 +282,7 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
             <section className="settings__pane u-stack u-gap-3">
               <h2 className="settings__pane-title">{t('settingsCat.about')}</h2>
               <dl className="settings__about">
-                <div><dt>{t('settingsAbout.version', 'Version')}</dt><dd>{t('brand.platform', { ns: 'common' })} {appVersion}.{appBuild}</dd></div>
+                <div><dt>{t('settingsAbout.version', 'Version')}</dt><dd>{t('brand.platform', { ns: 'common' })} v{appVersion} · {t('settingsAbout.build', 'Build')} {appBuild}</dd></div>
                 <div><dt>{t('settingsAbout.company', 'Firma')}</dt><dd>{t('brand.company', { ns: 'common' })}</dd></div>
                 <div><dt>{t('settingsAbout.language', 'Sprache')}</dt><dd>{i18n.language === 'en' ? 'English' : 'Deutsch'}</dd></div>
                 {dataDir && (

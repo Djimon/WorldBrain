@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Segmented, ListRow } from './primitives';
+import { Button, Segmented, StatusChip, ListRow } from './primitives';
 import { ThemePicker } from './ThemePicker';
+import { appBuildVersion } from '../branding/version';
 
 /** Play-mode settings ("Session Context"). Same sidebar + detail shell as the edit-side
  *  SettingsPanel (#410), so the two settings screens feel identical. Categories:
@@ -44,7 +45,8 @@ export function PlaySettingsPanel({
   return (
     <div className="settings">
       <header className="settings__topbar">
-        <span className="settings__title">{t('play-settings')}</span>
+        <span className="settings__title">{t('settingsTitle', 'Einstellungen')}</span>
+        <StatusChip>v{appBuildVersion}</StatusChip>
       </header>
       <div className="settings__body">
         <nav className="settings__nav" aria-label={t('play-settings')}>

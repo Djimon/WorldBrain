@@ -221,6 +221,13 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   war nie installiert; Wert rekonstruiert auf 98 (24 @ bc6fd58 + 74 Commits). Version wird in
   Settings jetzt als `v{version}.{build}` gezeigt (Topbar-Chip + About).
 
+- **Version zentralisiert + Play-Settings-Titel/Chip:** neuer globaler `appBuildVersion`
+  (`src/branding/version.ts`, = `{version}.{build}`, plus `appVersion`/`appBuild`) — die eine
+  Quelle für die Anzeige. Play-Settings heißt jetzt „Settings" (statt „Session Context") mit
+  Build-Chip oben rechts wie Edit. Edit-About zeigt es **getrennt/ausführlich**:
+  „Worlds and Beyond v0.0.27 · Build 99" (neuer Label-Key `settingsAbout.build`); der
+  kompakte `v0.0.27.99` bleibt im Topbar-Chip beider Seiten.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - **Automatische Backups** (Scheduler + Persistenz) — aktuell Teaser.
