@@ -82,9 +82,12 @@ current 0.1 values:
 | M11 | Localization / i18n | ✅ Done |
 | M12 | Resolution & resource layer | ✅ Done |
 | M13 | House-rule overlays | ✅ Done |
-| M14 | Calendar, events & world state | ⚠️ Nearly done |
+| M14 | Calendar, events & world state | ✅ Done |
 | M15 | Play & presentation tools | ✅ Done |
-| M16 | Knowledge graph visualization | 🔄 In progress |
+| M16 | Knowledge graph visualization | ✅ Done |
+| M17 | Product identity & mode theming | ✅ Done |
+| pre-0.1 | 0.1 Alpha: feature cut, settings polish, data dir, play-mode lobby | 🔄 In progress |
+| post-0.1 | After 0.1: player-only edition, further editions & packaging | 🗓️ Planned |
 
 ---
 
