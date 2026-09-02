@@ -3,8 +3,10 @@
 //
 // #291/#400: GridOverlay.tsx was dead code (superseded by MapGrid.tsx/GridLayer)
 // and has since been DELETED in the repo cleanup (commit d8e3030). Its two
-// .deprecated-path assertions are removed here; the react-leaflet guard on the
-// live map components (MapViewer/MapEmbedBlock/GridLayer/package.json) stays.
+// .deprecated-path assertions are removed here.
+// #412/#431: MapEmbedBlock.tsx was dead code (no map-in-entity-text embed) and was
+// DELETED when maps became a gated feature — its react-leaflet assertion is removed.
+// The react-leaflet guard on the live map components (MapViewer/GridLayer/package.json) stays.
 
 import { describe, expect, it } from 'vitest';
 
@@ -15,11 +17,6 @@ function readSrc(path: string) { return fs.readFileSync(path, 'utf8'); }
 describe('issue-107 no react-leaflet in map components', () => {
   it('MapViewer.tsx does not import from react-leaflet', () => {
     const src = readSrc('src/ui/MapViewer.tsx');
-    expect(src).not.toMatch(/from ['"]react-leaflet['"]/);
-  });
-
-  it('MapEmbedBlock.tsx does not import from react-leaflet', () => {
-    const src = readSrc('src/blocks/MapEmbedBlock.tsx');
     expect(src).not.toMatch(/from ['"]react-leaflet['"]/);
   });
 

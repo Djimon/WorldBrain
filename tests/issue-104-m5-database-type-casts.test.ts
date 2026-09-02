@@ -11,7 +11,7 @@ const components = [
   'src/ui/SessionClock.tsx',
   'src/ui/EncounterCounters.tsx',
   'src/ui/MapViewer.tsx',
-  'src/blocks/MapEmbedBlock.tsx',
+  // #412/#431: MapEmbedBlock.tsx deleted (dead code) when maps became a gated feature.
 ];
 
 describe('issue-104 no database as never in M5/E8 components', () => {
