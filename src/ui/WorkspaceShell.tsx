@@ -24,10 +24,11 @@ import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext
 import { WebRtcTransport } from '../services/webrtc-transport';
 import { currentAppId } from '../services/app-id-service';
 import { attachVisibilityBroadcaster } from '../services/player-content-filter-service';
-import { attachHostTokenSync } from '../services/host-token-sync';
 import { attachHostJoinSync } from '../services/host-join-sync';
 import { attachClientStoreToTransport } from '../services/client-store-transport-bridge';
-import { pushPresentedMapSnapshot } from '../services/presented-map-push';
+// #412: the map-transport glue (host-token-sync / presented-map-push) is imported
+// lazily behind feature('maps') inside the host effect, so map-service/map-layer-service
+// tree-shake out of the main bundle at maps=false. See __FEATURE_MAPS__ usage below.
 import { createPlayClientStore, type PlayClientStoreImpl } from '../services/play-client-store';
 import { listCampaigns, createCampaign, type Campaign } from '../services/campaign-service';
 import { getPlayContext, setPlayContext, clearPlayContext } from '../services/play-context-store';
@@ -890,17 +891,41 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       });
     })().catch((e) => console.warn('[host-signaling] setup failed', e));
     const unsub = attachVisibilityBroadcaster(transport);
+    // #412: token movement + presented-map snapshot are MAP-feature glue. Gate them
+    // behind feature('maps') via dynamic import so map-service/map-layer-service (and
+    // the rest of the map read-path) tree-shake out of the main bundle at maps=false.
+    // At maps=true (0.1) the chunk loads on host start. The dynamic-import attach is a
+    // microtask later than the old static call — harmless here: token intents only
+    // arrive after a player has joined and is viewing a map, well after host setup.
+    const mapsOn = import.meta.env.DEV || __FEATURE_MAPS__;
     // M10-#386 (D18, host-authoritative): authorize incoming token movement intents
-    // from players + persist the ground truth + broadcast to everyone.
-    attachHostTokenSync({ transport, database, campaignId });
-    // M10-#387 (D24/D29): DB-less join/reconnect handshake — validate player requests
-    // against the host DB, create member + token + initial snapshot.
-    attachHostJoinSync({ transport, database, campaignId });
-    // M10-#386: send the initial snapshot of the presented map + tokens once
-    // the host transport is up — otherwise the DB-less player store would never get
-    // the scene (computeSnapshot was never sent before). present() re-pushes on
-    // map change.
-    void pushPresentedMapSnapshot({ database, campaignId, transport });
+    // from players + persist ground truth + broadcast. Map-only → maps-gated lazy.
+    if (mapsOn) {
+      void import('../services/host-token-sync').then(({ attachHostTokenSync }) => {
+        attachHostTokenSync({ transport, database, campaignId });
+      });
+    }
+    // M10-#387 (D24/D29): DB-less join/reconnect handshake — SESSION-CORE, always wired
+    // (map-free). The initial-scene push (presented map + tokens, #386) is the maps
+    // contribution, injected as onAfterJoin only when maps is on.
+    attachHostJoinSync({
+      transport,
+      database,
+      campaignId,
+      onAfterJoin: mapsOn
+        ? async (playerId) => {
+            const { pushPresentedMapSnapshot } = await import('../services/presented-map-push');
+            await pushPresentedMapSnapshot({ database, campaignId, transport, recipientPlayerId: playerId });
+          }
+        : undefined,
+    });
+    // M10-#386: initial snapshot of the presented map once the host transport is up, so
+    // already-connected players get the scene. Maps-gated (present() re-pushes on change).
+    if (mapsOn) {
+      void import('../services/presented-map-push').then(({ pushPresentedMapSnapshot }) => {
+        void pushPresentedMapSnapshot({ database, campaignId, transport });
+      });
+    }
     return () => {
       unsub();
       setHostTransport(null);

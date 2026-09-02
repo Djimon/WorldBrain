@@ -153,13 +153,17 @@ Zusätzlich in S2 gate-bar gemacht (D11): **audio** → `AudioSoundboardWindow`;
 fallen gemeinsam). **maps** (#412) voll tree-geshaked (`MapsArea`/`MapViewer`/`PlayCockpitMap`);
 **session** (#413) bewusste Runtime-Hide-Ausnahme (D12).
 
-**Bekannte Restkopplung (maps, #412-Nachlese via #431):** die statischen Imports
-`host-token-sync` + `presented-map-push` (`src/ui/WorkspaceShell.tsx:27,30`) ziehen die leichte
-DB-Glue von `map-service` + `map-layer-service` (Session-Transport-Schicht) auch bei
-`maps=false` ins Haupt-Bundle. Die **schweren** Map-Chunks (inkl. pixi) fallen korrekt raus
-(`verify-feature-cut` grün) — nur diese Transport-Glue bleibt. Für 0.1 bewusst akzeptiert (kein
-pixi-Ballast); sauberes Lazy-Laden hinter der maps-Grenze bleibt ein späterer Refactor (analog
-D12/session).
+**Restkopplung maps behoben (#412-Nachlese via #431):** vormals zogen die statischen Imports
+`host-token-sync` + `presented-map-push` (`WorkspaceShell.tsx`) die Map-Read-Services
+(`map-service`/`map-layer-service`/`presented-map-service`/`token-movement-service`) auch bei
+`maps=false` ins Haupt-Bundle. Fix in zwei Teilen: (1) **`host-join-sync` entkoppelt** — der
+DB-lose Join/Reconnect-Handshake ist Session-Kern und importiert keinen Map-Code mehr; der
+Initial-Scene-Push wird als `onAfterJoin`-Hook injiziert. (2) **Map-Transport-Glue maps-gegatet
+lazy** (`import.meta.env.DEV || __FEATURE_MAPS__` + dynamic `import()`, Idiom wie `MapsArea`) —
+`attachHostTokenSync` + `pushPresentedMapSnapshot` laden nur bei `maps=on`. **Verifiziert per
+`maps=false`-Build:** `map-service`/`getPresentedMapId`/`listLayers` = 0 Treffer im Haupt-Bundle;
+verbleibend nur die Schema-DDL (`CREATE TABLE map_layers` via `db-init`→`map-schema`) — die
+Persistenzschicht, bewusst immer präsent, kein Feature-Code. `verify-feature-cut` grün.
 
 ## Cut-Liste bestätigt ✅
 

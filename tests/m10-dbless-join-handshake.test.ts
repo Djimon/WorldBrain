@@ -12,6 +12,7 @@ import { createLoopbackTransport } from '../src/services/loopback-transport';
 import { createPlayClientStore } from '../src/services/play-client-store';
 import { attachClientStoreToTransport } from '../src/services/client-store-transport-bridge';
 import { attachHostTokenSync, sendMoveIntent } from '../src/services/host-token-sync';
+import { pushPresentedMapSnapshot } from '../src/services/presented-map-push';
 
 function makeAsyncDb(db: DatabaseSync): DatabaseLike {
   return {
@@ -82,10 +83,14 @@ describe('#387 Loopback E2E join handshake', () => {
 
       const code = await identity.generateInviteCode(asyncDb, { campaignId: 'c1' });
 
+      // #412: the initial-scene push is injected by the caller (as WorkspaceShell does
+      // behind feature('maps')) — host-join-sync itself is map-free session-core now.
       hostSync.attachHostJoinSync({
         transport: hostTransport as never,
         database: asyncDb,
         campaignId: 'c1',
+        onAfterJoin: (playerId) =>
+          pushPresentedMapSnapshot({ database: asyncDb, campaignId: 'c1', transport: hostTransport as never, recipientPlayerId: playerId }),
       });
 
       playerTransport.send({
@@ -309,7 +314,13 @@ describe('#387 real-transport regression (Review #1/#2)', () => {
       const { clientSide, hostSide } = createLoopbackTransport();
 
       const code = await identity.generateInviteCode(asyncDb, { campaignId: 'c1' });
-      attachHostJoinSync({ transport: hostSide, database: asyncDb, campaignId: 'c1' });
+      attachHostJoinSync({
+        transport: hostSide,
+        database: asyncDb,
+        campaignId: 'c1',
+        onAfterJoin: (playerId) =>
+          pushPresentedMapSnapshot({ database: asyncDb, campaignId: 'c1', transport: hostSide, recipientPlayerId: playerId }),
+      });
 
       // Player hört zunächst NUR auf die join_response (wie PlayerJoinView) — noch
       // KEIN Store. Der Host schickt join_response + Snapshot direkt hintereinander.
@@ -329,5 +340,18 @@ describe('#387 real-transport regression (Review #1/#2)', () => {
     } finally {
       db.close();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. #412 decoupling guard — host-join-sync is session-core and MUST NOT import
+//    map-feature code (that would pull map-service into the main bundle again).
+// ---------------------------------------------------------------------------
+
+describe('#412 host-join-sync stays map-free', () => {
+  it('imports no map-feature module (presented-map-push / map-*-service)', () => {
+    const src = readFileSync('src/services/host-join-sync.ts', 'utf-8');
+    // Match only actual import/from statements, not explanatory prose in comments.
+    expect(src).not.toMatch(/from ['"][^'"]*(presented-map-push|map-service|map-layer-service|map-token-service)['"]/);
   });
 });
