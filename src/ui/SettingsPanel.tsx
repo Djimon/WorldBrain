@@ -156,12 +156,13 @@ export function SettingsPanel({ projectId, projectTitle, projectDir, snapshotsDi
   return (
     <div className="settings">
       <header className="settings__topbar">
-        <span className="settings__title">{t('project')}</span>
+        {/* #410 UX: the screen title is "Einstellungen" (was "Projekt"); the redundant
+            "Einstellungen" heading inside the side-nav is dropped (aria-label kept). */}
+        <span className="settings__title">{t('settingsTitle', 'Einstellungen')}</span>
         <StatusChip>v{appVersion}</StatusChip>
       </header>
       <div className="settings__body">
-        <nav className="settings__nav" aria-label={t('settingsNavAria', 'Einstellungen')}>
-          <div className="settings__nav-title">{t('settingsNavAria', 'Einstellungen')}</div>
+        <nav className="settings__nav" aria-label={t('settingsTitle', 'Einstellungen')}>
           <div className="u-stack u-gap-1">
             {CATS.map((c) => (
               <ListRow key={c.id} as="button" selected={cat === c.id} aria-current={cat === c.id} onClick={() => setCat(c.id)}>

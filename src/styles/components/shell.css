@@ -126,6 +126,17 @@
   background: var(--swatch);
   border: 1px solid var(--color-border);
 }
+/* #410 UX: labelled groups in the appearance pane (theme switcher / own-themes). */
+.theme-picker__group-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.theme-picker__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
 
 .workspace-shell__header-controls {
   margin-left: auto;

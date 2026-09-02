@@ -60,6 +60,21 @@ Datenmodell. Basics aus `src/ui/primitives.tsx`, Farben aus Tokens, i18n über `
   (vorher fälschlich der gemeinsame App-Ordner `…\projects`). Projekt-Switcher **unter** „Close
   project" verschoben und listet nur die **anderen** Projekte.
 
+- **Increment 3 (Feedback aus Screenshot):**
+  - **Screen-Titel „Einstellungen"** statt „Projekt" (`settings__title` = `t('settingsTitle')`,
+    nav-Locale-Key `settingsNavAria` → `settingsTitle` umbenannt). Der redundante
+    „EINSTELLUNGEN"-Header **innerhalb** der Side-Nav entfällt (aria-label bleibt).
+  - **Darstellung-Pane klarer strukturiert:** der Theme-Switcher hat jetzt ein sichtbares
+    Label „Theme" (vorher nur aria-label → Buttons wirkten kontextlos); darunter eine
+    eigene Gruppe „Eigene Themes" mit Hinweistext + zwei Aktionen.
+  - **Themes live nachladen (kein Neustart):** neuer Button „Themes neu einlesen" ruft
+    `scanUserThemes(userThemesDir())` live auf und rendert die Liste neu → in den Ordner
+    gelegte `.json`-Themes erscheinen **sofort** als weitere Buttons (mit Akzent-Swatch).
+    Feedback-Zeile („Neu geladen: N" / „Keine neuen Themes gefunden."). Vorher wurden
+    User-Themes nur beim App-Start gescannt (`bootstrapUserThemes`).
+  - Neue token-basierte Klassen `theme-picker__group-label`/`__hint` (keine Hex/Inline).
+  - Verifiziert: tsc 0, eslint 0, Farb-Gate 0, i18n 0/0, Theme-DOM-Tests 17 grün.
+
 ### Offen (nächste Sprint-Increments)
 - **Nutzerdefinierbare Shortcuts** (Keybind-Engine + Persistenz) — aktuell Teaser.
 - SnapshotManager/UpdateNotification-interne rohe Buttons (F3/F4) auf Primitives (falls
