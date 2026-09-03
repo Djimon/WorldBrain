@@ -145,4 +145,14 @@ export function applyMultiplayerSchema(db: MpDb): void {
       day INTEGER NOT NULL DEFAULT 0
     )
   `);
+
+  // #424 (S5): time-of-day as campaign/session state (realtime 24h/12h OR abstract
+  // editable phases), stored as a validated JSON blob. Separate from the calendar
+  // schema by design — CalendarDate stays {year,month,day}.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS campaign_time_of_day (
+      campaign_id TEXT PRIMARY KEY,
+      state TEXT NOT NULL
+    )
+  `);
 }

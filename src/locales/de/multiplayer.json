@@ -47,6 +47,15 @@
     "combatlogPlaceholder": "Kampflog und Würfel — folgt in Kürze.",
     "spotlightTeaser": "Ein geteiltes Whiteboard, um Szenen, Handouts und Skizzen für deine Runde zu präsentieren. Kommt nach 0.1."
   },
+  "timeOfDay": {
+    "phase": {
+      "morning": "Morgen",
+      "noon": "Mittag",
+      "afternoon": "Nachmittag",
+      "evening": "Abend",
+      "night": "Nacht"
+    }
+  },
   "cockpit": {
     "tabsLabel": "Cockpit-Reiter",
     "tabMap": "Map",

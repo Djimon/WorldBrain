@@ -206,3 +206,11 @@ CREATE TABLE IF NOT EXISTS campaign_session_now (
   campaign_id TEXT PRIMARY KEY,
   day INTEGER NOT NULL DEFAULT 0
 );
+
+-- #424 (S5): time-of-day as campaign/session state (realtime 24h/12h OR abstract
+-- editable phases). Stored as a validated JSON blob, campaign-scoped. Deliberately
+-- SEPARATE from the calendar schema — CalendarDate stays {year,month,day}.
+CREATE TABLE IF NOT EXISTS campaign_time_of_day (
+  campaign_id TEXT PRIMARY KEY,
+  state TEXT NOT NULL
+);

@@ -47,6 +47,15 @@
     "combatlogPlaceholder": "Combat log and dice — coming soon.",
     "spotlightTeaser": "A shared whiteboard for presenting scenes, handouts and sketches to your table. Arriving after 0.1."
   },
+  "timeOfDay": {
+    "phase": {
+      "morning": "Morning",
+      "noon": "Noon",
+      "afternoon": "Afternoon",
+      "evening": "Evening",
+      "night": "Night"
+    }
+  },
   "cockpit": {
     "tabsLabel": "Cockpit tabs",
     "tabMap": "Map",
