@@ -63,6 +63,10 @@ Conflicting requirements · missing decision · unclear architecture · wrong/co
 - Shim or compat layers whose real-API path returns empty data — a stub that compiles is still a stub. If bridging sync tests to an async API is impossible without data loss, surface it as `NEEDS_DECISION` before committing.
 - **i18n-Verstöße** — hardcodierte nutzer-sichtbare Strings (inkl. `title=`/`aria-label=`/`placeholder=`/`alt=`), **oder** `t('key','default')` ohne existierenden Locale-Key (rendert still Deutsch, nie EN), **oder** Generika-Wörter außerhalb `common` dupliziert. Siehe `docs/i18n-guide.md`; per `npm run lint` (i18n-Gates) erzwungen. Deutsch gehört **nicht** ins Datenmodell/Seed-Defaults (Englisch).
 
+### Git (Shared Repo)
+
+Parallele Sessions teilen sich **denselben Worktree + Index** — jede git-Op mutiert fremden, lebenden Zustand, und ein unvollständig aussehender Zwischenstand ist **kein Notfall** (in ~90 % repariert der nächste scoped Forward-Commit alles). Deshalb: **nie** revert/reset/checkout ohne vorherigen `git status` + `git show --stat`, immer **scoped** committen (`git commit -- <meine Dateien>`, nie `git add -A`), und bei Überraschung **STOP** statt „reparieren".
+
 ---
 
 ## Epic Workflow
