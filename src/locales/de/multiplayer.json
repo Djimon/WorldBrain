@@ -44,7 +44,8 @@
   },
   "play": {
     "lobbyPlayerPlaceholder": "Spieler-Lobby (Roster + Session-Status) — folgt in Kürze.",
-    "combatlogPlaceholder": "Kampflog und Würfel — folgt in Kürze."
+    "combatlogPlaceholder": "Kampflog und Würfel — folgt in Kürze.",
+    "spotlightTeaser": "Ein geteiltes Whiteboard, um Szenen, Handouts und Skizzen für deine Runde zu präsentieren. Kommt nach 0.1."
   },
   "cockpit": {
     "tabsLabel": "Cockpit-Reiter",

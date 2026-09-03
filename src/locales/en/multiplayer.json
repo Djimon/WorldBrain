@@ -44,7 +44,8 @@
   },
   "play": {
     "lobbyPlayerPlaceholder": "Player lobby (roster + session status) — coming soon.",
-    "combatlogPlaceholder": "Combat log and dice — coming soon."
+    "combatlogPlaceholder": "Combat log and dice — coming soon.",
+    "spotlightTeaser": "A shared whiteboard for presenting scenes, handouts and sketches to your table. Arriving after 0.1."
   },
   "cockpit": {
     "tabsLabel": "Cockpit tabs",

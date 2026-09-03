@@ -500,13 +500,19 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           </div>
         );
 
-      // #420 (S1): spotlight mount point — S4 (#423) makes it the "coming soon" stub.
+      // #423 (S4): spotlight (whiteboard) is not built for 0.1 — a clear "coming soon"
+      // stub (mirrors the SettingsPanel `settings__soon` teaser: emoji + warning chip +
+      // title + short teaser), built from Panel/StatusChip primitives.
       case 'spotlight':
         return (
           <div className="workspace-area">
             <Panel className="u-stack u-gap-2">
-              <h3>{t('spotlight')}</h3>
-              <p className="u-muted">{t('cockpit.spotlightStub', { ns: 'multiplayer' })}</p>
+              <div className="u-row u-gap-2">
+                <span aria-hidden="true">🔦</span>
+                <StatusChip tone="warning">{t('soon', { ns: 'common' })}</StatusChip>
+              </div>
+              <h3>{t('cockpit.spotlightTitle', { ns: 'multiplayer' })}</h3>
+              <p className="u-muted">{t('play.spotlightTeaser', { ns: 'multiplayer' })}</p>
             </Panel>
           </div>
         );
