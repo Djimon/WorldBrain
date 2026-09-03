@@ -1,9 +1,4 @@
-1. Featuer-cut-config in Arbeit (folge-Issues)
-
-2. bugs:
-
-	-> Settings porjket vorschau: Anzahl entities und Maps werden nur bei aktiverm Projekt angezeigt. Wenn man das Porjekt noch nie geöffnet hat ok (Dann aber genau diser hinweis: "noch nie geladen" oder so), aber sobald man das geöffnet hat, sollte die statistik gecached werden, sodas man auch immer die statsitiken (#Entiteis und #Maps) der anderen projekte sieht, acuh wenns ie gerade nciht atkiv sind.
-	
+1. Featuer-cut-config in Arbeit (folge-Issues)	
 	
 3. UX-Session für Play-Mode Lobby
 
