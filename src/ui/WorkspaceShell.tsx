@@ -40,6 +40,9 @@ import { getPlayContext, setPlayContext, clearPlayContext } from '../services/pl
 import { LobbyPanel } from './LobbyPanel';
 import { SessionTimeBar } from './SessionTimeBar';
 import { SessionTimeControls } from './SessionTimeControls';
+// #426 (S7): the opt-in focus drop-in — a view-independent floating card for the
+// player when the DM presents a focus (0.1: the presented map).
+import { FocusDropIn } from './FocusDropIn';
 import { PlayerJoinView } from './PlayerJoinView';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
@@ -1181,6 +1184,13 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
               {mode === 'play' && activeSessionId !== null && (
                 <SessionTimeBar database={database} campaignId={activeSessionId}
                   refreshToken={sessionTimeToken} />
+              )}
+              {/* #426 (S7): the opt-in focus drop-in — player only, view-independent.
+                  Never auto-switches the view; the player clicks it to jump to the
+                  DM's focus (0.1: the presented map = the 'maps' view). */}
+              {mode === 'play' && sessionRole === 'player' && (
+                <FocusDropIn store={playerStore} activeArea={activeArea} focusArea="maps"
+                  onJump={() => setActiveArea('maps')} />
               )}
               {renderArea()}
             </>

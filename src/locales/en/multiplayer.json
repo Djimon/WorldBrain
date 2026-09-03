@@ -47,6 +47,11 @@
     "combatlogPlaceholder": "Combat log and dice — coming soon.",
     "spotlightTeaser": "A shared whiteboard for presenting scenes, handouts and sketches to your table. Arriving after 0.1."
   },
+  "focus": {
+    "dropIn": "The DM is showing: {{title}}",
+    "dropInLabel": "Focus hint",
+    "dropInMap": "a map"
+  },
   "timeOfDay": {
     "label": "Time of day",
     "modeLabel": "Mode",

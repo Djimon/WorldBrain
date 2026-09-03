@@ -321,3 +321,36 @@ export function ListRow({
     </button>
   );
 }
+
+type FloatingCorner = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+
+type FloatingCardProps = HTMLAttributes<HTMLElement> & {
+  /** Which viewport corner to anchor to. Default bottom-right. */
+  corner?: FloatingCorner;
+  /** Subtle attention pulse (CSS animation from tokens; off under prefers-reduced-motion). */
+  pulse?: boolean;
+  children: ReactNode;
+};
+
+/**
+ * FloatingCard — the first design-system primitive that floats view-INDEPENDENTLY
+ * above every view: `position: fixed`, corner-anchored, z above all panels. With an
+ * `onClick` it renders as a real `<button>` (keyboard-accessible); otherwise a plain
+ * container. Reusable for focus drop-ins, broadcasts and notifications (#426 / S7).
+ */
+export function FloatingCard({ corner = 'bottom-right', pulse = false, onClick, className, children, ...props }: FloatingCardProps) {
+  const cls = className ? `ui-floating-card ${className}` : 'ui-floating-card';
+  const dataPulse = pulse ? '' : undefined;
+  if (onClick) {
+    return (
+      <button type="button" className={cls} data-corner={corner} data-pulse={dataPulse} onClick={onClick} {...props}>
+        {children}
+      </button>
+    );
+  }
+  return (
+    <div className={cls} data-corner={corner} data-pulse={dataPulse} {...props}>
+      {children}
+    </div>
+  );
+}

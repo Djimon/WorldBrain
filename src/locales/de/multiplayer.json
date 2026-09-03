@@ -47,6 +47,11 @@
     "combatlogPlaceholder": "Kampflog und Würfel — folgt in Kürze.",
     "spotlightTeaser": "Ein geteiltes Whiteboard, um Szenen, Handouts und Skizzen für deine Runde zu präsentieren. Kommt nach 0.1."
   },
+  "focus": {
+    "dropIn": "DM zeigt gerade: {{title}}",
+    "dropInLabel": "Fokus-Hinweis",
+    "dropInMap": "eine Karte"
+  },
   "timeOfDay": {
     "label": "Tageszeit",
     "modeLabel": "Modus",
