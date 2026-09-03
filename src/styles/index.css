@@ -5,11 +5,11 @@
 @layer tokens, primitives, components, utilities;
 
 @import './tokens.css' layer(tokens);
-@import '../ui/primitives.css' layer(primitives);
+@import './primitives.css' layer(primitives);
 
 /* components — order matters within the layer: it must match the original
    single-file source order 1:1 so the cascade stays byte-identical. */
-@import '../ui/graph.css' layer(components);
+@import './components/graph.css' layer(components);
 @import './base.css' layer(components);
 @import './components/shell.css' layer(components);
 @import './components/settings.css' layer(components);

@@ -1,7 +1,7 @@
 # Graph view — UI Consolidation audit
 
 Scope: `src/ui/GlobalGraphView.tsx`, `src/ui/GraphCanvas.tsx`, `src/ui/GraphFilterPanel.tsx`,
-`src/ui/GraphSettingsPanel.tsx`, `src/ui/graph.css` (139 lines). Read-only audit, no source
+`src/ui/GraphSettingsPanel.tsx`, `src/styles/components/graph.css` (139 lines). Read-only audit, no source
 edits made.
 
 Renderer stack: raw three.js (`GraphCanvas.tsx`), fed style via `src/services/graph-style.ts`

@@ -59,7 +59,7 @@ per-Datensatz berechnete Farbe).
 
 ## 3. Was bereits existiert (Fundament — nicht neu bauen)
 
-### 3.1 Primitives — `src/ui/primitives.tsx` + `src/ui/primitives.css`
+### 3.1 Primitives — `src/ui/primitives.tsx` + `src/styles/primitives.css`
 Die kanonische Komponenten-Schicht. Alle vorhanden und in Benutzung:
 
 | Primitive | Zweck | Wichtige Props |
@@ -95,8 +95,8 @@ ihrem Layer zu, **ohne** die Dateiinhalte umzuschreiben:
 ```css
 @layer tokens, primitives, components, utilities;   /* niedrig → hoch */
 @import './tokens.css'        layer(tokens);
-@import '../ui/primitives.css' layer(primitives);
-@import '../ui/graph.css'     layer(components);
+@import './primitives.css' layer(primitives);
+@import './components/graph.css'     layer(components);
 @import '../style.css'        layer(components);
 @import './utilities.css'     layer(utilities);
 ```

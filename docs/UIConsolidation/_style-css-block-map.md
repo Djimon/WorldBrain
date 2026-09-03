@@ -83,7 +83,7 @@ single view = must become shared objects/primitives).
 | `.clip-editor` | 4303 |
 
 ## Graph view
-Graph chrome largely lives in its own file `src/ui/graph.css` (139 lines) — see graph audit.
+Graph chrome largely lives in its own file `src/styles/components/graph.css` (139 lines) — see graph audit.
 
 ---
 ### Immediate cross-view observations (to verify against agent reports)
