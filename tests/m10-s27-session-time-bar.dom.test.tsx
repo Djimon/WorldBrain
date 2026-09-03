@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 // M10 / #425 (S6): the persistent, view-INDEPENDENT session bar (date + time-of-day).
 // Integration through the REAL mount: render WorkspaceShell, enter play mode, and
-// assert the bar renders OUTSIDE the per-view content — it stays visible when the
-// active sidebar view changes. The DM sees the day + time-of-day controls (the
-// relocated SessionTimeControl + the S5 setters); a joined player sees the display
-// only. The bar itself is REAL here (not stubbed) — only its leaf service deps are
-// mocked. See: https://github.com/Djimon/WorldBrain/issues/425
+// assert the DISPLAY-ONLY strip renders OUTSIDE the per-view content — it stays
+// visible when the active sidebar view changes and carries NO controls. The DM
+// OPERATES day + time-of-day from the SEPARATE SessionTimeControls panel (in the
+// lobby); a joined player sees neither that panel nor any control in the strip.
+// SessionTimeBar + SessionTimeControls + primitives are REAL here (not stubbed) —
+// only their leaf service deps are mocked. https://github.com/Djimon/WorldBrain/issues/425
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -200,17 +201,20 @@ describe('#425 (S6) persistent session bar — date + time-of-day, view-independ
     await waitFor(() => expect(within(b).getByText('08:00')).toBeTruthy());
   });
 
-  it('DM: the bar carries the day + time-of-day controls', async () => {
+  it('DM: the strip is display-only; the controls live in the SEPARATE lobby panel', async () => {
     await enterDmPlay();
     const b = bar();
-    // Relocated SessionTimeControl (its own region) + its day advance button.
-    // (SessionTimeControl calls t() with string defaults → the i18n mock returns
-    // those defaults, not the keys.)
-    expect(within(b).getByRole('region', { name: 'Session-Zeit' })).toBeTruthy();
-    expect(within(b).getByText('+1 Tag')).toBeTruthy();
-    // S5 time-of-day setters: mode toggle + realtime "+1 h".
-    expect(within(b).getByRole('group', { name: 'timeOfDay.modeLabel' })).toBeTruthy();
-    expect(within(b).getByText('timeOfDay.plusHour')).toBeTruthy();
+    // The persistent strip carries NO controls.
+    expect(within(b).queryByRole('button')).toBeNull();
+    expect(within(b).queryByRole('region', { name: 'Session-Zeit' })).toBeNull();
+    expect(within(b).queryByRole('group', { name: 'timeOfDay.modeLabel' })).toBeNull();
+    // The DM's control panel (SessionTimeControls) is mounted OUTSIDE the strip:
+    // day controls (SessionTimeControl — string-default i18n → German) + the S5
+    // time-of-day setters (bar/panel t() without default → keys).
+    expect(screen.getByRole('region', { name: 'Session-Zeit' })).toBeTruthy();
+    expect(screen.getByText('+1 Tag')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'timeOfDay.modeLabel' })).toBeTruthy();
+    expect(screen.getByText('timeOfDay.plusHour')).toBeTruthy();
   });
 
   it('the bar stays visible when the active sidebar view changes', async () => {
@@ -225,15 +229,16 @@ describe('#425 (S6) persistent session bar — date + time-of-day, view-independ
     expect(bar()).toBeTruthy();
   });
 
-  it('player: sees date + time-of-day but NO controls', async () => {
+  it('player: sees date + time-of-day but NO controls anywhere', async () => {
     await enterPlayerPlay();
     const b = bar();
     // Display present for the player too.
     expect(within(b).getByText('sessionTime.dateLabel:')).toBeTruthy();
     await waitFor(() => expect(within(b).getByText('08:00')).toBeTruthy());
-    // No DM controls.
-    expect(within(b).queryByRole('region', { name: 'Session-Zeit' })).toBeNull();
-    expect(within(b).queryByRole('group', { name: 'timeOfDay.modeLabel' })).toBeNull();
-    expect(within(b).queryByText('timeOfDay.plusHour')).toBeNull();
+    // No controls in the strip AND no DM control panel in the player's lobby.
+    expect(within(b).queryByRole('button')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Session-Zeit' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'timeOfDay.modeLabel' })).toBeNull();
+    expect(screen.queryByText('timeOfDay.plusHour')).toBeNull();
   });
 });

@@ -23,5 +23,6 @@
 @import './components/pickers.css' layer(components);
 @import './components/split-view.css' layer(components);
 @import './components/play-cockpit-map.css' layer(components);
+@import './components/session-bar.css' layer(components);
 
 @import './utilities.css' layer(utilities);

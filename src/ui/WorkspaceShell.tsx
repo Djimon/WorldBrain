@@ -34,10 +34,12 @@ import { listCampaigns, createCampaign, type Campaign } from '../services/campai
 import { getPlayContext, setPlayContext, clearPlayContext } from '../services/play-context-store';
 // #420 (S1): the play "cockpit" (PlayModeView) is dissolved — its content now lives
 // in dedicated play-sidebar views (lobby/combatlog/spotlight/maps) rendered by
-// renderArea(). The lobby view reuses the existing LobbyPanel; the day + time-of-day
-// control lives in the persistent, view-independent SessionTimeBar (#425 / S6).
+// renderArea(). The lobby view reuses the existing LobbyPanel; #425 (S6) splits the
+// session time into a display-only persistent strip (SessionTimeBar) + the DM's
+// separate control panel (SessionTimeControls, mounted in the lobby).
 import { LobbyPanel } from './LobbyPanel';
 import { SessionTimeBar } from './SessionTimeBar';
+import { SessionTimeControls } from './SessionTimeControls';
 import { PlayerJoinView } from './PlayerJoinView';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
@@ -212,6 +214,8 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   const [showPicker, setShowPicker] = useState(false);
   const [calendarList, setCalendarList] = useState<{ id: string; title: string; is_active: number }[]>([]);
   const [calendarRefreshToken, setCalendarRefreshToken] = useState(0);
+  // #425 (S6): bumped by the DM's SessionTimeControls → the display bar re-reads.
+  const [sessionTimeToken, setSessionTimeToken] = useState(0);
   // #292: entityId of the event being created/edited inline in the calendar
   // area (day-click) — NOT a navigation to the Entities area, same page.
   const [calendarEditingEventId, setCalendarEditingEventId] = useState<string | null>(null);
@@ -461,14 +465,17 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       // #420 (S1): the play "cockpit" is dissolved into these play-sidebar views. S1
       // delivers the wiring + mount points (placeholders allowed); the real content
       // comes from S2 (lobby #421), S3 (combatlog #422), S4 (spotlight #423). The DM
-      // lobby reuses the existing LobbyPanel. #425 (S6): the day + time-of-day control
-      // moved OUT of here into the persistent, view-independent SessionTimeBar.
+      // lobby reuses the existing LobbyPanel. #425 (S6): the persistent bar shows
+      // date + time-of-day (display only); the DM OPERATES them from the separate
+      // SessionTimeControls panel here — a change bumps the bar's refresh token.
       case 'lobby': {
         const campaignId = activeSessionId ?? '';
         if (sessionRole === 'dm' && campaignId !== '') {
           return (
             <div className="workspace-area u-stack u-gap-3">
               <LobbyPanel database={database} campaignId={campaignId} />
+              <SessionTimeControls database={database} campaignId={campaignId}
+                onChanged={() => { setSessionTimeToken((n) => n + 1); setCalendarRefreshToken((n) => n + 1); }} />
             </div>
           );
         }
@@ -1166,13 +1173,14 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             />
           ) : (
             <>
-              {/* #425 (S6): the persistent session bar (date + time-of-day) is mounted
-                  OUTSIDE renderArea() so it stays visible across every play-sidebar
-                  view switch. Play mode only, once a campaign is active. */}
+              {/* #425 (S6): the persistent session bar (date + time-of-day, DISPLAY
+                  ONLY) is mounted OUTSIDE renderArea() so it stays visible across
+                  every play-sidebar view switch. Play mode only, once a campaign is
+                  active. The DM operates it from SessionTimeControls (lobby); that
+                  bumps `sessionTimeToken` so the bar re-reads. */}
               {mode === 'play' && activeSessionId !== null && (
                 <SessionTimeBar database={database} campaignId={activeSessionId}
-                  isDm={sessionRole === 'dm'}
-                  onDayChanged={() => setCalendarRefreshToken((n) => n + 1)} />
+                  refreshToken={sessionTimeToken} />
               )}
               {renderArea()}
             </>

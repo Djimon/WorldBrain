@@ -116,9 +116,10 @@ vi.mock('../src/ui/LanguageSwitcher', () => ({ LanguageSwitcher: stubComponent('
 vi.mock('../src/ui/ThemeToggle', () => ({ ThemeToggle: stubComponent('ThemeToggle') }));
 // #420 (S1): the dissolved cockpit's content — stub the play-sidebar children.
 vi.mock('../src/ui/LobbyPanel', () => ({ LobbyPanel: stubComponent('LobbyPanel') }));
-// #425 (S6): the day + time-of-day control is the persistent SessionTimeBar, mounted
-// view-independently in the play shell (no longer inside the lobby view).
+// #425 (S6): the display strip (SessionTimeBar) is mounted view-independently in the
+// play shell; the DM's control panel (SessionTimeControls) lives in the lobby view.
 vi.mock('../src/ui/SessionTimeBar', () => ({ SessionTimeBar: stubComponent('SessionTimeBar') }));
+vi.mock('../src/ui/SessionTimeControls', () => ({ SessionTimeControls: stubComponent('SessionTimeControls') }));
 vi.mock('../src/ui/PlayCockpitMap', () => ({ PlayCockpitMap: stubComponent('PlayCockpitMap') }));
 vi.mock('../src/ui/PlayerJoinView', () => ({ PlayerJoinView: stubComponent('PlayerJoinView') }));
 vi.mock('../src/ui/PlaySettingsPanel', () => ({ PlaySettingsPanel: stubComponent('PlaySettingsPanel') }));
@@ -183,10 +184,12 @@ describe('#420 (S1) play navigation — cockpit dissolved into sidebar views', (
     expect(sidebar().querySelector('[data-area="spotlight"]')?.textContent).toContain('🔦');
   });
 
-  it('DM lands on the lobby view (LobbyPanel) with the persistent SessionTimeBar mounted', async () => {
+  it('DM lands on the lobby view (LobbyPanel + SessionTimeControls) with the persistent SessionTimeBar mounted', async () => {
     await enterDmPlay();
     expect(screen.getByTestId('stub-LobbyPanel')).toBeTruthy();
-    // #425 (S6): the day/time control is now the view-independent bar, not in the lobby.
+    // #425 (S6): the DM's time control panel is in the lobby; the display strip is
+    // the view-independent persistent bar (mounted outside renderArea()).
+    expect(screen.getByTestId('stub-SessionTimeControls')).toBeTruthy();
     expect(screen.getByTestId('stub-SessionTimeBar')).toBeTruthy();
   });
 

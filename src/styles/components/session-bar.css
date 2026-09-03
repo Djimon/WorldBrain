@@ -1,0 +1,20 @@
+/* M10-S6 (#425): the persistent session strip (SessionTimeBar) — a thin, always-
+   visible top bar carrying date + time-of-day. Deliberately slim (not a Panel
+   card): a status-bar-style strip that sits above the per-view content. */
+.session-time-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.9em;
+}
+
+.session-time-bar__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
