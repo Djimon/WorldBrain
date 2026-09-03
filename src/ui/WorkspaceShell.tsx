@@ -34,9 +34,10 @@ import { listCampaigns, createCampaign, type Campaign } from '../services/campai
 import { getPlayContext, setPlayContext, clearPlayContext } from '../services/play-context-store';
 // #420 (S1): the play "cockpit" (PlayModeView) is dissolved — its content now lives
 // in dedicated play-sidebar views (lobby/combatlog/spotlight/maps) rendered by
-// renderArea(). The lobby view reuses the existing LobbyPanel + SessionTimeControl.
+// renderArea(). The lobby view reuses the existing LobbyPanel; the day + time-of-day
+// control lives in the persistent, view-independent SessionTimeBar (#425 / S6).
 import { LobbyPanel } from './LobbyPanel';
-import { SessionTimeControl } from './SessionTimeControl';
+import { SessionTimeBar } from './SessionTimeBar';
 import { PlayerJoinView } from './PlayerJoinView';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
@@ -460,16 +461,14 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       // #420 (S1): the play "cockpit" is dissolved into these play-sidebar views. S1
       // delivers the wiring + mount points (placeholders allowed); the real content
       // comes from S2 (lobby #421), S3 (combatlog #422), S4 (spotlight #423). The DM
-      // lobby reuses the existing LobbyPanel + SessionTimeControl (moved out of the
-      // removed PlayModeView; SessionTimeControl relocates to the persistent bar in S6).
+      // lobby reuses the existing LobbyPanel. #425 (S6): the day + time-of-day control
+      // moved OUT of here into the persistent, view-independent SessionTimeBar.
       case 'lobby': {
         const campaignId = activeSessionId ?? '';
         if (sessionRole === 'dm' && campaignId !== '') {
           return (
             <div className="workspace-area u-stack u-gap-3">
               <LobbyPanel database={database} campaignId={campaignId} />
-              <SessionTimeControl database={database} campaignId={campaignId}
-                onChanged={() => setCalendarRefreshToken((n) => n + 1)} />
             </div>
           );
         }
@@ -1166,7 +1165,17 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
               }}
             />
           ) : (
-            renderArea()
+            <>
+              {/* #425 (S6): the persistent session bar (date + time-of-day) is mounted
+                  OUTSIDE renderArea() so it stays visible across every play-sidebar
+                  view switch. Play mode only, once a campaign is active. */}
+              {mode === 'play' && activeSessionId !== null && (
+                <SessionTimeBar database={database} campaignId={activeSessionId}
+                  isDm={sessionRole === 'dm'}
+                  onDayChanged={() => setCalendarRefreshToken((n) => n + 1)} />
+              )}
+              {renderArea()}
+            </>
           )}
         </div>
       </div>

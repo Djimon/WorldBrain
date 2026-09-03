@@ -48,6 +48,17 @@
     "spotlightTeaser": "A shared whiteboard for presenting scenes, handouts and sketches to your table. Arriving after 0.1."
   },
   "timeOfDay": {
+    "label": "Time of day",
+    "modeLabel": "Mode",
+    "modeRealtime": "Clock",
+    "modeAbstract": "Phases",
+    "clockFormatLabel": "Format",
+    "clock24": "24h",
+    "clock12": "12h",
+    "plusHour": "+1 h",
+    "setTimeLabel": "Set time",
+    "phaseLabel": "Phase",
+    "nextPhase": "Next phase",
     "phase": {
       "morning": "Morning",
       "noon": "Noon",
@@ -79,6 +90,9 @@
   },
   "sessionTime": {
     "title": "Session time",
+    "barLabel": "Session bar",
+    "dateLabel": "Date",
+    "dateFallback": "Day {{day}}",
     "now": "Session now: day {{day}}",
     "advance": "Advance:",
     "plusDay": "+1 day",

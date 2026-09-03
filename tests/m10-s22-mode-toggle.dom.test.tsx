@@ -165,7 +165,7 @@ vi.mock('../src/ui/primitives', () => ({
 // #420 (S1): the cockpit (PlayModeView) is dissolved into play-sidebar views. Stub the
 // play children; the DM lobby view (stub-LobbyPanel) is the "in DM play mode" marker.
 vi.mock('../src/ui/LobbyPanel', () => ({ LobbyPanel: stubComponent('LobbyPanel') }));
-vi.mock('../src/ui/SessionTimeControl', () => ({ SessionTimeControl: stubComponent('SessionTimeControl') }));
+vi.mock('../src/ui/SessionTimeBar', () => ({ SessionTimeBar: stubComponent('SessionTimeBar') }));
 vi.mock('../src/ui/PlayCockpitMap', () => ({ PlayCockpitMap: stubComponent('PlayCockpitMap') }));
 vi.mock('../src/ui/PlayerJoinView', () => ({ PlayerJoinView: stubComponent('PlayerJoinView') }));
 

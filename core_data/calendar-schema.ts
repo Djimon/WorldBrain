@@ -160,9 +160,7 @@ export function dateToCounter(calendar: CalendarShape, date: CalendarDate): numb
 
 /** Human-readable "D. Month Year" for a shared-counter day, never the raw integer. */
 export function formatCalendarDate(calendar: CalendarShape, counterDay: number): string {
-  const date = counterToDate(calendar, counterDay);
-  const monthName = calendar.months?.[date.month - 1]?.name ?? `Monat ${date.month}`;
-  return `${date.day}. ${monthName} ${date.year}`;
+  return formatCalendarDateWithEras(calendar, [], counterDay);
 }
 
 // ── Eras (M13 calendar-timelines) ────────────────────────────────────────────
@@ -221,6 +219,22 @@ export function eraRelativeYear(era: Era, globalYear: number): number {
 /** The era's official year unit: its abbreviation if set, otherwise its name. */
 export function eraUnit(era: Era): string {
   return era.abbr?.trim() ? era.abbr.trim() : era.name;
+}
+
+/**
+ * Era-aware "D. Month Year" for a shared-counter day. Eras may overlap and may
+ * leave gaps, so the year carries EVERY era covering that date (none → plain
+ * absolute year), mirroring the calendar month view's default header. Pass no
+ * eras (the plain `formatCalendarDate`) to get the bare "D. Month Year".
+ */
+export function formatCalendarDateWithEras(calendar: CalendarShape, eras: Era[], counterDay: number): string {
+  const date = counterToDate(calendar, counterDay);
+  const monthName = calendar.months?.[date.month - 1]?.name ?? `Monat ${date.month}`;
+  const covering = erasForDate(eras, date);
+  const yearText = covering.length > 0
+    ? `${date.year} · ${covering.map((e) => e.name).join(', ')}`
+    : `${date.year}`;
+  return `${date.day}. ${monthName} ${yearText}`;
 }
 
 // ── Cross-calendar conversion (M13 calendar-timelines S5) ────────────────────

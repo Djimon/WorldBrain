@@ -1,27 +1,21 @@
 // @vitest-environment jsdom
-// M10 / #420 (S1): Play-Navigation — the single "session" cockpit area is dissolved
-// into dedicated play-sidebar views (lobby/combatlog/spotlight + maps=PlayCockpitMap).
-// Integration through the REAL mount: render WorkspaceShell, toggle into play mode,
-// switch sidebar views via the user path (not an isolated render of a leaf component).
-// See: https://github.com/Djimon/WorldBrain/issues/420
-import { existsSync } from 'node:fs';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+// M10 / #425 (S6): the persistent, view-INDEPENDENT session bar (date + time-of-day).
+// Integration through the REAL mount: render WorkspaceShell, enter play mode, and
+// assert the bar renders OUTSIDE the per-view content — it stays visible when the
+// active sidebar view changes. The DM sees the day + time-of-day controls (the
+// relocated SessionTimeControl + the S5 setters); a joined player sees the display
+// only. The bar itself is REAL here (not stubbed) — only its leaf service deps are
+// mocked. See: https://github.com/Djimon/WorldBrain/issues/425
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FEATURE_IDS } from '../src/config/features';
 
-// ---------------------------------------------------------------------------
-// Mocks — WorkspaceShell has ~30 imports; every one must be stubbed (parity with
-// m10-s22). The i18n mock returns the key (or a provided default) so assertions can
-// key off the stable i18n keys of the placeholder views.
-// ---------------------------------------------------------------------------
 // Stable db singleton (vi.hoisted): a fresh object per render would change the
 // host-transport effect's `database` dep every render → infinite re-render (OOM).
 const { db } = vi.hoisted(() => ({
   db: { execute: vi.fn().mockResolvedValue(undefined), select: vi.fn().mockResolvedValue([]) },
 }));
 
-// Stub the WebRTC host transport so entering DM play does no real signaling/timers.
 vi.mock('../src/services/webrtc-transport', () => ({
   WebRtcTransport: {
     host: vi.fn(() => ({
@@ -34,6 +28,7 @@ vi.mock('../src/services/webrtc-transport', () => ({
   },
 }));
 
+// i18n: return the key (or a provided default) so assertions key off stable keys.
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (k: string, d?: string | Record<string, unknown>) => {
@@ -70,14 +65,51 @@ vi.mock('../src/services/rule-evaluations', () => ({
   analyzeRoleCoverage: vi.fn().mockResolvedValue([]),
   detectQuestBlockers: vi.fn().mockResolvedValue([]),
 }));
-vi.mock('../src/services/calendar-service', () => ({ listCalendars: vi.fn().mockResolvedValue([]), setActiveCalendar: vi.fn(), deleteCalendar: vi.fn() }));
-vi.mock('../../core_data/calendar-schema', () => ({ formatCalendarDate: vi.fn().mockReturnValue('') }));
+// One campaign present → the role-select auto-selects it (enables "Als Player").
+vi.mock('../src/services/campaign-service', () => ({
+  listCampaigns: vi.fn().mockResolvedValue([{ id: 'camp-1', title: 'Test Campaign' }]),
+  createCampaign: vi.fn().mockResolvedValue({ id: 'camp-1', title: 'Test Campaign' }),
+}));
+// calendar-service: WorkspaceShell needs list/set/delete; the bar needs loadActiveCalendar.
+vi.mock('../src/services/calendar-service', () => ({
+  listCalendars: vi.fn().mockResolvedValue([]),
+  setActiveCalendar: vi.fn(),
+  deleteCalendar: vi.fn(),
+  loadActiveCalendar: vi.fn().mockResolvedValue({
+    id: 'cal-1', title: 'C', year_length_days: 360,
+    months: [{ name: 'Jan', days: 30 }], week: ['Mo'],
+    epoch_anchor_day: 0, start_year: 1, start_month: 1, start_day: 1,
+  }),
+}));
+vi.mock('../src/services/era-service', () => ({ listEras: vi.fn().mockResolvedValue([]) }));
+// Session-now (day) + time-of-day (S5): canned reads, no-op writes.
+vi.mock('../src/services/session-time-service', () => ({
+  getSessionNow: vi.fn().mockResolvedValue({ day: 5 }),
+  advanceTime: vi.fn().mockResolvedValue(undefined),
+  setSessionNow: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('../src/services/session-time-of-day-service', () => ({
+  getTimeOfDay: vi.fn().mockResolvedValue({
+    mode: 'realtime', clockFormat: '24h', minuteOfDay: 480,
+    phases: ['timeOfDay.phase.morning'], phaseIndex: 0,
+  }),
+  setTimeMode: vi.fn().mockResolvedValue(undefined),
+  setClockFormat: vi.fn().mockResolvedValue(undefined),
+  setRealtimeMinute: vi.fn().mockResolvedValue(undefined),
+  advanceRealtime: vi.fn().mockResolvedValue(undefined),
+  setPhaseIndex: vi.fn().mockResolvedValue(undefined),
+  advancePhase: vi.fn().mockResolvedValue(undefined),
+}));
+// No remembered play context → every test starts fresh at the role-select step.
+// (Without this, entering play in one test persists the context and later tests
+// restore straight into play, skipping the role picker.)
+vi.mock('../src/services/play-context-store', () => ({
+  getPlayContext: vi.fn().mockReturnValue(null),
+  setPlayContext: vi.fn(),
+  clearPlayContext: vi.fn(),
+}));
 vi.mock('../src/services/event-entity-service', () => ({ createEventEntity: vi.fn(), createCampaignEventEntity: vi.fn() }));
 vi.mock('../src/services/map-layer-service', () => ({ importImageLayer: vi.fn(), createFogLayer: vi.fn() }));
-vi.mock('../src/services/campaign-service', () => ({
-  listCampaigns: vi.fn().mockResolvedValue([]),
-  createCampaign: vi.fn().mockResolvedValue({ id: 'camp-1', title: 'Default Campaign' }),
-}));
 
 vi.mock('@tauri-apps/api/webviewWindow', () => {
   const WebviewWindow = vi.fn().mockImplementation(() => ({ once: vi.fn(), listen: vi.fn() }));
@@ -114,36 +146,19 @@ vi.mock('../src/ui/MapsSidebarTabs', () => ({ MapsSidebarTabs: stubComponent('Ma
 vi.mock('../src/ui/MapFolderTree', () => ({ MapFolderTree: stubComponent('MapFolderTree') }));
 vi.mock('../src/ui/LanguageSwitcher', () => ({ LanguageSwitcher: stubComponent('LanguageSwitcher') }));
 vi.mock('../src/ui/ThemeToggle', () => ({ ThemeToggle: stubComponent('ThemeToggle') }));
-// #420 (S1): the dissolved cockpit's content — stub the play-sidebar children.
 vi.mock('../src/ui/LobbyPanel', () => ({ LobbyPanel: stubComponent('LobbyPanel') }));
-// #425 (S6): the day + time-of-day control is the persistent SessionTimeBar, mounted
-// view-independently in the play shell (no longer inside the lobby view).
-vi.mock('../src/ui/SessionTimeBar', () => ({ SessionTimeBar: stubComponent('SessionTimeBar') }));
 vi.mock('../src/ui/PlayCockpitMap', () => ({ PlayCockpitMap: stubComponent('PlayCockpitMap') }));
-vi.mock('../src/ui/PlayerJoinView', () => ({ PlayerJoinView: stubComponent('PlayerJoinView') }));
 vi.mock('../src/ui/PlaySettingsPanel', () => ({ PlaySettingsPanel: stubComponent('PlaySettingsPanel') }));
 vi.mock('../src/ui/SettingsPanel', () => ({ SettingsPanel: stubComponent('SettingsPanel') }));
-vi.mock('../src/ui/primitives', () => ({
-  Button: (props: Record<string, unknown>) => React.createElement('button', props),
-  Panel: (props: Record<string, unknown>) => React.createElement('div', props),
-  Field: (props: Record<string, unknown>) => React.createElement('input', props),
-  StatusChip: ({ children, ...props }: { children?: React.ReactNode } & Record<string, unknown>) =>
-    React.createElement('span', props, children),
-  Segmented: ({ label, value, options, onChange }: {
-    label: string;
-    value: string;
-    options: readonly { id: string; label: React.ReactNode }[];
-    onChange: (id: string) => void;
-  }) => React.createElement(
-    'div',
-    { role: 'group', 'aria-label': label },
-    options.map((opt) => React.createElement(
-      'button',
-      { key: opt.id, 'aria-pressed': opt.id === value, onClick: () => onChange(opt.id) },
-      opt.label,
-    )),
-  ),
+// A joined player: auto-fire onJoined so the join gate clears and the bar mounts
+// with the player-facing (display-only) props.
+vi.mock('../src/ui/PlayerJoinView', () => ({
+  PlayerJoinView: ({ onJoined }: { onJoined: (a: { playerId: string; displayName: string; transport: null }) => void | Promise<void> }) => {
+    React.useEffect(() => { void onJoined({ playerId: 'p1', displayName: 'Alice', transport: null }); }, [onJoined]);
+    return React.createElement('div', { 'data-testid': 'stub-PlayerJoinView' });
+  },
 }));
+// NOTE: SessionTimeBar, SessionTimeControl, primitives and calendar-schema are REAL here.
 
 afterEach(cleanup);
 
@@ -152,69 +167,73 @@ async function getShell() {
   return mod.WorkspaceShell;
 }
 
-const playSeg = () => screen.getByRole('button', { name: 'Spielen' });
-const asDm = () => screen.getByRole('button', { name: /Als DM/i });
 const sidebar = () => document.querySelector('nav.workspace-shell__sidebar') as HTMLElement;
-const areaIds = () => [...sidebar().querySelectorAll('[data-area]')].map((el) => el.getAttribute('data-area'));
+const bar = () => screen.getByRole('region', { name: 'sessionTime.barLabel' });
 
-/** edit → Spielen → Als DM → land on the default play view (lobby). */
+/** edit → Spielen → Als DM → land in DM play (lobby), bar mounted. */
 async function enterDmPlay() {
   const Shell = await getShell();
   render(React.createElement(Shell));
-  fireEvent.click(playSeg());
-  await waitFor(() => expect(asDm()).toBeTruthy());
-  fireEvent.click(asDm());
-  await waitFor(() => expect(screen.getByTestId('stub-LobbyPanel')).toBeTruthy());
+  fireEvent.click(screen.getByRole('button', { name: 'Spielen' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: /Als DM/i })).toBeTruthy());
+  fireEvent.click(screen.getByRole('button', { name: /Als DM/i }));
+  await waitFor(() => expect(bar()).toBeTruthy());
 }
 
-describe('#420 (S1) play navigation — cockpit dissolved into sidebar views', () => {
-  it('play sidebar shows the play areas in order, no "session" area', async () => {
+/** edit → Spielen → Als Player → auto-join → land in player play, bar mounted. */
+async function enterPlayerPlay() {
+  const Shell = await getShell();
+  render(React.createElement(Shell));
+  fireEvent.click(screen.getByRole('button', { name: 'Spielen' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: /Als Player/i })).toBeTruthy());
+  fireEvent.click(screen.getByRole('button', { name: /Als Player/i }));
+  await waitFor(() => expect(bar()).toBeTruthy());
+}
+
+describe('#425 (S6) persistent session bar — date + time-of-day, view-independent', () => {
+  it('DM: the bar renders date + time-of-day', async () => {
     await enterDmPlay();
-    expect(areaIds()).toEqual([
-      'entities', 'search', 'maps', 'calendar', 'lobby', 'combatlog', 'spotlight', 'play-settings',
-    ]);
-    expect(sidebar().querySelector('[data-area="session"]')).toBeNull();
+    const b = bar();
+    expect(within(b).getByText('sessionTime.dateLabel:')).toBeTruthy();
+    expect(within(b).getByText('timeOfDay.label:')).toBeTruthy();
+    // realtime 08:00 (minuteOfDay 480, 24h).
+    await waitFor(() => expect(within(b).getByText('08:00')).toBeTruthy());
   });
 
-  it('lobby/combatlog/spotlight carry the specified icons', async () => {
+  it('DM: the bar carries the day + time-of-day controls', async () => {
     await enterDmPlay();
-    expect(sidebar().querySelector('[data-area="lobby"]')?.textContent).toContain('👥');
-    expect(sidebar().querySelector('[data-area="combatlog"]')?.textContent).toContain('⚔');
-    expect(sidebar().querySelector('[data-area="spotlight"]')?.textContent).toContain('🔦');
+    const b = bar();
+    // Relocated SessionTimeControl (its own region) + its day advance button.
+    // (SessionTimeControl calls t() with string defaults → the i18n mock returns
+    // those defaults, not the keys.)
+    expect(within(b).getByRole('region', { name: 'Session-Zeit' })).toBeTruthy();
+    expect(within(b).getByText('+1 Tag')).toBeTruthy();
+    // S5 time-of-day setters: mode toggle + realtime "+1 h".
+    expect(within(b).getByRole('group', { name: 'timeOfDay.modeLabel' })).toBeTruthy();
+    expect(within(b).getByText('timeOfDay.plusHour')).toBeTruthy();
   });
 
-  it('DM lands on the lobby view (LobbyPanel) with the persistent SessionTimeBar mounted', async () => {
+  it('the bar stays visible when the active sidebar view changes', async () => {
     await enterDmPlay();
-    expect(screen.getByTestId('stub-LobbyPanel')).toBeTruthy();
-    // #425 (S6): the day/time control is now the view-independent bar, not in the lobby.
-    expect(screen.getByTestId('stub-SessionTimeBar')).toBeTruthy();
-  });
-
-  it('switching to the combatlog view via the sidebar mounts the combatlog view', async () => {
-    await enterDmPlay();
+    // Switch lobby → combatlog; the bar lives OUTSIDE renderArea() so it persists.
     fireEvent.click(sidebar().querySelector('[data-area="combatlog"]') as HTMLElement);
     await waitFor(() => expect(screen.getByText('play.combatlogPlaceholder')).toBeTruthy());
-  });
-
-  it('switching to the spotlight view via the sidebar mounts the spotlight view', async () => {
-    await enterDmPlay();
+    expect(bar()).toBeTruthy();
+    // And again lobby → spotlight.
     fireEvent.click(sidebar().querySelector('[data-area="spotlight"]') as HTMLElement);
     await waitFor(() => expect(screen.getByText('play.spotlightTeaser')).toBeTruthy());
+    expect(bar()).toBeTruthy();
   });
 
-  it('switching to the maps view mounts the presentation map (PlayCockpitMap), not the edit MapsArea', async () => {
-    await enterDmPlay();
-    fireEvent.click(sidebar().querySelector('[data-area="maps"]') as HTMLElement);
-    await waitFor(() => expect(screen.getByTestId('stub-PlayCockpitMap')).toBeTruthy());
-  });
-
-  it('the cockpit tab/split components are deleted (no PlayModeView / SplitView)', () => {
-    expect(existsSync('src/ui/PlayModeView.tsx')).toBe(false);
-    expect(existsSync('src/ui/SplitView.tsx')).toBe(false);
-  });
-
-  it('combatlog + spotlight are gate-able feature ids', () => {
-    expect(FEATURE_IDS).toContain('combatlog');
-    expect(FEATURE_IDS).toContain('spotlight');
+  it('player: sees date + time-of-day but NO controls', async () => {
+    await enterPlayerPlay();
+    const b = bar();
+    // Display present for the player too.
+    expect(within(b).getByText('sessionTime.dateLabel:')).toBeTruthy();
+    await waitFor(() => expect(within(b).getByText('08:00')).toBeTruthy());
+    // No DM controls.
+    expect(within(b).queryByRole('region', { name: 'Session-Zeit' })).toBeNull();
+    expect(within(b).queryByRole('group', { name: 'timeOfDay.modeLabel' })).toBeNull();
+    expect(within(b).queryByText('timeOfDay.plusHour')).toBeNull();
   });
 });

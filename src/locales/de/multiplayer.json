@@ -48,6 +48,17 @@
     "spotlightTeaser": "Ein geteiltes Whiteboard, um Szenen, Handouts und Skizzen für deine Runde zu präsentieren. Kommt nach 0.1."
   },
   "timeOfDay": {
+    "label": "Tageszeit",
+    "modeLabel": "Modus",
+    "modeRealtime": "Uhrzeit",
+    "modeAbstract": "Phasen",
+    "clockFormatLabel": "Format",
+    "clock24": "24h",
+    "clock12": "12h",
+    "plusHour": "+1 Std",
+    "setTimeLabel": "Uhrzeit setzen",
+    "phaseLabel": "Phase",
+    "nextPhase": "Nächste Phase",
     "phase": {
       "morning": "Morgen",
       "noon": "Mittag",
@@ -79,6 +90,9 @@
   },
   "sessionTime": {
     "title": "Session-Zeit",
+    "barLabel": "Session-Leiste",
+    "dateLabel": "Datum",
+    "dateFallback": "Tag {{day}}",
     "now": "Session-Jetzt: Tag {{day}}",
     "advance": "Voranschreiten:",
     "plusDay": "+1 Tag",
