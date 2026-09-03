@@ -42,6 +42,10 @@
     "busy": "Connecting…",
     "submit": "Join"
   },
+  "play": {
+    "lobbyPlayerPlaceholder": "Player lobby (roster + session status) — coming soon.",
+    "combatlogPlaceholder": "Combat log and dice — coming soon."
+  },
   "cockpit": {
     "tabsLabel": "Cockpit tabs",
     "tabMap": "Map",

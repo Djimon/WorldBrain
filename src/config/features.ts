@@ -17,7 +17,7 @@
 //     the dead branch and drop the import() chunk. A function call there would not
 //     be statically analyzable and the code would stay in the bundle.
 
-export const FEATURE_IDS = ['chronicle', 'cards', 'plugins', 'rules', 'audio', 'graph', 'maps', 'session'] as const;
+export const FEATURE_IDS = ['chronicle', 'cards', 'plugins', 'rules', 'audio', 'graph', 'maps', 'session', 'combatlog', 'spotlight'] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 
 // Release values from the compile constants (see vite-env.d.ts). Never read in the
@@ -36,6 +36,10 @@ const RELEASED: Record<FeatureId, boolean> = {
   // "Spielen" toggle + the session area (feature('session')), so the play cockpit is
   // unreachable, but the code stays in the bundle. Full tree-shaking = later refactor.
   session: __FEATURE_SESSION__,
+  // #420 (S1): combatlog + spotlight are their own play-sidebar views, each cut-able
+  // after 0.1 (0.1 = both on). Build-time gate like the other feature areas.
+  combatlog: __FEATURE_COMBATLOG__,
+  spotlight: __FEATURE_SPOTLIGHT__,
 };
 
 /** True if the feature is available in the current build. Dev = all features. */

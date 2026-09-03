@@ -6,5 +6,7 @@
   "audio": true,
   "graph": true,
   "maps": true,
-  "session": true
+  "session": true,
+  "combatlog": true,
+  "spotlight": true
 }

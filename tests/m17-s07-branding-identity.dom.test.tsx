@@ -66,7 +66,12 @@ vi.mock('../src/ui/MapsSidebarTabs', () => ({ MapsSidebarTabs: stubComponent('Ma
 vi.mock('../src/ui/MapFolderTree', () => ({ MapFolderTree: stubComponent('MapFolderTree') }));
 vi.mock('../src/ui/LanguageSwitcher', () => ({ LanguageSwitcher: stubComponent('LanguageSwitcher') }));
 vi.mock('../src/ui/ThemeToggle', () => ({ ThemeToggle: stubComponent('ThemeToggle') }));
-vi.mock('../src/ui/PlayModeView', () => ({ PlayModeView: () => React.createElement('div', { 'data-testid': 'dm-cockpit' }, 'Play mode') }));
+// #420 (S1): the cockpit (PlayModeView) is gone; play mode now renders the play-sidebar
+// views. Stub the play children so entering play stays light.
+vi.mock('../src/ui/LobbyPanel', () => ({ LobbyPanel: stubComponent('LobbyPanel') }));
+vi.mock('../src/ui/SessionTimeControl', () => ({ SessionTimeControl: stubComponent('SessionTimeControl') }));
+vi.mock('../src/ui/PlayCockpitMap', () => ({ PlayCockpitMap: stubComponent('PlayCockpitMap') }));
+vi.mock('../src/ui/PlayerJoinView', () => ({ PlayerJoinView: stubComponent('PlayerJoinView') }));
 
 afterEach(() => { cleanup(); document.documentElement.removeAttribute('data-mode'); setTitle.mockClear(); });
 

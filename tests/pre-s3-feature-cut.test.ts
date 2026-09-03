@@ -61,11 +61,14 @@ describe('#405 AC3 — plugin substrate stays intact', () => {
 
 // ── AC5 — the edit-mode session pointer is removed ──────────────────────────────
 describe('#405 AC5 — edit session pointer removed', () => {
-  it('session is excluded from the edit menu (still in PLAY_AREAS for play)', () => {
+  it('play-only areas are excluded from the edit menu (session area dissolved by #420)', () => {
     const shell = readSrc('src/ui/WorkspaceShell.tsx');
-    expect(shell).toMatch(/a\.id !== 'play-settings' && a\.id !== 'session'/);
-    // session remains a play area (the cockpit).
-    expect(shell).toMatch(/const PLAY_AREAS: Area\[\] = \[[^\]]*'session'/);
+    // #420 (S1): the single 'session' cockpit area was dissolved into the dedicated
+    // play-sidebar views (lobby/combatlog/spotlight). The edit menu still hides the
+    // play-only areas — #405's intent (no session pointer leaking into edit) holds.
+    expect(shell).not.toMatch(/const PLAY_AREAS: Area\[\] = \[[^\]]*'session'/);
+    expect(shell).toMatch(/const PLAY_AREAS: Area\[\] = \[[^\]]*'lobby'[^\]]*'combatlog'[^\]]*'spotlight'/);
+    expect(shell).toMatch(/a\.id !== 'play-settings'/);
   });
 
   it('the orphaned sessionAreaEditHint i18n key is gone (no dangling key)', () => {

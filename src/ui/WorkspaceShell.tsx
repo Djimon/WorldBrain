@@ -32,7 +32,11 @@ import { attachClientStoreToTransport } from '../services/client-store-transport
 import { createPlayClientStore, type PlayClientStoreImpl } from '../services/play-client-store';
 import { listCampaigns, createCampaign, type Campaign } from '../services/campaign-service';
 import { getPlayContext, setPlayContext, clearPlayContext } from '../services/play-context-store';
-import { PlayModeView } from './PlayModeView';
+// #420 (S1): the play "cockpit" (PlayModeView) is dissolved — its content now lives
+// in dedicated play-sidebar views (lobby/combatlog/spotlight/maps) rendered by
+// renderArea(). The lobby view reuses the existing LobbyPanel + SessionTimeControl.
+import { LobbyPanel } from './LobbyPanel';
+import { SessionTimeControl } from './SessionTimeControl';
 import { PlayerJoinView } from './PlayerJoinView';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
@@ -69,13 +73,21 @@ const GlobalGraphView = import.meta.env.DEV || __FEATURE_GRAPH__
 const MapsArea = import.meta.env.DEV || __FEATURE_MAPS__
   ? lazy(() => import('./MapsArea').then((m) => ({ default: m.MapsArea })))
   : null;
+// #420 (S1): in play mode the maps area shows the presentation map (PlayCockpitMap),
+// not the edit MapsArea — same feature('maps') gate + lazy chunk (moved here from the
+// removed PlayModeView so the play maps view can mount it directly).
+const PlayCockpitMap = import.meta.env.DEV || __FEATURE_MAPS__
+  ? lazy(() => import('./PlayCockpitMap').then((m) => ({ default: m.PlayCockpitMap })))
+  : null;
 
 type Area =
   | 'entities'
   | 'search'
   | 'maps'
   | 'calendar'
-  | 'session'
+  | 'lobby'
+  | 'combatlog'
+  | 'spotlight'
   | 'chronicle'
   | 'cards'
   | 'plugins'
@@ -113,7 +125,10 @@ const AREAS: { id: Area; icon: string }[] = [
   { id: 'search',   icon: '🔍' },
   { id: 'maps',     icon: '🗺' },
   { id: 'calendar', icon: '📅' },
-  { id: 'session',  icon: '🎲' },
+  // #420 (S1): the single play "session" area is dissolved into these play-sidebar views.
+  { id: 'lobby',    icon: '👥' },
+  { id: 'combatlog',icon: '⚔️' },
+  { id: 'spotlight',icon: '🔦' },
   { id: 'chronicle',icon: '📜' },
   { id: 'cards',    icon: '🃏' },
   { id: 'plugins',  icon: '🔌' },
@@ -127,7 +142,7 @@ const AREAS: { id: Area; icon: string }[] = [
 
 // M10-S22 (#342 / D25): fixed play subset — not a config point.
 // #390: play-settings extends the subset (play-scoped settings area).
-const PLAY_AREAS: Area[] = ['entities', 'search', 'maps', 'calendar', 'session', 'play-settings'];
+const PLAY_AREAS: Area[] = ['entities', 'search', 'maps', 'calendar', 'lobby', 'combatlog', 'spotlight', 'play-settings'];
 
 const CORE_ENTITY_TYPES = [
   'Character', 'Location', 'Faction', 'Item',
@@ -154,8 +169,10 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // M10-S05/S08: after the player join, token+playerId+displayName are fixed;
   // the play view then switches to PlayerCharacterSheet.
   const [playerContext, setPlayerContext] = useState<{ playerId: string; displayName: string } | null>(null);
-  // M10-S14: the player's group IDs for the host-side group view (S09).
-  const [playerGroupIds, setPlayerGroupIds] = useState<string[]>([]);
+  // M10-S14: the player's group IDs, captured at join for the S09 visibility filter.
+  // #420 (S1): the reader (was PlayModeView) is gone; the player-side views consume this
+  // once #427/S8 wires the store data source — the join-time capture stays wired here.
+  const [, setPlayerGroupIds] = useState<string[]>([]);
   // #374 D30 membrane: the client renders only from the store. Create lazily,
   // once the player context is fixed — the host would later push snapshot+delta
   // (transport wiring in R2/R3 follows).
@@ -176,7 +193,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // Remember the last active area PER mode, so toggling edit⇄play restores the view you
   // were on in that mode (instead of always dropping into the play cockpit, and instead of
   // edit trying to render a play-only area). In-session memory (per mounted project).
-  const lastAreaByMode = useRef<{ edit: Area; play: Area }>({ edit: activePanel ?? 'entities', play: 'session' });
+  const lastAreaByMode = useRef<{ edit: Area; play: Area }>({ edit: activePanel ?? 'entities', play: 'lobby' });
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | null>('Character');
   // #412: maps is a lazy, feature('maps')-gated area (MapsArea). Only selectedMapId
@@ -406,6 +423,25 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
         );
 
       case 'maps':
+        // #420 (S1): in play mode the maps area shows the presentation map
+        // (PlayCockpitMap: tokens/fog, DM control / player-presented view) — no more
+        // duplicate "Map" tab. In edit mode it stays the full MapsArea. Both share the
+        // feature('maps') gate; each lazy const is null when maps is released off.
+        if (mode === 'play') {
+          const campaignId = activeSessionId ?? '';
+          return PlayCockpitMap ? (
+            <Suspense fallback={null}>
+              <PlayCockpitMap
+                role={sessionRole === 'player' ? 'player' : 'dm'}
+                campaignId={campaignId}
+                database={sessionRole === 'player' ? undefined : database}
+                store={playerStore ?? undefined}
+                transport={(sessionRole === 'player' ? playerTransport : hostTransport) ?? undefined}
+                playerId={playerContext?.playerId}
+              />
+            </Suspense>
+          ) : null;
+        }
         // pre-release S2-Folge (#412): lazy + feature-gated; MapViewer/pixi + layer/
         // sidebar/folder-tree + map services tree-shaken when maps released off.
         return MapsArea ? (
@@ -421,10 +457,59 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           </Suspense>
         ) : null;
 
-      // #405: the edit-mode session pointer (redirect hint) is removed — the edit
-      // feature list has no session/play entry (play is reached via the header
-      // toggle). session stays in PLAY_AREAS for the play cockpit (mode === 'play',
-      // rendered via the inPlayCockpit path, not renderArea).
+      // #420 (S1): the play "cockpit" is dissolved into these play-sidebar views. S1
+      // delivers the wiring + mount points (placeholders allowed); the real content
+      // comes from S2 (lobby #421), S3 (combatlog #422), S4 (spotlight #423). The DM
+      // lobby reuses the existing LobbyPanel + SessionTimeControl (moved out of the
+      // removed PlayModeView; SessionTimeControl relocates to the persistent bar in S6).
+      case 'lobby': {
+        const campaignId = activeSessionId ?? '';
+        if (sessionRole === 'dm' && campaignId !== '') {
+          return (
+            <div className="workspace-area u-stack u-gap-3">
+              <LobbyPanel database={database} campaignId={campaignId} />
+              <SessionTimeControl database={database} campaignId={campaignId}
+                onChanged={() => setCalendarRefreshToken((n) => n + 1)} />
+            </div>
+          );
+        }
+        // Player / no active campaign: reduced variant is S2 (#421) — mount placeholder.
+        return (
+          <div className="workspace-area">
+            <Panel className="u-stack u-gap-2">
+              <h3>{t('lobby')}</h3>
+              <p className="u-muted">{t('play.lobbyPlayerPlaceholder', { ns: 'multiplayer' })}</p>
+            </Panel>
+          </div>
+        );
+      }
+
+      // #420 (S1): combatlog mount point. DM log + DiceRollerWidget / player store-
+      // filtered view arrive with S3 (#422). The player client-store is threaded here
+      // (offline hint) so the store is reachable — not orphaned — by the S3 build.
+      case 'combatlog':
+        return (
+          <div className="workspace-area">
+            <Panel className="u-stack u-gap-2">
+              <h3>{t('combatlog')}</h3>
+              <p className="u-muted">{t('play.combatlogPlaceholder', { ns: 'multiplayer' })}</p>
+              {sessionRole === 'player' && (playerStore?.isOffline() ?? false) && (
+                <p className="u-muted">{t('cockpit.offline', { ns: 'multiplayer' })}</p>
+              )}
+            </Panel>
+          </div>
+        );
+
+      // #420 (S1): spotlight mount point — S4 (#423) makes it the "coming soon" stub.
+      case 'spotlight':
+        return (
+          <div className="workspace-area">
+            <Panel className="u-stack u-gap-2">
+              <h3>{t('spotlight')}</h3>
+              <p className="u-muted">{t('cockpit.spotlightStub', { ns: 'multiplayer' })}</p>
+            </Panel>
+          </div>
+        );
 
       case 'calendar':
         return (
@@ -713,7 +798,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   const activeAreaLabel = t(activeArea);
   const visibleAreas = (mode === 'play'
     ? AREAS.filter((a) => PLAY_AREAS.includes(a.id))
-    : AREAS.filter((a) => a.id !== 'play-settings' && a.id !== 'session')) // #390 + #405: hide play-only + session pointer in edit
+    : AREAS.filter((a) => a.id !== 'play-settings' && !(['lobby', 'combatlog', 'spotlight'] as Area[]).includes(a.id))) // #390 + #420: hide play-only areas in edit
     // pre-release S2 (#404): hide cut-able features when their release flag is off.
     .filter((a) => (isGatedFeature(a.id) ? feature(a.id) : true));
 
@@ -764,7 +849,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     setActiveSessionId(campaignId);
     setSelectedCampaignForPlay(campaignId);
     setShowRoleSelect(false);
-    setActiveArea(lastAreaByMode.current.play); // restore the last play view (default: cockpit)
+    setActiveArea(lastAreaByMode.current.play); // restore the last play view (default: lobby)
   }
 
   async function pickRole(role: 'dm' | 'player') {
@@ -785,7 +870,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     setActiveSessionId(campaignId);
     setSelectedCampaignForPlay(campaignId);
     setShowRoleSelect(false);
-    setActiveArea(lastAreaByMode.current.play); // restore the last play view (default: cockpit)
+    setActiveArea(lastAreaByMode.current.play); // restore the last play view (default: lobby)
     setPlayContext(projectId, { campaignId, role }); // #390: remember context
   }
 
@@ -813,7 +898,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     setSessionRole(null);
     setActiveSessionId(null);
     setShowRoleSelect(false);
-    lastAreaByMode.current.play = 'session'; // deliberate exit → next play starts at the cockpit
+    lastAreaByMode.current.play = 'lobby'; // deliberate exit → next play starts at the lobby view
     setActiveArea(lastAreaByMode.current.edit);
   }
   async function createAndPickCampaign() {
@@ -851,7 +936,10 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       void WebviewWindow.getCurrent().setTitle(`${brandPlatform} – ${brandModeMark}`).catch(() => { /* cosmetic */ });
     } catch { /* not in Tauri */ }
   }, [brandPlatform, brandModeMark]);
-  const inPlayCockpit = mode === 'play' && activeArea === 'session';
+  // #420 (S1): a player must join before any player-side view is shown. The join flow
+  // (was gated on the old 'session' cockpit area) now gates the whole play surface for
+  // an un-joined player — until playerContext is set, PlayerJoinView is the play surface.
+  const playerNeedsJoin = mode === 'play' && sessionRole === 'player' && playerContext === null && activeSessionId !== null;
 
   // #374 D30: create the player store once the player context is fixed (an empty
   // store = "host offline"). Snapshot+delta is fed by the client transport
@@ -1051,41 +1139,26 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
                 </Button>
               </div>
             </Panel>
-          ) : inPlayCockpit ? (
-            sessionRole === 'dm' ? (
-              <PlayModeView role={sessionRole} activeSessionId={activeSessionId} database={database} transport={hostTransport ?? undefined} />
-            ) : playerContext !== null && activeSessionId !== null ? (
-              // M10-S14: after the join the player sees the full cockpit
-              // (map/combat log/spotlight/free-browse + sheet), filtered through
-              // S09 (host-side content filter). Group IDs come from the
-              // group_members table — the S09 filters are addressed to all of the
-              // player's groups (D6).
-              <PlayModeView
-                role={sessionRole}
-                activeSessionId={activeSessionId}
-                store={playerStore ?? undefined}
-                playerId={playerContext.playerId}
-                playerGroupIds={playerGroupIds}
-                transport={playerTransport ?? undefined}
-              />
-            ) : (
-              // M10-S05 (#387): the player role starts with the DB-less join
-              // flow — no `database` prop anymore (join runs as a transport handshake).
-              <PlayerJoinView
-                onJoined={async ({ playerId, displayName, transport }) => {
-                  setPlayerContext({ playerId, displayName });
-                  setPlayerTransport(transport ?? null); // #386 D29-Feed
-                  // The player's group membership → filter context for S09.
-                  try {
-                    const rows = await database.select<{ group_id: string }>(
-                      'SELECT group_id FROM group_members WHERE player_id = ?',
-                      [playerId],
-                    );
-                    setPlayerGroupIds(rows.map((r) => r.group_id));
-                  } catch { /* no group_members → empty list */ }
-                }}
-              />
-            )
+          ) : playerNeedsJoin ? (
+            // M10-S05 (#387) / #420 (S1): an un-joined player starts with the DB-less
+            // join handshake — no `database` prop (join runs as a transport handshake).
+            // This gate replaces the old cockpit-area join branch; once joined, the
+            // player sees the normal play-sidebar views via renderArea().
+            <PlayerJoinView
+              onJoined={async ({ playerId, displayName, transport }) => {
+                setPlayerContext({ playerId, displayName });
+                setPlayerTransport(transport ?? null); // #386 D29-Feed
+                // The player's group membership → filter context for S09 (consumed by
+                // the player-side views once #427/S8 wires the store data source).
+                try {
+                  const rows = await database.select<{ group_id: string }>(
+                    'SELECT group_id FROM group_members WHERE player_id = ?',
+                    [playerId],
+                  );
+                  setPlayerGroupIds(rows.map((r) => r.group_id));
+                } catch { /* no group_members → empty list */ }
+              }}
+            />
           ) : (
             renderArea()
           )}

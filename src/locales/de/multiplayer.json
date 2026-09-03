@@ -42,6 +42,10 @@
     "busy": "Verbinde…",
     "submit": "Beitreten"
   },
+  "play": {
+    "lobbyPlayerPlaceholder": "Spieler-Lobby (Roster + Session-Status) — folgt in Kürze.",
+    "combatlogPlaceholder": "Kampflog und Würfel — folgt in Kürze."
+  },
   "cockpit": {
     "tabsLabel": "Cockpit-Reiter",
     "tabMap": "Map",

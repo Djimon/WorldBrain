@@ -162,10 +162,12 @@ vi.mock('../src/ui/primitives', () => ({
   ),
 }));
 
-// PlayModeView mock — renders dm-cockpit testid so toggle tests can detect play mode
-vi.mock('../src/ui/PlayModeView', () => ({
-  PlayModeView: () => React.createElement('div', { 'data-testid': 'dm-cockpit' }, 'Play mode'),
-}));
+// #420 (S1): the cockpit (PlayModeView) is dissolved into play-sidebar views. Stub the
+// play children; the DM lobby view (stub-LobbyPanel) is the "in DM play mode" marker.
+vi.mock('../src/ui/LobbyPanel', () => ({ LobbyPanel: stubComponent('LobbyPanel') }));
+vi.mock('../src/ui/SessionTimeControl', () => ({ SessionTimeControl: stubComponent('SessionTimeControl') }));
+vi.mock('../src/ui/PlayCockpitMap', () => ({ PlayCockpitMap: stubComponent('PlayCockpitMap') }));
+vi.mock('../src/ui/PlayerJoinView', () => ({ PlayerJoinView: stubComponent('PlayerJoinView') }));
 
 afterEach(cleanup);
 
@@ -252,7 +254,7 @@ describe('M10-S22 Mode toggle integration', () => {
     });
     fireEvent.click(asDm());
     await waitFor(() => {
-      expect(screen.getByTestId('dm-cockpit')).toBeTruthy();
+      expect(screen.getByTestId('stub-LobbyPanel')).toBeTruthy();
     });
     const sidebar = document.querySelector('[class*="sidebar"], nav, [role="navigation"]');
     expect(sidebar?.textContent).not.toMatch(/🌌/);
@@ -270,7 +272,7 @@ describe('M10-S22 Mode toggle integration', () => {
     fireEvent.click(playSeg());
     await waitFor(() => asDm());
     fireEvent.click(asDm());
-    await waitFor(() => screen.getByTestId('dm-cockpit'));
+    await waitFor(() => screen.getByTestId('stub-LobbyPanel'));
     fireEvent.click(editSeg());
     await waitFor(() => {
       const sidebar = document.querySelector('[class*="sidebar"], nav, [role="navigation"]');
@@ -285,7 +287,7 @@ describe('M10-S22 Mode toggle integration', () => {
     await waitFor(() => asPlayer());
     fireEvent.click(asPlayer());
     await waitFor(() => {
-      expect(screen.queryByTestId('dm-cockpit')).toBeNull();
+      expect(screen.queryByTestId('stub-LobbyPanel')).toBeNull();
     });
   });
 
@@ -296,7 +298,7 @@ describe('M10-S22 Mode toggle integration', () => {
     fireEvent.click(playSeg());
     await waitFor(() => asDm());
     fireEvent.click(asDm());
-    await waitFor(() => screen.getByTestId('dm-cockpit'));
+    await waitFor(() => screen.getByTestId('stub-LobbyPanel'));
     expect(modeToggle()).toBeTruthy();
     // aria-pressed spiegelt den aktiven Modus wider.
     expect(playSeg().getAttribute('aria-pressed')).toBe('true');

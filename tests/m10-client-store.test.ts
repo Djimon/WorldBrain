@@ -19,11 +19,9 @@ describe('#374 Client-Store implementation', () => {
 });
 
 describe('#374 Client-Mode view guards (no DB access)', () => {
-  it('PlayModeView (client path) does not import database', () => {
-    const source = readFileSync('src/ui/PlayModeView.tsx', 'utf-8');
-    expect(source).not.toMatch(/useDatabase|listEntitiesByType/);
-  });
-
+  // #420 (S1): PlayModeView was removed (cockpit dissolved into play-sidebar views).
+  // The player-side DB-less membrane for the reused play views (entities/search/maps/
+  // calendar) is owned by #427/S8; its guard belongs there, not here.
   it('PlayerCharacterSheet does not use database for rendering', () => {
     const source = readFileSync('src/ui/PlayerCharacterSheet.tsx', 'utf-8');
     expect(source).not.toMatch(/useDatabase/);

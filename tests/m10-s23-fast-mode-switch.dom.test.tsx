@@ -81,7 +81,12 @@ vi.mock('../src/ui/MapsSidebarTabs', () => ({ MapsSidebarTabs: stubComponent('Ma
 vi.mock('../src/ui/MapFolderTree', () => ({ MapFolderTree: stubComponent('MapFolderTree') }));
 vi.mock('../src/ui/LanguageSwitcher', () => ({ LanguageSwitcher: stubComponent('LanguageSwitcher') }));
 vi.mock('../src/ui/ThemeToggle', () => ({ ThemeToggle: stubComponent('ThemeToggle') }));
-vi.mock('../src/ui/PlayModeView', () => ({ PlayModeView: () => React.createElement('div', { 'data-testid': 'dm-cockpit' }, 'Play mode') }));
+// #420 (S1): cockpit dissolved → stub the play-sidebar children; DM lobby view
+// (stub-LobbyPanel) is the "in play mode" marker.
+vi.mock('../src/ui/LobbyPanel', () => ({ LobbyPanel: stubComponent('LobbyPanel') }));
+vi.mock('../src/ui/SessionTimeControl', () => ({ SessionTimeControl: stubComponent('SessionTimeControl') }));
+vi.mock('../src/ui/PlayCockpitMap', () => ({ PlayCockpitMap: stubComponent('PlayCockpitMap') }));
+vi.mock('../src/ui/PlayerJoinView', () => ({ PlayerJoinView: stubComponent('PlayerJoinView') }));
 vi.mock('../src/ui/primitives', () => ({
   Button: ({ children, ...props }: { children?: React.ReactNode } & Record<string, unknown>) =>
     React.createElement('button', props, children),
@@ -112,7 +117,7 @@ const playSeg = () => screen.getByRole('button', { name: 'Spielen' });
 const editSeg = () => screen.getByRole('button', { name: 'Bearbeiten' });
 const asDm = () => screen.getByRole('button', { name: /Als DM/i });
 const roleDialog = () => screen.queryByRole('dialog');
-const cockpit = () => screen.queryByTestId('dm-cockpit');
+const cockpit = () => screen.queryByTestId('stub-LobbyPanel');
 
 /** edit→play über den Auswahl-Schritt: Spielen → Kampagne 1 → Als DM → Cockpit. */
 async function establishPlayViaDialog() {
