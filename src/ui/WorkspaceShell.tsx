@@ -1233,21 +1233,34 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             // join handshake — no `database` prop (join runs as a transport handshake).
             // This gate replaces the old cockpit-area join branch; once joined, the
             // player sees the normal play-sidebar views via renderArea().
-            <PlayerJoinView
-              onJoined={async ({ playerId, displayName, transport }) => {
-                setPlayerContext({ playerId, displayName });
-                setPlayerTransport(transport ?? null); // #386 D29-Feed
-                // The player's group membership → filter context for S09 (consumed by
-                // the player-side views once #427/S8 wires the store data source).
-                try {
-                  const rows = await database.select<{ group_id: string }>(
-                    'SELECT group_id FROM group_members WHERE player_id = ?',
-                    [playerId],
-                  );
-                  setPlayerGroupIds(rows.map((r) => r.group_id));
-                } catch { /* no group_members → empty list */ }
-              }}
-            />
+            //
+            // Regression fix (#420 fallout): this gate short-circuits renderArea(), where
+            // the only `leavePlaySession` exit lives. A remembered `role:'player'` context
+            // (persisted in localStorage → survives restart) with no reachable host was a
+            // total dead-end. The explicit escape restores the pre-#420 way out: cancel →
+            // clearPlayContext + back to edit.
+            <div className="workspace-area u-stack u-gap-3">
+              <div className="u-row">
+                <Button variant="outline" onClick={leavePlaySession}>
+                  {t('cancel', { ns: 'common' })}
+                </Button>
+              </div>
+              <PlayerJoinView
+                onJoined={async ({ playerId, displayName, transport }) => {
+                  setPlayerContext({ playerId, displayName });
+                  setPlayerTransport(transport ?? null); // #386 D29-Feed
+                  // The player's group membership → filter context for S09 (consumed by
+                  // the player-side views once #427/S8 wires the store data source).
+                  try {
+                    const rows = await database.select<{ group_id: string }>(
+                      'SELECT group_id FROM group_members WHERE player_id = ?',
+                      [playerId],
+                    );
+                    setPlayerGroupIds(rows.map((r) => r.group_id));
+                  } catch { /* no group_members → empty list */ }
+                }}
+              />
+            </div>
           ) : (
             <>
               {/* #425 (S6): the persistent session bar (date + time-of-day, DISPLAY

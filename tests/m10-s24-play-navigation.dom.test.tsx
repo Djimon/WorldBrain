@@ -7,7 +7,7 @@
 import { existsSync } from 'node:fs';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FEATURE_IDS } from '../src/config/features';
 
 // ---------------------------------------------------------------------------
@@ -19,6 +19,19 @@ import { FEATURE_IDS } from '../src/config/features';
 // host-transport effect's `database` dep every render → infinite re-render (OOM).
 const { db } = vi.hoisted(() => ({
   db: { execute: vi.fn().mockResolvedValue(undefined), select: vi.fn().mockResolvedValue([]) },
+}));
+
+// Controllable remembered play-context + campaign list, so a test can drive an
+// un-joined player (mode=play, role=player, no join yet) — the dead-end #420 created.
+const { getPlayContextMock, clearPlayContextSpy, listCampaignsMock } = vi.hoisted(() => ({
+  getPlayContextMock: vi.fn(() => null as null | { campaignId: string; role: 'dm' | 'player' }),
+  clearPlayContextSpy: vi.fn(),
+  listCampaignsMock: vi.fn().mockResolvedValue([] as { id: string; title: string }[]),
+}));
+vi.mock('../src/services/play-context-store', () => ({
+  getPlayContext: getPlayContextMock,
+  setPlayContext: vi.fn(),
+  clearPlayContext: clearPlayContextSpy,
 }));
 
 // Stub the WebRTC host transport so entering DM play does no real signaling/timers.
@@ -75,7 +88,7 @@ vi.mock('../../core_data/calendar-schema', () => ({ formatCalendarDate: vi.fn().
 vi.mock('../src/services/event-entity-service', () => ({ createEventEntity: vi.fn(), createCampaignEventEntity: vi.fn() }));
 vi.mock('../src/services/map-layer-service', () => ({ importImageLayer: vi.fn(), createFogLayer: vi.fn() }));
 vi.mock('../src/services/campaign-service', () => ({
-  listCampaigns: vi.fn().mockResolvedValue([]),
+  listCampaigns: listCampaignsMock,
   createCampaign: vi.fn().mockResolvedValue({ id: 'camp-1', title: 'Default Campaign' }),
 }));
 
@@ -147,6 +160,11 @@ vi.mock('../src/ui/primitives', () => ({
 }));
 
 afterEach(cleanup);
+beforeEach(() => {
+  getPlayContextMock.mockReturnValue(null);
+  clearPlayContextSpy.mockClear();
+  listCampaignsMock.mockResolvedValue([]);
+});
 
 async function getShell() {
   const mod = await import('../src/ui/WorkspaceShell');
@@ -219,5 +237,30 @@ describe('#420 (S1) play navigation — cockpit dissolved into sidebar views', (
   it('combatlog + spotlight are gate-able feature ids', () => {
     expect(FEATURE_IDS).toContain('combatlog');
     expect(FEATURE_IDS).toContain('spotlight');
+  });
+});
+
+describe('#420 regression — an un-joined player is not a dead-end', () => {
+  // The play gate renders PlayerJoinView instead of renderArea() for a remembered
+  // `role:'player'` context. Since renderArea() (which hosts the only leavePlaySession
+  // exit) is bypassed, and the context persists in localStorage across restart, a player
+  // with no reachable host was permanently trapped. There must be an in-surface escape.
+  it('the join surface offers an escape that clears the context and returns to edit', async () => {
+    listCampaignsMock.mockResolvedValue([{ id: 'camp-1', title: 'Camp' }]);
+    getPlayContextMock.mockReturnValue({ campaignId: 'camp-1', role: 'player' });
+    const Shell = await getShell();
+    render(React.createElement(Shell));
+    // edit → play: the remembered player context enters directly → un-joined player gate.
+    fireEvent.click(playSeg());
+    await waitFor(() => expect(screen.getByTestId('stub-PlayerJoinView')).toBeTruthy());
+
+    // The escape control (t('cancel', {ns:'common'}) → key 'cancel' under the i18n mock).
+    const escape = screen.getByRole('button', { name: 'cancel' });
+    fireEvent.click(escape);
+
+    // leavePlaySession(): clears the remembered context and drops back to edit, so the
+    // join surface is gone (no longer a dead-end).
+    await waitFor(() => expect(screen.queryByTestId('stub-PlayerJoinView')).toBeNull());
+    expect(clearPlayContextSpy).toHaveBeenCalled();
   });
 });
