@@ -49,6 +49,23 @@ export type JoinResponsePayload =
   | { ok: true; token: string; playerId: string }
   | { ok: false; error: string };
 
+// M10-S2 (#421): presence feed for the DB-less player lobby. The host broadcasts the
+// active roster + session-live flag as its OWN message type (NOT a snapshot/delta
+// entity): the client store's `applySnapshot` clears its entity map on every map
+// snapshot (host start / per join / present()), which would wipe a roster kept there.
+// A dedicated `roster` message survives those resets and is consumed directly by the
+// player lobby. Host→player only, sent under SYSTEM_TOKEN.
+export const ROSTER = 'roster';
+
+export interface RosterEntry { playerId: string; displayName: string }
+
+/** Payload of a `roster` broadcast: the active players + whether the session is live. */
+export interface RosterPayload {
+  players: RosterEntry[];
+  /** Session connection open (DM pressed Start) — drives the player's session-status. */
+  live: boolean;
+}
+
 export interface SessionTransport {
   /** Opens the peer connection (host: provide the DataChannel). */
   connect(): Promise<void>;

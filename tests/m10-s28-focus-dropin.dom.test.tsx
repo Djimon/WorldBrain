@@ -209,8 +209,9 @@ async function enterPlayerPlay() {
   fireEvent.click(screen.getByRole('button', { name: 'Spielen' }));
   await waitFor(() => expect(screen.getByRole('button', { name: /Als Player/i })).toBeTruthy());
   fireEvent.click(screen.getByRole('button', { name: /Als Player/i }));
-  // Player lobby renders the reduced placeholder (LobbyPanel is DM-only).
-  await waitFor(() => expect(screen.getByText('play.lobbyPlayerPlaceholder')).toBeTruthy());
+  // #421 (S2): the player lobby now renders the reduced LobbyPanel (role='player'),
+  // not the old placeholder — LobbyPanel is stubbed here, so the landmark is its stub.
+  await waitFor(() => expect(screen.getByTestId('stub-LobbyPanel')).toBeTruthy());
 }
 
 async function enterDmPlay() {
@@ -258,7 +259,7 @@ describe('#426 (S7) focus drop-in — player, view-independent, opt-in', () => {
     await enterPlayerPlay();
     await waitFor(() => expect(dropIn()).not.toBeNull());
     // The player stays on the lobby — the focus does NOT swap their view.
-    expect(screen.getByText('play.lobbyPlayerPlaceholder')).toBeTruthy();
+    expect(screen.getByTestId('stub-LobbyPanel')).toBeTruthy();
     expect(screen.queryByTestId('stub-PlayCockpitMap')).toBeNull();
   });
 

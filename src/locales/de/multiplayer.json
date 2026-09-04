@@ -15,7 +15,17 @@
     "rosterEmpty": "Noch niemand beigetreten.",
     "online": "online",
     "kick": "Kick",
-    "groups": "Gruppen:"
+    "groups": "Gruppen:",
+    "sessionControl": "Session-Steuerung",
+    "sessionStatus": "Session:",
+    "sessionRunning": "läuft",
+    "sessionStopped": "aus",
+    "sessionStart": "Session starten",
+    "sessionStop": "Session stoppen",
+    "inviteInactiveHint": "Der Code ist erst nach dem Start der Session gültig.",
+    "connectionStatus": "Verbindung:",
+    "connected": "verbunden",
+    "offline": "offline"
   },
   "join": {
     "title": "Campaign beitreten",

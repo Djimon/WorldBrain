@@ -26,6 +26,8 @@ import { currentAppId } from '../services/app-id-service';
 import { attachVisibilityBroadcaster } from '../services/player-content-filter-service';
 import { attachHostJoinSync } from '../services/host-join-sync';
 import { attachClientStoreToTransport } from '../services/client-store-transport-bridge';
+import { broadcastRoster } from '../services/host-presence-sync';
+import { ROSTER, type RosterEntry, type RosterPayload, type TransportMessage } from '../services/session-transport';
 // #412: the map-transport glue (host-token-sync / presented-map-push) is imported
 // lazily behind feature('maps') inside the host effect, so map-service/map-layer-service
 // tree-shake out of the main bundle at maps=false. See __FEATURE_MAPS__ usage below.
@@ -190,6 +192,14 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // (PlayerJoinView) — the shell feeds the DB-less store with it (D29 feed)
   // and the player sends token movement intents through it.
   const [playerTransport, setPlayerTransport] = useState<WebRtcTransport | null>(null);
+  // M10-S2 (#421): the DM's explicit Session Start/Stop. The host transport effect is
+  // gated on this — Start (true) opens the connection, Stop (false) tears it down. The
+  // invite code is valid only while live (no transport = joiners can't reach the host).
+  const [sessionLive, setSessionLive] = useState(false);
+  // M10-S2 (#421): roster fed by the host `roster` broadcast (host-presence-sync) — the
+  // DB-less player's only source for the connected-players list + session-live flag.
+  const [playerRoster, setPlayerRoster] = useState<RosterEntry[]>([]);
+  const [playerSessionLive, setPlayerSessionLive] = useState(false);
   // M10-S22 (follow-up): real campaign selection on play entry instead of the
   // projectId hack. Campaigns are loaded when the selection panel opens.
   const [availableCampaigns, setAvailableCampaigns] = useState<Campaign[]>([]);
@@ -474,15 +484,38 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       case 'lobby': {
         const campaignId = activeSessionId ?? '';
         if (sessionRole === 'dm' && campaignId !== '') {
+          // #421: DM lobby — full + explicit Session Start/Stop; invite valid only live.
           return (
             <div className="workspace-area u-stack u-gap-3">
-              <LobbyPanel database={database} campaignId={campaignId} />
+              <LobbyPanel
+                database={database}
+                campaignId={campaignId}
+                sessionLive={sessionLive}
+                onStartSession={startSession}
+                onStopSession={stopSession}
+                onRosterChanged={rebroadcastRoster}
+              />
               <SessionTimeControls database={database} campaignId={campaignId}
                 onChanged={() => { setSessionTimeToken((n) => n + 1); setCalendarRefreshToken((n) => n + 1); }} />
             </div>
           );
         }
-        // Player / no active campaign: reduced variant is S2 (#421) — mount placeholder.
+        // #421: reduced player lobby — roster + session status + own connection status,
+        // fed by the host `roster` broadcast. DB-less: no invite/kick/groups.
+        if (sessionRole === 'player') {
+          return (
+            <div className="workspace-area">
+              <LobbyPanel
+                role="player"
+                campaignId={campaignId}
+                sessionLive={playerSessionLive}
+                roster={playerRoster}
+                isOffline={playerStore?.isOffline() ?? true}
+              />
+            </div>
+          );
+        }
+        // No active campaign yet.
         return (
           <div className="workspace-area">
             <Panel className="u-stack u-gap-2">
@@ -889,10 +922,28 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     setPlayContext(projectId, { campaignId, role }); // #390: remember context
   }
 
+  // #421 — DM session control (Start/Stop = the connection). Start arms the host
+  // transport effect (which opens signaling + broadcasts the roster); Stop tears it
+  // down (effect cleanup closes the transport → all players disconnected).
+  function startSession() { setSessionLive(true); }
+  function stopSession() {
+    // Tell the still-connected players the session went down before the transport closes.
+    if (hostTransport !== null && activeSessionId !== null) {
+      void broadcastRoster({ transport: hostTransport, database, campaignId: activeSessionId, live: false });
+    }
+    setSessionLive(false);
+  }
+  /** Re-broadcast the roster after a host-side change (kick) while the session is live. */
+  function rebroadcastRoster() {
+    if (hostTransport === null || activeSessionId === null || !sessionLive) return;
+    void broadcastRoster({ transport: hostTransport, database, campaignId: activeSessionId, live: true });
+  }
+
   // #390 — play-settings actions (in play mode, its own area):
   /** Switch campaign without the edit detour — updates the active session + remembered context. */
   function switchPlayCampaign(campaignId: string) {
     if (campaignId === activeSessionId) return;
+    setSessionLive(false); // #421: a different campaign is a different room — DM re-starts.
     setActiveSessionId(campaignId);
     setSelectedCampaignForPlay(campaignId);
     if (sessionRole === 'dm' || sessionRole === 'player') {
@@ -902,6 +953,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   /** Switch role (DM/Player) — switching to player resets the join context. */
   function switchPlayRole(role: 'dm' | 'player') {
     if (role === sessionRole) return;
+    setSessionLive(false); // #421: role switch resets the session — DM must re-Start.
     setSessionRole(role);
     if (role === 'player') setPlayerContext(null);
     if (activeSessionId !== null) setPlayContext(projectId, { campaignId: activeSessionId, role });
@@ -909,6 +961,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   /** Leave the session — clear the remembered context and back to edit. */
   function leavePlaySession() {
     clearPlayContext(projectId);
+    setSessionLive(false); // #421: leaving closes the connection.
     setMode('edit');
     setSessionRole(null);
     setActiveSessionId(null);
@@ -979,7 +1032,8 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // adapter runs the fallback chain (Nostr → MQTT → BitTorrent → PeerJS) and
   // brokers SDP/ICE — game data stays P2P.
   useEffect(() => {
-    if (mode !== 'play' || sessionRole !== 'dm' || activeSessionId === null) return;
+    // #421: gated on sessionLive — the connection opens only when the DM presses Start.
+    if (mode !== 'play' || sessionRole !== 'dm' || activeSessionId === null || !sessionLive) return;
     const transport = WebRtcTransport.host(activeSessionId, database);
     setHostTransport(transport);
     const campaignId = activeSessionId;
@@ -1015,12 +1069,15 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       transport,
       database,
       campaignId,
-      onAfterJoin: mapsOn
-        ? async (playerId) => {
-            const { pushPresentedMapSnapshot } = await import('../services/presented-map-push');
-            await pushPresentedMapSnapshot({ database, campaignId, transport, recipientPlayerId: playerId });
-          }
-        : undefined,
+      // #421: the roster broadcast is session-core → runs for every join regardless of
+      // maps. The presented-map snapshot (#386) is the maps contribution, added when on.
+      onAfterJoin: async (playerId) => {
+        if (mapsOn) {
+          const { pushPresentedMapSnapshot } = await import('../services/presented-map-push');
+          await pushPresentedMapSnapshot({ database, campaignId, transport, recipientPlayerId: playerId });
+        }
+        await broadcastRoster({ transport, database, campaignId, live: true });
+      },
     });
     // M10-#386: initial snapshot of the presented map once the host transport is up, so
     // already-connected players get the scene. Maps-gated (present() re-pushes on change).
@@ -1029,12 +1086,29 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
         void pushPresentedMapSnapshot({ database, campaignId, transport });
       });
     }
+    // #421: initial roster broadcast on session start, so already-connected players see
+    // the live session + current roster immediately.
+    void broadcastRoster({ transport, database, campaignId, live: true });
     return () => {
       unsub();
       setHostTransport(null);
       void transport.close().catch(() => {});
     };
-  }, [mode, sessionRole, activeSessionId, database]);
+  }, [mode, sessionRole, activeSessionId, database, sessionLive]);
+
+  // #421: player-side roster feed — subscribe to the host `roster` broadcast on the
+  // player transport. This is the DB-less player's only source for the connected-players
+  // list + the session-live flag (deliberately NOT the reset-on-snapshot client store).
+  useEffect(() => {
+    if (playerTransport === null) return;
+    const dispose = playerTransport.onMessage((msg: TransportMessage) => {
+      if (msg.type !== ROSTER) return;
+      const p = msg.payload as unknown as RosterPayload;
+      setPlayerRoster(Array.isArray(p.players) ? p.players : []);
+      setPlayerSessionLive(p.live === true);
+    });
+    return () => { dispose(); };
+  }, [playerTransport]);
 
   return (
     <AppModeContext.Provider value={modeContextValue}>

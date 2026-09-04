@@ -15,7 +15,17 @@
     "rosterEmpty": "No one has joined yet.",
     "online": "online",
     "kick": "Kick",
-    "groups": "Groups:"
+    "groups": "Groups:",
+    "sessionControl": "Session control",
+    "sessionStatus": "Session:",
+    "sessionRunning": "running",
+    "sessionStopped": "off",
+    "sessionStart": "Start session",
+    "sessionStop": "Stop session",
+    "inviteInactiveHint": "The code is only valid after the session has started.",
+    "connectionStatus": "Connection:",
+    "connected": "connected",
+    "offline": "offline"
   },
   "join": {
     "title": "Join campaign",
