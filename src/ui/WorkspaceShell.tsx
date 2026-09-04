@@ -926,12 +926,21 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // transport effect (which opens signaling + broadcasts the roster); Stop tears it
   // down (effect cleanup closes the transport → all players disconnected).
   function startSession() { setSessionLive(true); }
-  function stopSession() {
-    // Tell the still-connected players the session went down before the transport closes.
+  async function stopSession() {
+    // #421 Low 1: AWAIT the "session down" broadcast BEFORE flipping sessionLive — the
+    // flip triggers the effect cleanup that closes the transport, so a fire-and-forget
+    // send would race the close and the players' `session: läuft` chip would stay stale.
     if (hostTransport !== null && activeSessionId !== null) {
-      void broadcastRoster({ transport: hostTransport, database, campaignId: activeSessionId, live: false });
+      await broadcastRoster({ transport: hostTransport, database, campaignId: activeSessionId, live: false })
+        .catch(() => { /* offline / send failed — the close below disconnects them anyway */ });
     }
     setSessionLive(false);
+  }
+  /** #421 Low 2: clear the player's presence feed so a stale roster/status can't flash
+   *  on the next entry (before the first fresh `roster` broadcast arrives). */
+  function resetPlayerPresence() {
+    setPlayerRoster([]);
+    setPlayerSessionLive(false);
   }
   /** Re-broadcast the roster after a host-side change (kick) while the session is live. */
   function rebroadcastRoster() {
@@ -944,6 +953,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   function switchPlayCampaign(campaignId: string) {
     if (campaignId === activeSessionId) return;
     setSessionLive(false); // #421: a different campaign is a different room — DM re-starts.
+    resetPlayerPresence();
     setActiveSessionId(campaignId);
     setSelectedCampaignForPlay(campaignId);
     if (sessionRole === 'dm' || sessionRole === 'player') {
@@ -954,6 +964,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   function switchPlayRole(role: 'dm' | 'player') {
     if (role === sessionRole) return;
     setSessionLive(false); // #421: role switch resets the session — DM must re-Start.
+    resetPlayerPresence();
     setSessionRole(role);
     if (role === 'player') setPlayerContext(null);
     if (activeSessionId !== null) setPlayContext(projectId, { campaignId: activeSessionId, role });
@@ -962,6 +973,7 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   function leavePlaySession() {
     clearPlayContext(projectId);
     setSessionLive(false); // #421: leaving closes the connection.
+    resetPlayerPresence();
     setMode('edit');
     setSessionRole(null);
     setActiveSessionId(null);

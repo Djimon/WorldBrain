@@ -229,6 +229,17 @@ describe('#421 (S2) DM lobby — session Start/Stop + invite gating', () => {
     await enterDmLobby();
     expect(screen.getByText('Verbundene Spieler')).toBeTruthy();
   });
+
+  it('pressing Stop broadcasts the session-down roster (live:false) before closing', async () => {
+    await enterDmLobby();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Session starten' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Session stoppen' })).toBeTruthy());
+    broadcastRosterSpy.mockClear();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Session stoppen' })); });
+    // Low 1: the live:false broadcast is awaited before the transport close.
+    await waitFor(() => expect(broadcastRosterSpy).toHaveBeenCalledWith(expect.objectContaining({ live: false })));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Session starten' })).toBeTruthy());
+  });
 });
 
 describe('#421 (S2) reduced player lobby — roster + status, no DM controls', () => {
