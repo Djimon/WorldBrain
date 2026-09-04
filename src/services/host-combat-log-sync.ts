@@ -18,7 +18,36 @@ import type { ClientAction } from './play-sync-protocol';
 import { postEntry, listEntries, type CombatLogEntry } from './combat-log-service';
 import type { DiceVisibility } from './dice-roller-service';
 
-interface RollIntentPayload { actorDisplay?: unknown; text?: unknown; visibility?: unknown }
+/** A validated roll_dice intent (decoded from the untrusted wire payload). */
+export interface DecodedRollIntent {
+  senderPlayerId: string;
+  actorDisplay: string;
+  text: string;
+  visibility: DiceVisibility;
+}
+
+/**
+ * Decode + validate an incoming `client_action` payload as a roll_dice intent — the ONE
+ * place the wire shape is asserted (mirrors decodeRoster; no scattered casts). Returns
+ * null for anything that is not a well-formed roll_dice intent (caller ignores it).
+ */
+export function decodeRollIntent(payload: Record<string, unknown>): DecodedRollIntent | null {
+  if (payload.actionKind !== 'roll_dice') return null;
+  const senderPlayerId = payload.senderPlayerId;
+  if (typeof senderPlayerId !== 'string' || senderPlayerId === '') return null;
+  const inner = payload.payload;
+  if (inner === null || typeof inner !== 'object') return null;
+  const p = inner as Record<string, unknown>;
+  if (typeof p.text !== 'string') return null;
+  // 'private' never travels the wire (local-only) → only all|dm_only are honoured.
+  const visibility: DiceVisibility = p.visibility === 'dm_only' ? 'dm_only' : 'all';
+  return {
+    senderPlayerId,
+    actorDisplay: typeof p.actorDisplay === 'string' ? p.actorDisplay : '',
+    text: p.text,
+    visibility,
+  };
+}
 
 /** Player → host: a dice-roll intent (visibility all|dm_only only; 'private' stays local). */
 export function sendRollIntent(
@@ -69,11 +98,11 @@ export function attachHostCombatSync(params: {
   const { transport, database, campaignId, onPersisted } = params;
   transport.onMessage((msg: TransportMessage) => {
     if (msg.type !== 'client_action') return;
-    const action = msg.payload as unknown as ClientAction;
-    if (action.actionKind !== 'roll_dice') return;
-    const p = action.payload as RollIntentPayload;
-    if (typeof p.text !== 'string') return;
-    void handleRollIntent(database, campaignId, transport, action.senderPlayerId, p, onPersisted);
+    const intent = decodeRollIntent(msg.payload);
+    if (intent === null) return;
+    // .catch: a DB error while authorizing/persisting must not become an unhandled rejection.
+    void handleRollIntent(database, campaignId, transport, intent, onPersisted)
+      .catch(() => { /* authorize/persist failed → no write, no broadcast */ });
   });
 }
 
@@ -81,21 +110,18 @@ async function handleRollIntent(
   database: DatabaseLike,
   campaignId: string,
   transport: Pick<SessionTransport, 'send'>,
-  senderPlayerId: string,
-  p: RollIntentPayload,
+  intent: DecodedRollIntent,
   onPersisted?: () => void,
 ): Promise<void> {
   // Host determines membership ITSELF (no trust in client-provided status).
   const rows = await database.select<{ status: string }>(
     'SELECT status FROM session_players WHERE campaign_id = ? AND player_id = ?',
-    [campaignId, senderPlayerId],
+    [campaignId, intent.senderPlayerId],
   );
   if ((rows[0]?.status ?? '') !== 'active') return; // kicked/unknown → no write, no broadcast
-  // 'private' never arrives here (local-only); guard so a spoofed 'private' can't be persisted.
-  const visibility: DiceVisibility = p.visibility === 'dm_only' ? 'dm_only' : 'all';
   const entry = await postEntry(database, {
-    campaignId, actorDisplay: typeof p.actorDisplay === 'string' ? p.actorDisplay : '',
-    actorPlayerId: senderPlayerId, text: String(p.text), visibility,
+    campaignId, actorDisplay: intent.actorDisplay,
+    actorPlayerId: intent.senderPlayerId, text: intent.text, visibility: intent.visibility,
   });
   broadcastCombatEntry(transport, entry); // 'all' → players; dm_only/private stay off the wire
   onPersisted?.(); // DM's DB view reloads (sees the player's roll, incl. dm_only "nur DM")

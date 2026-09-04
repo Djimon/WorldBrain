@@ -92,6 +92,7 @@
     "combatLogTitle": "Kampflog",
     "offline": "Host offline — noch keine Daten.",
     "logEmpty": "Noch keine Einträge.",
+    "logLoadError": "Kampflog konnte nicht geladen werden.",
     "splitToggle": "Split: Map ‖ Kampflog",
     "spotlightTitle": "Spotlight",
     "spotlightStub": "Spotlight/Whiteboard — Panel wird durch S15 (Whiteboard-Elemente + per-Spieler-Boards) gefüllt.",

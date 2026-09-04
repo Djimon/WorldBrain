@@ -92,6 +92,7 @@
     "combatLogTitle": "Combat log",
     "offline": "Host offline — no data yet.",
     "logEmpty": "No entries yet.",
+    "logLoadError": "Could not load the combat log.",
     "splitToggle": "Split: Map ‖ Combat log",
     "spotlightTitle": "Spotlight",
     "spotlightStub": "Spotlight/whiteboard — this panel will be filled in by S15 (whiteboard elements + per-player boards).",

@@ -7,6 +7,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { listEntries } from '../src/services/combat-log-service';
 
 const { db } = vi.hoisted(() => ({
   db: { execute: vi.fn().mockResolvedValue(undefined), select: vi.fn().mockResolvedValue([]) },
@@ -214,9 +215,16 @@ describe('#422 (S3) DM combatlog — DB log + dice + broadcast', () => {
     expect(screen.getByText('DM: 1d20 = 15')).toBeTruthy();
     expect(screen.getByText('Secret roll')).toBeTruthy();
     // dm_only visibility marker — scoped to the log (the dice dropdown also has a "Nur DM" option).
-    const logPanel = document.querySelector('.combat-log-view__log') as HTMLElement;
+    const logPanel = screen.getByTestId('combatlog-log');
     expect(within(logPanel).getByText('Nur DM')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Würfeln' })).toBeTruthy();
+  });
+
+  it('surfaces a DB load error instead of a silently empty log (Low 1)', async () => {
+    vi.mocked(listEntries).mockRejectedValueOnce(new Error('db fail'));
+    await enterDm();
+    await gotoCombatlog();
+    await waitFor(() => expect(screen.getByText('Kampflog konnte nicht geladen werden.')).toBeTruthy());
   });
 
   it('a DM roll posts and broadcasts the entry to the players', async () => {

@@ -49,6 +49,7 @@ export function CombatLogView({ role, campaignId, database, store, transport, pl
   const [entries, setEntries] = useState<CombatLogEntry[]>([]);
   const [localEcho, setLocalEcho] = useState<CombatLogEntry[]>([]);
   const [reloadTick, setReloadTick] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Player: re-render on store snapshot/delta.
   useEffect(() => {
@@ -66,8 +67,10 @@ export function CombatLogView({ role, campaignId, database, store, transport, pl
     if (!database) { setEntries([]); return; }
     let cancelled = false;
     void listEntries(database, { campaignId, role: 'dm', playerId })
-      .then((es) => { if (!cancelled) setEntries(es); })
-      .catch((e) => { if (!cancelled) setEntries([]); void e; });
+      .then((es) => { if (!cancelled) { setEntries(es); setLoadError(null); } })
+      // Low 1: surface the failure — a swallowed DB error rendered as an empty log is
+      // indistinguishable from "no entries" (AP-006 spirit).
+      .catch((e) => { if (!cancelled) setLoadError(e instanceof Error ? e.message : String(e)); });
     return () => { cancelled = true; };
   }, [isPlayer, store, database, campaignId, playerId, reloadTick, refreshToken]);
 
@@ -83,9 +86,14 @@ export function CombatLogView({ role, campaignId, database, store, transport, pl
 
   return (
     <div className="workspace-area u-row u-gap-3 u-items-start">
-      <Panel className="combat-log-view__log u-stack u-gap-2 u-flex-1">
+      <Panel data-testid="combatlog-log" className="u-stack u-gap-2 u-flex-1">
         <h3>{t('cockpit.combatLogTitle', 'Kampflog')}</h3>
         {offline && <p className="u-muted">{t('cockpit.offline', 'Host offline — noch keine Daten.')}</p>}
+        {loadError !== null && (
+          <StatusChip tone="failure" role="alert">
+            {t('cockpit.logLoadError', 'Kampflog konnte nicht geladen werden.')}
+          </StatusChip>
+        )}
         <ListSurface>
           {merged.length === 0 && (
             <ListRow as="div" interactive={false}>
@@ -104,7 +112,7 @@ export function CombatLogView({ role, campaignId, database, store, transport, pl
         </ListSurface>
       </Panel>
 
-      <Panel className="combat-log-view__dice u-stack u-gap-2">
+      <Panel data-testid="combatlog-dice" className="u-stack u-gap-2">
         <h3>{t('dice.roll', 'Würfeln')}</h3>
         <DiceRollerWidget
           campaignId={campaignId}
