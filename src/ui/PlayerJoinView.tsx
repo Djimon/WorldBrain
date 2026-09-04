@@ -32,6 +32,10 @@ export interface PlayerJoinViewProps {
    *  so the shell attaches the DB-less client store to it (D29 feed)
    *  and the player can send token movement intents. */
   onJoined?: (result: { token: string; playerId: string; displayName: string; transport?: WebRtcTransport }) => void;
+  /** #420 fix: escape out of the join surface (→ clear the remembered play context and
+   *  return to edit). Without it a remembered `role:'player'` with no reachable host is a
+   *  dead-end, since the join gate short-circuits the shell's normal leave path. */
+  onCancel?: () => void;
 }
 
 // S11 (#367): connect-flow states for the broker connection.
@@ -63,7 +67,7 @@ export function parseInviteLink(input: string): { code: string; campaign: string
   }
 }
 
-export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
+export function PlayerJoinView({ onJoined, onCancel }: PlayerJoinViewProps) {
   const { t } = useTranslation('multiplayer');
   const [code, setCode] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -355,6 +359,14 @@ export function PlayerJoinView({ onJoined }: PlayerJoinViewProps) {
       >
         {busy ? t('join.busy', 'Verbinde…') : t('join.submit', 'Beitreten')}
       </Button>
+      {/* #420 fix: escape below the join action — leaves the join surface (clears the
+          remembered play context, back to edit) so a player without a reachable host is
+          not trapped. Full-width outline under "Beitreten", no bespoke CSS. */}
+      {onCancel && (
+        <Button variant="outline" onClick={onCancel}>
+          {t('cancel', { ns: 'common' })}
+        </Button>
+      )}
     </Panel>
   );
 }

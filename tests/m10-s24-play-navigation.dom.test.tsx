@@ -134,7 +134,15 @@ vi.mock('../src/ui/LobbyPanel', () => ({ LobbyPanel: stubComponent('LobbyPanel')
 vi.mock('../src/ui/SessionTimeBar', () => ({ SessionTimeBar: stubComponent('SessionTimeBar') }));
 vi.mock('../src/ui/SessionTimeControls', () => ({ SessionTimeControls: stubComponent('SessionTimeControls') }));
 vi.mock('../src/ui/PlayCockpitMap', () => ({ PlayCockpitMap: stubComponent('PlayCockpitMap') }));
-vi.mock('../src/ui/PlayerJoinView', () => ({ PlayerJoinView: stubComponent('PlayerJoinView') }));
+// #420 regression: the stub surfaces the shell-provided `onCancel` as a button, so the
+// escape-wiring (WorkspaceShell passes leavePlaySession) is asserted through the mount.
+vi.mock('../src/ui/PlayerJoinView', () => ({
+  PlayerJoinView: ({ onCancel }: { onCancel?: () => void }) => React.createElement(
+    'div',
+    { 'data-testid': 'stub-PlayerJoinView' },
+    onCancel ? React.createElement('button', { 'aria-label': 'cancel', onClick: onCancel }, 'cancel') : null,
+  ),
+}));
 vi.mock('../src/ui/PlaySettingsPanel', () => ({ PlaySettingsPanel: stubComponent('PlaySettingsPanel') }));
 vi.mock('../src/ui/SettingsPanel', () => ({ SettingsPanel: stubComponent('SettingsPanel') }));
 vi.mock('../src/ui/primitives', () => ({

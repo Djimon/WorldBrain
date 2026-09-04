@@ -47,4 +47,12 @@ describe('M10-S05 Source guards', () => {
     const source = readFileSync('src/ui/PlayerJoinView.tsx', 'utf-8');
     expect(source).toMatch(/import.*StatusChip.*from.*primitives/);
   });
+
+  it('#420 fix: accepts an onCancel escape and renders it as the common cancel action', () => {
+    const source = readFileSync('src/ui/PlayerJoinView.tsx', 'utf-8');
+    // A remembered player context with no reachable host was a dead-end; the join surface
+    // must offer a way out (wired to leavePlaySession by the shell).
+    expect(source).toMatch(/onCancel\??\s*[?:)]/);
+    expect(source).toMatch(/onCancel\s*&&[\s\S]*t\(\s*['"]cancel['"]\s*,\s*\{\s*ns:\s*['"]common['"]/);
+  });
 });
