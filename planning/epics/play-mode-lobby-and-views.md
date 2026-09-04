@@ -26,6 +26,11 @@ Das interne Tab-Cockpit + der Split-Toggle entfallen ersatzlos.
   eigener „Map"-Tab mehr.
 - **lobby** = eigene View (ersetzt das alte „session"-Sammelbecken).
 - **combatlog** = **neue** eigene View (DM + Spieler), inkl. Würfel-Widget (`DiceRollerWidget`).
+  **Fundament, kein Cut-Feature:** der Combat-**Log** ist ein *dummer* gemeinsamer Log, in den
+  künftig alle Systeme schreiben; das Würfeln ist das einfachste Wurf-System und der erste
+  Service, der in diesen Log schreibt. Beide sind **immer da**. Das ist **nicht** die künftige
+  echte VTT-Regel-Engine (`combat`: Attack-Hooks, automatische Verrechnung der Charakterbogen-
+  Werte etc.) — die kommt später als eigenes, gate-bares Feature `combat`. Siehe Entscheidung 4.
 - **spotlight** = **„Coming soon"-Stub-View** (leerer Sidebar-Eintrag mit „Bald"-Hinweis;
   Whiteboard-Feature kommt nach 0.1).
 - **settings** = `PlaySettingsPanel` (bestehend).
@@ -133,7 +138,11 @@ Heutige Struktur, die dieses Epic umbaut:
   spotlight → Stub, maps → `PlayCockpitMap`.
 - Persistente Session-Leiste = im Play-Shell (`WorkspaceShell`), view-unabhängig.
 - **Eigene `features.json`-Flags** für `combatlog` + `spotlight` (in `FEATURE_IDS`), 0.1 beide
-  `true` — konsistent mit #404, einzeln cut-bar nach 0.1.
+  `true` — konsistent mit #404. **Aber:** nur `spotlight` ist ein echtes künftiges Cut-Feature.
+  `combatlog` (Log + einfaches Würfeln) ist **Fundament** und praktisch immer an — der Flag
+  existiert nur für Config-Konsistenz; der Host-Combat-Sync ist bewusst **ungegatet** (immer
+  verdrahtet). Das eigentliche gate-bare Kampf-Feature ist die spätere VTT-Engine `combat`
+  (eigener Flag), **nicht** `combatlog`. Siehe Entscheidung 4.
 
 ## Entscheidungen geschlossen (Grill abgeschlossen 2026-09-02)
 1. **Tageszeit:** zwei Modi — *realtime* (Default 24h, umschaltbar 12h am/pm) · *abstract*
@@ -141,7 +150,12 @@ Heutige Struktur, die dieses Epic umbaut:
 2. **Fokus-Hinweis:** schwebendes „Drop-in" unten rechts, über allen Views, leicht animiert,
    Klick → Fokus. NICHT in der Leiste.
 3. **Spieler-Lobby:** Roster + Session-Status + eigener Verbindungsstatus.
-4. **Feature-Flags:** eigene `combatlog`- + `spotlight`-Flags (0.1 beide an).
+4. **Feature-Flags:** eigene `combatlog`- + `spotlight`-Flags (0.1 beide an). **Klarstellung
+   (nach #422):** `combatlog` = Fundament (dummer Log, in den alle Systeme schreiben, + einfaches
+   Würfeln als erster Schreiber) → immer da, Host-Sync ungegatet; der Name bleibt. Die künftige
+   echte Kampf-**Engine** (Attack-Hooks, Auto-Verrechnung Charakterbogen, VTT-Regeln) wird ein
+   **separates** Feature `combat` — das ist das eigentliche Cut-/Gate-Feature, verwechsle es
+   nicht mit `combatlog`.
 5. **Sidebar-Reihenfolge/-Icons** (trivial änderbar): entities 🗂 · search 🔍 · maps 🗺 ·
    calendar 📅 · **lobby 👥** · **combatlog ⚔️** · **spotlight 🔦** · settings ⚙.
 
@@ -164,8 +178,13 @@ hängt an S1. **Reihenfolge der Struktur-/Daten-Kette: S1 → S9 → S8.**
 - **S2 — Lobby-View** (adapt `LobbyPanel`): DM voll + **Session Start/Stop = Verbindung** (Signaling
   an/aus, Invite erst nach Start gültig); **reduzierte Spieler-Variante** (Roster + Session-Status +
   eigener Verbindungsstatus). `area: session-mode · area: multiplayer`.
-- **S3 — Combatlog-View** (adapt Kampflog-Pane + `DiceRollerWidget`): DM postet+würfelt/sieht alles,
-  Spieler sichtbarkeits-gefiltert; hinter `feature('combatlog')`. `area: session-mode`.
+- **S3 — Combatlog-View** (adapt Kampflog-Pane + `DiceRollerWidget`) — **#422, erledigt/gemergt**:
+  DM postet+würfelt/sieht alles (Host-DB, inkl. `dm_only`), Spieler sichtbarkeits-gefiltert aus dem
+  Transport-`store` (D30) + würfelt via `roll_dice`-Intent an den Host (host-autoritativ, leak-sicher:
+  nur `all` wird broadcastet, `dm_only`/`private` nie). Die **View** ist über `visibleAreas`/
+  `feature('combatlog')` erreichbar (0.1 an); **Log + Würfeln selbst sind Fundament** und der
+  Host-Combat-Sync ist **ungegatet** (immer verdrahtet) — s. Entscheidung 4 (`combatlog` ≠ künftige
+  `combat`-Engine). `area: session-mode`.
 - **S4 — Spotlight Stub-View**: „Bald"-Platzhalter (Muster wie SettingsPanel-soon-Stub); hinter
   `feature('spotlight')`. `area: session-mode · area: ui`.
 - **S5 — Zeit-Modell (Session-State)**: `realtime` (24h Default, 12h am/pm umschaltbar) · `abstract`
