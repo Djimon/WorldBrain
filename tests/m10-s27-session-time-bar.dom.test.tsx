@@ -148,6 +148,8 @@ vi.mock('../src/ui/MapFolderTree', () => ({ MapFolderTree: stubComponent('MapFol
 vi.mock('../src/ui/LanguageSwitcher', () => ({ LanguageSwitcher: stubComponent('LanguageSwitcher') }));
 vi.mock('../src/ui/ThemeToggle', () => ({ ThemeToggle: stubComponent('ThemeToggle') }));
 vi.mock('../src/ui/LobbyPanel', () => ({ LobbyPanel: stubComponent('LobbyPanel') }));
+// #422 (S3): the combatlog view is now the real CombatLogView — stub it as a play child.
+vi.mock('../src/ui/CombatLogView', () => ({ CombatLogView: stubComponent('CombatLogView') }));
 vi.mock('../src/ui/PlayCockpitMap', () => ({ PlayCockpitMap: stubComponent('PlayCockpitMap') }));
 vi.mock('../src/ui/PlaySettingsPanel', () => ({ PlaySettingsPanel: stubComponent('PlaySettingsPanel') }));
 vi.mock('../src/ui/SettingsPanel', () => ({ SettingsPanel: stubComponent('SettingsPanel') }));
@@ -221,7 +223,7 @@ describe('#425 (S6) persistent session bar — date + time-of-day, view-independ
     await enterDmPlay();
     // Switch lobby → combatlog; the bar lives OUTSIDE renderArea() so it persists.
     fireEvent.click(sidebar().querySelector('[data-area="combatlog"]') as HTMLElement);
-    await waitFor(() => expect(screen.getByText('play.combatlogPlaceholder')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('stub-CombatLogView')).toBeTruthy());
     expect(bar()).toBeTruthy();
     // And again lobby → spotlight.
     fireEvent.click(sidebar().querySelector('[data-area="spotlight"]') as HTMLElement);

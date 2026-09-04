@@ -129,6 +129,8 @@ vi.mock('../src/ui/LanguageSwitcher', () => ({ LanguageSwitcher: stubComponent('
 vi.mock('../src/ui/ThemeToggle', () => ({ ThemeToggle: stubComponent('ThemeToggle') }));
 // #420 (S1): the dissolved cockpit's content — stub the play-sidebar children.
 vi.mock('../src/ui/LobbyPanel', () => ({ LobbyPanel: stubComponent('LobbyPanel') }));
+// #422 (S3): the combatlog view is now the real CombatLogView — stub it as a play child.
+vi.mock('../src/ui/CombatLogView', () => ({ CombatLogView: stubComponent('CombatLogView') }));
 // #425 (S6): the display strip (SessionTimeBar) is mounted view-independently in the
 // play shell; the DM's control panel (SessionTimeControls) lives in the lobby view.
 vi.mock('../src/ui/SessionTimeBar', () => ({ SessionTimeBar: stubComponent('SessionTimeBar') }));
@@ -222,7 +224,7 @@ describe('#420 (S1) play navigation — cockpit dissolved into sidebar views', (
   it('switching to the combatlog view via the sidebar mounts the combatlog view', async () => {
     await enterDmPlay();
     fireEvent.click(sidebar().querySelector('[data-area="combatlog"]') as HTMLElement);
-    await waitFor(() => expect(screen.getByText('play.combatlogPlaceholder')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('stub-CombatLogView')).toBeTruthy());
   });
 
   it('switching to the spotlight view via the sidebar mounts the spotlight view', async () => {

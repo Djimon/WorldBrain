@@ -27,6 +27,7 @@ import { attachVisibilityBroadcaster } from '../services/player-content-filter-s
 import { attachHostJoinSync } from '../services/host-join-sync';
 import { attachClientStoreToTransport } from '../services/client-store-transport-bridge';
 import { broadcastRoster } from '../services/host-presence-sync';
+import { attachHostCombatSync, replayCombatLog } from '../services/host-combat-log-sync';
 import { ROSTER, decodeRoster, type RosterEntry, type TransportMessage } from '../services/session-transport';
 // #412: the map-transport glue (host-token-sync / presented-map-push) is imported
 // lazily behind feature('maps') inside the host effect, so map-service/map-layer-service
@@ -40,6 +41,7 @@ import { getPlayContext, setPlayContext, clearPlayContext } from '../services/pl
 // session time into a display-only persistent strip (SessionTimeBar) + the DM's
 // separate control panel (SessionTimeControls, mounted in the lobby).
 import { LobbyPanel } from './LobbyPanel';
+import { CombatLogView } from './CombatLogView';
 import { SessionTimeBar } from './SessionTimeBar';
 import { SessionTimeControls } from './SessionTimeControls';
 // #426 (S7): the opt-in focus drop-in — a view-independent floating card for the
@@ -200,6 +202,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // DB-less player's only source for the connected-players list + session-live flag.
   const [playerRoster, setPlayerRoster] = useState<RosterEntry[]>([]);
   const [playerSessionLive, setPlayerSessionLive] = useState(false);
+  // M10-S3 (#422): bumped when a player's roll is persisted host-side, so the DM's
+  // DB-backed combat-log view reloads live (the host gets no self-broadcast).
+  const [combatLogTick, setCombatLogTick] = useState(0);
   // M10-S22 (follow-up): real campaign selection on play entry instead of the
   // projectId hack. Campaigns are loaded when the selection panel opens.
   const [availableCampaigns, setAvailableCampaigns] = useState<Campaign[]>([]);
@@ -526,21 +531,24 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
         );
       }
 
-      // #420 (S1): combatlog mount point. DM log + DiceRollerWidget / player store-
-      // filtered view arrive with S3 (#422). The player client-store is threaded here
-      // (offline hint) so the store is reachable — not orphaned — by the S3 build.
-      case 'combatlog':
+      // #422 (S3): combat-log view — DM (DB + dice, posts broadcast to players) and
+      // player (store-filtered log + dice via transport intent). Feature reachability is
+      // handled by the sidebar `feature('combatlog')` filter (visibleAreas).
+      case 'combatlog': {
+        const campaignId = activeSessionId ?? '';
         return (
-          <div className="workspace-area">
-            <Panel className="u-stack u-gap-2">
-              <h3>{t('combatlog')}</h3>
-              <p className="u-muted">{t('play.combatlogPlaceholder', { ns: 'multiplayer' })}</p>
-              {sessionRole === 'player' && (playerStore?.isOffline() ?? false) && (
-                <p className="u-muted">{t('cockpit.offline', { ns: 'multiplayer' })}</p>
-              )}
-            </Panel>
-          </div>
+          <CombatLogView
+            role={sessionRole === 'player' ? 'player' : 'dm'}
+            campaignId={campaignId}
+            database={sessionRole === 'player' ? undefined : database}
+            store={sessionRole === 'player' ? (playerStore ?? undefined) : undefined}
+            transport={(sessionRole === 'player' ? playerTransport : hostTransport) ?? undefined}
+            playerId={playerContext?.playerId}
+            actorDisplay={sessionRole === 'player' ? (playerContext?.displayName ?? 'Player') : 'DM'}
+            refreshToken={combatLogTick}
+          />
         );
+      }
 
       // #423 (S4): spotlight (whiteboard) is not built for 0.1 — a clear "coming soon"
       // stub (mirrors the SettingsPanel `settings__soon` teaser: emoji + warning chip +
@@ -1074,6 +1082,11 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
         attachHostTokenSync({ transport, database, campaignId });
       });
     }
+    // #422 (S3, D17): authorize incoming roll_dice intents from players + persist +
+    // broadcast the public ('all') entries. ALWAYS wired — the combat LOG + dice are
+    // foundational (every system writes to the dumb log); the future `combat` FEATURE is
+    // the real VTT rule-engine, unrelated to this log.
+    attachHostCombatSync({ transport, database, campaignId, onPersisted: () => setCombatLogTick((n) => n + 1) });
     // M10-#387 (D24/D29): DB-less join/reconnect handshake — SESSION-CORE, always wired
     // (map-free). The initial-scene push (presented map + tokens, #386) is the maps
     // contribution, injected as onAfterJoin only when maps is on.
@@ -1089,6 +1102,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
           await pushPresentedMapSnapshot({ database, campaignId, transport, recipientPlayerId: playerId });
         }
         await broadcastRoster({ transport, database, campaignId, live: true });
+        // #422: replay the public combat log AFTER the snapshot — the joining player gets
+        // the history, and it survives the snapshot's store reset (applySnapshot clears).
+        await replayCombatLog({ transport, database, campaignId });
       },
     });
     // M10-#386: initial snapshot of the presented map once the host transport is up, so
