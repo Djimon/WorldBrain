@@ -10,7 +10,7 @@
 // (onAfterJoin), and after a Kick. Host→player only, sent under SYSTEM_TOKEN.
 import type { DatabaseLike } from './entity-service';
 import type { SessionTransport, RosterEntry } from './session-transport';
-import { ROSTER, SYSTEM_TOKEN } from './session-transport';
+import { encodeRoster } from './session-transport';
 import { listCampaignPlayers } from './player-membership-service';
 
 interface PlayerNameRow { id: string; display_name: string }
@@ -42,9 +42,5 @@ export async function broadcastRoster(params: {
     players = active.map((r) => ({ playerId: r.player_id, displayName: nameById[r.player_id] ?? r.player_id }));
   }
 
-  await transport.send({
-    type: ROSTER,
-    token: SYSTEM_TOKEN,
-    payload: { players, live } as unknown as Record<string, unknown>,
-  });
+  await transport.send(encodeRoster({ players, live }));
 }

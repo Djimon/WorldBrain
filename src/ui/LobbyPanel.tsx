@@ -17,7 +17,7 @@ import { currentAppId } from '../services/app-id-service';
 import type { SessionPlayer } from '../services/player-membership-service';
 import type { RosterEntry } from '../services/session-transport';
 import { addMember, listGroups, removeMember, type PlayerGroup } from '../services/player-groups-service';
-import { Button, Field, ListSurface, Panel, StatusChip } from './primitives';
+import { Button, Field, ListRow, ListSurface, Panel, StatusChip } from './primitives';
 
 interface PlayerRow { id: string; display_name: string }
 interface GroupMemberRow { group_id: string; player_id: string }
@@ -72,13 +72,15 @@ function PlayerLobby({ sessionLive = false, roster = [], isOffline = false }: {
         <h3>{t('lobby.rosterTitle', 'Verbundene Spieler')}</h3>
         <ListSurface>
           {roster.length === 0 && (
-            <li className="lobby-panel__empty">{t('lobby.rosterEmpty', 'Noch niemand beigetreten.')}</li>
+            <ListRow as="div" interactive={false}>
+              <span className="u-muted">{t('lobby.rosterEmpty', 'Noch niemand beigetreten.')}</span>
+            </ListRow>
           )}
           {roster.map((p) => (
-            <li key={p.playerId} className="lobby-panel__player u-row u-gap-2">
-              <span className="lobby-panel__player-name">{p.displayName}</span>
+            <ListRow as="div" interactive={false} key={p.playerId} className="u-row u-gap-2">
+              <span>{p.displayName}</span>
               <StatusChip tone="success">{t('lobby.online', 'online')}</StatusChip>
-            </li>
+            </ListRow>
           ))}
         </ListSurface>
       </div>
@@ -307,14 +309,16 @@ function DmLobby({
         <h3>{t('lobby.rosterTitle', 'Verbundene Spieler')}</h3>
         <ListSurface>
           {activePlayers.length === 0 && (
-            <li className="lobby-panel__empty">{t('lobby.rosterEmpty', 'Noch niemand beigetreten.')}</li>
+            <ListRow as="div" interactive={false}>
+              <span className="u-muted">{t('lobby.rosterEmpty', 'Noch niemand beigetreten.')}</span>
+            </ListRow>
           )}
           {activePlayers.map((p) => {
             const assigned = memberGroups[p.player_id] ?? [];
             return (
-              <li key={p.id} className="lobby-panel__player u-stack u-gap-1">
+              <ListRow as="div" interactive={false} key={p.id} className="u-stack u-gap-1">
                 <div className="u-row u-gap-2">
-                  <span className="lobby-panel__player-name">{playerNames[p.player_id] ?? p.player_id}</span>
+                  <span>{playerNames[p.player_id] ?? p.player_id}</span>
                   <StatusChip tone="success">{t('lobby.online', 'online')}</StatusChip>
                   <Button
                     tone="danger"
@@ -344,7 +348,7 @@ function DmLobby({
                     })}
                   </div>
                 )}
-              </li>
+              </ListRow>
             );
           })}
         </ListSurface>

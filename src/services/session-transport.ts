@@ -66,6 +66,36 @@ export interface RosterPayload {
   live: boolean;
 }
 
+/**
+ * Build a `roster` transport message from a typed payload. ONE home for the roster
+ * envelope (host send) — no scattered `as unknown as` casts at the call sites. The
+ * object literal is directly assignable to `Record<string, unknown>` (no cast).
+ */
+export function encodeRoster(payload: RosterPayload): TransportMessage {
+  const record: Record<string, unknown> = { players: payload.players, live: payload.live };
+  return { type: ROSTER, token: SYSTEM_TOKEN, payload: record };
+}
+
+/**
+ * Decode + validate an incoming `roster` payload (player receive). The wire data is
+ * untrusted (`Record<string, unknown>`), so every field is checked; malformed input
+ * yields `null` (the caller ignores it). This is the ONLY place the roster shape is
+ * asserted — no casts leak into WorkspaceShell.
+ */
+export function decodeRoster(payload: Record<string, unknown>): RosterPayload | null {
+  const rawPlayers = payload.players;
+  if (!Array.isArray(rawPlayers)) return null;
+  const players: RosterEntry[] = [];
+  for (const entry of rawPlayers) {
+    if (entry === null || typeof entry !== 'object') continue;
+    const e = entry as Record<string, unknown>;
+    if (typeof e.playerId === 'string' && typeof e.displayName === 'string') {
+      players.push({ playerId: e.playerId, displayName: e.displayName });
+    }
+  }
+  return { players, live: payload.live === true };
+}
+
 export interface SessionTransport {
   /** Opens the peer connection (host: provide the DataChannel). */
   connect(): Promise<void>;

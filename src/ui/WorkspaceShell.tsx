@@ -27,7 +27,7 @@ import { attachVisibilityBroadcaster } from '../services/player-content-filter-s
 import { attachHostJoinSync } from '../services/host-join-sync';
 import { attachClientStoreToTransport } from '../services/client-store-transport-bridge';
 import { broadcastRoster } from '../services/host-presence-sync';
-import { ROSTER, type RosterEntry, type RosterPayload, type TransportMessage } from '../services/session-transport';
+import { ROSTER, decodeRoster, type RosterEntry, type TransportMessage } from '../services/session-transport';
 // #412: the map-transport glue (host-token-sync / presented-map-push) is imported
 // lazily behind feature('maps') inside the host effect, so map-service/map-layer-service
 // tree-shake out of the main bundle at maps=false. See __FEATURE_MAPS__ usage below.
@@ -1115,9 +1115,10 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
     if (playerTransport === null) return;
     const dispose = playerTransport.onMessage((msg: TransportMessage) => {
       if (msg.type !== ROSTER) return;
-      const p = msg.payload as unknown as RosterPayload;
-      setPlayerRoster(Array.isArray(p.players) ? p.players : []);
-      setPlayerSessionLive(p.live === true);
+      const p = decodeRoster(msg.payload); // typed + validated in ONE place (no cast here)
+      if (p === null) return;
+      setPlayerRoster(p.players);
+      setPlayerSessionLive(p.live);
     });
     return () => { dispose(); };
   }, [playerTransport]);
