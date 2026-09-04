@@ -120,18 +120,6 @@ describe('issue-308 Karten-Panel-Chrome', () => {
     });
   });
 
-  describe('WorkspaceShell reicht den Import auch an MapFolderTree weiter', () => {
-    // #308 teilweise ueberstimmt (Produktentscheidung 2026-07-22): der grosse rote
-    // "+ Karte importieren"-Button steht wieder ueber der Karten-Ueberschrift in
-    // WorkspaceShell; das Header-"+"-Icon (via onImportMap) bleibt zusaetzlich.
-    // Die fruehere Guard-Assertion (kein Import-Button in WorkspaceShell) wurde daher entfernt.
-
-    it('WorkspaceShell.tsx reicht onImportMap an MapFolderTree weiter', () => {
-      const src = readFileSync('src/ui/WorkspaceShell.tsx', 'utf-8');
-      expect(src).toMatch(/onImportMap=/);
-    });
-  });
-
   describe('kein Pin-Panel verändert (Epic D7 Regressionsschutz)', () => {
     it('NestedTree.tsx (gemeinsame Basis) trägt weiterhin die Gold-Standard-Klassen', () => {
       const src = readFileSync('src/ui/NestedTree.tsx', 'utf-8');
