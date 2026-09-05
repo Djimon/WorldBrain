@@ -57,10 +57,12 @@ Alles außerhalb dieser Liste ist im Release-Build ein Kandidat für **echtes En
 | #2 | [#397](https://github.com/Djimon/WorldBrain/issues/397) | Campaign-Bereich aus Edit-Modus entfernen (Lobby ersetzt) | ready |
 | #3 | [#398](https://github.com/Djimon/WorldBrain/issues/398) | Grid-Controls-Panel scrollbar (kleine Monitore) | ready |
 | Triage | [#400](https://github.com/Djimon/WorldBrain/issues/400) | Test-Suite grün ziehen (Cluster B/C/D) | ready |
-| #6 | _offen_ | UX-Session Settings | Epic/Story folgt |
-| #4 | _offen_ | Feature-Scope-Lock / Release-Build-Config | **eigenes Epic folgt** (Umbau) |
-| #5 | _offen_ | Play-Mode Live-UX-Session (2 Rechner/2 Netze) | Epic/Story folgt |
-| #7 | _offen_ | 0.1-Beta-Release | folgt |
+| #6 | [#410](https://github.com/Djimon/WorldBrain/issues/410) (+Nachlese #428–#430) | UX-Session Settings | ✅ erledigt |
+| #4 | [#403](https://github.com/Djimon/WorldBrain/issues/403)–#408, #412/#413 | Feature-Scope-Lock / Release-Build-Config | ✅ erledigt |
+| #5 | — (kein Ticket) | Play-Mode Live-UX (2 Rechner/2 Netze) | **manueller Test des Orchestrators** nach Milestone-Abschluss |
+| #7 | — (kein Ticket) | 0.1-Beta-Release | **kein Release-Ticket** — Orchestrator lädt das Release selbst hoch, wenn „so weit" |
+
+**Play-Views-Datenquelle (S8 / [#427](https://github.com/Djimon/WorldBrain/issues/427), `needs-design`):** gehärtete Architektur-Entscheidung (2026-09-05) = **eine Datenquellen-Abstraktion** (Read-Interface, DM→DB-Impl / Spieler→Snapshot-Store-Impl), **kein per-View-Branch**; auch maps/combatlog werden migriert. Reihenfolge **#432 → #427**. Details im Ticket #427.
 
 Milestone: **pre-release (#21)**.
 
