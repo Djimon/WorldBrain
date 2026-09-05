@@ -35,6 +35,17 @@ Der Membran-Vertrag existiert bereits und funktioniert für den Live-Fall:
 
 > **Direkte Evidenz für G3 im eigenen Code:** `session-transport.ts:52–57` dokumentiert, dass der `roster`-Feed **bewusst als eigener Nachrichtentyp** (nicht als Snapshot/Delta-Entity) gebaut wurde, *weil* „`applySnapshot` clears its entity map on every map snapshot … which would wipe a roster kept there." Dasselbe Reset-Problem traf #421 (Roster) und #422 (Combatlog-Replay nach Snapshot). Das ist **kein** Roster-Spezialfall, sondern das fehlende Ordnungs-/Versions-Modell (G3) — die Workarounds sind Symptome.
 
+### Haupt-Last: Karten-Overlay = hochfrequente Positions-Deltas (nicht nur seltene Edits)
+Zu den **Struktur**-Daten gehört das **Live-Overlay der Karte** — **Token-/Marker-/Pin-Positionen, Grid-Status, Messwerkzeuge** = kleine `{x, y, typ, …}`-Records. Der `map`-Record selbst trägt nur **Metadaten + einen Bild-Hash**; die **Bild-Bytes sind NICHT Teil dieses Sync** (Schwester-Spike #435, einmalig gecacht). Kritische Konsequenz für die Diff-/Delta-Wahl: die Strategie muss **viele kleine, sehr häufige Positions-Deltas** tragen (Token-Bewegung während des Spiels), nicht nur seltene Entity-Edits.
+
+Das Muster existiert bereits (#366, `token-movement-service.ts`): `buildMovementDelta` erzeugt genau ein `Delta { op:'update', kind:'token', data:{x,y} }`, `broadcastMovement` schickt es **fire-and-forget, ungefiltert** (Token sind D18/D20 für alle sichtbar), `applyMovementMessage` wendet es auf den Store an. **Das ist bereits ein Delta** → die empfohlene Delta-Log+Seq-Familie (C) verallgemeinert #366 **nativ** (nur `seq` ergänzen). Zwei Eigenschaften der Positions-Last prägen aber das Design:
+
+- **Last-Write-Wins pro `id`, koaleszierbar:** nur die **aktuelle** Position zählt; Zwischenpositionen sind wegwerfbar. Ordnung braucht **`seq`** (out-of-order x/y würde jittern → nach `seq`, nicht nach Ankunft anwenden), aber der Verlauf muss **nicht** in den durablen Re-Join-Log. Der Store ist ein **keyed `Map` (aktueller Zustand pro `kind::id`)**, kein append-only Event-Log — Re-Join liest die **aktuelle** Position aus Snapshot/Manifest, nie die Bewegungshistorie. Damit bleiben Re-Join-Bytes auch unter starker Bewegung klein.
+- **Durabel vs. ephemer trennen:** `entity`/`calendar_event`/`handout`/`combat_log` = durable Edits (append/behalten); `token`/`marker`/Pin-`x/y`, Grid, Messwerkzeug = **ephemere LWW-Positions-Deltas** (koaleszieren, ggf. **host-seitig throtteln** — max. N Updates/s pro Token, Zwischenframes droppen). Beides läuft über dasselbe `Delta`+`seq`, wird aber unterschiedlich **geloggt** (durabel im Re-Join-Tail, ephemer nur als „aktueller Zustand").
+- **Filter-Asymmetrie:** Positions-Deltas sind heute **ungefiltert-broadcast** (alle sehen sie), Entities sind **pro-Empfänger gefiltert** — das Seq-Modell muss beide Ströme tragen (s. §7 offener Punkt).
+
+> Das **verstärkt** die CRDT-Absage (§2A): ein CRDT würde **jede** Mikro-Bewegung als geloggte Op mit Metadaten/Tombstones führen — genau falsch für koaleszierbare, ephemere Positionen.
+
 ---
 
 ## 2. Kandidaten-Familien (SOTA 2026)
@@ -77,6 +88,7 @@ Der **klassische DB-Replikations-Pattern** — und laut Recherche der Standard f
 | Cold-Join (G1) | ✔ | ✔ | **✔** (bestehender Snapshot) | Hilfe |
 | Re-Join inkrementell (G2) | ✔ (State-Vector) | **✔✔** | ✔ (Log-Tail) | — |
 | Live-Delta-Konsistenz (G3) | ✔ | ✖ (Pull-Zeitpunkt) | **✔✔** (seq-Cutoff+Puffer) | — |
+| **Hochfreq. Positions-Deltas** (Token/Marker) | ✖ (Op-/Tombstone-Bloat) | ✖ (kein Strom) | **✔✔** (LWW pro id + seq, koaleszierbar) | — |
 | Integrität (G4) | ✔ (intern) | **✔✔** (Hash-Manifest) | ✔ (+Manifest) | — |
 | Sichtbarkeits-Filter pro Empfänger | ✖ (geteiltes Doc) | ✔ (Host hasht Soll) | **✔** (Host filtert Tail) | ✔ |
 | Transport-Bindung erfüllbar | ✖/~ (nur Update-Ebene) | ✔ | **✔** | ✔ |
@@ -102,12 +114,13 @@ Konkret zu bauen (in #427):
 
 ## 5. Bewertung + Mess-Methode (Pflicht, belegbar)
 
-**Fixture (dokumentiert):** eine repräsentative Welt — **300 Entities + 80 Kalender-Events + 200 Kampflog-Zeilen + Session-/Zeit-State + Roster (6 Spieler)**, davon ~40 % `gm_only` (Filter-Last). Als JSON-Seed unter `tests/fixtures/` ablegen, damit Benches reproduzierbar sind.
+**Fixture (dokumentiert):** eine repräsentative Welt — **300 Entities + 80 Kalender-Events + 200 Kampflog-Zeilen + eine präsentierte Karte mit ~30 Token/Marker + Session-/Zeit-State + Roster (6 Spieler)**, davon ~40 % `gm_only` (Filter-Last). Als JSON-Seed unter `tests/fixtures/` ablegen, damit Benches reproduzierbar sind.
 
 **Metriken je Kandidat:**
 - **Cold-Join-Zeit** (ms) + Bytes über den Channel.
 - **Re-Join** bei **kleiner** Änderung (1 Entity geändert): Bytes + ms — der Kern-Vergleich (Full-Snapshot vs. Log-Tail vs. Hash-Diff).
 - **Live-Delta-Latenz** (Intent→sichtbar) + **Konsistenz** unter „Delta während Initial-Transfer" (gezielter Test).
+- **Positions-Durchsatz:** Latenz **und** Bytes/s bei **hochfrequenten** Positions-Updates (z. B. 1 Token, 20 Bewegungen/s über 10 s; dann 5 Token gleichzeitig) — plus: **wächst der Re-Join-Tail dabei?** (Soll: nein — LWW-Coalescing hält ihn flach.)
 - **Korrektheit:** Merkle-Root des Client-Stores == Host-gefiltertes Soll.
 - **Dep-Gewicht** (KB im Bundle) / **Lizenz** (MIT-kompatibel) / Passung zu `play-sync-protocol`+`play-client-store`.
 
