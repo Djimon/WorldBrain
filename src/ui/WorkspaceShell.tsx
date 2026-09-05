@@ -19,22 +19,11 @@ import { PlaySettingsPanel } from './PlaySettingsPanel';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 import { applyThemeVars } from '../theme';
-import { Button, Field, Panel, Segmented, StatusChip } from './primitives';
-import { AppModeContext, type AppMode, type SessionRole } from './AppModeContext';
-import { WebRtcTransport } from '../services/webrtc-transport';
-import { currentAppId } from '../services/app-id-service';
-import { attachVisibilityBroadcaster } from '../services/player-content-filter-service';
-import { attachHostJoinSync } from '../services/host-join-sync';
-import { attachClientStoreToTransport } from '../services/client-store-transport-bridge';
-import { broadcastRoster } from '../services/host-presence-sync';
-import { attachHostCombatSync, replayCombatLog } from '../services/host-combat-log-sync';
-import { ROSTER, decodeRoster, type RosterEntry, type TransportMessage } from '../services/session-transport';
-// #412: the map-transport glue (host-token-sync / presented-map-push) is imported
-// lazily behind feature('maps') inside the host effect, so map-service/map-layer-service
-// tree-shake out of the main bundle at maps=false. See __FEATURE_MAPS__ usage below.
-import { createPlayClientStore, type PlayClientStoreImpl } from '../services/play-client-store';
-import { listCampaigns, createCampaign, type Campaign } from '../services/campaign-service';
-import { getPlayContext, setPlayContext, clearPlayContext } from '../services/play-context-store';
+import { Button, Panel, Segmented, StatusChip } from './primitives';
+import { AppModeContext, type AppMode } from './AppModeContext';
+// #432: the play-session transport/sync/campaign machinery moved into usePlaySession —
+// the shell no longer imports it directly. Only getPlayContext stays (mode toggle reads it).
+import { getPlayContext } from '../services/play-context-store';
 // #420 (S1): the play "cockpit" (PlayModeView) is dissolved — its content now lives
 // in dedicated play-sidebar views (lobby/combatlog/spotlight/maps) rendered by
 // renderArea(). The lobby view reuses the existing LobbyPanel; #425 (S6) splits the
@@ -42,12 +31,13 @@ import { getPlayContext, setPlayContext, clearPlayContext } from '../services/pl
 // separate control panel (SessionTimeControls, mounted in the lobby).
 import { LobbyPanel } from './LobbyPanel';
 import { CombatLogView } from './CombatLogView';
-import { SessionTimeBar } from './SessionTimeBar';
 import { SessionTimeControls } from './SessionTimeControls';
-// #426 (S7): the opt-in focus drop-in — a view-independent floating card for the
-// player when the DM presents a focus (0.1: the presented map).
-import { FocusDropIn } from './FocusDropIn';
-import { PlayerJoinView } from './PlayerJoinView';
+// #432: play-session orchestration + the two play-surface components extracted from
+// this shell. renderArea() + the mode toggle stay here; the session state/effects/actions
+// live in the hook, the role-select + play surface in their own components.
+import { usePlaySession } from './hooks/usePlaySession';
+import { RoleSelectPanel } from './RoleSelectPanel';
+import { PlaySurface } from './PlaySurface';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { join } from '@tauri-apps/api/path';
 
@@ -90,7 +80,9 @@ const PlayCockpitMap = import.meta.env.DEV || __FEATURE_MAPS__
   ? lazy(() => import('./PlayCockpitMap').then((m) => ({ default: m.PlayCockpitMap })))
   : null;
 
-type Area =
+// #432: exported so usePlaySession (which drives setActiveArea / lastAreaByMode) shares
+// the exact area union. Type-only import → no runtime cycle with WorkspaceShell.
+export type Area =
   | 'entities'
   | 'search'
   | 'maps'
@@ -165,8 +157,27 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
   // M10-S22 (D25): app-mode shell. `edit` = full author workspace, `play` =
   // session view with a fixed play subset (reduced menu) + chosen role.
   const [mode, setMode] = useState<AppMode>('edit');
-  const [sessionRole, setSessionRole] = useState<SessionRole>(null);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeArea, setActiveArea] = useState<Area>(activePanel ?? 'entities');
+  // Remember the last active area PER mode, so toggling edit⇄play restores the view you
+  // were on in that mode (instead of always dropping into the play cockpit, and instead of
+  // edit trying to render a play-only area). In-session memory (per mounted project).
+  const lastAreaByMode = useRef<{ edit: Area; play: Area }>({ edit: activePanel ?? 'entities', play: 'lobby' });
+
+  // #432: play-session orchestration lives in usePlaySession (role/campaign, DM host
+  // transport + sync attaches, DB-less player store + roster feed, enter/leave/switch).
+  // Destructured with the SAME names the shared views + return already use → behaviour
+  // unchanged. `mode`/`setMode` + the mode toggle stay here (they steer chrome + area set).
+  const {
+    sessionRole, activeSessionId, showRoleSelect, playerContext, playerStore,
+    hostTransport, playerTransport, sessionLive, playerRoster, playerSessionLive,
+    combatLogTick, availableCampaigns, selectedCampaignForPlay, newCampaignTitle,
+    playerNeedsJoin,
+    setSelectedCampaignForPlay, setNewCampaignTitle, setShowRoleSelect,
+    enterPlay, openRoleSelect, exitPlay, pickRole, createAndPickCampaign,
+    startSession, stopSession, rebroadcastRoster,
+    switchPlayCampaign, switchPlayRole, leavePlaySession, handlePlayerJoined,
+  } = usePlaySession({ database, projectId, mode, setMode, setActiveArea, lastAreaByMode });
+
   // #415: a DM in a live campaign creates campaign-owned events (override, no base write).
   // Outside that (edit mode / world author) events go straight to the world base.
   const calendarCampaignId = mode === 'play' && sessionRole === 'dm' && activeSessionId !== null ? activeSessionId : undefined;
@@ -175,46 +186,6 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       ? createCampaignEventEntity(database, { campaignId: calendarCampaignId, ...params })
       : createEventEntity(database, params);
   }
-  const [showRoleSelect, setShowRoleSelect] = useState(false);
-  // M10-S05/S08: after the player join, token+playerId+displayName are fixed;
-  // the play view then switches to PlayerCharacterSheet.
-  const [playerContext, setPlayerContext] = useState<{ playerId: string; displayName: string } | null>(null);
-  // M10-S14: the player's group IDs, captured at join for the S09 visibility filter.
-  // #420 (S1): the reader (was PlayModeView) is gone; the player-side views consume this
-  // once #427/S8 wires the store data source — the join-time capture stays wired here.
-  const [, setPlayerGroupIds] = useState<string[]>([]);
-  // #374 D30 membrane: the client renders only from the store. Create lazily,
-  // once the player context is fixed — the host would later push snapshot+delta
-  // (transport wiring in R2/R3 follows).
-  const [playerStore, setPlayerStore] = useState<PlayClientStoreImpl | null>(null);
-  // M10-#386: the host transport is lifted into state so the play cockpit
-  // (PlayModeView → MapViewer) can broadcast token movements through it.
-  const [hostTransport, setHostTransport] = useState<WebRtcTransport | null>(null);
-  // M10-#386 (variant A): the player transport bubbles up from the join flow
-  // (PlayerJoinView) — the shell feeds the DB-less store with it (D29 feed)
-  // and the player sends token movement intents through it.
-  const [playerTransport, setPlayerTransport] = useState<WebRtcTransport | null>(null);
-  // M10-S2 (#421): the DM's explicit Session Start/Stop. The host transport effect is
-  // gated on this — Start (true) opens the connection, Stop (false) tears it down. The
-  // invite code is valid only while live (no transport = joiners can't reach the host).
-  const [sessionLive, setSessionLive] = useState(false);
-  // M10-S2 (#421): roster fed by the host `roster` broadcast (host-presence-sync) — the
-  // DB-less player's only source for the connected-players list + session-live flag.
-  const [playerRoster, setPlayerRoster] = useState<RosterEntry[]>([]);
-  const [playerSessionLive, setPlayerSessionLive] = useState(false);
-  // M10-S3 (#422): bumped when a player's roll is persisted host-side, so the DM's
-  // DB-backed combat-log view reloads live (the host gets no self-broadcast).
-  const [combatLogTick, setCombatLogTick] = useState(0);
-  // M10-S22 (follow-up): real campaign selection on play entry instead of the
-  // projectId hack. Campaigns are loaded when the selection panel opens.
-  const [availableCampaigns, setAvailableCampaigns] = useState<Campaign[]>([]);
-  const [selectedCampaignForPlay, setSelectedCampaignForPlay] = useState<string>('');
-  const [newCampaignTitle, setNewCampaignTitle] = useState('');
-  const [activeArea, setActiveArea] = useState<Area>(activePanel ?? 'entities');
-  // Remember the last active area PER mode, so toggling edit⇄play restores the view you
-  // were on in that mode (instead of always dropping into the play cockpit, and instead of
-  // edit trying to render a play-only area). In-session memory (per mounted project).
-  const lastAreaByMode = useRef<{ edit: Area; play: Area }>({ edit: activePanel ?? 'entities', play: 'lobby' });
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | null>('Character');
   // #412: maps is a lazy, feature('maps')-gated area (MapsArea). Only selectedMapId
@@ -872,129 +843,9 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       }
     } else {
       setMode('edit');
-      setSessionRole(null);
-      setActiveSessionId(null);
-      setShowRoleSelect(false);
+      exitPlay(); // #432: reset session state (remembered context STAYS — fast way back)
       setActiveArea(lastAreaByMode.current.edit); // restore the last edit view
     }
-  }
-
-  // #390: open the "campaign + role" selection step (only when no context).
-  function openRoleSelect() {
-    setShowRoleSelect(true);
-    void listCampaigns(database).then((cs) => {
-      setAvailableCampaigns(cs);
-      if (cs.length === 1) setSelectedCampaignForPlay(cs[0].id);
-    });
-  }
-
-  // #390: enter the remembered context directly. Edge case: if the campaign
-  // no longer exists (deleted) → discard the context and fall back cleanly to the
-  // selection step (no crash).
-  async function enterPlay(campaignId: string, role: 'dm' | 'player') {
-    const cs = await listCampaigns(database);
-    setAvailableCampaigns(cs);
-    if (!cs.some((c) => c.id === campaignId)) {
-      clearPlayContext(projectId);
-      if (cs.length === 1) setSelectedCampaignForPlay(cs[0].id);
-      setShowRoleSelect(true);
-      return;
-    }
-    setMode('play');
-    setSessionRole(role);
-    setActiveSessionId(campaignId);
-    setSelectedCampaignForPlay(campaignId);
-    setShowRoleSelect(false);
-    setActiveArea(lastAreaByMode.current.play); // restore the last play view (default: lobby)
-  }
-
-  async function pickRole(role: 'dm' | 'player') {
-    let campaignId = selectedCampaignForPlay;
-    if (campaignId === '') {
-      // No campaign selected: the DM may auto-create one (prevents a
-      // dead end in an empty project); the player needs a selection.
-      if (role === 'dm') {
-        const c = await createCampaign(database, { title: t('modeCampaignDefault', 'Default Campaign') });
-        campaignId = c.id;
-        setAvailableCampaigns((prev) => [...prev, c]);
-      } else {
-        return;
-      }
-    }
-    setMode('play');
-    setSessionRole(role);
-    setActiveSessionId(campaignId);
-    setSelectedCampaignForPlay(campaignId);
-    setShowRoleSelect(false);
-    setActiveArea(lastAreaByMode.current.play); // restore the last play view (default: lobby)
-    setPlayContext(projectId, { campaignId, role }); // #390: remember context
-  }
-
-  // #421 — DM session control (Start/Stop = the connection). Start arms the host
-  // transport effect (which opens signaling + broadcasts the roster); Stop tears it
-  // down (effect cleanup closes the transport → all players disconnected).
-  function startSession() { setSessionLive(true); }
-  async function stopSession() {
-    // #421 Low 1: AWAIT the "session down" broadcast BEFORE flipping sessionLive — the
-    // flip triggers the effect cleanup that closes the transport, so a fire-and-forget
-    // send would race the close and the players' `session: läuft` chip would stay stale.
-    if (hostTransport !== null && activeSessionId !== null) {
-      await broadcastRoster({ transport: hostTransport, database, campaignId: activeSessionId, live: false })
-        .catch(() => { /* offline / send failed — the close below disconnects them anyway */ });
-    }
-    setSessionLive(false);
-  }
-  /** #421 Low 2: clear the player's presence feed so a stale roster/status can't flash
-   *  on the next entry (before the first fresh `roster` broadcast arrives). */
-  function resetPlayerPresence() {
-    setPlayerRoster([]);
-    setPlayerSessionLive(false);
-  }
-  /** Re-broadcast the roster after a host-side change (kick) while the session is live. */
-  function rebroadcastRoster() {
-    if (hostTransport === null || activeSessionId === null || !sessionLive) return;
-    void broadcastRoster({ transport: hostTransport, database, campaignId: activeSessionId, live: true });
-  }
-
-  // #390 — play-settings actions (in play mode, its own area):
-  /** Switch campaign without the edit detour — updates the active session + remembered context. */
-  function switchPlayCampaign(campaignId: string) {
-    if (campaignId === activeSessionId) return;
-    setSessionLive(false); // #421: a different campaign is a different room — DM re-starts.
-    resetPlayerPresence();
-    setActiveSessionId(campaignId);
-    setSelectedCampaignForPlay(campaignId);
-    if (sessionRole === 'dm' || sessionRole === 'player') {
-      setPlayContext(projectId, { campaignId, role: sessionRole });
-    }
-  }
-  /** Switch role (DM/Player) — switching to player resets the join context. */
-  function switchPlayRole(role: 'dm' | 'player') {
-    if (role === sessionRole) return;
-    setSessionLive(false); // #421: role switch resets the session — DM must re-Start.
-    resetPlayerPresence();
-    setSessionRole(role);
-    if (role === 'player') setPlayerContext(null);
-    if (activeSessionId !== null) setPlayContext(projectId, { campaignId: activeSessionId, role });
-  }
-  /** Leave the session — clear the remembered context and back to edit. */
-  function leavePlaySession() {
-    clearPlayContext(projectId);
-    setSessionLive(false); // #421: leaving closes the connection.
-    resetPlayerPresence();
-    setMode('edit');
-    setSessionRole(null);
-    setActiveSessionId(null);
-    setShowRoleSelect(false);
-    lastAreaByMode.current.play = 'lobby'; // deliberate exit → next play starts at the lobby view
-    setActiveArea(lastAreaByMode.current.edit);
-  }
-  async function createAndPickCampaign() {
-    if (newCampaignTitle.trim() === '') return;
-    const c = await createCampaign(database, { title: newCampaignTitle.trim() });
-    setAvailableCampaigns((prev) => [...prev, c]);
-    setSelectedCampaignForPlay(c.id);
-    setNewCampaignTitle('');
   }
 
   const modeContextValue = { mode, sessionRole, activeSessionId };
@@ -1024,120 +875,6 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
       void WebviewWindow.getCurrent().setTitle(`${brandPlatform} – ${brandModeMark}`).catch(() => { /* cosmetic */ });
     } catch { /* not in Tauri */ }
   }, [brandPlatform, brandModeMark]);
-  // #420 (S1): a player must join before any player-side view is shown. The join flow
-  // (was gated on the old 'session' cockpit area) now gates the whole play surface for
-  // an un-joined player — until playerContext is set, PlayerJoinView is the play surface.
-  const playerNeedsJoin = mode === 'play' && sessionRole === 'player' && playerContext === null && activeSessionId !== null;
-
-  // #374 D30: create the player store once the player context is fixed (an empty
-  // store = "host offline"). Snapshot+delta is fed by the client transport
-  // (wiring follows in R4 / #375).
-  useEffect(() => {
-    if (sessionRole !== 'player' || playerContext === null) { setPlayerStore(null); return; }
-    setPlayerStore(createPlayClientStore({ playerId: playerContext.playerId }));
-  }, [sessionRole, playerContext]);
-
-  // M10-#386 (D29 feed): once both the player store AND transport exist, attach
-  // the store to the transport feed — snapshot/delta (incl. token
-  // movements) then flow into the DB-less client.
-  useEffect(() => {
-    if (playerStore === null || playerTransport === null) return;
-    const dispose = attachClientStoreToTransport(playerTransport, playerStore);
-    return () => dispose();
-  }, [playerStore, playerTransport]);
-
-  // #373 M10-R2 + S11: wire up host push + attach broker signaling.
-  // In the host/connect model the DM is peer 'A' (initiator). appId = currentAppId
-  // (per-host namespace from getHostSecret); roomId = campaignId. The signaling
-  // adapter runs the fallback chain (Nostr → MQTT → BitTorrent → PeerJS) and
-  // brokers SDP/ICE — game data stays P2P.
-  useEffect(() => {
-    // #421: gated on sessionLive — the connection opens only when the DM presses Start.
-    if (mode !== 'play' || sessionRole !== 'dm' || activeSessionId === null || !sessionLive) return;
-    const transport = WebRtcTransport.host(activeSessionId, database);
-    setHostTransport(transport);
-    const campaignId = activeSessionId;
-    void (async () => {
-      await transport.connect();
-      const appId = await currentAppId();
-      await transport.attachSignaling({
-        appId,
-        roomId: campaignId,
-        peerLabel: 'A',
-        onError: (err) => console.warn('[host-signaling]', err.message),
-      });
-    })().catch((e) => console.warn('[host-signaling] setup failed', e));
-    const unsub = attachVisibilityBroadcaster(transport);
-    // #412: token movement + presented-map snapshot are MAP-feature glue. Gate them
-    // behind feature('maps') via dynamic import so map-service/map-layer-service (and
-    // the rest of the map read-path) tree-shake out of the main bundle at maps=false.
-    // At maps=true (0.1) the chunk loads on host start. The dynamic-import attach is a
-    // microtask later than the old static call — harmless here: token intents only
-    // arrive after a player has joined and is viewing a map, well after host setup.
-    const mapsOn = import.meta.env.DEV || __FEATURE_MAPS__;
-    // M10-#386 (D18, host-authoritative): authorize incoming token movement intents
-    // from players + persist ground truth + broadcast. Map-only → maps-gated lazy.
-    if (mapsOn) {
-      void import('../services/host-token-sync').then(({ attachHostTokenSync }) => {
-        attachHostTokenSync({ transport, database, campaignId });
-      });
-    }
-    // #422 (S3, D17): authorize incoming roll_dice intents from players + persist +
-    // broadcast the public ('all') entries. ALWAYS wired — the combat LOG + dice are
-    // foundational (every system writes to the dumb log); the future `combat` FEATURE is
-    // the real VTT rule-engine, unrelated to this log.
-    attachHostCombatSync({ transport, database, campaignId, onPersisted: () => setCombatLogTick((n) => n + 1) });
-    // M10-#387 (D24/D29): DB-less join/reconnect handshake — SESSION-CORE, always wired
-    // (map-free). The initial-scene push (presented map + tokens, #386) is the maps
-    // contribution, injected as onAfterJoin only when maps is on.
-    attachHostJoinSync({
-      transport,
-      database,
-      campaignId,
-      // #421: the roster broadcast is session-core → runs for every join regardless of
-      // maps. The presented-map snapshot (#386) is the maps contribution, added when on.
-      onAfterJoin: async (playerId) => {
-        if (mapsOn) {
-          const { pushPresentedMapSnapshot } = await import('../services/presented-map-push');
-          await pushPresentedMapSnapshot({ database, campaignId, transport, recipientPlayerId: playerId });
-        }
-        await broadcastRoster({ transport, database, campaignId, live: true });
-        // #422: replay the public combat log AFTER the snapshot — the joining player gets
-        // the history, and it survives the snapshot's store reset (applySnapshot clears).
-        await replayCombatLog({ transport, database, campaignId });
-      },
-    });
-    // M10-#386: initial snapshot of the presented map once the host transport is up, so
-    // already-connected players get the scene. Maps-gated (present() re-pushes on change).
-    if (mapsOn) {
-      void import('../services/presented-map-push').then(({ pushPresentedMapSnapshot }) => {
-        void pushPresentedMapSnapshot({ database, campaignId, transport });
-      });
-    }
-    // #421: initial roster broadcast on session start, so already-connected players see
-    // the live session + current roster immediately.
-    void broadcastRoster({ transport, database, campaignId, live: true });
-    return () => {
-      unsub();
-      setHostTransport(null);
-      void transport.close().catch(() => {});
-    };
-  }, [mode, sessionRole, activeSessionId, database, sessionLive]);
-
-  // #421: player-side roster feed — subscribe to the host `roster` broadcast on the
-  // player transport. This is the DB-less player's only source for the connected-players
-  // list + the session-live flag (deliberately NOT the reset-on-snapshot client store).
-  useEffect(() => {
-    if (playerTransport === null) return;
-    const dispose = playerTransport.onMessage((msg: TransportMessage) => {
-      if (msg.type !== ROSTER) return;
-      const p = decodeRoster(msg.payload); // typed + validated in ONE place (no cast here)
-      if (p === null) return;
-      setPlayerRoster(p.players);
-      setPlayerSessionLive(p.live);
-    });
-    return () => { dispose(); };
-  }, [playerTransport]);
 
   return (
     <AppModeContext.Provider value={modeContextValue}>
@@ -1212,98 +949,35 @@ export function WorkspaceShell({ projectId = '', projectTitle, projectDir, snaps
             </div>
           </header>
           {showRoleSelect ? (
-            <Panel className="workspace-area workspace-shell__role-select" role="dialog"
-              aria-label={t('modeRolePickTitle', 'Rolle wählen')}>
-              <p>{t('modeRolePickPrompt', 'Campaign und Rolle wählen:')}</p>
-              <div className="workspace-shell__role-campaign u-stack u-gap-2">
-                {availableCampaigns.length > 0 && (
-                  <Segmented
-                    label={t('modeCampaign', 'Campaign')}
-                    value={selectedCampaignForPlay}
-                    onChange={setSelectedCampaignForPlay}
-                    size="compact"
-                    options={availableCampaigns.map((c) => ({ id: c.id, label: c.title }))}
-                  />
-                )}
-                {availableCampaigns.length === 0 && (
-                  <div className="u-row u-gap-2">
-                    <Field
-                      label={t('modeCampaignNew', 'Neue Campaign')}
-                      value={newCampaignTitle}
-                      onChange={(e) => setNewCampaignTitle(e.target.value)}
-                      placeholder={t('modeCampaignNewPh', 'Titel')}
-                    />
-                    <Button
-                      onClick={() => void createAndPickCampaign()}
-                      disabled={newCampaignTitle.trim() === ''}
-                    >
-                      {t('modeCampaignCreate', 'Anlegen')}
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <div className="workspace-shell__role-buttons">
-                <Button tone="accent" onClick={() => void pickRole('dm')}>
-                  {t('modeRoleDm', 'Als DM')}
-                </Button>
-                <Button
-                  disabled={selectedCampaignForPlay === ''}
-                  onClick={() => void pickRole('player')}
-                >
-                  {t('modeRolePlayer', 'Als Player')}
-                </Button>
-                <Button variant="outline" onClick={() => setShowRoleSelect(false)}>
-                  {t('cancel', { ns: 'common' })}
-                </Button>
-              </div>
-            </Panel>
-          ) : playerNeedsJoin ? (
-            // M10-S05 (#387) / #420 (S1): an un-joined player starts with the DB-less
-            // join handshake — no `database` prop (join runs as a transport handshake).
-            // This gate replaces the old cockpit-area join branch; once joined, the
-            // player sees the normal play-sidebar views via renderArea().
-            //
-            // Regression fix (#420 fallout): this gate short-circuits renderArea(), where
-            // the only `leavePlaySession` exit lives. A remembered `role:'player'` context
-            // (persisted in localStorage → survives restart) with no reachable host was a
-            // total dead-end. `onCancel` restores the pre-#420 way out: leave the join
-            // surface → clearPlayContext + back to edit.
-            <PlayerJoinView
-              onCancel={leavePlaySession}
-              onJoined={async ({ playerId, displayName, transport }) => {
-                setPlayerContext({ playerId, displayName });
-                setPlayerTransport(transport ?? null); // #386 D29-Feed
-                // The player's group membership → filter context for S09 (consumed by
-                // the player-side views once #427/S8 wires the store data source).
-                try {
-                  const rows = await database.select<{ group_id: string }>(
-                    'SELECT group_id FROM group_members WHERE player_id = ?',
-                    [playerId],
-                  );
-                  setPlayerGroupIds(rows.map((r) => r.group_id));
-                } catch { /* no group_members → empty list */ }
-              }}
+            <RoleSelectPanel
+              availableCampaigns={availableCampaigns}
+              selectedCampaignForPlay={selectedCampaignForPlay}
+              onSelectCampaign={setSelectedCampaignForPlay}
+              newCampaignTitle={newCampaignTitle}
+              onNewCampaignTitleChange={setNewCampaignTitle}
+              onCreateCampaign={() => void createAndPickCampaign()}
+              onPickRole={(role) => void pickRole(role)}
+              onCancel={() => setShowRoleSelect(false)}
             />
           ) : (
-            <>
-              {/* #425 (S6): the persistent session bar (date + time-of-day, DISPLAY
-                  ONLY) is mounted OUTSIDE renderArea() so it stays visible across
-                  every play-sidebar view switch. Play mode only, once a campaign is
-                  active. The DM operates it from SessionTimeControls (lobby); that
-                  bumps `sessionTimeToken` so the bar re-reads. */}
-              {mode === 'play' && activeSessionId !== null && (
-                <SessionTimeBar database={database} campaignId={activeSessionId}
-                  refreshToken={sessionTimeToken} />
-              )}
-              {/* #426 (S7): the opt-in focus drop-in — player only, view-independent.
-                  Never auto-switches the view; the player clicks it to jump to the
-                  DM's focus (0.1: the presented map = the 'maps' view). */}
-              {mode === 'play' && sessionRole === 'player' && (
-                <FocusDropIn store={playerStore} activeArea={activeArea} focusArea="maps"
-                  onJump={() => setActiveArea('maps')} />
-              )}
+            // #432: PlaySurface owns the join gate + the view-independent play chrome
+            // (session bar #425, focus drop-in #426); renderArea() STAYS in the shell and
+            // is passed as children (never duplicated).
+            <PlaySurface
+              playerNeedsJoin={playerNeedsJoin}
+              onLeave={leavePlaySession}
+              onPlayerJoined={(result) => void handlePlayerJoined(result)}
+              mode={mode}
+              sessionRole={sessionRole}
+              activeSessionId={activeSessionId}
+              database={database}
+              sessionTimeToken={sessionTimeToken}
+              playerStore={playerStore}
+              activeArea={activeArea}
+              onFocusJump={() => setActiveArea('maps')}
+            >
               {renderArea()}
-            </>
+            </PlaySurface>
           )}
         </div>
       </div>

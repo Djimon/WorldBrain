@@ -6,14 +6,16 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('#373 Host-Push wiring', () => {
+  // #432: the host path (WebRtcTransport.host + the sync attaches) moved out of
+  // WorkspaceShell into the usePlaySession hook — search there too.
   it('WebRtcTransport.host() is called outside its own file and tests', () => {
-    const source = readFileSync('src/ui/WorkspaceShell.tsx', 'utf-8');
+    const source = readFileSync('src/ui/hooks/usePlaySession.ts', 'utf-8');
     const hasHostCall = source.match(/WebRtcTransport|transport.*host|startHosting/i);
     expect(hasHostCall).toBeTruthy();
   });
 
   it('attachVisibilityBroadcaster is called in host path', () => {
-    const files = ['src/ui/WorkspaceShell.tsx', 'src/services/webrtc-transport.ts'];
+    const files = ['src/ui/hooks/usePlaySession.ts', 'src/ui/WorkspaceShell.tsx', 'src/services/webrtc-transport.ts'];
     let found = false;
     for (const f of files) {
       try {
