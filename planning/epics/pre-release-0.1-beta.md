@@ -62,7 +62,7 @@ Alles außerhalb dieser Liste ist im Release-Build ein Kandidat für **echtes En
 | #5 | — (kein Ticket) | Play-Mode Live-UX (2 Rechner/2 Netze) | **manueller Test des Orchestrators** nach Milestone-Abschluss |
 | #7 | — (kein Ticket) | 0.1-Beta-Release | **kein Release-Ticket** — Orchestrator lädt das Release selbst hoch, wenn „so weit" |
 
-**Play-Views-Datenquelle (S8 / [#427](https://github.com/Djimon/WorldBrain/issues/427), `needs-design`):** gehärtete Architektur-Entscheidung (2026-09-05) = **eine Datenquellen-Abstraktion** (Read-Interface, DM→DB-Impl / Spieler→Snapshot-Store-Impl), **kein per-View-Branch**; auch maps/combatlog werden migriert. Reihenfolge **#432 → #427**. Details im Ticket #427.
+**Play-Views-Datenquelle (S8 / [#427](https://github.com/Djimon/WorldBrain/issues/427), `needs-design`):** gehärtete Architektur-Entscheidung (2026-09-05) = **eine Datenquellen-Abstraktion** (Read-Interface, DM→DB-Impl / Spieler→Snapshot-Store-Impl), **kein per-View-Branch**; auch maps/combatlog werden migriert. Kette: **#432 (erledigt) → Sync-Research → #427**. Der konkrete Snapshot-Sync-Mechanismus ist **offen** und wird von zwei SOTA-2026-Research-Spikes bestimmt: **[#434](https://github.com/Djimon/WorldBrain/issues/434)** (Struktur-Daten-Sync) + **[#435](https://github.com/Djimon/WorldBrain/issues/435)** (große Binär-Assets/Karten-Bilder über WebRTC). Details in #427/#434/#435.
 
 Milestone: **pre-release (#21)**.
 
